@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Orchestrator state
+.agents/state.db
+.agents/logs/*.log
+
+# Credentials (NEVER commit)
+*.env
+.env.*
+credentials.json
+service-account.json
+*.pem
+*.key
+
+# Distribution
+*.whl
+*.tar.gz
