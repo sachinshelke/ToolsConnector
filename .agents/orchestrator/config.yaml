@@ -1,0 +1,23 @@
+orchestrator:
+  api_key_env: ANTHROPIC_API_KEY
+  model: claude-sonnet-4-6
+  model_overrides:
+    principal-architect: claude-sonnet-4-6
+    reviewer: claude-sonnet-4-6
+  max_parallel: 4
+  default_timeout: 3600
+  working_branch_prefix: "agent/"
+  log_dir: ".agents/logs"
+  state_db: ".agents/state.db"
+
+  sandbox:
+    allowed_dirs:
+      - "toolsconnector/"
+      - "tests/"
+      - "pyproject.toml"
+      - ".agents/skills/"
+    blocked_commands:
+      - "rm -rf /"
+      - "git push --force"
+      - "pip install --user"
+    require_git_branch: true

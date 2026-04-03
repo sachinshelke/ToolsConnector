@@ -1,0 +1,112 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "toolsconnector"
+version = "0.1.0"
+description = "A foundational primitive for standardizing external API tool connections — for both traditional applications and AI agents."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.9"
+authors = [{ name = "Sachin", email = "sachin@toolsconnector.dev" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "pydantic>=2.0,<3.0",
+    "httpx>=0.25.0,<1.0",
+    "docstring-parser>=0.15",
+]
+
+[project.optional-dependencies]
+# --- Connectors (Tier 1) ---
+gmail = ["google-api-python-client>=2.0", "google-auth>=2.0", "google-auth-oauthlib>=1.0"]
+gdrive = ["google-api-python-client>=2.0", "google-auth>=2.0"]
+gcalendar = ["google-api-python-client>=2.0", "google-auth>=2.0"]
+slack = ["slack-sdk>=3.20"]
+notion = ["notion-client>=2.0"]
+github = ["PyGithub>=2.0"]
+jira = ["jira>=3.5"]
+
+# --- Connectors (Tier 2) ---
+outlook = ["msal>=1.20", "msgraph-sdk>=1.0"]
+teams = ["msal>=1.20", "msgraph-sdk>=1.0"]
+confluence = ["atlassian-python-api>=3.30"]
+asana = ["asana>=5.0"]
+s3 = ["boto3>=1.28"]
+hubspot = ["hubspot-api-client>=8.0"]
+
+# --- Protocol adapters ---
+graphql = ["gql>=3.4", "aiohttp>=3.8"]
+soap = ["zeep>=4.2"]
+grpc = ["grpcio>=1.50", "protobuf>=4.0"]
+websocket = ["websockets>=12.0"]
+
+# --- KeyStore extras ---
+vault = ["hvac>=1.0"]
+aws-keystore = ["boto3>=1.28"]
+
+# --- Storage extras ---
+s3-storage = ["boto3>=1.28"]
+gcs-storage = ["google-cloud-storage>=2.0"]
+
+# --- Serve layer ---
+mcp = ["mcp>=1.0"]
+rest = ["starlette>=0.27", "uvicorn>=0.23"]
+
+# --- Category bundles ---
+google = ["toolsconnector[gmail,gdrive,gcalendar]"]
+microsoft = ["toolsconnector[outlook,teams]"]
+communication = ["toolsconnector[gmail,slack]"]
+project-mgmt = ["toolsconnector[jira,asana]"]
+
+# --- Agent orchestrator ---
+orchestrator = ["anthropic>=0.40.0", "pyyaml>=6.0", "rich>=13.0"]
+
+# --- Development ---
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "respx>=0.20",
+    "vcrpy>=6.0",
+    "ruff>=0.1",
+    "mypy>=1.5",
+    "bandit>=1.7",
+    "pip-audit>=2.6",
+]
+
+# --- Everything ---
+all = ["toolsconnector[gmail,slack,github,notion,jira,gdrive,gcalendar,mcp,rest]"]
+
+[project.scripts]
+tc = "toolsconnector.serve.cli:main"
+
+[project.entry-points."toolsconnector.connectors"]
+# Connectors register here for CLI/serve discovery
+# gmail = "toolsconnector.connectors.gmail:Gmail"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH"]
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,369 @@
+version: "1.0"
+project: toolsconnector
+current_phase: 0
+
+tasks:
+  # ===================================================================
+  # Phase 0: Core Primitive
+  # Goal: Foundational runtime + one working connector (Gmail)
+  # ===================================================================
+
+  - id: build-spec-types
+    agent: principal-architect
+    phase: 0
+    priority: 1
+    status: pending
+    description: |
+      Build the spec/ module with all specification types.
+      These are pure Pydantic V2 models that define the language-agnostic
+      interface contract. No implementation logic — just types.
+
+      Create:
+      - spec/__init__.py — re-export all spec types
+      - spec/version.py — SPEC_VERSION = "1.0"
+      - spec/connector.py — ConnectorSpec, ConnectorCategory (enum), ProtocolType (enum)
+      - spec/action.py — ActionSpec, ParameterSpec with JSON Schema generation
+      - spec/auth.py — AuthSpec, AuthType (enum), OAuthSpec, ScopeSpec
+      - spec/pagination.py — PaginationSpec, PaginationStrategy (enum: cursor, offset, keyset, page_number, link_header, token, none)
+      - spec/errors.py — ErrorSpec, ErrorCode (enum with all error codes)
+      - spec/types.py — TypeSpec for custom type definitions
+
+      All models must have model_json_schema() working.
+      ConnectorSpec must compose all other specs into one complete specification.
+    files:
+      - toolsconnector/spec/__init__.py
+      - toolsconnector/spec/version.py
+      - toolsconnector/spec/connector.py
+      - toolsconnector/spec/action.py
+      - toolsconnector/spec/auth.py
+      - toolsconnector/spec/pagination.py
+      - toolsconnector/spec/errors.py
+      - toolsconnector/spec/types.py
+    dependencies: []
+    acceptance:
+      - All spec types are Pydantic V2 models
+      - ConnectorSpec.model_json_schema() returns valid JSON Schema
+      - All enums have clear, documented values
+      - mypy --strict passes on spec/
+      - Unit tests exist for all models
+
+  - id: build-error-hierarchy
+    agent: principal-architect
+    phase: 0
+    priority: 2
+    status: pending
+    description: |
+      Build the errors/ module with the full error hierarchy.
+
+      Base class: ToolsConnectorError with fields:
+      - connector: str, action: str | None, code: str, message: str
+      - retry_eligible: bool, retry_after_seconds: float | None
+      - suggestion: str | None, details: dict[str, Any]
+      - upstream_status: int | None
+      Methods: to_dict(), to_json(), __str__()
+
+      Subtree:
+      - AuthError → TokenExpiredError, InvalidCredentialsError, InsufficientScopeError, RefreshFailedError
+      - APIError → RateLimitError, NotFoundError, ValidationError, ConflictError, PermissionError, ServerError
+      - TransportError → TimeoutError, ConnectionError, DNSError
+      - ConnectorError → ConnectorNotConfiguredError, ConnectorInitError, ActionNotFoundError
+      - ConfigError → InvalidConfigError, MissingConfigError
+
+      errors/codes.py — ErrorCode enum mapping all codes (AUTH_TOKEN_EXPIRED, etc.)
+    files:
+      - toolsconnector/errors/__init__.py
+      - toolsconnector/errors/base.py
+      - toolsconnector/errors/auth.py
+      - toolsconnector/errors/api.py
+      - toolsconnector/errors/transport.py
+      - toolsconnector/errors/config.py
+      - toolsconnector/errors/connector.py
+      - toolsconnector/errors/codes.py
+    dependencies:
+      - build-spec-types
+    acceptance:
+      - All errors are catchable Python exceptions
+      - error.to_dict() produces valid JSON-serializable dict
+      - error.suggestion is populated for retryable errors
+      - error.retry_eligible is correct for each type
+      - Unit tests verify all error types
+
+  - id: build-types-module
+    agent: principal-architect
+    phase: 0
+    priority: 2
+    status: pending
+    description: |
+      Build the types/ module with shared framework types.
+
+      - types/__init__.py — re-export all types
+      - types/paginated.py — PaginatedList[T] generic model with:
+        - items, page_state, total_count, has_more property
+        - anext_page(), collect() for async multi-page iteration
+        - next_page(), collect_sync() auto-generated sync wrappers
+        - __iter__ and __aiter__ for iteration
+      - types/file.py — FileRef model (uri, filename, mime_type, size_bytes, metadata)
+        - StorageBackend protocol (read, write, exists, delete)
+        - LocalStorageBackend, InMemoryStorageBackend implementations
+      - types/credentials.py — CredentialSet model (auth_type, api_key, bearer_token,
+        client_id, client_secret, refresh_token, access_token, etc.)
+        - OAuthConfig model (auth_url, token_url, scopes, extra_params)
+      - types/common.py — PageState model (cursor, offset, page_number, total_count, has_more)
+    files:
+      - toolsconnector/types/__init__.py
+      - toolsconnector/types/paginated.py
+      - toolsconnector/types/file.py
+      - toolsconnector/types/credentials.py
+      - toolsconnector/types/common.py
+    dependencies:
+      - build-spec-types
+    acceptance:
+      - PaginatedList[T] is a generic Pydantic model
+      - FileRef has model_json_schema() working
+      - CredentialSet validates auth_type-specific fields
+      - All types have proper docstrings
+
+  - id: build-keystore
+    agent: principal-architect
+    phase: 0
+    priority: 2
+    status: pending
+    description: |
+      Build the keystore/ module with pluggable credential storage.
+
+      - keystore/__init__.py — re-export KeyStore protocol and implementations
+      - keystore/base.py — KeyStore Protocol with async get/set/delete/exists
+        Key naming convention: {connector}:{tenant_id}:{credential_type}
+      - keystore/memory.py — InMemoryKeyStore (dict-backed, default for dev/testing)
+      - keystore/env.py — EnvironmentKeyStore (read-only, reads TC_{CONNECTOR}_{KEY} env vars)
+    files:
+      - toolsconnector/keystore/__init__.py
+      - toolsconnector/keystore/base.py
+      - toolsconnector/keystore/memory.py
+      - toolsconnector/keystore/env.py
+    dependencies:
+      - build-spec-types
+    acceptance:
+      - KeyStore is a Protocol (not ABC) — any class with get/set/delete/exists qualifies
+      - InMemoryKeyStore passes all operations
+      - EnvironmentKeyStore reads from os.environ
+      - Key naming follows {connector}:{tenant_id}:{type} format
+
+  - id: build-runtime-core
+    agent: principal-architect
+    phase: 0
+    priority: 4
+    status: pending
+    description: |
+      Build the runtime/ engine — the core execution layer.
+
+      This is the largest task. Build these modules:
+
+      1. runtime/transport/base.py — Transport protocol
+      2. runtime/transport/http.py — HTTPTransport using httpx.AsyncClient
+
+      3. runtime/auth/base.py — AuthProvider protocol (authenticate, refresh, validate, needs_refresh)
+         AuthRequest model, AuthResult model
+      4. runtime/auth/manager.py — AuthManager that orchestrates auth lifecycle,
+         handles token refresh with asyncio.Lock, persists to keystore
+      5. runtime/auth/api_key.py — APIKeyProvider (header, query param, or body)
+      6. runtime/auth/bearer.py — BearerTokenProvider
+      7. runtime/auth/oauth2.py — OAuth2Provider (token exchange, refresh, scope management)
+      8. runtime/auth/basic.py — BasicAuthProvider
+
+      9. runtime/protocol/base.py — ProtocolAdapter protocol, ProtocolResponse model
+      10. runtime/protocol/rest.py — RESTAdapter (JSON/XML over HTTP)
+
+      11. runtime/middleware/base.py — Middleware protocol, ActionContext, CallNext, MiddlewarePipeline
+      12. runtime/middleware/auth.py — AuthMiddleware (injects auth headers)
+      13. runtime/middleware/retry.py — RetryMiddleware (exponential backoff + jitter)
+      14. runtime/middleware/rate_limit.py — RateLimitMiddleware (token bucket)
+      15. runtime/middleware/logging.py — LoggingMiddleware (structured logging)
+
+      16. runtime/pagination/base.py — PaginationStrategy protocol, PageState
+      17. runtime/pagination/cursor.py — CursorPagination
+      18. runtime/pagination/token.py — TokenPagination (Google-style pageToken)
+      19. runtime/pagination/offset.py — OffsetPagination
+
+      20. runtime/context.py — ActionContext model
+      21. runtime/_sync.py — run_sync() utility for sync/async bridge
+      22. runtime/action.py — @action decorator with full introspection:
+          - Parse type hints → build Pydantic input model
+          - Parse docstring → extract parameter descriptions
+          - Generate JSON Schema from Pydantic model
+          - Create sync wrapper from async method
+          - Store ActionMeta for serve layer introspection
+      23. runtime/base.py — BaseConnector abstract class:
+          - Class-level declarations (name, category, protocol, auth_providers, rate_limit)
+          - Constructor accepting credentials, keystore, middleware, storage, tenant_id
+          - Context manager support (sync and async)
+          - get_spec() classmethod for spec extraction
+          - get_actions() classmethod
+          - Lifecycle hooks (_setup, _teardown, _health_check)
+
+      All __init__.py files must re-export public APIs.
+    files:
+      - toolsconnector/runtime/__init__.py
+      - toolsconnector/runtime/transport/base.py
+      - toolsconnector/runtime/transport/http.py
+      - toolsconnector/runtime/auth/__init__.py
+      - toolsconnector/runtime/auth/base.py
+      - toolsconnector/runtime/auth/manager.py
+      - toolsconnector/runtime/auth/api_key.py
+      - toolsconnector/runtime/auth/bearer.py
+      - toolsconnector/runtime/auth/oauth2.py
+      - toolsconnector/runtime/auth/basic.py
+      - toolsconnector/runtime/protocol/__init__.py
+      - toolsconnector/runtime/protocol/base.py
+      - toolsconnector/runtime/protocol/rest.py
+      - toolsconnector/runtime/middleware/__init__.py
+      - toolsconnector/runtime/middleware/base.py
+      - toolsconnector/runtime/middleware/auth.py
+      - toolsconnector/runtime/middleware/retry.py
+      - toolsconnector/runtime/middleware/rate_limit.py
+      - toolsconnector/runtime/middleware/logging.py
+      - toolsconnector/runtime/pagination/__init__.py
+      - toolsconnector/runtime/pagination/base.py
+      - toolsconnector/runtime/pagination/cursor.py
+      - toolsconnector/runtime/pagination/token.py
+      - toolsconnector/runtime/pagination/offset.py
+      - toolsconnector/runtime/context.py
+      - toolsconnector/runtime/_sync.py
+      - toolsconnector/runtime/action.py
+      - toolsconnector/runtime/base.py
+    dependencies:
+      - build-spec-types
+      - build-error-hierarchy
+      - build-types-module
+      - build-keystore
+    acceptance:
+      - BaseConnector can be subclassed with @action methods
+      - "@action decorator generates ActionMeta with valid JSON Schema"
+      - "Sync/async bridge works — sync call wraps async implementation"
+      - Middleware pipeline executes in correct order
+      - RESTAdapter makes HTTP calls via httpx
+      - "Auth token refresh works transparently (with asyncio.Lock)"
+      - "PaginationStrategy implementations handle cursor, token, offset"
+      - run_typecheck passes on runtime/
+      - run_lint passes on runtime/
+    timeout: 7200
+
+  - id: build-gmail-connector
+    agent: connector-implementer
+    phase: 0
+    priority: 5
+    status: pending
+    description: |
+      Build the Gmail connector as the first reference connector.
+      This proves the entire core primitive works end-to-end.
+
+      Actions to implement:
+      - list_emails(query, limit, labels) -> PaginatedList[Email]
+      - get_email(email_id, format) -> Email
+      - send_email(to, subject, body, cc, bcc, attachments) -> MessageId
+      - search_emails(query, limit) -> PaginatedList[Email]
+      - list_labels() -> list[Label]
+      - create_draft(to, subject, body) -> DraftId
+      - delete_email(email_id) -> None (dangerous=True)
+      - modify_labels(email_id, add_labels, remove_labels) -> Email
+
+      Configuration:
+      - protocol = ProtocolType.REST
+      - base_url = "https://gmail.googleapis.com"
+      - auth_providers = [OAuth2Provider(...), ServiceAccountProvider(...)]
+      - rate_limit = RateLimitConfig(rate=250, period=60, burst=50)
+      - Pagination: TokenPagination for list actions
+
+      Types to define in types.py:
+      - Email, EmailHeader, EmailBody, Attachment, Label, MessageId, DraftId
+
+      Use google-api-python-client under the hood (it's in extras_require).
+      But wrap it cleanly — users interact with our types, not Google's raw API.
+    files:
+      - toolsconnector/connectors/__init__.py
+      - toolsconnector/connectors/gmail/__init__.py
+      - toolsconnector/connectors/gmail/connector.py
+      - toolsconnector/connectors/gmail/types.py
+    dependencies:
+      - build-runtime-core
+    acceptance:
+      - "Gmail.get_spec() returns valid ConnectorSpec"
+      - All actions have @action decorator
+      - All types are Pydantic V2 models with proper docstrings
+      - "Sync and async entry points work (list_emails and alist_emails)"
+      - "Pagination works with TokenPagination strategy"
+      - "Auth declares OAuth2 and ServiceAccount providers"
+      - run_lint passes
+      - run_typecheck passes
+
+  - id: build-tests-phase0
+    agent: test-engineer
+    phase: 0
+    priority: 6
+    status: pending
+    description: |
+      Build test infrastructure and write tests for all Phase 0 code.
+
+      1. Set up pytest configuration (conftest.py, fixtures)
+      2. Unit tests for spec/ — model creation, JSON Schema generation
+      3. Unit tests for errors/ — creation, to_dict(), __str__()
+      4. Unit tests for types/ — PaginatedList, FileRef, CredentialSet
+      5. Unit tests for keystore/ — InMemoryKeyStore, EnvironmentKeyStore
+      6. Unit tests for runtime/ — @action decorator, middleware pipeline, auth
+      7. Unit tests for Gmail connector — mock HTTP with respx
+      8. Import boundary tests — verify no cross-layer imports
+      9. Conformance test skeleton — validate connector structure
+
+      Use pytest + pytest-asyncio + respx (for HTTP mocking).
+    files:
+      - tests/conftest.py
+      - tests/unit/test_spec.py
+      - tests/unit/test_errors.py
+      - tests/unit/test_types.py
+      - tests/unit/test_keystore.py
+      - tests/unit/test_runtime_action.py
+      - tests/unit/test_runtime_middleware.py
+      - tests/unit/test_runtime_auth.py
+      - tests/unit/test_gmail.py
+      - tests/conformance/test_connector_structure.py
+      - tests/conformance/test_import_boundaries.py
+    dependencies:
+      - build-gmail-connector
+    acceptance:
+      - pytest runs without errors
+      - "90%+ coverage on runtime/ modules"
+      - Import boundary tests catch violations
+      - Gmail connector tests pass with mocked HTTP
+      - All spec model tests pass
+
+  - id: review-phase0
+    agent: reviewer
+    phase: 0
+    priority: 7
+    status: pending
+    description: |
+      Full review of all Phase 0 code.
+
+      Review checklist:
+      - Import boundaries: spec/ → nothing, runtime/ → spec/ only, etc.
+      - Type safety: no Any, all hints present
+      - Docstrings: Google style on all public classes/methods
+      - Error handling: framework error types used correctly
+      - No credentials in code
+      - Tests exist and pass
+      - Spec generation: Gmail.get_spec() returns valid ConnectorSpec
+      - Lines < 100 chars, files < 500 lines
+      - No unnecessary dependencies
+
+      Run run_typecheck and run_lint on the entire codebase.
+      Run run_tests to verify all tests pass.
+
+      Report issues as a structured list with file paths and descriptions.
+      If critical issues found, provide the fix.
+    dependencies:
+      - build-tests-phase0
+    acceptance:
+      - All review checks pass
+      - run_typecheck passes with zero errors
+      - run_lint passes with zero errors
+      - run_tests passes with zero failures

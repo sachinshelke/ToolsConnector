@@ -1,0 +1,17 @@
+{
+    "permissions": {
+        "allow": [
+            "Read",
+            "Edit",
+            "Bash",
+            "Bash(git commit *)",
+            "Bash(git * main)",
+            "Bash(*)"
+        ],
+        "deny": [
+            "Bash(git push *)",
+            "Bash(sudo *)"
+        ],
+        "defaultMode": "bypassPermissions"
+    }
+}

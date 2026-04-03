@@ -1,0 +1,13 @@
+# Cursor/Windsurf Guidelines for ToolsConnector
+
+Always follow these rules when developing in this workspace:
+
+1. Use Python 3.9+ conventions.
+2. Every class and function MUST have full type hints. No typing `Any` unless absolutely unavoidable.
+3. Use Pydantic models for request/response serialization.
+4. Auto-generate docstrings using Google Style. Ensure `Args:`, `Returns:`, and `Raises:` clauses are always populated.
+5. In connectors, always utilize the `@action` decorator mapped in `toolsconnector.core.action`.
+6. Keep lines under 100 characters.
+7. Focus on single-responsibility. If a connector file gets larger than 500 lines, extract the types and helpers into `types.py` and `helpers.py`.
+8. Never commit credentials, even test ones. Assume all code is fully open source.
+9. Verify import boundaries: files in `connectors/` cannot import from `serve/`. `core/` cannot import from `connectors/` or `serve/`.
