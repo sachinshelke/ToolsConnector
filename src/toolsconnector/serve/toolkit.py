@@ -216,9 +216,9 @@ class ToolKit:
 
         # -- Instance cache (lazy, one per connector) --
         self._instances: dict[str, BaseConnector] = {}
-        self._setup_locks: dict[str, asyncio.Lock] = {
-            name: asyncio.Lock() for name in self._connector_classes
-        }
+        # Locks created lazily in _get_instance() to avoid requiring
+        # an event loop at ToolKit construction time (Python 3.9 compat)
+        self._setup_locks: dict[str, asyncio.Lock] = {}
 
         # -- Circuit breakers (one per connector) --
         self._circuit_breakers: dict[str, CircuitBreaker] = {
