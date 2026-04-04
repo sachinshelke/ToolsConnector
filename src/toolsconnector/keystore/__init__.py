@@ -13,10 +13,12 @@ from __future__ import annotations
 
 from toolsconnector.keystore.base import KeyStore
 from toolsconnector.keystore.env import EnvironmentKeyStore
+from toolsconnector.keystore.local import LocalFileKeyStore
 from toolsconnector.keystore.memory import InMemoryKeyStore
 
 __all__ = [
     "KeyStore",
     "InMemoryKeyStore",
     "EnvironmentKeyStore",
+    "LocalFileKeyStore",
 ]
