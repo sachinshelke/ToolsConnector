@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ToolsConnector - Universal Tool Integration for Python and AI Agents</title>
+<meta name="description" content="50 connectors, 395 actions. One consistent interface for traditional Python apps and AI agents alike.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-dark">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-light" disabled>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      colors: {
+        brand: { 50:'#eff6ff', 100:'#dbeafe', 200:'#bfdbfe', 300:'#93c5fd', 400:'#60a5fa', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 800:'#1e40af', 900:'#1e3a8a' }
+      }
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  code, pre, .font-mono { font-family: 'JetBrains Mono', monospace; }
+  .page-transition { animation: fadeIn 0.15s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .gradient-text { background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .card-hover { transition: all 0.2s ease; }
+  .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1); }
+  .dark .card-hover:hover { box-shadow: 0 8px 25px -5px rgba(0,0,0,0.4); }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+  .dark ::-webkit-scrollbar-thumb { background: #475569; }
+  .prose-content h1 { font-size: 1.875rem; font-weight: 700; margin: 2rem 0 1rem; }
+  .prose-content h2 { font-size: 1.5rem; font-weight: 600; margin: 1.75rem 0 0.75rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
+  .dark .prose-content h2 { border-color: #374151; }
+  .prose-content h3 { font-size: 1.25rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+  .prose-content p { margin: 0.75rem 0; line-height: 1.7; }
+  .prose-content ul { list-style: disc; margin-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+  .prose-content ol { list-style: decimal; margin-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+  .prose-content li { margin: 0.25rem 0; line-height: 1.6; }
+  .prose-content code { background: #f1f5f9; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-size: 0.875em; }
+  .dark .prose-content code { background: #1e293b; }
+  .prose-content pre { margin: 1rem 0; border-radius: 0.5rem; overflow-x: auto; }
+  .prose-content pre code { background: none; padding: 0; }
+  .prose-content a { color: #3b82f6; text-decoration: underline; }
+  .prose-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  .prose-content th, .prose-content td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; text-align: left; }
+  .dark .prose-content th, .dark .prose-content td { border-color: #374151; }
+  .prose-content th { background: #f8fafc; font-weight: 600; }
+  .dark .prose-content th { background: #1e293b; }
+  .chat-msg { max-width: 85%; }
+  .typing-indicator span { animation: blink 1.4s infinite both; }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100% { opacity: 0; } 40% { opacity: 1; } }
+</style>
+</head>
+<body class="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen">
+
+<!-- Navigation -->
+<nav id="navbar" class="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-lg">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <a href="#/" class="flex items-center gap-2 font-bold text-lg">
+        <svg class="w-7 h-7 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+        <span>ToolsConnector</span>
+      </a>
+      <div class="hidden md:flex items-center gap-1">
+        <a href="#/" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Home</a>
+        <a href="#/connectors" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Connectors</a>
+        <a href="#/playground" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Playground</a>
+        <a href="#/assistant" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Assistant</a>
+        <a href="#/docs" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Docs</a>
+        <a href="#/health" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Health</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="theme-toggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Toggle dark mode">
+          <svg id="icon-sun" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <svg id="icon-moon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        </button>
+        <a href="https://github.com/SachinVard662/ToolsConnector" target="_blank" rel="noopener" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="GitHub">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+        <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+      </div>
+    </div>
+    <!-- Mobile menu -->
+    <div id="mobile-menu" class="md:hidden hidden pb-4 border-t border-gray-200 dark:border-gray-800 pt-2">
+      <a href="#/" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Home</a>
+      <a href="#/connectors" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Connectors</a>
+      <a href="#/playground" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Playground</a>
+      <a href="#/assistant" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Assistant</a>
+      <a href="#/docs" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Docs</a>
+      <a href="#/health" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Health</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Main content -->
+<main id="app" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"></main>
+
+<!-- Footer -->
+<footer class="border-t border-gray-200 dark:border-gray-800 mt-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+        <span>ToolsConnector</span>
+      </div>
+      <div class="flex items-center gap-6">
+        <a href="https://github.com/SachinVard662/ToolsConnector" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">GitHub</a>
+        <a href="https://pypi.org/project/toolsconnector/" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">PyPI</a>
+        <span>MIT License</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ─── Globals ────────────────────────────────────────────────────────────────
+let DATA = {};
+let STATS = { connectors: 0, actions: 0, categories: 0, dangerous: 0 };
+let CATEGORIES = {};
+let chatHistory = [];
+
+const CATEGORY_LABELS = {
+  communication: 'Communication', database: 'Database', devops: 'DevOps', crm: 'CRM',
+  project_management: 'Project Management', ai_ml: 'AI / ML', productivity: 'Productivity',
+  security: 'Security', knowledge: 'Knowledge', storage: 'Storage', code_platform: 'Code Platform',
+  marketing: 'Marketing', analytics: 'Analytics', finance: 'Finance', message_queue: 'Message Queue',
+  ecommerce: 'E-Commerce', custom: 'Custom'
+};
+
+const CATEGORY_ICONS = {
+  communication: '<path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>',
+  database: '<path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>',
+  devops: '<path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>',
+  crm: '<path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>',
+  project_management: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>',
+  ai_ml: '<path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>',
+  productivity: '<path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>',
+  security: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>',
+  knowledge: '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>',
+  storage: '<path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>',
+  code_platform: '<path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>',
+  marketing: '<path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>',
+  analytics: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>',
+  finance: '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+  message_queue: '<path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>',
+  ecommerce: '<path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/>',
+  custom: '<path stroke-linecap="round" stroke-linejoin="round" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>'
+};
+
+const CATEGORY_COLORS = {
+  communication: 'blue', database: 'emerald', devops: 'orange', crm: 'pink',
+  project_management: 'violet', ai_ml: 'purple', productivity: 'yellow',
+  security: 'red', knowledge: 'teal', storage: 'cyan', code_platform: 'indigo',
+  marketing: 'rose', analytics: 'sky', finance: 'green', message_queue: 'amber',
+  ecommerce: 'fuchsia', custom: 'gray'
+};
+
+const DOCS_PAGES = [
+  { id: 'quickstart', title: 'Quickstart', path: 'guides/quickstart.md' },
+  { id: 'installation', title: 'Installation', path: 'guides/installation.md' },
+  { id: 'mcp-server', title: 'MCP Server', path: 'guides/mcp-server.md' },
+  { id: 'ai-frameworks', title: 'AI Frameworks', path: 'guides/ai-frameworks.md' },
+  { id: 'credentials', title: 'Credentials', path: 'guides/credentials.md' },
+  { id: 'resilience', title: 'Resilience', path: 'guides/resilience.md' },
+  { id: 'cli', title: 'CLI', path: 'guides/cli.md' },
+  { id: 'api', title: 'API Reference', path: 'API.md' }
+];
+
+const GITHUB_RAW = 'https://raw.githubusercontent.com/SachinVardhan662/ToolsConnector/main/docs/';
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function catBadge(cat) {
+  const c = CATEGORY_COLORS[cat] || 'gray';
+  return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${c}-100 text-${c}-800 dark:bg-${c}-900/30 dark:text-${c}-400">${CATEGORY_LABELS[cat] || cat}</span>`;
+}
+function catIcon(cat) {
+  return `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">${CATEGORY_ICONS[cat] || CATEGORY_ICONS.custom}</svg>`;
+}
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
+function computeStats() {
+  CATEGORIES = {};
+  STATS = { connectors: 0, actions: 0, categories: 0, dangerous: 0 };
+  for (const [name, spec] of Object.entries(DATA)) {
+    STATS.connectors++;
+    const cat = spec.category || 'custom';
+    CATEGORIES[cat] = (CATEGORIES[cat] || 0) + 1;
+    for (const action of Object.values(spec.actions || {})) {
+      STATS.actions++;
+      if (action.dangerous) STATS.dangerous++;
+    }
+  }
+  STATS.categories = Object.keys(CATEGORIES).length;
+}
+
+function renderMarkdown(md) {
+  marked.setOptions({
+    highlight: function(code, lang) {
+      if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, { language: lang }).value;
+      return hljs.highlightAuto(code).value;
+    },
+    breaks: false, gfm: true
+  });
+  return marked.parse(md);
+}
+
+// ─── Theme ──────────────────────────────────────────────────────────────────
+function initTheme() {
+  const saved = localStorage.getItem('tc-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const dark = saved === 'dark' || (!saved && prefersDark);
+  applyTheme(dark);
+}
+function applyTheme(dark) {
+  document.documentElement.classList.toggle('dark', dark);
+  $('#icon-sun').classList.toggle('hidden', !dark);
+  $('#icon-moon').classList.toggle('hidden', dark);
+  $('#hljs-dark').disabled = !dark;
+  $('#hljs-light').disabled = dark;
+  localStorage.setItem('tc-theme', dark ? 'dark' : 'light');
+}
+$('#theme-toggle').addEventListener('click', () => {
+  applyTheme(!document.documentElement.classList.contains('dark'));
+});
+$('#mobile-menu-btn').addEventListener('click', () => {
+  $('#mobile-menu').classList.toggle('hidden');
+});
+
+// ─── Router ─────────────────────────────────────────────────────────────────
+function router() {
+  const hash = location.hash.slice(1) || '/';
+  const app = $('#app');
+  $('#mobile-menu').classList.add('hidden');
+
+  // Update active nav link
+  $$('.nav-link').forEach(a => {
+    const href = a.getAttribute('href').slice(1);
+    const isActive = hash === href || (href !== '/' && hash.startsWith(href));
+    a.classList.toggle('text-brand-600', isActive);
+    a.classList.toggle('dark:text-brand-400', isActive);
+    a.classList.toggle('text-gray-600', !isActive);
+    a.classList.toggle('dark:text-gray-400', !isActive);
+  });
+
+  if (hash === '/' || hash === '/home') return renderHome(app);
+  if (hash === '/connectors') return renderConnectors(app);
+  if (hash.startsWith('/connector/')) return renderConnectorDetail(app, hash.slice(11));
+  if (hash === '/playground') return renderPlayground(app);
+  if (hash === '/assistant') return renderAssistant(app);
+  if (hash.startsWith('/docs')) return renderDocs(app, hash);
+  if (hash === '/health') return renderHealth(app);
+
+  app.innerHTML = `<div class="page-transition text-center py-20"><h2 class="text-2xl font-bold mb-4">Page not found</h2><a href="#/" class="text-brand-600 hover:underline">Back to home</a></div>`;
+}
+
+// ─── Page: Home ─────────────────────────────────────────────────────────────
+function renderHome(el) {
+  const catGrid = Object.entries(CATEGORIES).sort((a,b) => b[1]-a[1]).map(([cat, count]) => {
+    const c = CATEGORY_COLORS[cat] || 'gray';
+    return `<a href="#/connectors?category=${cat}" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-${c}-300 dark:hover:border-${c}-700 transition-colors">
+      <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-${c}-100 dark:bg-${c}-900/30 text-${c}-600 dark:text-${c}-400 flex items-center justify-center">${catIcon(cat)}</div>
+      <div><div class="font-medium text-sm">${CATEGORY_LABELS[cat] || cat}</div><div class="text-xs text-gray-500 dark:text-gray-400">${count} connector${count !== 1 ? 's' : ''}</div></div>
+    </a>`;
+  }).join('');
+
+  el.innerHTML = `<div class="page-transition">
+    <!-- Hero -->
+    <div class="text-center py-16 lg:py-24">
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6">
+        <span class="gradient-text">ToolsConnector</span>
+      </h1>
+      <p class="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-8">
+        One consistent interface for ${STATS.connectors} connectors and ${STATS.actions} actions.<br>
+        Built for traditional Python apps and AI agents alike.
+      </p>
+      <div class="flex flex-wrap justify-center gap-3 mb-12">
+        <a href="#/connectors" class="inline-flex items-center px-6 py-3 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors shadow-sm">
+          Browse Connectors
+          <svg class="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </a>
+        <a href="#/playground" class="inline-flex items-center px-6 py-3 rounded-lg border border-gray-300 dark:border-gray-700 font-medium hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+          Schema Playground
+        </a>
+        <a href="#/docs/quickstart" class="inline-flex items-center px-6 py-3 rounded-lg border border-gray-300 dark:border-gray-700 font-medium hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+          Documentation
+        </a>
+      </div>
+
+      <!-- Install snippet -->
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 font-mono text-sm">
+        <span class="text-gray-500">$</span>
+        <span>pip install toolsconnector</span>
+        <button onclick="navigator.clipboard.writeText('pip install toolsconnector');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="ml-2 px-2 py-0.5 rounded text-xs bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors">Copy</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+      <div class="text-center p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div class="text-3xl font-bold text-brand-600">${STATS.connectors}</div>
+        <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Connectors</div>
+      </div>
+      <div class="text-center p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div class="text-3xl font-bold text-brand-600">${STATS.actions}</div>
+        <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Actions</div>
+      </div>
+      <div class="text-center p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div class="text-3xl font-bold text-brand-600">${STATS.categories}</div>
+        <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Categories</div>
+      </div>
+      <div class="text-center p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div class="text-3xl font-bold text-brand-600">REST + GraphQL</div>
+        <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Protocols</div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="max-w-xl mx-auto mb-12">
+      <div class="relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input id="home-search" type="text" placeholder="Search connectors..." class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all" onkeydown="if(event.key==='Enter'&&this.value.trim()){location.hash='/connectors?q='+encodeURIComponent(this.value.trim())}">
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="mb-16">
+      <h2 class="text-xl font-semibold mb-6">Categories</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">${catGrid}</div>
+    </div>
+
+    <!-- Quick links -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <a href="#/connectors" class="card-hover flex items-center gap-3 p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <svg class="w-8 h-8 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+        <div><div class="font-medium">Connectors</div><div class="text-xs text-gray-500 dark:text-gray-400">Browse all ${STATS.connectors} connectors</div></div>
+      </a>
+      <a href="#/playground" class="card-hover flex items-center gap-3 p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <svg class="w-8 h-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        <div><div class="font-medium">Playground</div><div class="text-xs text-gray-500 dark:text-gray-400">Generate tool schemas</div></div>
+      </a>
+      <a href="#/docs/quickstart" class="card-hover flex items-center gap-3 p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <svg class="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        <div><div class="font-medium">Documentation</div><div class="text-xs text-gray-500 dark:text-gray-400">Guides and API reference</div></div>
+      </a>
+      <a href="https://github.com/SachinVardhan662/ToolsConnector" target="_blank" rel="noopener" class="card-hover flex items-center gap-3 p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        <div><div class="font-medium">GitHub</div><div class="text-xs text-gray-500 dark:text-gray-400">Source code and issues</div></div>
+      </a>
+    </div>
+  </div>`;
+}
+
+// ─── Page: Connectors ───────────────────────────────────────────────────────
+function renderConnectors(el) {
+  const params = new URLSearchParams(location.hash.includes('?') ? location.hash.split('?')[1] : '');
+  const initQ = params.get('q') || '';
+  const initCat = params.get('category') || '';
+
+  const catOptions = Object.keys(CATEGORIES).sort().map(c =>
+    `<option value="${c}" ${c === initCat ? 'selected' : ''}>${CATEGORY_LABELS[c] || c}</option>`
+  ).join('');
+
+  el.innerHTML = `<div class="page-transition">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold mb-2">Connectors</h1>
+      <p class="text-gray-600 dark:text-gray-400">${STATS.connectors} connectors across ${STATS.categories} categories, providing ${STATS.actions} actions.</p>
+    </div>
+    <div class="flex flex-col sm:flex-row gap-3 mb-8">
+      <div class="relative flex-1">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input id="conn-search" type="text" value="${esc(initQ)}" placeholder="Search connectors..." class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none">
+      </div>
+      <select id="conn-cat" class="px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 outline-none">
+        <option value="">All Categories</option>${catOptions}
+      </select>
+    </div>
+    <div id="conn-grid"></div>
+  </div>`;
+
+  const searchEl = $('#conn-search');
+  const catEl = $('#conn-cat');
+  function filter() {
+    const q = searchEl.value.toLowerCase().trim();
+    const cat = catEl.value;
+    const filtered = Object.values(DATA).filter(s => {
+      if (cat && s.category !== cat) return false;
+      if (q && !s.name.includes(q) && !s.display_name.toLowerCase().includes(q) && !s.description.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    renderConnectorGrid(filtered);
+  }
+  searchEl.addEventListener('input', filter);
+  catEl.addEventListener('change', filter);
+  filter();
+}
+
+function renderConnectorGrid(connectors) {
+  const grid = $('#conn-grid');
+  if (!connectors.length) {
+    grid.innerHTML = '<div class="text-center py-12 text-gray-500 dark:text-gray-400">No connectors match your search.</div>';
+    return;
+  }
+  // Group by category
+  const groups = {};
+  connectors.forEach(s => {
+    const cat = s.category || 'custom';
+    (groups[cat] = groups[cat] || []).push(s);
+  });
+  let html = '';
+  for (const [cat, items] of Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]))) {
+    const c = CATEGORY_COLORS[cat] || 'gray';
+    html += `<div class="mb-8">
+      <div class="flex items-center gap-2 mb-4">
+        <div class="w-8 h-8 rounded-lg bg-${c}-100 dark:bg-${c}-900/30 text-${c}-600 dark:text-${c}-400 flex items-center justify-center">${catIcon(cat)}</div>
+        <h2 class="text-lg font-semibold">${CATEGORY_LABELS[cat] || cat}</h2>
+        <span class="text-sm text-gray-500 dark:text-gray-400">(${items.length})</span>
+      </div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">`;
+    for (const s of items.sort((a,b) => a.display_name.localeCompare(b.display_name))) {
+      const actionCount = Object.keys(s.actions || {}).length;
+      html += `<a href="#/connector/${s.name}" class="card-hover block p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div class="flex items-start justify-between mb-2">
+          <h3 class="font-semibold">${esc(s.display_name)}</h3>
+          ${catBadge(cat)}
+        </div>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">${esc(s.description)}</p>
+        <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+          <span class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            ${actionCount} action${actionCount !== 1 ? 's' : ''}
+          </span>
+          <span class="uppercase tracking-wide">${esc(s.protocol)}</span>
+        </div>
+      </a>`;
+    }
+    html += '</div></div>';
+  }
+  grid.innerHTML = html;
+}
+
+// ─── Page: Connector Detail ─────────────────────────────────────────────────
+function renderConnectorDetail(el, name) {
+  const spec = DATA[name];
+  if (!spec) {
+    el.innerHTML = `<div class="page-transition text-center py-20"><h2 class="text-2xl font-bold mb-4">Connector not found</h2><a href="#/connectors" class="text-brand-600 hover:underline">Back to connectors</a></div>`;
+    return;
+  }
+  const actions = Object.values(spec.actions || {});
+  const dangerousCount = actions.filter(a => a.dangerous).length;
+
+  let actionsHtml = '';
+  for (const action of actions.sort((a,b) => a.name.localeCompare(b.name))) {
+    const params = (action.parameters || []).filter(p => p.name);
+    const paramsHtml = params.length ? params.map(p =>
+      `<div class="flex items-start gap-2 py-1">
+        <code class="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-brand-600 dark:text-brand-400 whitespace-nowrap">${esc(p.name)}</code>
+        <span class="text-xs text-gray-500 dark:text-gray-400">${esc(p.type || 'any')}${p.required ? '' : ' (optional)'}</span>
+        <span class="text-xs text-gray-600 dark:text-gray-300 flex-1">${esc(p.description || '')}</span>
+      </div>`
+    ).join('') : '<div class="text-xs text-gray-400">No parameters</div>';
+
+    actionsHtml += `<div class="border border-gray-200 dark:border-gray-800 rounded-lg p-4 mb-3">
+      <div class="flex items-center gap-2 mb-2">
+        <code class="font-medium text-sm">${esc(action.name)}</code>
+        ${action.dangerous ? '<span class="px-1.5 py-0.5 text-xs rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-medium">dangerous</span>' : ''}
+        ${action.deprecated ? '<span class="px-1.5 py-0.5 text-xs rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-medium">deprecated</span>' : ''}
+        ${action.idempotent ? '<span class="px-1.5 py-0.5 text-xs rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">idempotent</span>' : ''}
+      </div>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">${esc(action.description || '')}</p>
+      <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Parameters</div>
+      <div class="space-y-0.5">${paramsHtml}</div>
+      ${action.requires_scope ? `<div class="mt-2 text-xs text-gray-500 dark:text-gray-400">Scope: <code class="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">${esc(action.requires_scope)}</code></div>` : ''}
+    </div>`;
+  }
+
+  const codeSnippet = `from toolsconnector import ToolKit
+
+tk = ToolKit()
+${name} = tk.get_connector("${name}")
+
+# List available actions
+print(${name}.actions)
+
+# Execute an action
+result = await ${name}.${actions[0]?.name || 'action'}(${
+  (actions[0]?.parameters || []).filter(p => p.required).map(p => `${p.name}="..."`).join(', ')
+})`;
+
+  el.innerHTML = `<div class="page-transition">
+    <div class="mb-6">
+      <a href="#/connectors" class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors mb-4">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Back to connectors
+      </a>
+      <div class="flex flex-wrap items-center gap-3 mb-2">
+        <h1 class="text-3xl font-bold">${esc(spec.display_name)}</h1>
+        ${catBadge(spec.category)}
+        <span class="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-700 font-mono uppercase">${esc(spec.protocol)}</span>
+      </div>
+      <p class="text-gray-600 dark:text-gray-400 mb-4">${esc(spec.description)}</p>
+      <div class="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
+        <span>${actions.length} action${actions.length !== 1 ? 's' : ''}</span>
+        ${dangerousCount ? `<span class="text-red-500">${dangerousCount} dangerous</span>` : ''}
+        <span>v${esc(spec.version || '0.1.0')}</span>
+        ${spec.base_url ? `<span class="font-mono text-xs">${esc(spec.base_url)}</span>` : ''}
+      </div>
+    </div>
+
+    <!-- Quick start -->
+    <div class="mb-8">
+      <h2 class="text-lg font-semibold mb-3">Quick Start</h2>
+      <pre class="rounded-xl overflow-hidden"><code class="language-python hljs">${hljs.highlight(codeSnippet, {language: 'python'}).value}</code></pre>
+    </div>
+
+    <!-- Actions -->
+    <div>
+      <h2 class="text-lg font-semibold mb-4">Actions (${actions.length})</h2>
+      ${actionsHtml}
+    </div>
+  </div>`;
+}
+
+// ─── Page: Playground ───────────────────────────────────────────────────────
+function renderPlayground(el) {
+  const connectorList = Object.values(DATA).sort((a,b) => a.display_name.localeCompare(b.display_name));
+
+  el.innerHTML = `<div class="page-transition">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold mb-2">Schema Playground</h1>
+      <p class="text-gray-600 dark:text-gray-400">Generate tool schemas for AI frameworks. Select connectors, choose a format, and export.</p>
+    </div>
+    <div class="grid lg:grid-cols-2 gap-8">
+      <!-- Controls -->
+      <div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Framework</label>
+          <select id="pg-framework" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 outline-none">
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="gemini">Gemini</option>
+          </select>
+        </div>
+        <div class="mb-4 flex items-center gap-2">
+          <input type="checkbox" id="pg-exclude-dangerous" class="rounded border-gray-300 dark:border-gray-700 text-brand-600 focus:ring-brand-500">
+          <label for="pg-exclude-dangerous" class="text-sm font-medium">Exclude dangerous actions</label>
+        </div>
+        <div class="mb-4 flex items-center justify-between">
+          <label class="text-sm font-medium">Connectors</label>
+          <div class="flex gap-2">
+            <button onclick="document.querySelectorAll('.pg-cb').forEach(c=>c.checked=true)" class="text-xs text-brand-600 hover:underline">Select all</button>
+            <button onclick="document.querySelectorAll('.pg-cb').forEach(c=>c.checked=false)" class="text-xs text-brand-600 hover:underline">Clear</button>
+          </div>
+        </div>
+        <div class="max-h-80 overflow-y-auto border border-gray-200 dark:border-gray-800 rounded-lg p-3 space-y-1">
+          ${connectorList.map(s => `<label class="flex items-center gap-2 py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+            <input type="checkbox" class="pg-cb rounded border-gray-300 dark:border-gray-700 text-brand-600 focus:ring-brand-500" value="${esc(s.name)}">
+            <span class="text-sm">${esc(s.display_name)}</span>
+            <span class="text-xs text-gray-400 ml-auto">${Object.keys(s.actions).length}</span>
+          </label>`).join('')}
+        </div>
+        <button id="pg-generate" class="mt-4 w-full py-2.5 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors">
+          Generate Schema
+        </button>
+      </div>
+      <!-- Output -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">Output</label>
+          <div class="flex items-center gap-2">
+            <span id="pg-count" class="text-xs text-gray-500 dark:text-gray-400"></span>
+            <button id="pg-copy" class="text-xs px-3 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors hidden">Copy</button>
+          </div>
+        </div>
+        <pre id="pg-output" class="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 overflow-auto max-h-[600px] text-sm font-mono"><code class="text-gray-400">Select connectors and click Generate</code></pre>
+      </div>
+    </div>
+  </div>`;
+
+  $('#pg-generate').addEventListener('click', () => {
+    const selected = Array.from($$('.pg-cb:checked')).map(cb => cb.value);
+    if (!selected.length) { $('#pg-output').innerHTML = '<code class="text-yellow-500">Select at least one connector</code>'; return; }
+    const framework = $('#pg-framework').value;
+    const excludeDangerous = $('#pg-exclude-dangerous').checked;
+    let result, count;
+    if (framework === 'openai') {
+      const r = toOpenAI(selected, excludeDangerous);
+      result = r; count = r.length;
+    } else if (framework === 'anthropic') {
+      const r = toAnthropic(selected, excludeDangerous);
+      result = r; count = r.length;
+    } else {
+      const r = toGemini(selected, excludeDangerous);
+      result = r; count = r.length;
+    }
+    const json = JSON.stringify(result, null, 2);
+    $('#pg-output').innerHTML = `<code class="language-json hljs">${hljs.highlight(json, {language: 'json'}).value}</code>`;
+    $('#pg-count').textContent = `${count} tool${count !== 1 ? 's' : ''} generated`;
+    const copyBtn = $('#pg-copy');
+    copyBtn.classList.remove('hidden');
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(json);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => copyBtn.textContent = 'Copy', 1500);
+    };
+  });
+}
+
+function toOpenAI(connectors, excludeDangerous) {
+  const tools = [];
+  for (const name of connectors) {
+    const spec = DATA[name]; if (!spec) continue;
+    for (const [actionName, action] of Object.entries(spec.actions)) {
+      if (excludeDangerous && action.dangerous) continue;
+      tools.push({
+        type: "function",
+        function: {
+          name: `${spec.name}_${actionName}`,
+          description: `${spec.display_name}: ${action.description}`,
+          parameters: action.input_schema || { type: "object", properties: {} }
+        }
+      });
+    }
+  }
+  return tools;
+}
+
+function toAnthropic(connectors, excludeDangerous) {
+  const tools = [];
+  for (const name of connectors) {
+    const spec = DATA[name]; if (!spec) continue;
+    for (const [actionName, action] of Object.entries(spec.actions)) {
+      if (excludeDangerous && action.dangerous) continue;
+      tools.push({
+        name: `${spec.name}_${actionName}`,
+        description: `${spec.display_name}: ${action.description}`,
+        input_schema: action.input_schema || { type: "object", properties: {} }
+      });
+    }
+  }
+  return tools;
+}
+
+function toGemini(connectors, excludeDangerous) {
+  const declarations = [];
+  for (const name of connectors) {
+    const spec = DATA[name]; if (!spec) continue;
+    for (const [actionName, action] of Object.entries(spec.actions)) {
+      if (excludeDangerous && action.dangerous) continue;
+      const schema = action.input_schema || { type: "object", properties: {} };
+      declarations.push({
+        name: `${spec.name}_${actionName}`,
+        description: `${spec.display_name}: ${action.description}`,
+        parameters: schema
+      });
+    }
+  }
+  return [{ function_declarations: declarations }];
+}
+
+// ─── Page: AI Assistant ─────────────────────────────────────────────────────
+function renderAssistant(el) {
+  const apiKey = localStorage.getItem('tc-openrouter-key') || '';
+  const hasKey = apiKey.length > 0;
+
+  el.innerHTML = `<div class="page-transition">
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold mb-2">AI Assistant</h1>
+      <p class="text-gray-600 dark:text-gray-400">Ask questions about ToolsConnector. Powered by OpenRouter (runs in your browser).</p>
+    </div>
+
+    ${!hasKey ? `<div id="api-key-section" class="max-w-lg mx-auto p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 mb-8">
+      <h3 class="font-semibold mb-3">Enter your OpenRouter API key</h3>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Your key is stored in your browser's localStorage only. It is never sent anywhere except OpenRouter's API. You can get a free key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" class="text-brand-600 hover:underline">openrouter.ai/keys</a>.</p>
+      <div class="flex gap-2">
+        <input id="api-key-input" type="password" placeholder="sk-or-..." class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 outline-none font-mono text-sm">
+        <button id="api-key-save" class="px-4 py-2 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors">Save</button>
+      </div>
+    </div>` : ''}
+
+    <div id="chat-container" class="${!hasKey ? 'opacity-50 pointer-events-none' : ''}">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <span class="w-2 h-2 rounded-full ${hasKey ? 'bg-green-500' : 'bg-gray-400'}"></span>
+          <span>${hasKey ? 'Connected' : 'No API key'}</span>
+        </div>
+        <div class="flex gap-2">
+          <button id="chat-clear" class="text-xs px-3 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">Clear chat</button>
+          <button id="chat-key-btn" class="text-xs px-3 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">${hasKey ? 'Change key' : 'Set key'}</button>
+        </div>
+      </div>
+      <div id="chat-messages" class="border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-900 p-4 h-96 overflow-y-auto mb-4 space-y-4">
+        <div class="chat-msg ml-auto bg-brand-50 dark:bg-brand-900/20 rounded-xl rounded-tr-sm p-3 text-sm">
+          Welcome! I can help you with ToolsConnector -- ask me about connectors, actions, setup, or usage patterns.
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <input id="chat-input" type="text" placeholder="Ask about ToolsConnector..." class="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 outline-none" ${!hasKey ? 'disabled' : ''}>
+        <button id="chat-send" class="px-5 py-2.5 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors disabled:opacity-50" ${!hasKey ? 'disabled' : ''}>Send</button>
+      </div>
+    </div>
+  </div>`;
+
+  // API key management
+  if (!hasKey) {
+    $('#api-key-save').addEventListener('click', () => {
+      const key = $('#api-key-input').value.trim();
+      if (key) {
+        localStorage.setItem('tc-openrouter-key', key);
+        renderAssistant(el);
+      }
+    });
+    $('#api-key-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') $('#api-key-save').click();
+    });
+  }
+
+  const chatKeyBtn = $('#chat-key-btn');
+  if (chatKeyBtn) {
+    chatKeyBtn.addEventListener('click', () => {
+      const newKey = prompt('Enter your OpenRouter API key:');
+      if (newKey !== null) {
+        if (newKey.trim()) {
+          localStorage.setItem('tc-openrouter-key', newKey.trim());
+        } else {
+          localStorage.removeItem('tc-openrouter-key');
+        }
+        chatHistory = [];
+        renderAssistant(el);
+      }
+    });
+  }
+
+  const clearBtn = $('#chat-clear');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      chatHistory = [];
+      const msgs = $('#chat-messages');
+      msgs.innerHTML = `<div class="chat-msg ml-auto bg-brand-50 dark:bg-brand-900/20 rounded-xl rounded-tr-sm p-3 text-sm">Chat cleared. Ask me anything about ToolsConnector.</div>`;
+    });
+  }
+
+  // Chat send
+  const sendBtn = $('#chat-send');
+  const chatInput = $('#chat-input');
+  if (sendBtn && hasKey) {
+    const doSend = async () => {
+      const msg = chatInput.value.trim();
+      if (!msg) return;
+      chatInput.value = '';
+      sendBtn.disabled = true;
+      chatInput.disabled = true;
+      const msgs = $('#chat-messages');
+
+      // Add user message
+      msgs.innerHTML += `<div class="chat-msg ml-auto bg-brand-50 dark:bg-brand-900/20 rounded-xl rounded-tr-sm p-3 text-sm">${esc(msg)}</div>`;
+
+      // Typing indicator
+      const typingId = 'typing-' + Date.now();
+      msgs.innerHTML += `<div id="${typingId}" class="chat-msg bg-gray-100 dark:bg-gray-800 rounded-xl rounded-tl-sm p-3 text-sm">
+        <div class="typing-indicator flex gap-1"><span class="w-2 h-2 rounded-full bg-gray-400"></span><span class="w-2 h-2 rounded-full bg-gray-400"></span><span class="w-2 h-2 rounded-full bg-gray-400"></span></div>
+      </div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+
+      chatHistory.push({ role: 'user', content: msg });
+
+      try {
+        const response = await sendChat(chatHistory, apiKey);
+        chatHistory.push({ role: 'assistant', content: response });
+        const typingEl = document.getElementById(typingId);
+        if (typingEl) {
+          typingEl.innerHTML = `<div class="prose-content text-sm">${renderMarkdown(response)}</div>`;
+          typingEl.classList.remove('p-3');
+          typingEl.classList.add('p-4');
+        }
+      } catch (err) {
+        const typingEl = document.getElementById(typingId);
+        if (typingEl) {
+          typingEl.innerHTML = `<div class="text-red-500 text-sm">Error: ${esc(err.message)}</div>`;
+        }
+      }
+      msgs.scrollTop = msgs.scrollHeight;
+      sendBtn.disabled = false;
+      chatInput.disabled = false;
+      chatInput.focus();
+    };
+    sendBtn.addEventListener('click', doSend);
+    chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); } });
+  }
+}
+
+function buildSystemPrompt() {
+  const connectorSummary = Object.values(DATA).map(s => {
+    const actions = Object.keys(s.actions || {}).join(', ');
+    return `- ${s.display_name} (${s.name}): ${s.description} Actions: ${actions}`;
+  }).join('\n');
+
+  return `You are a helpful assistant for ToolsConnector, an open-source Python library that provides a universal tool integration layer for both traditional Python applications and AI agents.
+
+Key facts:
+- ToolsConnector has ${STATS.connectors} connectors with ${STATS.actions} actions across ${STATS.categories} categories
+- Install: pip install toolsconnector
+- Core class: ToolKit -- used to load connectors and generate schemas
+- Works with OpenAI, Anthropic, Google Gemini, LangChain, and MCP
+- Connectors use a consistent @action decorator pattern
+- Auth is BYOK (Bring Your Own Key) -- users provide their own API keys
+- Supports async/await natively
+- Has built-in rate limiting, retries, and circuit breakers
+
+Usage patterns:
+\`\`\`python
+from toolsconnector import ToolKit
+tk = ToolKit()
+# Get a connector
+github = tk.get_connector("github")
+# Execute action
+issues = await github.list_issues(owner="user", repo="repo")
+# Generate schemas for AI
+tools = tk.to_openai_tools()
+\`\`\`
+
+Available connectors:
+${connectorSummary}
+
+Answer questions about connectors, their actions, setup, and usage patterns. Be concise and provide code examples when helpful. If asked about something outside ToolsConnector, politely redirect.`;
+}
+
+async function sendChat(messages, apiKey) {
+  const systemPrompt = buildSystemPrompt();
+  const apiMessages = [{ role: 'system', content: systemPrompt }, ...messages];
+
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': window.location.href,
+      'X-Title': 'ToolsConnector Assistant'
+    },
+    body: JSON.stringify({
+      model: 'qwen/qwen3-235b-a22b:free',
+      messages: apiMessages,
+      stream: false
+    })
+  });
+
+  if (!resp.ok) {
+    const errData = await resp.json().catch(() => ({}));
+    throw new Error(errData.error?.message || `API request failed (${resp.status})`);
+  }
+
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content || 'No response received.';
+}
+
+// ─── Page: Docs ─────────────────────────────────────────────────────────────
+function renderDocs(el, hash) {
+  const parts = hash.split('/');
+  const docId = parts[2] || 'quickstart';
+  const currentDoc = DOCS_PAGES.find(d => d.id === docId) || DOCS_PAGES[0];
+
+  const sidebar = DOCS_PAGES.map(d => {
+    const active = d.id === currentDoc.id;
+    return `<a href="#/docs/${d.id}" class="block px-3 py-2 rounded-lg text-sm ${active ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'} transition-colors">${d.title}</a>`;
+  }).join('');
+
+  el.innerHTML = `<div class="page-transition flex flex-col lg:flex-row gap-8">
+    <!-- Sidebar -->
+    <aside class="lg:w-56 flex-shrink-0">
+      <div class="lg:sticky lg:top-24">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 px-3">Documentation</h3>
+        <nav class="space-y-0.5">${sidebar}</nav>
+      </div>
+    </aside>
+    <!-- Content -->
+    <article id="doc-content" class="flex-1 min-w-0 prose-content">
+      <div class="flex items-center justify-center py-12 text-gray-400">
+        <svg class="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        Loading documentation...
+      </div>
+    </article>
+  </div>`;
+
+  loadDoc(currentDoc);
+}
+
+async function loadDoc(doc) {
+  const contentEl = $('#doc-content');
+  try {
+    const resp = await fetch(GITHUB_RAW + doc.path);
+    if (!resp.ok) throw new Error(`Failed to load (${resp.status})`);
+    const md = await resp.text();
+    contentEl.innerHTML = renderMarkdown(md);
+  } catch (err) {
+    // Fallback: show embedded docs
+    contentEl.innerHTML = `<div class="text-center py-8">
+      <p class="text-gray-500 dark:text-gray-400 mb-4">Could not load documentation from GitHub.</p>
+      <p class="text-sm text-gray-400">${esc(err.message)}</p>
+      <a href="https://github.com/SachinVardhan662/ToolsConnector/tree/main/docs/${doc.path}" target="_blank" rel="noopener" class="inline-block mt-4 text-brand-600 hover:underline">View on GitHub</a>
+    </div>`;
+  }
+}
+
+// ─── Page: Health ───────────────────────────────────────────────────────────
+function renderHealth(el) {
+  const connectors = Object.values(DATA).sort((a,b) => a.display_name.localeCompare(b.display_name));
+
+  let totalActions = 0;
+  let validSpecs = 0;
+  let invalidSpecs = 0;
+  const rows = connectors.map(spec => {
+    const actionCount = Object.keys(spec.actions || {}).length;
+    totalActions += actionCount;
+    const hasName = !!spec.name;
+    const hasDisplay = !!spec.display_name;
+    const hasCategory = !!spec.category;
+    const hasDescription = !!spec.description;
+    const hasActions = actionCount > 0;
+    const allActionsHaveSchema = Object.values(spec.actions || {}).every(a => a.input_schema && Object.keys(a.input_schema).length > 0);
+    const valid = hasName && hasDisplay && hasCategory && hasDescription && hasActions && allActionsHaveSchema;
+    if (valid) validSpecs++; else invalidSpecs++;
+
+    const issues = [];
+    if (!hasName) issues.push('missing name');
+    if (!hasDisplay) issues.push('missing display_name');
+    if (!hasCategory) issues.push('missing category');
+    if (!hasDescription) issues.push('missing description');
+    if (!hasActions) issues.push('no actions');
+    if (!allActionsHaveSchema) issues.push('actions missing input_schema');
+
+    return `<tr class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/50">
+      <td class="py-3 px-4"><a href="#/connector/${spec.name}" class="font-medium text-brand-600 dark:text-brand-400 hover:underline">${esc(spec.display_name)}</a></td>
+      <td class="py-3 px-4 font-mono text-sm text-gray-500 dark:text-gray-400">${esc(spec.name)}</td>
+      <td class="py-3 px-4">${catBadge(spec.category)}</td>
+      <td class="py-3 px-4 text-center">${actionCount}</td>
+      <td class="py-3 px-4 text-center font-mono text-xs uppercase">${esc(spec.protocol)}</td>
+      <td class="py-3 px-4 text-center">
+        ${valid
+          ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">Valid</span>'
+          : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400" title="${esc(issues.join(', '))}">Issues (${issues.length})</span>`}
+      </td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<div class="page-transition">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold mb-2">Health Dashboard</h1>
+      <p class="text-gray-600 dark:text-gray-400">Spec validation status for all connectors (static analysis from data.json).</p>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-center">
+        <div class="text-2xl font-bold text-brand-600">${connectors.length}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400">Connectors</div>
+      </div>
+      <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-center">
+        <div class="text-2xl font-bold text-brand-600">${totalActions}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400">Total Actions</div>
+      </div>
+      <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-center">
+        <div class="text-2xl font-bold text-green-600">${validSpecs}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400">Valid Specs</div>
+      </div>
+      <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-center">
+        <div class="text-2xl font-bold ${invalidSpecs ? 'text-red-600' : 'text-green-600'}">${invalidSpecs}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400">Invalid Specs</div>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto border border-gray-200 dark:border-gray-800 rounded-xl">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+            <th class="text-left py-3 px-4 font-semibold">Connector</th>
+            <th class="text-left py-3 px-4 font-semibold">Name</th>
+            <th class="text-left py-3 px-4 font-semibold">Category</th>
+            <th class="text-center py-3 px-4 font-semibold">Actions</th>
+            <th class="text-center py-3 px-4 font-semibold">Protocol</th>
+            <th class="text-center py-3 px-4 font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ─── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  initTheme();
+  try {
+    const resp = await fetch('data.json');
+    if (!resp.ok) throw new Error('Failed to load data.json');
+    DATA = await resp.json();
+    computeStats();
+  } catch (err) {
+    $('#app').innerHTML = `<div class="text-center py-20"><h2 class="text-2xl font-bold mb-4 text-red-600">Failed to load data</h2><p class="text-gray-500">${esc(err.message)}</p></div>`;
+    return;
+  }
+  window.addEventListener('hashchange', router);
+  router();
+}
+
+init();
+</script>
+</body>
+</html>
