@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: toolsconnector
+    runtime: python
+    buildCommand: pip install flask httpx pydantic docstring-parser eval_type_backport
+    startCommand: gunicorn webapp.app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHONPATH
+        value: src
+      - key: OPENROUTER_API_KEY
+        sync: false
+    plan: free

@@ -1,0 +1,6 @@
+flask>=3.0
+httpx>=0.25
+pydantic>=2.0
+docstring-parser>=0.15
+eval_type_backport>=0.2.0
+gunicorn>=21.0
