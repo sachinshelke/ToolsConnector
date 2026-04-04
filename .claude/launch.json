@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-playground",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": ["webapp/app.py"],
+      "port": 5001,
+      "env": {
+        "PYTHONPATH": "src",
+        "OPENROUTER_API_KEY": "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"
+      }
+    }
+  ]
+}

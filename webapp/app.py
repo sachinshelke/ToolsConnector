@@ -23,7 +23,7 @@ from toolsconnector.codegen import extract_spec, extract_all_specs
 
 app = Flask(__name__)
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = "qwen/qwen3-235b-a22b:free"
+OPENROUTER_MODEL = "qwen/qwen3.6-plus:free"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # -- Data helpers ----------------------------------------------------------
@@ -248,9 +248,9 @@ c.scrollTop=c.scrollHeight;
 try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
 const rd=r.body.getReader(),dc=new TextDecoder(),el=document.getElementById(aid);el.textContent='';let buf='';
 while(true){const{done,value}=await rd.read();if(done)break;buf+=dc.decode(value,{stream:true});
-const ls=buf.split('\\n');buf=ls.pop();for(const l of ls){if(l.startsWith('data: ')){const d=l.slice(6);if(d==='[DONE]')break;
-try{const p=JSON.parse(d),ct=p.choices?.[0]?.delta?.content;if(ct)el.textContent+=ct}catch(e){}}}c.scrollTop=c.scrollHeight}
-if(!el.textContent)el.textContent='(No response. Check OPENROUTER_API_KEY.)'}catch(e){document.getElementById(aid).textContent='Error: '+e.message}
+const ls=buf.split(String.fromCharCode(10));buf=ls.pop()||'';for(const l of ls){const lt=l.trim();if(lt.startsWith('data: ')){const d=lt.slice(6);if(d==='[DONE]')break;
+try{const p=JSON.parse(d),delta=p.choices?.[0]?.delta;if(delta&&delta.content)el.textContent+=delta.content}catch(e){}}}c.scrollTop=c.scrollHeight}
+if(!el.textContent)el.textContent='(No content received. The model may still be processing. Try again.)'}catch(e){document.getElementById(aid).textContent='Error: '+e.message}
 busy=false;document.getElementById('sb').disabled=false}
 </script>""")
 
@@ -300,14 +300,36 @@ Be concise, technical, include code examples."""
         return Response(no_key(), mimetype="text/event-stream")
 
     def stream():
-        with httpx.Client(timeout=60.0) as client:
-            with client.stream("POST", OPENROUTER_URL,
-                headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
-                json={"model": OPENROUTER_MODEL, "messages": [{"role": "system", "content": sp}, {"role": "user", "content": msg}], "stream": True},
-            ) as resp:
-                for line in resp.iter_lines():
-                    if line:
-                        yield line + "\n\n"
+        try:
+            with httpx.Client(timeout=60.0) as client:
+                with client.stream("POST", OPENROUTER_URL,
+                    headers={
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://github.com/toolsconnector",
+                        "X-OpenRouter-Title": "ToolsConnector",
+                    },
+                    json={
+                        "model": OPENROUTER_MODEL,
+                        "messages": [
+                            {"role": "system", "content": sp},
+                            {"role": "user", "content": msg},
+                        ],
+                        "stream": True,
+                    },
+                ) as resp:
+                    if resp.status_code != 200:
+                        body = resp.read().decode()
+                        yield f"data: {json.dumps({'choices': [{'delta': {'content': f'API error {resp.status_code}: {body[:200]}'}}]})}\n\n"
+                        yield "data: [DONE]\n\n"
+                        return
+                    for line in resp.iter_lines():
+                        if line:
+                            yield line + "\n\n"
+                yield "data: [DONE]\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'choices': [{'delta': {'content': f'Error: {e}'}}]})}\n\n"
+            yield "data: [DONE]\n\n"
     return Response(stream(), mimetype="text/event-stream")
 
 
