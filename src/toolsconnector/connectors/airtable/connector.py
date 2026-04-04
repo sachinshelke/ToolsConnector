@@ -1,0 +1,380 @@
+"""Airtable connector -- records, bases, and schema operations.
+
+Uses the Airtable REST API v0 with personal access token (Bearer)
+authentication.  Pagination uses offset tokens returned in the response.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any, Optional
+
+import httpx
+
+from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.connector import (
+    ConnectorCategory,
+    ProtocolType,
+    RateLimitSpec,
+)
+from toolsconnector.types import PageState, PaginatedList
+
+from .types import AirtableBase, AirtableField, AirtableRecord, AirtableTable
+
+logger = logging.getLogger("toolsconnector.airtable")
+
+
+class Airtable(BaseConnector):
+    """Connect to Airtable to manage bases, tables, and records.
+
+    Credentials should be a personal access token (PAT) string.
+    The token is sent via the ``Authorization: Bearer`` header.
+    """
+
+    name = "airtable"
+    display_name = "Airtable"
+    category = ConnectorCategory.DATABASE
+    protocol = ProtocolType.REST
+    base_url = "https://api.airtable.com/v0"
+    description = (
+        "Connect to Airtable to list bases, browse table schemas, "
+        "and perform CRUD operations on records."
+    )
+    # Airtable rate limit: 5 requests per second per base.
+    _rate_limit_config = RateLimitSpec(rate=5, period=1, burst=5)
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    async def _setup(self) -> None:
+        """Initialise the httpx client with Bearer auth."""
+        token = self._credentials or ""
+
+        headers: dict[str, str] = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+
+        self._client = httpx.AsyncClient(
+            base_url=self._base_url or self.__class__.base_url,
+            headers=headers,
+            timeout=self._timeout,
+        )
+
+    async def _teardown(self) -> None:
+        """Close the httpx client."""
+        if hasattr(self, "_client"):
+            await self._client.aclose()
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[dict[str, Any]] = None,
+        json_body: Optional[Any] = None,
+    ) -> httpx.Response:
+        """Send an authenticated request to the Airtable API.
+
+        Args:
+            method: HTTP method.
+            path: API path relative to base_url.
+            params: Query parameters.
+            json_body: JSON request body.
+
+        Returns:
+            httpx.Response object.
+
+        Raises:
+            httpx.HTTPStatusError: On 4xx/5xx responses.
+        """
+        kwargs: dict[str, Any] = {"method": method, "url": path}
+        if params:
+            kwargs["params"] = params
+        if json_body is not None:
+            kwargs["json"] = json_body
+
+        resp = await self._client.request(**kwargs)
+        resp.raise_for_status()
+        return resp
+
+    # ------------------------------------------------------------------
+    # Actions -- Bases & Schema
+    # ------------------------------------------------------------------
+
+    @action("List all accessible Airtable bases")
+    async def list_bases(self) -> list[AirtableBase]:
+        """List all bases the token has access to.
+
+        Uses the Airtable Meta API endpoint.
+
+        Returns:
+            List of AirtableBase objects.
+        """
+        # The meta API lives under a different path prefix.
+        resp = await self._client.get(
+            "https://api.airtable.com/v0/meta/bases",
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        return [
+            AirtableBase(
+                id=b.get("id", ""),
+                name=b.get("name", ""),
+                permission_level=b.get("permissionLevel"),
+            )
+            for b in data.get("bases", [])
+        ]
+
+    @action("Get the schema of an Airtable base")
+    async def get_base_schema(self, base_id: str) -> list[AirtableTable]:
+        """Retrieve the schema (tables and fields) of a base.
+
+        Args:
+            base_id: Airtable base ID (e.g. ``appXXXXXXXXXXXXXX``).
+
+        Returns:
+            List of AirtableTable objects with field metadata.
+        """
+        resp = await self._client.get(
+            f"https://api.airtable.com/v0/meta/bases/{base_id}/tables",
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        tables: list[AirtableTable] = []
+        for t in data.get("tables", []):
+            fields = [
+                AirtableField(
+                    id=f.get("id"),
+                    name=f.get("name", ""),
+                    type=f.get("type"),
+                    description=f.get("description"),
+                )
+                for f in t.get("fields", [])
+            ]
+            tables.append(AirtableTable(
+                id=t.get("id"),
+                name=t.get("name", ""),
+                description=t.get("description"),
+                fields=fields,
+            ))
+
+        return tables
+
+    # ------------------------------------------------------------------
+    # Actions -- Records (Read)
+    # ------------------------------------------------------------------
+
+    @action("List records from an Airtable table")
+    async def list_records(
+        self,
+        base_id: str,
+        table_name: str,
+        fields: Optional[list[str]] = None,
+        filter_formula: Optional[str] = None,
+        sort: Optional[list[dict[str, str]]] = None,
+        limit: int = 100,
+        offset: Optional[str] = None,
+    ) -> PaginatedList[AirtableRecord]:
+        """List records with optional field selection, filtering, and sorting.
+
+        Args:
+            base_id: Airtable base ID.
+            table_name: Table name or ID.
+            fields: List of field names to include in the response.
+            filter_formula: Airtable formula for filtering records.
+            sort: List of sort specs, e.g. ``[{"field": "Name", "direction": "asc"}]``.
+            limit: Maximum records per page (max 100).
+            offset: Pagination offset token from a previous response.
+
+        Returns:
+            Paginated list of AirtableRecord objects.
+        """
+        params: dict[str, Any] = {
+            "pageSize": min(limit, 100),
+        }
+        if fields:
+            for i, f in enumerate(fields):
+                params[f"fields[{i}]"] = f
+        if filter_formula:
+            params["filterByFormula"] = filter_formula
+        if sort:
+            for i, s in enumerate(sort):
+                params[f"sort[{i}][field]"] = s.get("field", "")
+                params[f"sort[{i}][direction]"] = s.get("direction", "asc")
+        if offset:
+            params["offset"] = offset
+
+        resp = await self._request(
+            "GET", f"/{base_id}/{table_name}", params=params,
+        )
+        data = resp.json()
+
+        items = [
+            AirtableRecord(
+                id=r.get("id", ""),
+                created_time=r.get("createdTime"),
+                fields=r.get("fields", {}),
+            )
+            for r in data.get("records", [])
+        ]
+
+        next_offset = data.get("offset")
+        has_more = next_offset is not None
+        page_state = PageState(has_more=has_more, cursor=next_offset)
+
+        result = PaginatedList(items=items, page_state=page_state)
+        result._fetch_next = (
+            (lambda o=next_offset: self.alist_records(
+                base_id=base_id, table_name=table_name, fields=fields,
+                filter_formula=filter_formula, sort=sort, limit=limit,
+                offset=o,
+            ))
+            if has_more else None
+        )
+        return result
+
+    @action("Get a single record from an Airtable table")
+    async def get_record(
+        self, base_id: str, table_name: str, record_id: str,
+    ) -> AirtableRecord:
+        """Retrieve a single record by ID.
+
+        Args:
+            base_id: Airtable base ID.
+            table_name: Table name or ID.
+            record_id: Record ID (e.g. ``recXXXXXXXXXXXXXX``).
+
+        Returns:
+            AirtableRecord with the record data.
+        """
+        resp = await self._request(
+            "GET", f"/{base_id}/{table_name}/{record_id}",
+        )
+        r = resp.json()
+
+        return AirtableRecord(
+            id=r.get("id", ""),
+            created_time=r.get("createdTime"),
+            fields=r.get("fields", {}),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Records (Write)
+    # ------------------------------------------------------------------
+
+    @action("Create a record in an Airtable table")
+    async def create_record(
+        self,
+        base_id: str,
+        table_name: str,
+        fields: dict[str, Any],
+    ) -> AirtableRecord:
+        """Create a single record.
+
+        Args:
+            base_id: Airtable base ID.
+            table_name: Table name or ID.
+            fields: Dict of field name to value for the new record.
+
+        Returns:
+            AirtableRecord with the created record data.
+        """
+        body = {"fields": fields}
+        resp = await self._request(
+            "POST", f"/{base_id}/{table_name}", json_body=body,
+        )
+        r = resp.json()
+
+        return AirtableRecord(
+            id=r.get("id", ""),
+            created_time=r.get("createdTime"),
+            fields=r.get("fields", {}),
+        )
+
+    @action("Batch create records in an Airtable table")
+    async def batch_create(
+        self,
+        base_id: str,
+        table_name: str,
+        records: list[dict[str, Any]],
+    ) -> list[AirtableRecord]:
+        """Create multiple records in a single request (max 10).
+
+        Args:
+            base_id: Airtable base ID.
+            table_name: Table name or ID.
+            records: List of dicts, each with a ``fields`` key.
+
+        Returns:
+            List of created AirtableRecord objects.
+        """
+        body = {
+            "records": [{"fields": r} for r in records[:10]],
+        }
+        resp = await self._request(
+            "POST", f"/{base_id}/{table_name}", json_body=body,
+        )
+        data = resp.json()
+
+        return [
+            AirtableRecord(
+                id=r.get("id", ""),
+                created_time=r.get("createdTime"),
+                fields=r.get("fields", {}),
+            )
+            for r in data.get("records", [])
+        ]
+
+    @action("Update a record in an Airtable table")
+    async def update_record(
+        self,
+        base_id: str,
+        table_name: str,
+        record_id: str,
+        fields: dict[str, Any],
+    ) -> AirtableRecord:
+        """Update an existing record (partial update via PATCH).
+
+        Args:
+            base_id: Airtable base ID.
+            table_name: Table name or ID.
+            record_id: Record ID to update.
+            fields: Dict of field name to new value.
+
+        Returns:
+            AirtableRecord with the updated record data.
+        """
+        body = {"fields": fields}
+        resp = await self._request(
+            "PATCH", f"/{base_id}/{table_name}/{record_id}", json_body=body,
+        )
+        r = resp.json()
+
+        return AirtableRecord(
+            id=r.get("id", ""),
+            created_time=r.get("createdTime"),
+            fields=r.get("fields", {}),
+        )
+
+    @action("Delete a record from an Airtable table", dangerous=True)
+    async def delete_record(
+        self, base_id: str, table_name: str, record_id: str,
+    ) -> None:
+        """Delete a single record by ID.
+
+        Args:
+            base_id: Airtable base ID.
+            table_name: Table name or ID.
+            record_id: Record ID to delete.
+        """
+        await self._request(
+            "DELETE", f"/{base_id}/{table_name}/{record_id}",
+        )

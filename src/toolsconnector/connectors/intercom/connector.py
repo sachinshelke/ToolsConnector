@@ -1,0 +1,425 @@
+"""Intercom connector -- contacts, conversations, and messaging via Intercom API."""
+
+from __future__ import annotations
+
+from typing import Any, Optional
+
+import httpx
+
+from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.connector import (
+    ConnectorCategory,
+    ProtocolType,
+    RateLimitSpec,
+)
+from toolsconnector.types import PageState, PaginatedList
+
+from .types import IntercomContact, IntercomConversation, IntercomMessage
+
+
+class Intercom(BaseConnector):
+    """Connect to Intercom to manage contacts, conversations, and messaging.
+
+    Requires an access token (from an Intercom OAuth app or personal
+    token) passed as ``credentials``.  Uses cursor-based pagination
+    via ``starting_after`` for list endpoints and scroll/search for
+    contacts.
+    """
+
+    name = "intercom"
+    display_name = "Intercom"
+    category = ConnectorCategory.CRM
+    protocol = ProtocolType.REST
+    base_url = "https://api.intercom.io"
+    description = (
+        "Connect to Intercom to manage contacts, conversations, "
+        "and send messages."
+    )
+    _rate_limit_config = RateLimitSpec(rate=100, period=10, burst=20)
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    async def _setup(self) -> None:
+        """Initialise the async HTTP client with Bearer auth."""
+        self._client = httpx.AsyncClient(
+            base_url=self._base_url or self.__class__.base_url,
+            headers={
+                "Authorization": f"Bearer {self._credentials}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Intercom-Version": "2.10",
+            },
+            timeout=self._timeout,
+        )
+
+    async def _teardown(self) -> None:
+        """Close the HTTP client."""
+        if hasattr(self, "_client"):
+            await self._client.aclose()
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        json: Optional[dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """Execute an HTTP request against the Intercom API.
+
+        Args:
+            method: HTTP method.
+            path: API path relative to ``base_url``.
+            json: JSON request body.
+            params: Query parameters.
+
+        Returns:
+            Parsed JSON response dict.
+
+        Raises:
+            httpx.HTTPStatusError: On non-2xx responses.
+        """
+        response = await self._client.request(
+            method, path, json=json, params=params
+        )
+        response.raise_for_status()
+        if response.status_code == 204:
+            return {}
+        return response.json()
+
+    @staticmethod
+    def _parse_contact(data: dict[str, Any]) -> IntercomContact:
+        """Parse raw JSON into an IntercomContact."""
+        return IntercomContact(
+            id=data.get("id", ""),
+            type=data.get("type", "contact"),
+            role=data.get("role", "user"),
+            email=data.get("email"),
+            name=data.get("name"),
+            phone=data.get("phone"),
+            external_id=data.get("external_id"),
+            avatar=data.get("avatar", {}).get("image_url") if isinstance(data.get("avatar"), dict) else None,
+            owner_id=data.get("owner_id"),
+            signed_up_at=data.get("signed_up_at"),
+            last_seen_at=data.get("last_seen_at"),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
+            unsubscribed_from_emails=data.get("unsubscribed_from_emails", False),
+            has_hard_bounced=data.get("has_hard_bounced", False),
+            custom_attributes=data.get("custom_attributes", {}),
+            tags=data.get("tags", {}).get("data", []) if isinstance(data.get("tags"), dict) else [],
+            location=data.get("location"),
+        )
+
+    @staticmethod
+    def _parse_conversation(data: dict[str, Any]) -> IntercomConversation:
+        """Parse raw JSON into an IntercomConversation."""
+        contacts_data = data.get("contacts", {})
+        contacts_list = contacts_data.get("contacts", []) if isinstance(contacts_data, dict) else []
+        return IntercomConversation(
+            id=data.get("id", ""),
+            type=data.get("type", "conversation"),
+            title=data.get("title"),
+            state=data.get("state", "open"),
+            read=data.get("read", False),
+            priority=data.get("priority", "not_priority"),
+            admin_assignee_id=data.get("admin_assignee_id"),
+            team_assignee_id=data.get("team_assignee_id"),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
+            waiting_since=data.get("waiting_since"),
+            snoozed_until=data.get("snoozed_until"),
+            open=data.get("open", True),
+            tags=data.get("tags", {}).get("tags", []) if isinstance(data.get("tags"), dict) else [],
+            source=data.get("source"),
+            contacts=contacts_list,
+            statistics=data.get("statistics"),
+        )
+
+    @staticmethod
+    def _parse_message(data: dict[str, Any]) -> IntercomMessage:
+        """Parse raw JSON into an IntercomMessage."""
+        return IntercomMessage(
+            id=data.get("id", ""),
+            type=data.get("type", "admin_message"),
+            message_type=data.get("message_type", "email"),
+            subject=data.get("subject"),
+            body=data.get("body", ""),
+            created_at=data.get("created_at"),
+            owner=data.get("owner"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Contacts
+    # ------------------------------------------------------------------
+
+    @action("List contacts")
+    async def list_contacts(
+        self,
+        limit: int = 50,
+        starting_after: Optional[str] = None,
+    ) -> PaginatedList[IntercomContact]:
+        """List contacts with cursor-based pagination.
+
+        Args:
+            limit: Maximum results per page (max 150).
+            starting_after: Cursor from a previous response for the next page.
+
+        Returns:
+            Paginated list of IntercomContact objects.
+        """
+        params: dict[str, Any] = {
+            "per_page": min(limit, 150),
+        }
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        data = await self._request("GET", "/contacts", params=params)
+
+        contacts_data = data.get("data", [])
+        contacts = [self._parse_contact(c) for c in contacts_data]
+
+        pages = data.get("pages", {})
+        next_info = pages.get("next")
+        next_cursor = None
+        if isinstance(next_info, dict):
+            next_cursor = next_info.get("starting_after")
+
+        return PaginatedList(
+            items=contacts,
+            page_state=PageState(
+                cursor=next_cursor,
+                has_more=next_cursor is not None,
+            ),
+            total_count=data.get("total_count"),
+        )
+
+    @action("Get a single contact by ID")
+    async def get_contact(self, contact_id: str) -> IntercomContact:
+        """Retrieve a single contact by ID.
+
+        Args:
+            contact_id: The Intercom contact ID.
+
+        Returns:
+            The requested IntercomContact.
+        """
+        data = await self._request("GET", f"/contacts/{contact_id}")
+        return self._parse_contact(data)
+
+    @action("Create a new contact", dangerous=True)
+    async def create_contact(
+        self,
+        role: str = "user",
+        email: Optional[str] = None,
+        name: Optional[str] = None,
+        phone: Optional[str] = None,
+    ) -> IntercomContact:
+        """Create a new contact (user or lead).
+
+        Args:
+            role: Contact role: ``"user"`` or ``"lead"``.
+            email: Email address.
+            name: Full name.
+            phone: Phone number.
+
+        Returns:
+            The newly created IntercomContact.
+        """
+        body: dict[str, Any] = {"role": role}
+        if email is not None:
+            body["email"] = email
+        if name is not None:
+            body["name"] = name
+        if phone is not None:
+            body["phone"] = phone
+
+        data = await self._request("POST", "/contacts", json=body)
+        return self._parse_contact(data)
+
+    @action("Search contacts using filters")
+    async def search_contacts(
+        self,
+        query: str,
+        field: str = "email",
+        operator: str = "=",
+    ) -> PaginatedList[IntercomContact]:
+        """Search contacts using Intercom's search API.
+
+        Args:
+            query: The value to search for.
+            field: The contact field to search on (e.g. ``"email"``,
+                ``"name"``, ``"phone"``).
+            operator: Comparison operator (``"="``, ``"!="``, ``"~"``,
+                ``"contains"``, ``"starts_with"``).
+
+        Returns:
+            Paginated list of matching IntercomContact objects.
+        """
+        body: dict[str, Any] = {
+            "query": {
+                "field": field,
+                "operator": operator,
+                "value": query,
+            },
+        }
+        data = await self._request("POST", "/contacts/search", json=body)
+
+        contacts_data = data.get("data", [])
+        contacts = [self._parse_contact(c) for c in contacts_data]
+
+        pages = data.get("pages", {})
+        next_info = pages.get("next")
+        next_cursor = None
+        if isinstance(next_info, dict):
+            next_cursor = next_info.get("starting_after")
+
+        return PaginatedList(
+            items=contacts,
+            page_state=PageState(
+                cursor=next_cursor,
+                has_more=next_cursor is not None,
+            ),
+            total_count=data.get("total_count"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Conversations
+    # ------------------------------------------------------------------
+
+    @action("List conversations")
+    async def list_conversations(
+        self,
+        limit: int = 20,
+        starting_after: Optional[str] = None,
+    ) -> PaginatedList[IntercomConversation]:
+        """List conversations with cursor-based pagination.
+
+        Args:
+            limit: Maximum results per page (max 150).
+            starting_after: Cursor from a previous response for the next page.
+
+        Returns:
+            Paginated list of IntercomConversation objects.
+        """
+        params: dict[str, Any] = {
+            "per_page": min(limit, 150),
+        }
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        data = await self._request(
+            "GET", "/conversations", params=params
+        )
+
+        conversations_data = data.get("conversations", [])
+        conversations = [
+            self._parse_conversation(c) for c in conversations_data
+        ]
+
+        pages = data.get("pages", {})
+        next_info = pages.get("next")
+        next_cursor = None
+        if isinstance(next_info, dict):
+            next_cursor = next_info.get("starting_after")
+
+        return PaginatedList(
+            items=conversations,
+            page_state=PageState(
+                cursor=next_cursor,
+                has_more=next_cursor is not None,
+            ),
+            total_count=data.get("total_count"),
+        )
+
+    @action("Get a single conversation by ID")
+    async def get_conversation(
+        self,
+        conversation_id: str,
+    ) -> IntercomConversation:
+        """Retrieve a single conversation by its ID.
+
+        Args:
+            conversation_id: The Intercom conversation ID.
+
+        Returns:
+            The requested IntercomConversation.
+        """
+        data = await self._request(
+            "GET", f"/conversations/{conversation_id}"
+        )
+        return self._parse_conversation(data)
+
+    @action("Reply to a conversation", dangerous=True)
+    async def reply_to_conversation(
+        self,
+        conversation_id: str,
+        body: str,
+        message_type: str = "comment",
+    ) -> IntercomConversation:
+        """Post a reply to an existing conversation.
+
+        Args:
+            conversation_id: The Intercom conversation ID.
+            body: Reply body text.
+            message_type: Type of reply: ``"comment"`` or ``"note"``.
+
+        Returns:
+            The updated IntercomConversation.
+        """
+        payload: dict[str, Any] = {
+            "body": body,
+            "message_type": message_type,
+            "type": "admin",
+        }
+        data = await self._request(
+            "POST",
+            f"/conversations/{conversation_id}/reply",
+            json=payload,
+        )
+        return self._parse_conversation(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Messages
+    # ------------------------------------------------------------------
+
+    @action("Create and send a new message", dangerous=True)
+    async def create_message(
+        self,
+        from_email: str,
+        to_email: str,
+        subject: str,
+        body: str,
+    ) -> IntercomMessage:
+        """Create and send a new outbound message.
+
+        Args:
+            from_email: Admin email sending the message.
+            to_email: Recipient contact email address.
+            subject: Message subject line.
+            body: Message body (HTML allowed).
+
+        Returns:
+            The created IntercomMessage.
+        """
+        payload: dict[str, Any] = {
+            "message_type": "email",
+            "subject": subject,
+            "body": body,
+            "from": {
+                "type": "admin",
+                "email": from_email,
+            },
+            "to": {
+                "type": "user",
+                "email": to_email,
+            },
+        }
+        data = await self._request("POST", "/messages", json=payload)
+        return self._parse_message(data)
