@@ -566,6 +566,8 @@ def docs_example(name: str):
 
 
 if __name__ == "__main__":
-    print("\n  ToolsConnector Playground")
-    print("  http://127.0.0.1:5001\n")
-    app.run(debug=True, port=5001)
+    port = int(os.environ.get("PORT", 5001))
+    debug = os.environ.get("FLASK_DEBUG", "1") == "1"
+    print(f"\n  ToolsConnector Playground")
+    print(f"  http://127.0.0.1:{port}\n")
+    app.run(debug=debug, host="0.0.0.0", port=port)
