@@ -1,0 +1,367 @@
+"""ToolsConnector Web Playground.
+
+Interactive web interface for exploring connectors, testing schemas,
+and chatting with an AI assistant about the project.
+
+Usage:
+    pip install flask httpx
+    export OPENROUTER_API_KEY=sk-or-v1-...
+    python webapp/app.py
+"""
+from __future__ import annotations
+import json, os, sys
+from pathlib import Path
+from collections import Counter
+from typing import Any
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+from flask import Flask, render_template_string, request, jsonify, Response
+import httpx
+from toolsconnector.serve import ToolKit, list_connectors, get_connector_class
+from toolsconnector.health import HealthChecker
+from toolsconnector.codegen import extract_spec, extract_all_specs
+
+app = Flask(__name__)
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = "qwen/qwen3-235b-a22b:free"
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+# -- Data helpers ----------------------------------------------------------
+_spec_cache: dict[str, dict] = {}
+
+def _get_spec(name: str) -> dict[str, Any]:
+    if name not in _spec_cache:
+        _spec_cache[name] = extract_spec(name)
+    return _spec_cache[name]
+
+def _all_specs() -> dict[str, dict]:
+    for n in list_connectors():
+        _get_spec(n)
+    return _spec_cache
+
+def _cat(c: str) -> str:
+    return c.replace("_", " ").title()
+
+def _stats() -> dict[str, Any]:
+    specs = _all_specs()
+    cats: Counter[str] = Counter()
+    acts = 0
+    for s in specs.values():
+        cats[s["category"]] += 1
+        acts += len(s.get("actions", {}))
+    return {"connectors": len(specs), "actions": acts, "categories": len(cats), "by_category": dict(sorted(cats.items()))}
+
+# -- Base template ---------------------------------------------------------
+_BASE = r"""<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ title }} - ToolsConnector</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class',theme:{extend:{colors:{b:{50:'#f0f4ff',100:'#dbe4ff',200:'#bac8ff',400:'#748ffc',500:'#5c7cfa',600:'#4c6ef5',700:'#4263eb',800:'#3b5bdb',900:'#364fc7'}},fontFamily:{sans:['Inter','system-ui','sans-serif'],mono:['JetBrains Mono','monospace']}}}}</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Inter',system-ui,sans-serif}code,pre{font-family:'JetBrains Mono',monospace}
+.fi{animation:fi .3s ease-in}@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.gl{backdrop-filter:blur(12px);background:rgba(255,255,255,.75)}.dark .gl{background:rgba(15,23,42,.75)}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:3px}
+</style></head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen">
+<nav class="gl sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+<a href="/" class="flex items-center gap-2 text-lg font-bold text-b-700 dark:text-b-400">
+<svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>ToolsConnector</a>
+<div class="hidden md:flex items-center gap-1">
+<a href="/" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-800">Home</a>
+<a href="/connectors" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-800">Connectors</a>
+<a href="/playground" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-800">Playground</a>
+<a href="/assistant" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-800">AI Assistant</a>
+<a href="/health" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-800">Health</a></div>
+<button onclick="document.documentElement.classList.toggle('dark')" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800">
+<svg class="w-5 h-5 dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>
+<svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/></svg>
+</button></div></nav>
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 fi">{{ content }}</main>
+<footer class="border-t border-slate-200 dark:border-slate-800 mt-16"><div class="max-w-7xl mx-auto px-4 py-8 text-center text-sm text-slate-500">ToolsConnector &mdash; The universal tool-connection primitive for AI agents and applications.</div></footer>
+</body></html>"""
+
+def _r(title: str, content: str) -> str:
+    return render_template_string(_BASE, title=title, content=content)
+
+# -- Routes ----------------------------------------------------------------
+@app.route("/")
+def home():
+    s = _stats()
+    cats = "".join(f'<a href="/connectors?cat={c}" class="group block p-5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 hover:shadow-lg transition-all bg-white dark:bg-slate-900"><div class="text-2xl font-bold text-b-600 dark:text-b-400">{n}</div><div class="text-sm font-medium text-slate-700 dark:text-slate-300 mt-1">{_cat(c)}</div></a>' for c, n in s["by_category"].items())
+    stat = lambda v, c, l: f'<div class="text-center p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm"><div class="text-3xl font-bold text-{c}">{v}</div><div class="text-xs font-medium text-slate-500 uppercase tracking-wider mt-1">{l}</div></div>'
+    link = lambda href, color, icon, t, d: f'<a href="{href}" class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-{color}-400 bg-white dark:bg-slate-900 transition-all hover:shadow-md"><div class="w-10 h-10 rounded-lg bg-{color}-100 dark:bg-{color}-900/30 flex items-center justify-center text-{color}-600 dark:text-{color}-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{icon}"/></svg></div><div><div class="font-medium">{t}</div><div class="text-xs text-slate-500">{d}</div></div></a>'
+    return _r("Home", f"""
+<div class="text-center mb-12">
+<h1 class="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-b-600 to-purple-600 bg-clip-text text-transparent mb-4">ToolsConnector Playground</h1>
+<p class="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">The universal tool-connection primitive. Browse connectors, explore schemas, and test integrations.</p></div>
+<div class="grid grid-cols-3 gap-4 max-w-xl mx-auto mb-12">{stat(s['connectors'],'b-600 dark:text-b-400','Connectors')}{stat(s['actions'],'purple-600 dark:text-purple-400','Actions')}{stat(s['categories'],'emerald-600 dark:text-emerald-400','Categories')}</div>
+<div class="max-w-xl mx-auto mb-12"><div class="relative"><svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+<input type="text" placeholder="Search connectors... (e.g. gmail, slack, stripe)" class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-b-500 focus:border-b-500 outline-none" onkeyup="if(event.key==='Enter')location.href='/connectors?q='+this.value"></div></div>
+<h2 class="text-xl font-semibold mb-4">Categories</h2>
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-12">{cats}</div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+{link('/connectors','b','M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6z','Browse All','Explore all 50 connectors')}
+{link('/playground','purple','M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5','Schema Playground','Generate AI-ready schemas')}
+{link('/assistant','emerald','M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z','AI Assistant','Ask anything about the project')}</div>""")
+
+
+@app.route("/connectors")
+def connectors_page():
+    specs = _all_specs()
+    q = request.args.get("q", "").lower()
+    cf = request.args.get("cat", "")
+    grouped: dict[str, list] = {}
+    for name in sorted(specs):
+        sp = specs[name]
+        if q and q not in name and q not in sp.get("description", "").lower() and q not in sp.get("display_name", "").lower():
+            continue
+        if cf and sp["category"] != cf:
+            continue
+        grouped.setdefault(sp["category"], []).append((name, sp))
+    html = ""
+    for cat in sorted(grouped):
+        items = grouped[cat]
+        html += f'<h3 class="text-lg font-semibold mt-8 mb-3 text-slate-700 dark:text-slate-300">{_cat(cat)} <span class="text-sm font-normal text-slate-400">({len(items)})</span></h3><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'
+        for name, sp in items:
+            na = len(sp.get("actions", {}))
+            html += f'<a href="/connector/{name}" class="group block p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 bg-white dark:bg-slate-900 hover:shadow-md transition-all"><div class="flex items-start justify-between"><div><div class="font-semibold text-b-700 dark:text-b-400">{sp["display_name"]}</div><div class="text-xs text-slate-500 mt-0.5">{name}</div></div><span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">{na} actions</span></div><p class="text-sm text-slate-600 dark:text-slate-400 mt-2 line-clamp-2">{sp.get("description","")}</p></a>'
+        html += "</div>"
+    return _r("Connectors", f"""
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+<h1 class="text-2xl font-bold">Connectors</h1>
+<div class="relative w-full sm:w-72"><svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+<input type="text" value="{q}" placeholder="Filter connectors..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-b-500 outline-none" onkeyup="if(event.key==='Enter')location.href='/connectors?q='+this.value+'&cat={cf}'"></div></div>
+{html or '<p class="text-slate-500 py-8 text-center">No connectors match your search.</p>'}""")
+
+
+def _param_html(p: dict) -> str:
+    req = '<span class="text-red-500 text-xs ml-1">required</span>' if p.get("required") else '<span class="text-slate-400 text-xs ml-1">optional</span>'
+    return f'<div class="flex items-start gap-2 py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0"><code class="text-xs font-medium text-b-700 dark:text-b-400 whitespace-nowrap">{p["name"]}</code><span class="text-xs text-slate-400">{p.get("type","")}</span>{req}<span class="text-xs text-slate-500 ml-auto">{p.get("description","")}</span></div>'
+
+def _action_html(an: str, act: dict) -> str:
+    params = act.get("parameters", [])
+    ph = "".join(_param_html(p) for p in params)
+    db = '<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium ml-2">dangerous</span>' if act.get("dangerous") else ""
+    sb = f'<span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium ml-2">{act["requires_scope"]}</span>' if act.get("requires_scope") else ""
+    body = f'<div class="mt-3">{ph}</div>' if ph else ""
+    return f'<div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"><div class="flex items-center flex-wrap"><code class="font-semibold text-sm">{an}</code>{db}{sb}</div><p class="text-sm text-slate-600 dark:text-slate-400 mt-1">{act.get("description","")}</p>{body}</div>'
+
+@app.route("/connector/<name>")
+def connector_detail(name: str):
+    try:
+        sp = _get_spec(name)
+    except Exception:
+        return _r("Not Found", '<p class="text-center py-16 text-slate-500">Connector not found.</p>'), 404
+    actions = sp.get("actions", {})
+    ahtml = "".join(_action_html(an, act) for an, act in sorted(actions.items()))
+    return _r(sp["display_name"], f"""
+<a href="/connectors" class="text-sm text-b-600 dark:text-b-400 hover:underline mb-4 inline-block">&larr; All Connectors</a>
+<div class="flex items-start justify-between flex-wrap gap-4 mb-6"><div>
+<h1 class="text-3xl font-bold">{sp["display_name"]}</h1>
+<p class="text-slate-600 dark:text-slate-400 mt-1">{sp.get("description","")}</p></div>
+<div class="flex items-center gap-2 flex-wrap">
+<span class="text-xs px-3 py-1 rounded-full bg-b-100 dark:bg-b-900/30 text-b-700 dark:text-b-400 font-medium">{_cat(sp["category"])}</span>
+<span class="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">{sp.get("protocol","rest").upper()}</span>
+<span class="text-xs px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-medium">{len(actions)} actions</span></div></div>
+<h2 class="text-xl font-semibold mb-4">Actions</h2><div class="space-y-3">{ahtml}</div>""")
+
+
+@app.route("/playground")
+def playground():
+    specs = _all_specs()
+    cbs = "".join(f'<label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 px-2 py-1 rounded"><input type="checkbox" name="c" value="{n}" class="ccb rounded border-slate-300 text-b-600 focus:ring-b-500"><span>{specs[n]["display_name"]}</span></label>' for n in sorted(specs))
+    return _r("Playground", """
+<h1 class="text-2xl font-bold mb-6">Schema Playground</h1>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="lg:col-span-1 space-y-4">
+<div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+<h3 class="font-semibold mb-3">Select Connectors</h3>
+<div class="flex gap-2 mb-3"><button onclick="document.querySelectorAll('.ccb').forEach(c=>c.checked=true)" class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200">Select All</button><button onclick="document.querySelectorAll('.ccb').forEach(c=>c.checked=false)" class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200">Clear</button></div>
+<div class="max-h-64 overflow-y-auto space-y-0.5">""" + cbs + """</div></div>
+<div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
+<h3 class="font-semibold mb-2">Options</h3>
+<div><label class="text-sm font-medium">Framework</label>
+<select id="fw" class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm py-2 px-3 focus:ring-2 focus:ring-b-500 outline-none">
+<option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="gemini">Gemini</option></select></div>
+<label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" id="exD" class="rounded border-slate-300 text-b-600 focus:ring-b-500"><span>Exclude dangerous actions</span></label>
+<button onclick="genSchema()" class="w-full py-2.5 rounded-lg bg-b-600 hover:bg-b-700 text-white font-medium text-sm">Generate Schema</button></div></div>
+<div class="lg:col-span-2"><div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+<div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+<span class="text-sm font-medium" id="si">Select connectors and click Generate</span>
+<button onclick="navigator.clipboard.writeText(document.getElementById('so').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" class="text-xs px-3 py-1 rounded bg-b-100 dark:bg-b-900/30 text-b-700 dark:text-b-400 hover:bg-b-200 font-medium">Copy</button></div>
+<pre id="so" class="p-4 text-xs overflow-auto max-h-[70vh] text-slate-700 dark:text-slate-300 whitespace-pre-wrap"></pre></div></div></div>
+<script>
+async function genSchema(){
+const cs=[...document.querySelectorAll('.ccb:checked')].map(c=>c.value);
+if(!cs.length){alert('Select at least one connector.');return}
+const fw=document.getElementById('fw').value,exD=document.getElementById('exD').checked;
+document.getElementById('so').textContent='Generating...';
+try{const r=await fetch('/api/schema',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connectors:cs,framework:fw,exclude_dangerous:exD})});
+const d=await r.json();document.getElementById('so').textContent=JSON.stringify(d.schema,null,2);
+document.getElementById('si').textContent=d.tools_count+' tools generated for '+fw.charAt(0).toUpperCase()+fw.slice(1)}catch(e){document.getElementById('so').textContent='Error: '+e.message}}
+</script>""")
+
+
+@app.route("/api/schema", methods=["POST"])
+def api_schema():
+    d = request.get_json(force=True)
+    cs = d.get("connectors", [])
+    fw = d.get("framework", "openai")
+    try:
+        kit = ToolKit(cs, exclude_dangerous=d.get("exclude_dangerous", False))
+        fn = {"openai": kit.to_openai_tools, "anthropic": kit.to_anthropic_tools, "gemini": kit.to_gemini_tools}.get(fw, kit.to_openai_tools)
+        schema = fn()
+        return jsonify({"schema": schema, "tools_count": len(schema), "framework": fw})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/assistant")
+def assistant():
+    return _r("AI Assistant", """
+<h1 class="text-2xl font-bold mb-6">AI Assistant</h1>
+<div class="max-w-3xl mx-auto">
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col" style="height:70vh">
+<div id="cm" class="flex-1 overflow-y-auto p-4 space-y-4">
+<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-b-100 dark:bg-b-900/30 flex items-center justify-center text-b-600 dark:text-b-400 flex-shrink-0 text-xs font-bold">TC</div>
+<div class="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]"><p class="text-sm">Welcome! Ask me about ToolsConnector — connectors, ToolKit setup, schema generation, or anything else.</p></div></div></div>
+<div class="border-t border-slate-200 dark:border-slate-800 p-4"><div class="flex gap-2">
+<input id="ci" type="text" placeholder="Ask about ToolsConnector..." class="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 text-sm focus:ring-2 focus:ring-b-500 outline-none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}">
+<button onclick="sendMsg()" id="sb" class="px-5 py-2.5 rounded-xl bg-b-600 hover:bg-b-700 text-white text-sm font-medium flex-shrink-0">Send</button></div>
+<p class="text-xs text-slate-400 mt-2 text-center">Powered by OpenRouter. Responses may not always be accurate.</p></div></div></div>
+<script>
+let busy=false;
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+async function sendMsg(){
+if(busy)return;const inp=document.getElementById('ci'),msg=inp.value.trim();if(!msg)return;
+inp.value='';busy=true;document.getElementById('sb').disabled=true;
+const c=document.getElementById('cm');
+c.innerHTML+=`<div class="flex gap-3 justify-end"><div class="bg-b-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%]"><p class="text-sm">${esc(msg)}</p></div><div class="w-8 h-8 rounded-full bg-b-600 flex items-center justify-center text-white flex-shrink-0 text-xs font-bold">You</div></div>`;
+const aid='a'+Date.now();
+c.innerHTML+=`<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-b-100 dark:bg-b-900/30 flex items-center justify-center text-b-600 dark:text-b-400 flex-shrink-0 text-xs font-bold">TC</div><div class="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]"><p class="text-sm whitespace-pre-wrap" id="${aid}"><span class="text-slate-400">Thinking...</span></p></div></div>`;
+c.scrollTop=c.scrollHeight;
+try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+const rd=r.body.getReader(),dc=new TextDecoder(),el=document.getElementById(aid);el.textContent='';let buf='';
+while(true){const{done,value}=await rd.read();if(done)break;buf+=dc.decode(value,{stream:true});
+const ls=buf.split('\\n');buf=ls.pop();for(const l of ls){if(l.startsWith('data: ')){const d=l.slice(6);if(d==='[DONE]')break;
+try{const p=JSON.parse(d),ct=p.choices?.[0]?.delta?.content;if(ct)el.textContent+=ct}catch(e){}}}c.scrollTop=c.scrollHeight}
+if(!el.textContent)el.textContent='(No response. Check OPENROUTER_API_KEY.)'}catch(e){document.getElementById(aid).textContent='Error: '+e.message}
+busy=false;document.getElementById('sb').disabled=false}
+</script>""")
+
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    d = request.get_json(force=True)
+    msg = d.get("message", "")
+    if not msg:
+        return jsonify({"error": "No message"}), 400
+    names = list_connectors()
+    specs = _all_specs()
+    cl = ", ".join(f"{specs[n]['display_name']} ({n})" for n in names)
+    cats = set(specs[n]["category"] for n in names)
+    sp = f"""You are the ToolsConnector AI assistant helping developers.
+
+## What is ToolsConnector?
+A universal tool-connection primitive for Python. Standardized way to connect AI agents and apps to 50 third-party tools across {len(cats)} categories. A primitive, not a platform.
+
+## Connectors ({len(names)})
+{cl}
+
+## Categories: {', '.join(_cat(c) for c in sorted(cats))}
+
+## How ToolKit Works
+```python
+from toolsconnector.serve import ToolKit
+kit = ToolKit(["gmail", "slack"], credentials={{"gmail": "tok", "slack": "tok"}})
+tools = kit.to_openai_tools()      # OpenAI
+tools = kit.to_anthropic_tools()   # Anthropic
+tools = kit.to_gemini_tools()      # Gemini
+result = await kit.aexecute("gmail_list_emails", {{"query": "is:unread"}})
+kit.serve_mcp()  # MCP server
+```
+
+## Install: `pip install toolsconnector` or `pip install toolsconnector[gmail,slack]`
+
+## Key Features
+50 connectors, 395 actions, 17 categories. OpenAI/Anthropic/Gemini schemas. MCP server. Circuit breakers, retries, timeouts. Async-first + sync wrappers. JSON Schema validation. Dangerous action filtering. Multi-tenant. BYOK auth.
+
+Be concise, technical, include code examples."""
+
+    if not OPENROUTER_API_KEY:
+        def no_key():
+            yield "data: " + json.dumps({"choices": [{"delta": {"content": "OPENROUTER_API_KEY not set. Export it to enable the AI assistant."}}]}) + "\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(no_key(), mimetype="text/event-stream")
+
+    def stream():
+        with httpx.Client(timeout=60.0) as client:
+            with client.stream("POST", OPENROUTER_URL,
+                headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+                json={"model": OPENROUTER_MODEL, "messages": [{"role": "system", "content": sp}, {"role": "user", "content": msg}], "stream": True},
+            ) as resp:
+                for line in resp.iter_lines():
+                    if line:
+                        yield line + "\n\n"
+    return Response(stream(), mimetype="text/event-stream")
+
+
+@app.route("/health")
+def health_page():
+    return _r("Health", """
+<h1 class="text-2xl font-bold mb-6">Health Dashboard</h1>
+<div id="hl" class="text-center py-16"><div class="inline-block w-8 h-8 border-4 border-b-200 border-t-b-600 rounded-full animate-spin"></div><p class="text-sm text-slate-500 mt-3">Checking connector health...</p></div>
+<div id="hc" class="hidden">
+<div class="grid grid-cols-3 gap-4 mb-8" id="hs"></div>
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+<table class="w-full text-sm"><thead class="bg-slate-50 dark:bg-slate-800/50"><tr>
+<th class="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Connector</th>
+<th class="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Status</th>
+<th class="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Actions</th>
+<th class="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Spec</th>
+<th class="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Details</th></tr></thead>
+<tbody id="ht" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody></table></div></div>
+<script>
+fetch('/api/health').then(r=>r.json()).then(d=>{
+document.getElementById('hl').classList.add('hidden');document.getElementById('hc').classList.remove('hidden');
+const box=(v,c,l)=>`<div class="p-4 rounded-xl bg-${c}-50 dark:bg-${c}-900/20 border border-${c}-200 dark:border-${c}-800 text-center"><div class="text-2xl font-bold text-${c}-600 dark:text-${c}-400">${v}</div><div class="text-xs text-${c}-700 dark:text-${c}-300 font-medium">${l}</div></div>`;
+document.getElementById('hs').innerHTML=box(d.healthy,'emerald','Healthy')+box(d.degraded,'amber','Degraded')+box(d.unavailable,'red','Unavailable');
+const t=document.getElementById('ht');
+d.reports.forEach(r=>{const ok=r.healthy;
+t.innerHTML+=`<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50"><td class="px-4 py-3 font-medium"><a href="/connector/${r.connector_name}" class="text-b-600 dark:text-b-400 hover:underline">${r.connector_name}</a></td><td class="px-4 py-3"><span class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rounded-full ${ok?'bg-emerald-500':'bg-red-500'}"></span>${ok?'Healthy':'Unhealthy'}</span></td><td class="px-4 py-3">${r.actions_count}</td><td class="px-4 py-3">${r.spec_valid?'<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700">Valid</span>':'<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700">Invalid</span>'}</td><td class="px-4 py-3 text-xs text-slate-500">${r.error||'-'}</td></tr>`})
+}).catch(e=>{document.getElementById('hl').innerHTML='<p class="text-red-500">Failed: '+e.message+'</p>'});
+</script>""")
+
+
+@app.route("/api/health")
+def api_health():
+    import asyncio
+    checker = HealthChecker()
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                report = pool.submit(lambda: asyncio.run(checker.check_all())).result()
+        else:
+            report = loop.run_until_complete(checker.check_all())
+    except RuntimeError:
+        report = asyncio.run(checker.check_all())
+    return jsonify({
+        "total": report.total, "healthy": report.healthy,
+        "degraded": report.degraded, "unavailable": report.unavailable,
+        "reports": [{"connector_name": r.connector_name, "healthy": r.healthy,
+            "error": r.error, "suggestion": r.suggestion, "actions_count": r.actions_count,
+            "spec_valid": r.spec_valid, "checked_at": r.checked_at} for r in report.reports],
+    })
+
+
+if __name__ == "__main__":
+    print("\n  ToolsConnector Playground")
+    print("  http://127.0.0.1:5001\n")
+    app.run(debug=True, port=5001)
