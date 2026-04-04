@@ -224,33 +224,68 @@ def api_schema():
 @app.route("/assistant")
 def assistant():
     return _r("AI Assistant", """
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<style>
+.md-body{line-height:1.7;font-size:0.875rem}
+.md-body p{margin:0.5em 0}
+.md-body h1,.md-body h2,.md-body h3{font-weight:700;margin:0.8em 0 0.4em}
+.md-body h1{font-size:1.25rem}.md-body h2{font-size:1.1rem}.md-body h3{font-size:1rem}
+.md-body ul,.md-body ol{margin:0.4em 0;padding-left:1.5em}
+.md-body li{margin:0.2em 0}
+.md-body code:not(pre code){background:rgba(100,116,139,0.15);padding:0.15em 0.4em;border-radius:4px;font-size:0.82em}
+.md-body pre{background:#1e293b;color:#e2e8f0;border-radius:8px;padding:1em;overflow-x:auto;margin:0.6em 0;position:relative}
+.md-body pre code{background:none;padding:0;font-size:0.82em}
+.md-body blockquote{border-left:3px solid #6366f1;padding-left:0.8em;margin:0.5em 0;color:#64748b}
+.md-body table{border-collapse:collapse;width:100%;margin:0.5em 0;font-size:0.82em}
+.md-body th,.md-body td{border:1px solid #e2e8f0;padding:0.4em 0.8em;text-align:left}
+.dark .md-body th,.dark .md-body td{border-color:#334155}
+.md-body th{background:#f1f5f9;font-weight:600}.dark .md-body th{background:#1e293b}
+.md-body a{color:#4c6ef5;text-decoration:underline}
+.md-body img{max-width:100%;border-radius:8px;margin:0.5em 0}
+.md-body hr{border:none;border-top:1px solid #e2e8f0;margin:1em 0}
+.dark .md-body hr{border-color:#334155}
+.md-body strong{font-weight:700}
+.copy-btn{position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.1);border:none;color:#94a3b8;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px}
+.copy-btn:hover{background:rgba(255,255,255,0.2);color:#fff}
+</style>
 <h1 class="text-2xl font-bold mb-6">AI Assistant</h1>
 <div class="max-w-3xl mx-auto">
 <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col" style="height:70vh">
 <div id="cm" class="flex-1 overflow-y-auto p-4 space-y-4">
 <div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-b-100 dark:bg-b-900/30 flex items-center justify-center text-b-600 dark:text-b-400 flex-shrink-0 text-xs font-bold">TC</div>
-<div class="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]"><p class="text-sm">Welcome! Ask me about ToolsConnector — connectors, ToolKit setup, schema generation, or anything else.</p></div></div></div>
+<div class="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]"><div class="text-sm md-body"><p>Welcome! Ask me about ToolsConnector — connectors, ToolKit setup, schema generation, or anything else.</p></div></div></div></div>
 <div class="border-t border-slate-200 dark:border-slate-800 p-4"><div class="flex gap-2">
 <input id="ci" type="text" placeholder="Ask about ToolsConnector..." class="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 text-sm focus:ring-2 focus:ring-b-500 outline-none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}">
 <button onclick="sendMsg()" id="sb" class="px-5 py-2.5 rounded-xl bg-b-600 hover:bg-b-700 text-white text-sm font-medium flex-shrink-0">Send</button></div>
 <p class="text-xs text-slate-400 mt-2 text-center">Powered by OpenRouter. Responses may not always be accurate.</p></div></div></div>
 <script>
+marked.setOptions({breaks:true,gfm:true,highlight:function(code,lang){if(lang&&hljs.getLanguage(lang)){try{return hljs.highlight(code,{language:lang}).value}catch(e){}}return hljs.highlightAuto(code).value}});
 let busy=false;
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function renderMd(raw,el){
+  let html=marked.parse(raw);
+  html=html.replace(/<pre><code/g,'<pre><button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector(\\x27code\\x27).textContent);this.textContent=\\x27Copied!\\x27;setTimeout(()=>this.textContent=\\x27Copy\\x27,1500)">Copy</button><code');
+  el.innerHTML=html;
+  el.querySelectorAll('pre code').forEach(b=>{try{hljs.highlightElement(b)}catch(e){}});
+}
 async function sendMsg(){
 if(busy)return;const inp=document.getElementById('ci'),msg=inp.value.trim();if(!msg)return;
 inp.value='';busy=true;document.getElementById('sb').disabled=true;
 const c=document.getElementById('cm');
-c.innerHTML+=`<div class="flex gap-3 justify-end"><div class="bg-b-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%]"><p class="text-sm">${esc(msg)}</p></div><div class="w-8 h-8 rounded-full bg-b-600 flex items-center justify-center text-white flex-shrink-0 text-xs font-bold">You</div></div>`;
+c.innerHTML+='<div class="flex gap-3 justify-end"><div class="bg-b-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%]"><div class="text-sm md-body"><p>'+esc(msg)+'</p></div></div><div class="w-8 h-8 rounded-full bg-b-600 flex items-center justify-center text-white flex-shrink-0 text-xs font-bold">You</div></div>';
 const aid='a'+Date.now();
-c.innerHTML+=`<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-b-100 dark:bg-b-900/30 flex items-center justify-center text-b-600 dark:text-b-400 flex-shrink-0 text-xs font-bold">TC</div><div class="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]"><p class="text-sm whitespace-pre-wrap" id="${aid}"><span class="text-slate-400">Thinking...</span></p></div></div>`;
+c.innerHTML+='<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-b-100 dark:bg-b-900/30 flex items-center justify-center text-b-600 dark:text-b-400 flex-shrink-0 text-xs font-bold">TC</div><div class="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%] w-full"><div class="text-sm md-body" id="'+aid+'"><span class="text-slate-400 animate-pulse">Thinking...</span></div></div></div>';
 c.scrollTop=c.scrollHeight;
+let raw='';
 try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
-const rd=r.body.getReader(),dc=new TextDecoder(),el=document.getElementById(aid);el.textContent='';let buf='';
+const rd=r.body.getReader(),dc=new TextDecoder(),el=document.getElementById(aid);let buf='';
 while(true){const{done,value}=await rd.read();if(done)break;buf+=dc.decode(value,{stream:true});
 const ls=buf.split(String.fromCharCode(10));buf=ls.pop()||'';for(const l of ls){const lt=l.trim();if(lt.startsWith('data: ')){const d=lt.slice(6);if(d==='[DONE]')break;
-try{const p=JSON.parse(d),delta=p.choices?.[0]?.delta;if(delta&&delta.content)el.textContent+=delta.content}catch(e){}}}c.scrollTop=c.scrollHeight}
-if(!el.textContent)el.textContent='(No content received. The model may still be processing. Try again.)'}catch(e){document.getElementById(aid).textContent='Error: '+e.message}
+try{const p=JSON.parse(d),delta=p.choices&&p.choices[0]&&p.choices[0].delta;if(delta&&delta.content){raw+=delta.content;renderMd(raw,el)}}catch(e){}}}c.scrollTop=c.scrollHeight}
+if(!raw){el.innerHTML='<p class="text-slate-400">No response received. Try again.</p>'}
+}catch(e){const el=document.getElementById(aid);if(el)el.innerHTML='<p class="text-red-500">Error: '+esc(e.message)+'</p>'}
 busy=false;document.getElementById('sb').disabled=false}
 </script>""")
 
