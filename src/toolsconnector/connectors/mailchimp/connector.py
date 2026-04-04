@@ -1,0 +1,419 @@
+"""Mailchimp connector -- audience lists, members, and campaigns.
+
+Uses the Mailchimp Marketing API v3.0 with Basic auth (``anystring:api_key``).
+The datacenter is extracted from the API key suffix (e.g. ``us21``).
+Offset-based pagination via ``offset`` and ``count`` parameters.
+"""
+
+from __future__ import annotations
+
+import base64
+import hashlib
+import logging
+from typing import Any, Optional
+
+import httpx
+
+from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.connector import (
+    ConnectorCategory,
+    ProtocolType,
+    RateLimitSpec,
+)
+from toolsconnector.types import PageState, PaginatedList
+
+from ._parsers import parse_campaign, parse_list, parse_member
+from .types import MailchimpCampaign, MailchimpList, MailchimpMember
+
+logger = logging.getLogger("toolsconnector.mailchimp")
+
+
+class Mailchimp(BaseConnector):
+    """Connect to Mailchimp to manage audience lists, members, and campaigns.
+
+    Supports API key authentication via HTTP Basic auth. The API key
+    contains the datacenter suffix (e.g. ``abc123-us21``), which is
+    extracted to build the base URL.
+    """
+
+    name = "mailchimp"
+    display_name = "Mailchimp"
+    category = ConnectorCategory.MARKETING
+    protocol = ProtocolType.REST
+    base_url = "https://{dc}.api.mailchimp.com/3.0"
+    description = (
+        "Connect to Mailchimp to manage audience lists, "
+        "subscribers, and email campaigns."
+    )
+    _rate_limit_config = RateLimitSpec(rate=10, period=1, burst=5)
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    async def _setup(self) -> None:
+        """Initialise the httpx async client with Mailchimp Basic auth.
+
+        Extracts the datacenter from the API key (text after the last
+        ``-``) and builds the base URL. Auth uses Basic auth with
+        ``anystring`` as the username and the API key as the password.
+        """
+        api_key = self._credentials or ""
+
+        # Extract datacenter from API key (e.g. "abc123def456-us21" -> "us21")
+        if "-" in api_key:
+            dc = api_key.rsplit("-", 1)[-1]
+        else:
+            dc = "us1"
+
+        resolved_url = (
+            self._base_url
+            or self.__class__.base_url.format(dc=dc)
+        )
+
+        auth_string = f"anystring:{api_key}"
+        token = base64.b64encode(auth_string.encode()).decode()
+
+        headers: dict[str, str] = {
+            "Authorization": f"Basic {token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        self._client = httpx.AsyncClient(
+            base_url=resolved_url,
+            headers=headers,
+            timeout=self._timeout,
+        )
+
+    async def _teardown(self) -> None:
+        """Close the httpx client."""
+        if hasattr(self, "_client"):
+            await self._client.aclose()
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[dict[str, Any]] = None,
+        json_body: Optional[dict[str, Any]] = None,
+    ) -> httpx.Response:
+        """Send an authenticated request to the Mailchimp API.
+
+        Args:
+            method: HTTP method (GET, POST, PUT, PATCH, etc.).
+            path: API path relative to base_url.
+            params: Query parameters.
+            json_body: JSON body for POST/PUT/PATCH requests.
+
+        Returns:
+            httpx.Response object.
+
+        Raises:
+            httpx.HTTPStatusError: On 4xx/5xx responses.
+        """
+        resp = await self._client.request(
+            method, path, params=params, json=json_body,
+        )
+        resp.raise_for_status()
+        return resp
+
+    @staticmethod
+    def _subscriber_hash(email: str) -> str:
+        """Compute the MD5 hash of a lowercased email for Mailchimp member IDs.
+
+        Args:
+            email: Subscriber email address.
+
+        Returns:
+            MD5 hex digest of the lowercased email.
+        """
+        return hashlib.md5(email.lower().encode()).hexdigest()
+
+    def _build_offset_page_state(
+        self,
+        body: dict[str, Any],
+        offset: int,
+        count: int,
+    ) -> PageState:
+        """Build a PageState from Mailchimp offset pagination metadata.
+
+        Args:
+            body: Parsed JSON response body.
+            offset: Current offset.
+            count: Items per page.
+
+        Returns:
+            PageState with cursor set to next offset if more items exist.
+        """
+        total = body.get("total_items", 0)
+        next_offset = offset + count
+        has_more = next_offset < total
+        return PageState(
+            has_more=has_more,
+            cursor=str(next_offset) if has_more else None,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Lists (Audiences)
+    # ------------------------------------------------------------------
+
+    @action("List Mailchimp audience lists")
+    async def list_lists(
+        self,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> PaginatedList[MailchimpList]:
+        """List audience lists (audiences) with offset pagination.
+
+        Args:
+            limit: Maximum number of lists to return (1-1000).
+            offset: Offset for pagination.
+
+        Returns:
+            Paginated list of MailchimpList objects.
+        """
+        params: dict[str, Any] = {
+            "count": min(limit, 1000),
+            "offset": offset,
+        }
+
+        resp = await self._request("GET", "/lists", params=params)
+        body = resp.json()
+
+        items = [parse_list(lst) for lst in body.get("lists", [])]
+        page_state = self._build_offset_page_state(body, offset, limit)
+
+        result = PaginatedList(
+            items=items,
+            page_state=page_state,
+            total_count=body.get("total_items"),
+        )
+        result._fetch_next = (
+            (lambda next_off=offset + limit: self.list_lists(
+                limit=limit, offset=next_off,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    @action("Get a single Mailchimp audience list by ID")
+    async def get_list(self, list_id: str) -> MailchimpList:
+        """Retrieve a single audience list.
+
+        Args:
+            list_id: The Mailchimp list/audience ID.
+
+        Returns:
+            MailchimpList object.
+        """
+        resp = await self._request("GET", f"/lists/{list_id}")
+        return parse_list(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Members (Subscribers)
+    # ------------------------------------------------------------------
+
+    @action("List members in a Mailchimp audience list")
+    async def list_members(
+        self,
+        list_id: str,
+        status: Optional[str] = None,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> PaginatedList[MailchimpMember]:
+        """List members (subscribers) in an audience list.
+
+        Args:
+            list_id: The Mailchimp list/audience ID.
+            status: Filter by status (subscribed, unsubscribed, cleaned, etc.).
+            limit: Maximum number of members to return (1-1000).
+            offset: Offset for pagination.
+
+        Returns:
+            Paginated list of MailchimpMember objects.
+        """
+        params: dict[str, Any] = {
+            "count": min(limit, 1000),
+            "offset": offset,
+        }
+        if status is not None:
+            params["status"] = status
+
+        resp = await self._request(
+            "GET", f"/lists/{list_id}/members", params=params,
+        )
+        body = resp.json()
+
+        items = [parse_member(m) for m in body.get("members", [])]
+        page_state = self._build_offset_page_state(body, offset, limit)
+
+        result = PaginatedList(
+            items=items,
+            page_state=page_state,
+            total_count=body.get("total_items"),
+        )
+        result._fetch_next = (
+            (lambda next_off=offset + limit: self.list_members(
+                list_id=list_id, status=status,
+                limit=limit, offset=next_off,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    @action("Add a member to a Mailchimp audience list", dangerous=True)
+    async def add_member(
+        self,
+        list_id: str,
+        email: str,
+        status: Optional[str] = None,
+        merge_fields: Optional[dict[str, str]] = None,
+    ) -> MailchimpMember:
+        """Add a new member (subscriber) to an audience list.
+
+        Args:
+            list_id: The Mailchimp list/audience ID.
+            email: Email address of the new member.
+            status: Subscription status (subscribed, pending, etc.).
+                Defaults to ``subscribed``.
+            merge_fields: Merge field values (FNAME, LNAME, etc.).
+
+        Returns:
+            The created MailchimpMember object.
+        """
+        member_data: dict[str, Any] = {
+            "email_address": email,
+            "status": status or "subscribed",
+        }
+        if merge_fields is not None:
+            member_data["merge_fields"] = merge_fields
+
+        resp = await self._request(
+            "POST", f"/lists/{list_id}/members",
+            json_body=member_data,
+        )
+        return parse_member(resp.json())
+
+    @action("Update a member in a Mailchimp audience list", dangerous=True)
+    async def update_member(
+        self,
+        list_id: str,
+        email: str,
+        status: Optional[str] = None,
+        merge_fields: Optional[dict[str, str]] = None,
+    ) -> MailchimpMember:
+        """Update an existing member's information.
+
+        Uses the subscriber hash (MD5 of lowercased email) as the
+        member identifier per Mailchimp API requirements.
+
+        Args:
+            list_id: The Mailchimp list/audience ID.
+            email: Email address of the member to update.
+            status: New subscription status.
+            merge_fields: Updated merge field values.
+
+        Returns:
+            The updated MailchimpMember object.
+        """
+        subscriber_hash = self._subscriber_hash(email)
+        member_data: dict[str, Any] = {}
+        if status is not None:
+            member_data["status"] = status
+        if merge_fields is not None:
+            member_data["merge_fields"] = merge_fields
+
+        resp = await self._request(
+            "PATCH",
+            f"/lists/{list_id}/members/{subscriber_hash}",
+            json_body=member_data,
+        )
+        return parse_member(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Campaigns
+    # ------------------------------------------------------------------
+
+    @action("List Mailchimp campaigns")
+    async def list_campaigns(
+        self,
+        status: Optional[str] = None,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> PaginatedList[MailchimpCampaign]:
+        """List email campaigns with offset pagination.
+
+        Args:
+            status: Filter by campaign status (save, paused, schedule,
+                sending, sent).
+            limit: Maximum number of campaigns to return (1-1000).
+            offset: Offset for pagination.
+
+        Returns:
+            Paginated list of MailchimpCampaign objects.
+        """
+        params: dict[str, Any] = {
+            "count": min(limit, 1000),
+            "offset": offset,
+        }
+        if status is not None:
+            params["status"] = status
+
+        resp = await self._request("GET", "/campaigns", params=params)
+        body = resp.json()
+
+        items = [parse_campaign(c) for c in body.get("campaigns", [])]
+        page_state = self._build_offset_page_state(body, offset, limit)
+
+        result = PaginatedList(
+            items=items,
+            page_state=page_state,
+            total_count=body.get("total_items"),
+        )
+        result._fetch_next = (
+            (lambda next_off=offset + limit: self.list_campaigns(
+                status=status, limit=limit, offset=next_off,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    @action("Get a single Mailchimp campaign by ID")
+    async def get_campaign(self, campaign_id: str) -> MailchimpCampaign:
+        """Retrieve a single campaign by its ID.
+
+        Args:
+            campaign_id: The Mailchimp campaign ID.
+
+        Returns:
+            MailchimpCampaign object.
+        """
+        resp = await self._request("GET", f"/campaigns/{campaign_id}")
+        return parse_campaign(resp.json())
+
+    @action("Send a Mailchimp campaign", dangerous=True)
+    async def send_campaign(self, campaign_id: str) -> dict[str, Any]:
+        """Send a campaign immediately.
+
+        This is a destructive action that sends the email campaign
+        to all recipients. The campaign must be in a ``ready`` state.
+
+        Args:
+            campaign_id: The Mailchimp campaign ID to send.
+
+        Returns:
+            Empty dict on success (Mailchimp returns 204 No Content).
+        """
+        resp = await self._request(
+            "POST", f"/campaigns/{campaign_id}/actions/send",
+        )
+        # Mailchimp returns 204 on success with no body
+        if resp.status_code == 204:
+            return {"status": "sent", "campaign_id": campaign_id}
+        return resp.json()
