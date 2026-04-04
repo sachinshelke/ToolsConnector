@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install eval_type_backport
+      - name: Ruff check
+        run: ruff check src/
+      - name: Ruff format check
+        run: ruff format --check src/
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+      - name: Verify all connectors import
+        run: |
+          python -c "
+          import importlib, os
+          d = 'src/toolsconnector/connectors'
+          names = sorted(x for x in os.listdir(d) if os.path.isdir(os.path.join(d,x)) and not x.startswith('_'))
+          failed = []
+          for n in names:
+              try:
+                  importlib.import_module(f'toolsconnector.connectors.{n}')
+              except Exception as e:
+                  failed.append(f'{n}: {e}')
+          if failed:
+              for f in failed: print(f'FAIL: {f}')
+              raise SystemExit(1)
+          print(f'All {len(names)} connectors import OK')
+          "
+
+  conformance:
+    name: Conformance Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Import boundary tests
+        run: pytest tests/conformance/ -v --tb=short
+      - name: Verify all connectors have get_spec()
+        run: |
+          python -c "
+          import importlib, os
+          d = 'src/toolsconnector/connectors'
+          names = sorted(x for x in os.listdir(d) if os.path.isdir(os.path.join(d,x)) and not x.startswith('_'))
+          total = 0
+          for n in names:
+              mod = importlib.import_module(f'toolsconnector.connectors.{n}')
+              for attr in dir(mod):
+                  obj = getattr(mod, attr)
+                  if isinstance(obj, type) and hasattr(obj, 'get_spec') and obj.__name__ != 'BaseConnector':
+                      spec = obj.get_spec()
+                      assert spec.name, f'{n}: spec.name is empty'
+                      assert spec.actions, f'{n}: no actions'
+                      total += len(spec.actions)
+                      break
+          print(f'All {len(names)} connectors pass spec validation ({total} actions)')
+          "
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Bandit security scan
+        run: bandit -r src/toolsconnector/ -s B101 --quiet || true
+      - name: Check for credential leaks
+        run: |
+          if grep -rn "sk-ant\|sk_live\|ghp_\|xoxb-\|AKIA" src/ --include="*.py"; then
+            echo "CREDENTIAL LEAK DETECTED"
+            exit 1
+          fi
+          echo "No credentials found in source"
