@@ -94,7 +94,11 @@ tc = "toolsconnector.serve.cli:main"
 # Connectors register here for CLI/serve discovery
 # gmail = "toolsconnector.connectors.gmail:Gmail"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/toolsconnector"]
+
 [tool.ruff]
+src = ["src"]
 line-length = 100
 target-version = "py39"
 
@@ -106,6 +110,7 @@ python_version = "3.9"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+mypy_path = "src"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

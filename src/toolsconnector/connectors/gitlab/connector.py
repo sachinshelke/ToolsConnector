@@ -1,0 +1,444 @@
+"""GitLab connector — projects, issues, merge requests, and CI/CD pipelines.
+
+Uses the GitLab REST API v4 with private token authentication.
+Page-number pagination via ``X-Total`` / ``X-Total-Pages`` headers.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any, Optional
+from urllib.parse import quote
+
+import httpx
+
+from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.connector import (
+    ConnectorCategory,
+    ProtocolType,
+    RateLimitSpec,
+)
+from toolsconnector.types import PageState, PaginatedList
+
+from ._parsers import (
+    parse_issue,
+    parse_merge_request,
+    parse_pipeline,
+    parse_project,
+)
+from .types import GitLabIssue, MergeRequest, Pipeline, Project
+
+logger = logging.getLogger("toolsconnector.gitlab")
+
+
+def _encode_project_id(project_id: str | int) -> str:
+    """URL-encode a project ID for the GitLab API.
+
+    Numeric IDs pass through as-is. Path-style IDs
+    (e.g. ``"mygroup/myproject"``) are URL-encoded.
+
+    Args:
+        project_id: Numeric project ID or ``namespace/project`` path.
+
+    Returns:
+        URL-safe string for inclusion in API paths.
+    """
+    sid = str(project_id)
+    if sid.isdigit():
+        return sid
+    return quote(sid, safe="")
+
+
+class GitLab(BaseConnector):
+    """Connect to GitLab to manage projects, issues, MRs, and pipelines.
+
+    Supports private token authentication via ``PRIVATE-TOKEN`` header.
+    Uses the GitLab REST API v4. The ``base_url`` defaults to
+    ``https://gitlab.com/api/v4`` but can be overridden for self-hosted
+    instances.
+    """
+
+    name = "gitlab"
+    display_name = "GitLab"
+    category = ConnectorCategory.CODE_PLATFORM
+    protocol = ProtocolType.REST
+    base_url = "https://gitlab.com/api/v4"
+    description = "Connect to GitLab to manage projects, issues, MRs, and pipelines."
+    _rate_limit_config = RateLimitSpec(rate=2000, period=60, burst=200)
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    async def _setup(self) -> None:
+        """Initialise the httpx async client."""
+        headers: dict[str, str] = {"Accept": "application/json"}
+        if self._credentials:
+            headers["PRIVATE-TOKEN"] = str(self._credentials)
+
+        self._client = httpx.AsyncClient(
+            base_url=self._base_url or self.__class__.base_url,
+            headers=headers,
+            timeout=self._timeout,
+        )
+
+    async def _teardown(self) -> None:
+        """Close the httpx client."""
+        if hasattr(self, "_client"):
+            await self._client.aclose()
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[dict[str, Any]] = None,
+        json: Optional[dict[str, Any]] = None,
+    ) -> httpx.Response:
+        """Send an authenticated request and handle errors.
+
+        Args:
+            method: HTTP method (GET, POST, etc.).
+            path: API path relative to base_url.
+            params: Query parameters.
+            json: JSON body for POST/PUT.
+
+        Returns:
+            httpx.Response object.
+
+        Raises:
+            httpx.HTTPStatusError: On 4xx/5xx responses.
+        """
+        resp = await self._client.request(
+            method, path, params=params, json=json,
+        )
+
+        remaining = resp.headers.get("RateLimit-Remaining")
+        if remaining is not None:
+            logger.debug("GitLab rate-limit remaining: %s", remaining)
+
+        resp.raise_for_status()
+        return resp
+
+    def _build_page_state(
+        self, resp: httpx.Response, current_page: int,
+    ) -> PageState:
+        """Build a PageState from GitLab pagination headers.
+
+        GitLab uses ``X-Total``, ``X-Total-Pages``, ``X-Page``, and
+        ``X-Next-Page`` headers for page-number pagination.
+
+        Args:
+            resp: The HTTP response to extract pagination from.
+            current_page: The page number that was just fetched.
+
+        Returns:
+            PageState with page_number and total_count populated.
+        """
+        total_str = resp.headers.get("X-Total")
+        total_pages_str = resp.headers.get("X-Total-Pages")
+        next_page_str = resp.headers.get("X-Next-Page")
+
+        total_count = int(total_str) if total_str else None
+        total_pages = int(total_pages_str) if total_pages_str else None
+
+        has_more = False
+        next_page_num: Optional[int] = None
+        if next_page_str and next_page_str.strip():
+            next_page_num = int(next_page_str)
+            has_more = True
+        elif total_pages is not None:
+            has_more = current_page < total_pages
+
+        return PageState(
+            page_number=next_page_num if has_more else current_page,
+            total_count=total_count,
+            has_more=has_more,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Projects
+    # ------------------------------------------------------------------
+
+    @action("List GitLab projects")
+    async def list_projects(
+        self,
+        owned: Optional[bool] = None,
+        search: Optional[str] = None,
+        limit: int = 20,
+        page: int = 1,
+    ) -> PaginatedList[Project]:
+        """List GitLab projects visible to the authenticated user.
+
+        Args:
+            owned: If true, only return projects owned by the current user.
+            search: Search projects by name.
+            limit: Maximum projects per page (max 100).
+            page: Page number (1-indexed).
+
+        Returns:
+            Paginated list of Project objects.
+        """
+        params: dict[str, Any] = {"per_page": min(limit, 100), "page": page}
+        if owned is not None:
+            params["owned"] = str(owned).lower()
+        if search:
+            params["search"] = search
+
+        resp = await self._request("GET", "/projects", params=params)
+        items = [parse_project(p) for p in resp.json()]
+        ps = self._build_page_state(resp, page)
+
+        result = PaginatedList(
+            items=items, page_state=ps, total_count=ps.total_count,
+        )
+        if ps.has_more and ps.page_number is not None:
+            np = ps.page_number
+            result._fetch_next = lambda pg=np: self.alist_projects(
+                owned=owned, search=search, limit=limit, page=pg,
+            )
+        return result
+
+    @action("Get a single project by ID")
+    async def get_project(self, project_id: str) -> Project:
+        """Retrieve a single project.
+
+        Args:
+            project_id: Numeric project ID or URL-encoded
+                ``namespace/project`` path.
+
+        Returns:
+            Project object.
+        """
+        encoded = _encode_project_id(project_id)
+        resp = await self._request("GET", f"/projects/{encoded}")
+        return parse_project(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Issues
+    # ------------------------------------------------------------------
+
+    @action("List issues for a GitLab project")
+    async def list_issues(
+        self,
+        project_id: str,
+        state: Optional[str] = None,
+        labels: Optional[str] = None,
+        limit: int = 20,
+        page: int = 1,
+    ) -> PaginatedList[GitLabIssue]:
+        """List issues for a project.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            state: Filter by state: ``opened``, ``closed``, or ``all``.
+            labels: Comma-separated list of label names to filter by.
+            limit: Maximum issues per page (max 100).
+            page: Page number (1-indexed).
+
+        Returns:
+            Paginated list of GitLabIssue objects.
+        """
+        encoded = _encode_project_id(project_id)
+        params: dict[str, Any] = {"per_page": min(limit, 100), "page": page}
+        if state:
+            params["state"] = state
+        if labels:
+            params["labels"] = labels
+
+        resp = await self._request(
+            "GET", f"/projects/{encoded}/issues", params=params,
+        )
+        items = [parse_issue(i) for i in resp.json()]
+        ps = self._build_page_state(resp, page)
+
+        result = PaginatedList(
+            items=items, page_state=ps, total_count=ps.total_count,
+        )
+        if ps.has_more and ps.page_number is not None:
+            np = ps.page_number
+            result._fetch_next = lambda pg=np: self.alist_issues(
+                project_id=project_id, state=state, labels=labels,
+                limit=limit, page=pg,
+            )
+        return result
+
+    @action("Create an issue in a GitLab project", dangerous=True)
+    async def create_issue(
+        self,
+        project_id: str,
+        title: str,
+        description: Optional[str] = None,
+        labels: Optional[str] = None,
+    ) -> GitLabIssue:
+        """Create a new issue in a project.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            title: Issue title.
+            description: Issue description in Markdown.
+            labels: Comma-separated list of label names to apply.
+
+        Returns:
+            The created GitLabIssue object.
+        """
+        encoded = _encode_project_id(project_id)
+        payload: dict[str, Any] = {"title": title}
+        if description is not None:
+            payload["description"] = description
+        if labels:
+            payload["labels"] = labels
+
+        resp = await self._request(
+            "POST", f"/projects/{encoded}/issues", json=payload,
+        )
+        return parse_issue(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Merge Requests
+    # ------------------------------------------------------------------
+
+    @action("List merge requests for a GitLab project")
+    async def list_merge_requests(
+        self,
+        project_id: str,
+        state: Optional[str] = None,
+        limit: int = 20,
+        page: int = 1,
+    ) -> PaginatedList[MergeRequest]:
+        """List merge requests for a project.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            state: Filter by state: ``opened``, ``closed``, ``merged``,
+                or ``all``.
+            limit: Maximum MRs per page (max 100).
+            page: Page number (1-indexed).
+
+        Returns:
+            Paginated list of MergeRequest objects.
+        """
+        encoded = _encode_project_id(project_id)
+        params: dict[str, Any] = {"per_page": min(limit, 100), "page": page}
+        if state:
+            params["state"] = state
+
+        resp = await self._request(
+            "GET", f"/projects/{encoded}/merge_requests", params=params,
+        )
+        items = [parse_merge_request(mr) for mr in resp.json()]
+        ps = self._build_page_state(resp, page)
+
+        result = PaginatedList(
+            items=items, page_state=ps, total_count=ps.total_count,
+        )
+        if ps.has_more and ps.page_number is not None:
+            np = ps.page_number
+            result._fetch_next = lambda pg=np: self.alist_merge_requests(
+                project_id=project_id, state=state, limit=limit, page=pg,
+            )
+        return result
+
+    @action("Create a merge request in a GitLab project", dangerous=True)
+    async def create_merge_request(
+        self,
+        project_id: str,
+        source_branch: str,
+        target_branch: str,
+        title: str,
+        description: Optional[str] = None,
+    ) -> MergeRequest:
+        """Create a new merge request.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            source_branch: The source branch for the MR.
+            target_branch: The target branch for the MR.
+            title: Merge request title.
+            description: Merge request description in Markdown.
+
+        Returns:
+            The created MergeRequest object.
+        """
+        encoded = _encode_project_id(project_id)
+        payload: dict[str, Any] = {
+            "source_branch": source_branch,
+            "target_branch": target_branch,
+            "title": title,
+        }
+        if description is not None:
+            payload["description"] = description
+
+        resp = await self._request(
+            "POST", f"/projects/{encoded}/merge_requests", json=payload,
+        )
+        return parse_merge_request(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Pipelines
+    # ------------------------------------------------------------------
+
+    @action("List CI/CD pipelines for a GitLab project")
+    async def list_pipelines(
+        self,
+        project_id: str,
+        status: Optional[str] = None,
+        limit: int = 20,
+        page: int = 1,
+    ) -> PaginatedList[Pipeline]:
+        """List CI/CD pipelines for a project.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            status: Filter by status: ``running``, ``pending``,
+                ``success``, ``failed``, ``canceled``, ``skipped``,
+                ``created``, ``manual``.
+            limit: Maximum pipelines per page (max 100).
+            page: Page number (1-indexed).
+
+        Returns:
+            Paginated list of Pipeline objects.
+        """
+        encoded = _encode_project_id(project_id)
+        params: dict[str, Any] = {"per_page": min(limit, 100), "page": page}
+        if status:
+            params["status"] = status
+
+        resp = await self._request(
+            "GET", f"/projects/{encoded}/pipelines", params=params,
+        )
+        items = [parse_pipeline(p) for p in resp.json()]
+        ps = self._build_page_state(resp, page)
+
+        result = PaginatedList(
+            items=items, page_state=ps, total_count=ps.total_count,
+        )
+        if ps.has_more and ps.page_number is not None:
+            np = ps.page_number
+            result._fetch_next = lambda pg=np: self.alist_pipelines(
+                project_id=project_id, status=status, limit=limit, page=pg,
+            )
+        return result
+
+    @action("Get a single pipeline by ID")
+    async def get_pipeline(
+        self, project_id: str, pipeline_id: int,
+    ) -> Pipeline:
+        """Retrieve a single pipeline with full details.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            pipeline_id: The pipeline ID.
+
+        Returns:
+            Pipeline object with timing and coverage details.
+        """
+        encoded = _encode_project_id(project_id)
+        resp = await self._request(
+            "GET", f"/projects/{encoded}/pipelines/{pipeline_id}",
+        )
+        return parse_pipeline(resp.json())
