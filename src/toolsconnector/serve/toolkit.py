@@ -284,6 +284,19 @@ class ToolKit:
         except ImportError:
             return [_to_gemini_schema(e) for e in self._tool_entries_list]
 
+    def to_langchain_tools(self) -> list:
+        """Generate LangChain StructuredTool objects with built-in execution.
+
+        Requires langchain-core: pip install langchain-core
+        """
+        from toolsconnector.serve.adapters import to_langchain_tools
+        return to_langchain_tools(self)
+
+    def to_crewai_tools(self) -> list:
+        """Generate CrewAI-compatible tools."""
+        from toolsconnector.serve.adapters import to_crewai_tools
+        return to_crewai_tools(self)
+
     # ------------------------------------------------------------------
     # Execution — async
     # ------------------------------------------------------------------
@@ -851,3 +864,95 @@ class ToolKit:
     def __contains__(self, tool_name: str) -> bool:
         """Check if a tool name is available in this ToolKit."""
         return tool_name in self._tool_entries
+
+
+# ---------------------------------------------------------------------------
+# ToolKitFactory — multi-tenant ToolKit management
+# ---------------------------------------------------------------------------
+
+class ToolKitFactory:
+    """Factory for creating per-tenant ToolKit instances.
+
+    In multi-tenant deployments (like AgentStore), each user/tenant
+    gets their own ToolKit with isolated credentials and rate limits.
+
+    Usage::
+
+        factory = ToolKitFactory(
+            connectors=["gmail", "slack"],
+            exclude_dangerous=True,
+        )
+
+        # Per-user toolkit
+        user_kit = factory.for_tenant(
+            tenant_id="user-123",
+            credentials={"gmail": user_gmail_token, "slack": user_slack_token},
+        )
+        result = await user_kit.aexecute("gmail_list_emails", {"query": "is:unread"})
+    """
+
+    def __init__(
+        self,
+        connectors: list,
+        *,
+        include_actions: Optional[list[str]] = None,
+        exclude_actions: Optional[list[str]] = None,
+        exclude_dangerous: bool = False,
+        timeout_budget: float = 25.0,
+        action_timeout: float = 15.0,
+    ) -> None:
+        self._connectors = connectors
+        self._include_actions = include_actions
+        self._exclude_actions = exclude_actions
+        self._exclude_dangerous = exclude_dangerous
+        self._timeout_budget = timeout_budget
+        self._action_timeout = action_timeout
+        self._tenant_kits: dict[str, ToolKit] = {}
+
+    def for_tenant(
+        self,
+        tenant_id: str,
+        credentials: dict[str, str],
+    ) -> ToolKit:
+        """Get or create a ToolKit for a specific tenant.
+
+        Args:
+            tenant_id: Unique tenant identifier.
+            credentials: Per-tenant credentials dict.
+
+        Returns:
+            ToolKit configured for this tenant.
+        """
+        if tenant_id not in self._tenant_kits:
+            self._tenant_kits[tenant_id] = ToolKit(
+                self._connectors,
+                credentials=credentials,
+                tenant_id=tenant_id,
+                include_actions=self._include_actions,
+                exclude_actions=self._exclude_actions,
+                exclude_dangerous=self._exclude_dangerous,
+                timeout_budget=self._timeout_budget,
+                action_timeout=self._action_timeout,
+            )
+        return self._tenant_kits[tenant_id]
+
+    async def close_tenant(self, tenant_id: str) -> None:
+        """Close and remove a tenant's ToolKit.
+
+        Args:
+            tenant_id: Tenant to close.
+        """
+        kit = self._tenant_kits.pop(tenant_id, None)
+        if kit:
+            await kit.aclose()
+
+    async def close_all(self) -> None:
+        """Close all tenant ToolKits."""
+        for kit in self._tenant_kits.values():
+            await kit.aclose()
+        self._tenant_kits.clear()
+
+    @property
+    def active_tenants(self) -> list[str]:
+        """Sorted list of currently active tenant IDs."""
+        return sorted(self._tenant_kits.keys())

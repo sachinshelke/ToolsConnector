@@ -20,10 +20,11 @@ Quick start::
 """
 
 from toolsconnector.serve._discovery import get_connector_class, list_connectors
-from toolsconnector.serve.toolkit import ToolKit
+from toolsconnector.serve.toolkit import ToolKit, ToolKitFactory
 
 __all__ = [
     "ToolKit",
+    "ToolKitFactory",
     "list_connectors",
     "get_connector_class",
 ]

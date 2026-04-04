@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "toolsconnector-mcp"
+version = "0.1.0"
+description = "Enhanced MCP server for ToolsConnector — smart tool selection, multi-tenant serving, and schema optimization."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.9"
+dependencies = [
+    "toolsconnector>=0.1.0",
+    "mcp>=1.0",
+]
+
+[project.scripts]
+tc-mcp = "toolsconnector_mcp.cli:main"
