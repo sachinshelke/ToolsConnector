@@ -75,6 +75,7 @@ body{font-family:'Inter',system-ui,sans-serif}code,pre{font-family:'JetBrains Mo
 <a href="/" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-800">Home</a>
 <a href="/connectors" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-800">Connectors</a>
 <a href="/playground" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-800">Playground</a>
+<a href="/docs" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-800">Docs</a>
 <a href="/assistant" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-800">AI Assistant</a>
 <a href="/health" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-800">Health</a></div>
 <button onclick="document.documentElement.classList.toggle('dark')" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800">
@@ -416,6 +417,152 @@ def api_health():
             "error": r.error, "suggestion": r.suggestion, "actions_count": r.actions_count,
             "spec_valid": r.spec_valid, "checked_at": r.checked_at} for r in report.reports],
     })
+
+
+# -- Docs routes -----------------------------------------------------------
+_DOCS_DIR = Path(__file__).parent.parent / "docs"
+_EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
+_README_PATH = Path(__file__).parent.parent / "README.md"
+
+_DOC_PAGES = [
+    ("quickstart", "Quickstart", "guides/quickstart.md", "Get started in 5 minutes"),
+    ("mcp-server", "MCP Server", "guides/mcp-server.md", "Claude Desktop and Cursor setup"),
+    ("ai-frameworks", "AI Frameworks", "guides/ai-frameworks.md", "OpenAI, Anthropic, Gemini, LangChain"),
+    ("credentials", "Credentials", "guides/credentials.md", "BYOK, env vars, KeyStore"),
+    ("resilience", "Resilience", "guides/resilience.md", "Circuit breakers, retries, timeouts"),
+    ("adding-connector", "Adding a Connector", "guides/adding-connector.md", "Build your own connector"),
+    ("api-reference", "API Reference", "API.md", "All classes and methods"),
+    ("architecture-faq", "Architecture FAQ", "ARCHITECTURE_FAQ.md", "Design decisions and reasoning"),
+]
+
+try:
+    import markdown as _md_lib
+    _HAS_MD_LIB = True
+except ImportError:
+    _HAS_MD_LIB = False
+
+def _render_md_file(filepath: Path) -> str:
+    """Read a markdown file and convert to HTML."""
+    if not filepath.exists():
+        return "<p class='text-red-500'>File not found.</p>"
+    raw = filepath.read_text(encoding="utf-8")
+    if _HAS_MD_LIB:
+        html = _md_lib.markdown(raw, extensions=["fenced_code", "tables", "toc", "codehilite"])
+    else:
+        # Fallback: use marked.js on the client side
+        import html as _html
+        escaped = _html.escape(raw)
+        html = f"""<div id="md-target" class="md-body"></div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script>
+marked.setOptions({{breaks:true,gfm:true,highlight:function(code,lang){{if(lang&&hljs.getLanguage(lang)){{try{{return hljs.highlight(code,{{language:lang}}).value}}catch(e){{}}}}return hljs.highlightAuto(code).value}}}});
+const raw = {json.dumps(raw)};
+document.getElementById('md-target').innerHTML = marked.parse(raw);
+document.querySelectorAll('pre code').forEach(b=>{{try{{hljs.highlightElement(b)}}catch(e){{}}}});
+</script>"""
+    return html
+
+@app.route("/docs")
+def docs_index():
+    cards = ""
+    for slug, title, _, desc in _DOC_PAGES:
+        cards += f'''<a href="/docs/{slug}" class="group block p-5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 hover:shadow-lg transition-all bg-white dark:bg-slate-900">
+<div class="font-semibold text-b-700 dark:text-b-400 group-hover:text-b-600">{title}</div>
+<p class="text-sm text-slate-500 mt-1">{desc}</p></a>'''
+
+    examples = ""
+    if _EXAMPLES_DIR.exists():
+        for f in sorted(_EXAMPLES_DIR.glob("*.py")):
+            name = f.stem.replace("_", " ").title()
+            examples += f'<a href="/docs/example/{f.stem}" class="block px-4 py-2.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">{name}</a>'
+
+    return _r("Documentation", f"""
+<h1 class="text-2xl font-bold mb-2">Documentation</h1>
+<p class="text-slate-500 mb-8">Guides, API reference, and examples for ToolsConnector.</p>
+<h2 class="text-lg font-semibold mb-4">Guides</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">{cards}</div>
+<h2 class="text-lg font-semibold mb-4">Examples</h2>
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">{examples or '<p class="text-slate-400 p-4">No examples found.</p>'}</div>
+""")
+
+@app.route("/docs/<slug>")
+def docs_page(slug: str):
+    # Find the matching doc page
+    filepath = None
+    title = slug
+    for s, t, path, _ in _DOC_PAGES:
+        if s == slug:
+            filepath = _DOCS_DIR / path
+            title = t
+            break
+    if filepath is None:
+        return _r("Not Found", "<p class='text-red-500'>Documentation page not found.</p>"), 404
+
+    # Sidebar nav
+    sidebar = ""
+    for s, t, _, _ in _DOC_PAGES:
+        active = "bg-b-100 dark:bg-b-900/30 text-b-700 dark:text-b-400 font-medium" if s == slug else "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+        sidebar += f'<a href="/docs/{s}" class="block px-3 py-2 rounded-lg text-sm {active}">{t}</a>'
+
+    content = _render_md_file(filepath)
+
+    return _r(title, f"""
+<div class="flex gap-8">
+<nav class="hidden lg:block w-56 flex-shrink-0">
+<div class="sticky top-24 space-y-1">
+<a href="/docs" class="block px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 mb-2 font-medium">&larr; All Docs</a>
+{sidebar}
+</div></nav>
+<div class="flex-1 min-w-0">
+<article class="md-body prose-slate max-w-none">
+<style>
+.md-body h1{{font-size:1.5rem;font-weight:700;margin:1em 0 0.5em;border-bottom:1px solid #e2e8f0;padding-bottom:0.3em}}
+.md-body h2{{font-size:1.25rem;font-weight:600;margin:1.2em 0 0.4em}}
+.md-body h3{{font-size:1.1rem;font-weight:600;margin:1em 0 0.3em}}
+.md-body p{{margin:0.5em 0;line-height:1.7}}
+.md-body ul,.md-body ol{{padding-left:1.5em;margin:0.5em 0}}
+.md-body li{{margin:0.3em 0}}
+.md-body code:not(pre code){{background:rgba(100,116,139,0.12);padding:0.15em 0.4em;border-radius:4px;font-size:0.85em}}
+.md-body pre{{background:#1e293b;color:#e2e8f0;border-radius:8px;padding:1em;overflow-x:auto;margin:0.8em 0}}
+.md-body pre code{{background:none;padding:0;font-size:0.85em}}
+.md-body blockquote{{border-left:3px solid #6366f1;padding-left:0.8em;margin:0.5em 0;color:#64748b}}
+.md-body table{{border-collapse:collapse;width:100%;margin:0.8em 0;font-size:0.85em}}
+.md-body th,.md-body td{{border:1px solid #e2e8f0;padding:0.5em 0.8em;text-align:left}}
+.dark .md-body th,.dark .md-body td{{border-color:#334155}}
+.md-body th{{background:#f1f5f9;font-weight:600}}.dark .md-body th{{background:#1e293b}}
+.md-body a{{color:#4c6ef5;text-decoration:underline}}
+.md-body hr{{border:none;border-top:1px solid #e2e8f0;margin:1.5em 0}}
+.dark .md-body hr{{border-color:#334155}}
+.md-body img{{max-width:100%;border-radius:8px}}
+</style>
+{content}
+</article></div></div>""")
+
+@app.route("/docs/example/<name>")
+def docs_example(name: str):
+    filepath = _EXAMPLES_DIR / f"{name}.py"
+    if not filepath.exists():
+        return _r("Not Found", "<p class='text-red-500'>Example not found.</p>"), 404
+
+    code = filepath.read_text(encoding="utf-8")
+    import html as _html
+    escaped = _html.escape(code)
+    title = name.replace("_", " ").title()
+
+    return _r(title, f"""
+<div class="mb-4"><a href="/docs" class="text-sm text-b-600 dark:text-b-400 hover:underline">&larr; Back to Docs</a></div>
+<h1 class="text-2xl font-bold mb-2">{title}</h1>
+<p class="text-slate-500 mb-6">examples/{name}.py</p>
+<div class="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 relative">
+<button onclick="navigator.clipboard.writeText(document.getElementById('excode').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="absolute top-3 right-3 bg-slate-700 text-slate-300 text-xs px-3 py-1 rounded hover:bg-slate-600 z-10">Copy</button>
+<pre class="bg-slate-900 text-slate-100 p-5 overflow-x-auto text-sm leading-relaxed"><code id="excode" class="language-python">{escaped}</code></pre>
+</div>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script>hljs.highlightElement(document.getElementById('excode'));</script>
+""")
 
 
 if __name__ == "__main__":
