@@ -1,0 +1,13 @@
+ToolsConnector
+Copyright 2026 ToolsConnector Contributors
+
+This product includes software developed by the ToolsConnector project
+(https://github.com/toolsconnector/toolsconnector).
+
+Licensed under the Apache License, Version 2.0.
+
+Third-party components:
+
+- Pydantic (MIT License) - https://github.com/pydantic/pydantic
+- httpx (BSD License) - https://github.com/encode/httpx
+- docstring-parser (MIT License) - https://github.com/rr-/docstring_parser

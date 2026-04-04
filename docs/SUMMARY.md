@@ -33,8 +33,16 @@
 * [Architecture FAQ](ARCHITECTURE_FAQ.md)
 * [Adding a Connector](guides/adding-connector.md)
 
+## Community
+
+* [Contributing](../CONTRIBUTING.md)
+* [Code of Conduct](../CODE_OF_CONDUCT.md)
+* [Governance](../GOVERNANCE.md)
+* [Security Policy](../SECURITY.md)
+* [Changelog](../CHANGELOG.md)
+* [License (Apache 2.0)](../LICENSE)
+
 ## Links
 
-* [GitHub](https://github.com/anthropics/toolsconnector)
+* [GitHub](https://github.com/toolsconnector/toolsconnector)
 * [PyPI](https://pypi.org/project/toolsconnector/)
-* [Changelog](../CHANGELOG.md)
