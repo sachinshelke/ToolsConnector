@@ -1,13 +1,11 @@
 """Tool metadata for the web playground.
 
-Contains company info, logos, links, and branding for each connector.
-Used by the connector detail page for professional presentation.
+Contains company info, logos, links, branding, and rich descriptions
+for each connector. Used by the connector detail page.
 """
 
 from __future__ import annotations
 
-# Logo URLs from official sources / CDNs
-# Using simple-icons SVG CDN for consistent, high-quality logos
 _SI = "https://cdn.simpleicons.org"
 
 TOOL_META: dict[str, dict] = {
@@ -19,9 +17,14 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/gmail",
         "color": "#EA4335",
         "tagline": "Read, send, and manage emails programmatically",
+        "overview": "The Gmail API lets you read, compose, send, and organize email messages and threads. Use it to build email automation, customer communication workflows, notification systems, and email analytics pipelines. Supports OAuth 2.0 for user-level access and Service Accounts for domain-wide access in Google Workspace.",
+        "use_cases": ["Email automation and scheduling", "Customer support ticket creation from emails", "Email analytics and reporting", "Newsletter management", "Automated replies and forwarding rules"],
         "auth_methods": ["OAuth 2.0", "Service Account"],
         "pricing": "Free (Google Workspace required for some features)",
         "rate_limit": "250 requests/second per user",
+        "prerequisites": ["Google Cloud project with Gmail API enabled", "OAuth 2.0 credentials or service account key"],
+        "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
+        "get_credentials_steps": "Go to Google Cloud Console > APIs & Services > Credentials > Create OAuth 2.0 Client ID",
     },
     "gdrive": {
         "company": "Google",
@@ -31,9 +34,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/googledrive",
         "color": "#4285F4",
         "tagline": "Store, share, and collaborate on files",
+        "overview": "The Google Drive API provides programmatic access to Google Drive files and folders. Upload, download, search, and organize files. Manage sharing permissions and collaborate with comments. Export Google Docs/Sheets/Slides to PDF, DOCX, and other formats.",
+        "use_cases": ["File backup and sync", "Document management systems", "Automated report generation", "File sharing workflows", "Content migration"],
         "auth_methods": ["OAuth 2.0", "Service Account"],
         "pricing": "Free (15GB), Google Workspace plans for more",
         "rate_limit": "12,000 requests/minute per project",
+        "prerequisites": ["Google Cloud project with Drive API enabled", "OAuth 2.0 credentials"],
+    
+        "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
+        "get_credentials_steps": "Google Cloud Console > APIs & Services > Credentials",
     },
     "gcalendar": {
         "company": "Google",
@@ -43,9 +52,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/googlecalendar",
         "color": "#4285F4",
         "tagline": "Schedule events, manage calendars, check availability",
+        "overview": "The Google Calendar API lets you create, modify, and query calendar events. Check free/busy status for scheduling, manage calendar sharing and access control, and build scheduling automation for teams and organizations.",
+        "use_cases": ["Meeting scheduling automation", "Availability checking", "Calendar sync across platforms", "Event reminders and notifications", "Resource booking systems"],
         "auth_methods": ["OAuth 2.0", "Service Account"],
         "pricing": "Free with Google account",
         "rate_limit": "500 requests/100 seconds per user",
+        "prerequisites": ["Google Cloud project with Calendar API enabled"],
+    
+        "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
+        "get_credentials_steps": "Google Cloud Console > Credentials",
     },
     "gsheets": {
         "company": "Google",
@@ -55,9 +70,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/googlesheets",
         "color": "#34A853",
         "tagline": "Read, write, and format spreadsheet data",
+        "overview": "The Google Sheets API provides full access to spreadsheet data and structure. Read and write cell values, create and format sheets, apply batch operations, and use Sheets as a lightweight database or reporting layer for your applications.",
+        "use_cases": ["Data entry and extraction", "Automated reporting", "Spreadsheet as database", "Data pipelines and ETL", "Budget and inventory tracking"],
         "auth_methods": ["OAuth 2.0", "Service Account"],
         "pricing": "Free with Google account",
         "rate_limit": "300 requests/minute per project",
+        "prerequisites": ["Google Cloud project with Sheets API enabled"],
+    
+        "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
+        "get_credentials_steps": "Google Cloud Console > Credentials",
     },
     "gdocs": {
         "company": "Google",
@@ -67,9 +88,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/googledocs",
         "color": "#4285F4",
         "tagline": "Create and edit documents programmatically",
+        "overview": "The Google Docs API lets you create and modify Google Docs programmatically. Insert text, apply formatting, and extract content. Use it for document generation, template-based reports, and content management workflows.",
+        "use_cases": ["Automated document generation", "Template-based reporting", "Content extraction", "Contract and proposal creation"],
         "auth_methods": ["OAuth 2.0", "Service Account"],
         "pricing": "Free with Google account",
         "rate_limit": "300 requests/minute per project",
+        "prerequisites": ["Google Cloud project with Docs API enabled"],
+    
+        "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
+        "get_credentials_steps": "Google Cloud Console > Credentials",
     },
     "gtasks": {
         "company": "Google",
@@ -79,9 +106,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/googletasks/4285F4",
         "color": "#4285F4",
         "tagline": "Manage task lists and to-do items",
+        "overview": "The Google Tasks API provides access to task lists and individual tasks. Create, update, complete, and organize tasks programmatically. Integrates naturally with Google Calendar and Gmail for productivity workflows.",
+        "use_cases": ["Task automation", "Project tracking", "To-do list sync", "Workflow triggers on task completion"],
         "auth_methods": ["OAuth 2.0"],
         "pricing": "Free with Google account",
         "rate_limit": "300 requests/minute per project",
+        "prerequisites": ["Google Cloud project with Tasks API enabled"],
+    
+        "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
+        "get_credentials_steps": "Google Cloud Console > Credentials",
     },
     "slack": {
         "company": "Salesforce (Slack Technologies)",
@@ -91,9 +124,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/slack",
         "color": "#4A154B",
         "tagline": "Team messaging, channels, and collaboration",
+        "overview": "The Slack Web API provides comprehensive access to Slack workspaces. Send and manage messages, create and manage channels, upload files, manage users, set reminders, and build interactive bot experiences. Supports both bot tokens and user tokens.",
+        "use_cases": ["Team notifications and alerts", "Customer support bots", "DevOps alerting", "Workflow automation", "Internal tooling"],
         "auth_methods": ["OAuth 2.0", "Bot Token"],
         "pricing": "Free tier available, Pro from $8.75/user/month",
         "rate_limit": "1 request/second (Tier 2)",
+        "prerequisites": ["Slack workspace", "Slack App with bot token"],
+    
+        "get_credentials_url": "https://api.slack.com/apps",
+        "get_credentials_steps": "Slack API > Your Apps > Create New App > Bot Token",
     },
     "discord": {
         "company": "Discord Inc.",
@@ -103,9 +142,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/discord",
         "color": "#5865F2",
         "tagline": "Messaging, voice, and community management",
+        "overview": "The Discord API provides access to Discord servers (guilds), channels, messages, and members. Build bots that moderate communities, send notifications, manage roles, and create interactive experiences. Supports bot tokens and OAuth 2.0.",
+        "use_cases": ["Community moderation bots", "Server management automation", "Notification systems", "Gaming integrations", "Event management"],
         "auth_methods": ["Bot Token", "OAuth 2.0"],
         "pricing": "Free, Nitro from $9.99/month",
         "rate_limit": "50 requests/second global",
+        "prerequisites": ["Discord account", "Bot application in Developer Portal"],
+    
+        "get_credentials_url": "https://discord.com/developers/applications",
+        "get_credentials_steps": "Developer Portal > New Application > Bot Token",
     },
     "github": {
         "company": "Microsoft (GitHub Inc.)",
@@ -115,9 +160,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/github",
         "color": "#181717",
         "tagline": "Code hosting, issues, PRs, and CI/CD",
+        "overview": "The GitHub REST API provides access to repositories, issues, pull requests, commits, releases, and more. Automate code reviews, manage CI/CD workflows, track issues, and build developer tools that integrate with the GitHub ecosystem.",
+        "use_cases": ["CI/CD automation", "Issue tracking and triage", "Code review workflows", "Release management", "Developer analytics"],
         "auth_methods": ["Personal Access Token", "OAuth 2.0", "GitHub App"],
         "pricing": "Free for public repos, Teams from $4/user/month",
         "rate_limit": "5,000 requests/hour authenticated",
+        "prerequisites": ["GitHub account", "Personal access token or GitHub App"],
+    
+        "get_credentials_url": "https://github.com/settings/tokens",
+        "get_credentials_steps": "Settings > Developer Settings > Personal Access Tokens",
     },
     "gitlab": {
         "company": "GitLab Inc.",
@@ -127,9 +178,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/gitlab",
         "color": "#FC6D26",
         "tagline": "DevOps platform with Git, CI/CD, and issue tracking",
+        "overview": "The GitLab REST API provides access to projects, merge requests, issues, pipelines, and CI/CD. Manage the full DevOps lifecycle from a single platform. Supports both GitLab.com and self-hosted instances.",
+        "use_cases": ["CI/CD pipeline management", "Merge request automation", "Issue tracking", "Release management", "Self-hosted DevOps"],
         "auth_methods": ["Personal Access Token", "OAuth 2.0"],
         "pricing": "Free tier, Premium from $29/user/month",
         "rate_limit": "2,000 requests/minute authenticated",
+        "prerequisites": ["GitLab account", "Personal access token"],
+    
+        "get_credentials_url": "https://gitlab.com/-/user_settings/personal_access_tokens",
+        "get_credentials_steps": "Preferences > Access Tokens > Create",
     },
     "notion": {
         "company": "Notion Labs Inc.",
@@ -139,9 +196,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/notion",
         "color": "#000000",
         "tagline": "All-in-one workspace for notes, docs, and databases",
+        "overview": "The Notion API provides access to pages, databases, blocks, and users. Query and update databases, create and modify pages, manage content blocks, and build integrations that sync data with your Notion workspace.",
+        "use_cases": ["Knowledge base management", "Content publishing", "Project tracking", "CRM in Notion databases", "Documentation automation"],
         "auth_methods": ["Bearer Token (Integration)", "OAuth 2.0"],
         "pricing": "Free for personal, Plus from $10/user/month",
         "rate_limit": "3 requests/second average",
+        "prerequisites": ["Notion workspace", "Internal integration or OAuth app"],
+    
+        "get_credentials_url": "https://www.notion.so/my-integrations",
+        "get_credentials_steps": "Settings > My Integrations > New Integration",
     },
     "jira": {
         "company": "Atlassian",
@@ -151,9 +214,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/jira",
         "color": "#0052CC",
         "tagline": "Project tracking, issue management, and agile boards",
+        "overview": "The Jira REST API provides access to issues, projects, sprints, boards, and workflows. Search with JQL, manage issue transitions, track time with worklogs, and automate agile project management across teams.",
+        "use_cases": ["Issue tracking automation", "Sprint planning", "Bug triage workflows", "Cross-tool project sync", "Custom reporting"],
         "auth_methods": ["Basic Auth (email:api_token)", "OAuth 2.0"],
         "pricing": "Free up to 10 users, Standard from $8.15/user/month",
         "rate_limit": "100 requests/minute",
+        "prerequisites": ["Atlassian account", "API token from id.atlassian.com"],
+    
+        "get_credentials_url": "https://id.atlassian.com/manage-profile/security/api-tokens",
+        "get_credentials_steps": "Account Settings > Security > API Tokens",
     },
     "stripe": {
         "company": "Stripe Inc.",
@@ -163,9 +232,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/stripe",
         "color": "#635BFF",
         "tagline": "Payment processing, subscriptions, and billing",
+        "overview": "The Stripe API provides a complete payment infrastructure. Process payments, manage subscriptions, handle invoices, issue refunds, and build checkout experiences. Supports cards, bank transfers, and 100+ payment methods worldwide.",
+        "use_cases": ["Payment processing", "Subscription management", "Invoice generation", "Marketplace payments", "Revenue analytics"],
         "auth_methods": ["API Key (Secret Key)"],
         "pricing": "2.9% + 30c per transaction",
         "rate_limit": "100 read/sec, 100 write/sec",
+        "prerequisites": ["Stripe account", "API secret key from dashboard"],
+    
+        "get_credentials_url": "https://dashboard.stripe.com/apikeys",
+        "get_credentials_steps": "Dashboard > Developers > API Keys",
     },
     "openai": {
         "company": "OpenAI",
@@ -175,9 +250,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/openai",
         "color": "#412991",
         "tagline": "GPT models, embeddings, and AI capabilities",
+        "overview": "The OpenAI API provides access to GPT models for text generation, embeddings for semantic search, image generation with DALL-E, audio transcription with Whisper, and fine-tuning capabilities. Build AI-powered features into any application.",
+        "use_cases": ["Text generation and chat", "Semantic search with embeddings", "Image generation", "Audio transcription", "Content moderation"],
         "auth_methods": ["API Key"],
         "pricing": "Pay-per-token (varies by model)",
         "rate_limit": "Varies by model and tier",
+        "prerequisites": ["OpenAI account", "API key from platform.openai.com"],
+    
+        "get_credentials_url": "https://platform.openai.com/api-keys",
+        "get_credentials_steps": "Platform > API Keys > Create New",
     },
     "anthropic": {
         "company": "Anthropic",
@@ -187,9 +268,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/anthropic",
         "color": "#191919",
         "tagline": "Claude models for safe, capable AI",
+        "overview": "The Anthropic API provides access to Claude models for text generation, analysis, and tool use. Build AI assistants, automate reasoning tasks, and integrate Claude's capabilities into your applications. Supports streaming, batching, and multi-turn conversations.",
+        "use_cases": ["AI assistants and chatbots", "Document analysis", "Code generation", "Research automation", "Content creation"],
         "auth_methods": ["API Key"],
         "pricing": "Pay-per-token (varies by model)",
         "rate_limit": "Varies by model and tier",
+        "prerequisites": ["Anthropic account", "API key from console.anthropic.com"],
+    
+        "get_credentials_url": "https://console.anthropic.com/settings/keys",
+        "get_credentials_steps": "Console > Settings > API Keys",
     },
     "salesforce": {
         "company": "Salesforce Inc.",
@@ -199,9 +286,15 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/salesforce",
         "color": "#00A1E0",
         "tagline": "CRM, sales, service, and marketing platform",
+        "overview": "The Salesforce REST API provides access to CRM objects including leads, contacts, accounts, opportunities, and cases. Run SOQL queries, manage records, and integrate with the world's most widely-used CRM platform.",
+        "use_cases": ["CRM data sync", "Lead management", "Sales pipeline automation", "Customer support workflows", "Marketing analytics"],
         "auth_methods": ["OAuth 2.0", "Bearer Token"],
         "pricing": "Enterprise pricing (from $25/user/month)",
         "rate_limit": "Varies by edition",
+        "prerequisites": ["Salesforce org", "Connected App with OAuth credentials"],
+    
+        "get_credentials_url": "https://login.salesforce.com",
+        "get_credentials_steps": "Setup > Apps > App Manager > Connected App",
     },
     "hubspot": {
         "company": "HubSpot Inc.",
@@ -211,14 +304,19 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_SI}/hubspot",
         "color": "#FF7A59",
         "tagline": "CRM, marketing, sales, and service hub",
+        "overview": "The HubSpot CRM API provides access to contacts, companies, deals, tickets, and pipelines. Search and filter records, manage sales pipelines, and build marketing automation workflows on HubSpot's platform.",
+        "use_cases": ["Contact management", "Deal pipeline tracking", "Marketing automation", "Customer support ticketing", "Sales analytics"],
         "auth_methods": ["Bearer Token (Private App)", "OAuth 2.0"],
         "pricing": "Free CRM, Starter from $20/month",
         "rate_limit": "100 requests/10 seconds (private apps)",
+        "prerequisites": ["HubSpot account", "Private app access token"],
+    
+        "get_credentials_url": "https://app.hubspot.com/settings",
+        "get_credentials_steps": "Settings > Integrations > Private Apps > Create",
     },
 }
 
-# Default metadata for connectors not in the registry
-_DEFAULT_META: dict[str, str] = {
+_DEFAULT_META: dict[str, object] = {
     "company": "",
     "website": "",
     "docs": "",
@@ -226,9 +324,14 @@ _DEFAULT_META: dict[str, str] = {
     "logo": "",
     "color": "#6366f1",
     "tagline": "",
+    "overview": "",
+    "use_cases": [],
     "auth_methods": [],
     "pricing": "",
     "rate_limit": "",
+    "prerequisites": [],
+    "get_credentials_url": "",
+    "get_credentials_steps": "",
 }
 
 

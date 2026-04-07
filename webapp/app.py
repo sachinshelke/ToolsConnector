@@ -361,43 +361,107 @@ print(result)'''
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">{related_cards}</div>
 </div>'''
 
+    # Build MCP and OpenAI code examples
+    mcp_code = f'''from toolsconnector.serve import ToolKit
+
+kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})
+kit.serve_mcp()  # Connects to Claude Desktop / Cursor'''
+
+    openai_code = f'''from toolsconnector.serve import ToolKit
+
+kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})
+tools = kit.to_openai_tools()
+# Pass to: openai.chat.completions.create(tools=tools, ...)
+result = kit.execute("{name}_{first_action}", {{"...": "..."}})'''
+
+    mcp_escaped = _html.escape(mcp_code)
+    openai_escaped = _html.escape(openai_code)
+
+    # Overview and use cases
+    overview_html = ""
+    if meta.get("overview"):
+        overview_html = f'<p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mt-3">{meta["overview"]}</p>'
+
+    use_cases_html = ""
+    if meta.get("use_cases"):
+        cases = "".join(f'<li class="text-sm text-slate-600 dark:text-slate-400">{c}</li>' for c in meta["use_cases"])
+        use_cases_html = f'<ul class="mt-3 space-y-1 list-disc list-inside text-sm text-slate-600 dark:text-slate-400">{cases}</ul>'
+
+    prereqs_html = ""
+    if meta.get("prerequisites"):
+        ps = "".join(f'<li class="text-sm text-slate-500">{p}</li>' for p in meta["prerequisites"])
+        cred_link = ""
+        if meta.get("get_credentials_url"):
+            cred_link = f'<a href="{meta["get_credentials_url"]}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-b-600 dark:text-b-400 hover:underline"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>Get credentials: {meta.get("get_credentials_steps","")}</a>'
+        prereqs_html = f'<div class="mt-4"><h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Prerequisites</h4><ul class="space-y-1 list-disc list-inside">{ps}</ul>{cred_link}</div>'
+
+    # External links with labels (not icon-only)
+    ext_links_html = ""
+    if meta.get("website"):
+        ext_links_html += f'<a href="{meta["website"]}" target="_blank" rel="noopener" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs font-medium text-slate-600 dark:text-slate-400"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3"/></svg>Website</a>'
+    if meta.get("docs"):
+        ext_links_html += f'<a href="{meta["docs"]}" target="_blank" rel="noopener" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs font-medium text-slate-600 dark:text-slate-400"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>API Docs</a>'
+    if meta.get("github"):
+        ext_links_html += f'<a href="{meta["github"]}" target="_blank" rel="noopener" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs font-medium text-slate-600 dark:text-slate-400"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>GitHub</a>'
+
     return _r(sp["display_name"], f"""
 <a href="/connectors" class="text-sm text-b-600 dark:text-b-400 hover:underline mb-8 inline-block">&larr; All Connectors</a>
 
-<!-- Section 1: Hero -->
-<div class="mb-10">
-<div class="flex items-start justify-between gap-4 flex-wrap">
-<div class="flex items-center gap-4">
+<!-- Hero -->
+<div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden mb-8" style="border-top:4px solid {meta['color']}">
+<div class="p-6 sm:p-8">
+<div class="flex items-start gap-5 flex-wrap">
 {logo_html}
-<div>
+<div class="flex-1 min-w-0">
 <div class="flex items-center gap-3 flex-wrap">
 <h1 class="text-2xl font-bold text-slate-900 dark:text-white">{sp["display_name"]}</h1>
 {f'<span class="text-sm text-slate-400">by {meta["company"]}</span>' if meta.get("company") else ""}
 </div>
-<p class="text-slate-500 dark:text-slate-400 mt-1">{meta.get("tagline") or sp.get("description","")}</p>
-<div class="flex items-center gap-2 flex-wrap mt-3">
-<span class="text-xs px-2.5 py-0.5 rounded-full font-medium text-white" style="background:{meta['color']}">{_cat(sp["category"])}</span>
-<span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">{sp.get("protocol","rest").upper()}</span>
-<span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">{len(actions)} actions</span>
+<p class="text-slate-500 mt-1">{meta.get("tagline") or sp.get("description","")}</p>
+{overview_html}
+{use_cases_html}
+<div class="flex items-center gap-2 flex-wrap mt-4">
+<span class="text-xs px-2.5 py-1 rounded-full font-medium text-white" style="background:{meta['color']}">{_cat(sp["category"])}</span>
+<span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">{sp.get("protocol","rest").upper()}</span>
+<span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">{len(actions)} actions</span>
+<span class="text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium">Python</span>
+<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-400 font-medium">TypeScript, Go, Java coming soon</span>
 </div>
 </div>
+<div class="flex items-center gap-2 flex-wrap flex-shrink-0">{ext_links_html}</div>
 </div>
-<div class="flex items-center gap-3">{ext_links}</div>
+</div>
+<div class="border-t border-slate-200 dark:border-slate-800 px-6 sm:px-8 py-3 bg-slate-50 dark:bg-slate-800/30 flex items-center justify-between flex-wrap gap-3 text-sm">
+<div class="flex items-center gap-6 flex-wrap">
+<div><span class="text-slate-400">Auth: </span><span class="text-slate-700 dark:text-slate-300">{auth_str}</span></div>
+{f'<div><span class="text-slate-400">Rate: </span><span class="font-mono text-xs text-slate-700 dark:text-slate-300">{rate_str}</span></div>' if rate_str else ""}
+{f'<div><span class="text-slate-400">Pricing: </span><span class="text-slate-700 dark:text-slate-300">{pricing_str}</span></div>' if pricing_str else ""}
+</div>
+<span class="text-[10px] text-slate-400">Official docs maintained by {meta.get("company") or sp["display_name"]}</span>
 </div>
 </div>
 
-<!-- Section 2: Get Started -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+<!-- Get Started: Install + Code Tabs -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
 <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
 <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Install</h3>
 <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-3">
 <code class="text-sm font-mono text-slate-700 dark:text-slate-300 flex-1">{install_cmd}</code>
-<button onclick="navigator.clipboard.writeText('{install_cmd}');this.textContent='Done';setTimeout(()=>this.textContent='Copy',1200)" class="text-xs px-2.5 py-1 rounded bg-b-600 text-white hover:bg-b-700 cursor-pointer font-medium">Copy</button>
+<button onclick="navigator.clipboard.writeText('{install_cmd}');this.textContent='OK';setTimeout(()=>this.textContent='Copy',1200)" class="text-xs px-2.5 py-1 rounded bg-b-600 text-white hover:bg-b-700 cursor-pointer font-medium">Copy</button>
+</div>
+{prereqs_html}
+</div>
+<div class="lg:col-span-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+<div class="flex items-center border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+<button onclick="document.querySelectorAll('.ct').forEach(t=>t.classList.add('hidden'));document.getElementById('ct-py').classList.remove('hidden');document.querySelectorAll('.ctb').forEach(b=>{{b.classList.remove('text-b-600','border-b-2','border-b-600');b.classList.add('text-slate-400')}});this.classList.add('text-b-600','border-b-2','border-b-600');this.classList.remove('text-slate-400')" class="ctb px-4 py-3 text-sm font-medium text-b-600 border-b-2 border-b-600">Python</button>
+<button onclick="document.querySelectorAll('.ct').forEach(t=>t.classList.add('hidden'));document.getElementById('ct-mcp').classList.remove('hidden');document.querySelectorAll('.ctb').forEach(b=>{{b.classList.remove('text-b-600','border-b-2','border-b-600');b.classList.add('text-slate-400')}});this.classList.add('text-b-600','border-b-2','border-b-600');this.classList.remove('text-slate-400')" class="ctb px-4 py-3 text-sm font-medium text-slate-400">MCP Server</button>
+<button onclick="document.querySelectorAll('.ct').forEach(t=>t.classList.add('hidden'));document.getElementById('ct-oai').classList.remove('hidden');document.querySelectorAll('.ctb').forEach(b=>{{b.classList.remove('text-b-600','border-b-2','border-b-600');b.classList.add('text-slate-400')}});this.classList.add('text-b-600','border-b-2','border-b-600');this.classList.remove('text-slate-400')" class="ctb px-4 py-3 text-sm font-medium text-slate-400">OpenAI</button>
+</div>
+<div id="ct-py" class="ct"><pre class="text-xs bg-slate-900 text-slate-100 p-5 overflow-x-auto"><code class="language-python">{qs_escaped}</code></pre></div>
+<div id="ct-mcp" class="ct hidden"><pre class="text-xs bg-slate-900 text-slate-100 p-5 overflow-x-auto"><code class="language-python">{mcp_escaped}</code></pre></div>
+<div id="ct-oai" class="ct hidden"><pre class="text-xs bg-slate-900 text-slate-100 p-5 overflow-x-auto"><code class="language-python">{openai_escaped}</code></pre></div>
 </div>
 </div>
-<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-<div class="flex items-center justify-between px-5 pt-4 pb-2">
-<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quickstart</h3>
 <button onclick="navigator.clipboard.writeText(this.closest('.rounded-xl').querySelector('code').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="text-[10px] px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 hover:text-slate-700 dark:hover:text-white cursor-pointer">Copy</button>
 </div>
 <pre class="text-xs bg-slate-900 text-slate-100 p-4 overflow-x-auto rounded-b-xl"><code class="language-python">{qs_escaped}</code></pre>
