@@ -512,3 +512,163 @@ class GoogleSheets(BaseConnector):
             row_count=data.get("gridProperties", {}).get("rowCount", 0),
             column_count=data.get("gridProperties", {}).get("columnCount", 0),
         )
+
+    # ------------------------------------------------------------------
+    # Actions — Structural operations (batchUpdate)
+    # ------------------------------------------------------------------
+
+    @action(
+        "Apply structural changes to a spreadsheet",
+        dangerous=True,
+    )
+    async def batch_update_spreadsheet(
+        self,
+        spreadsheet_id: str,
+        requests: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Apply formatting, merge, chart, and structural operations.
+
+        This is the primary method for modifying spreadsheet structure
+        beyond cell values. Supports operations like merge cells,
+        format cells, add charts, conditional formatting, sort ranges,
+        auto-resize columns, add named ranges, and more.
+
+        Each request dict should follow the Google Sheets batchUpdate
+        request format. Common requests:
+
+        - ``{"mergeCells": {"range": {...}, "mergeType": "..."}}``
+        - ``{"repeatCell": {"range": {...}, "cell": {...}, "fields": "..."}}``
+        - ``{"addChart": {"chart": {...}}}``
+        - ``{"sortRange": {"range": {...}, "sortSpecs": [...]}}``
+        - ``{"autoResizeDimensions": {"dimensions": {...}}}``
+        - ``{"addNamedRange": {"namedRange": {...}}}``
+        - ``{"updateBorders": {"range": {...}, ...}}``
+        - ``{"addConditionalFormatRule": {"rule": {...}, "index": 0}}``
+
+        See Google Sheets API batchUpdate reference for all request
+        types.
+
+        Args:
+            spreadsheet_id: The spreadsheet ID.
+            requests: List of request dicts. Each dict should contain
+                exactly one request type as its key.
+
+        Returns:
+            Dict with ``spreadsheet_id`` and ``replies`` list.
+        """
+        data = await self._request(
+            "POST",
+            f"/spreadsheets/{spreadsheet_id}:batchUpdate",
+            json={"requests": requests},
+        )
+        return {
+            "spreadsheet_id": data.get("spreadsheetId", spreadsheet_id),
+            "replies": data.get("replies", []),
+        }
+
+    @action("Rename a sheet tab within a spreadsheet", dangerous=True)
+    async def rename_sheet(
+        self,
+        spreadsheet_id: str,
+        sheet_id: int,
+        new_title: str,
+    ) -> dict[str, Any]:
+        """Rename a sheet tab in a spreadsheet.
+
+        Convenience wrapper around batchUpdate with
+        updateSheetProperties request.
+
+        Args:
+            spreadsheet_id: The spreadsheet ID.
+            sheet_id: The numeric sheet ID (not the sheet name).
+            new_title: The new name for the sheet tab.
+
+        Returns:
+            Dict with spreadsheet_id and replies.
+        """
+        return await self.abatch_update_spreadsheet(
+            spreadsheet_id,
+            [{
+                "updateSheetProperties": {
+                    "properties": {
+                        "sheetId": sheet_id,
+                        "title": new_title,
+                    },
+                    "fields": "title",
+                }
+            }],
+        )
+
+    @action("Merge cells in a range", dangerous=True)
+    async def merge_cells(
+        self,
+        spreadsheet_id: str,
+        sheet_id: int,
+        start_row: int,
+        end_row: int,
+        start_column: int,
+        end_column: int,
+        merge_type: str = "MERGE_ALL",
+    ) -> dict[str, Any]:
+        """Merge a range of cells in a sheet.
+
+        Args:
+            spreadsheet_id: The spreadsheet ID.
+            sheet_id: The numeric sheet ID.
+            start_row: Start row (0-indexed).
+            end_row: End row (exclusive).
+            start_column: Start column (0-indexed).
+            end_column: End column (exclusive).
+            merge_type: "MERGE_ALL", "MERGE_COLUMNS", or "MERGE_ROWS".
+
+        Returns:
+            Dict with spreadsheet_id and replies.
+        """
+        return await self.abatch_update_spreadsheet(
+            spreadsheet_id,
+            [{
+                "mergeCells": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "startRowIndex": start_row,
+                        "endRowIndex": end_row,
+                        "startColumnIndex": start_column,
+                        "endColumnIndex": end_column,
+                    },
+                    "mergeType": merge_type,
+                }
+            }],
+        )
+
+    @action("Auto-resize columns to fit content")
+    async def auto_resize_columns(
+        self,
+        spreadsheet_id: str,
+        sheet_id: int,
+        start_column: int = 0,
+        end_column: int = 26,
+    ) -> dict[str, Any]:
+        """Auto-resize columns to fit their content.
+
+        Args:
+            spreadsheet_id: The spreadsheet ID.
+            sheet_id: The numeric sheet ID.
+            start_column: Start column index (0-indexed, default 0 = A).
+            end_column: End column index (exclusive, default 26 = Z).
+
+        Returns:
+            Dict with spreadsheet_id and replies.
+        """
+        return await self.abatch_update_spreadsheet(
+            spreadsheet_id,
+            [{
+                "autoResizeDimensions": {
+                    "dimensions": {
+                        "sheetId": sheet_id,
+                        "dimension": "COLUMNS",
+                        "startIndex": start_column,
+                        "endIndex": end_column,
+                    }
+                }
+            }],
+        )

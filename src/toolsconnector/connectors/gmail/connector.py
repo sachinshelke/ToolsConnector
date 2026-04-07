@@ -1067,3 +1067,114 @@ class Gmail(BaseConnector):
             json=payload,
         )
         return _parse_vacation_settings(data)
+
+    # ------------------------------------------------------------------
+    # Actions — Message import
+    # ------------------------------------------------------------------
+
+    @action("Import an email message into the mailbox", dangerous=True)
+    async def import_message(
+        self,
+        raw_rfc2822: str,
+        label_ids: Optional[list[str]] = None,
+        internal_date_source: str = "dateHeader",
+    ) -> MessageId:
+        """Import a raw RFC 2822 email into the user's mailbox.
+
+        Useful for email migrations, backups, and bulk import. The message
+        is inserted as if it was received at the time indicated by its
+        Date header (or receivedTime if specified).
+
+        Args:
+            raw_rfc2822: The complete RFC 2822 formatted email as a string.
+            label_ids: Labels to apply (e.g., ["INBOX", "UNREAD"]).
+            internal_date_source: How to determine the internal date.
+                "dateHeader" uses the Date header, "receivedTime" uses
+                the import time.
+
+        Returns:
+            MessageId of the imported message.
+        """
+        import base64
+
+        encoded = base64.urlsafe_b64encode(
+            raw_rfc2822.encode("utf-8")
+        ).decode("ascii")
+
+        payload: dict[str, Any] = {"raw": encoded}
+        if label_ids:
+            payload["labelIds"] = label_ids
+
+        params = {"internalDateSource": internal_date_source}
+        data = await self._request(
+            "POST",
+            "/users/me/messages/import",
+            json=payload,
+            params=params,
+        )
+        return MessageId(
+            id=data.get("id", ""),
+            thread_id=data.get("threadId"),
+        )
+
+    @action("Insert an email message directly into the mailbox", dangerous=True)
+    async def insert_message(
+        self,
+        raw_rfc2822: str,
+        label_ids: Optional[list[str]] = None,
+        internal_date_source: str = "receivedTime",
+    ) -> MessageId:
+        """Insert a raw RFC 2822 email directly into the mailbox.
+
+        Unlike import, insert does not trigger spam checks or forwarding
+        rules. Used for programmatic message creation with full control
+        over headers and timestamps.
+
+        Args:
+            raw_rfc2822: The complete RFC 2822 formatted email as a string.
+            label_ids: Labels to apply.
+            internal_date_source: "receivedTime" (default) or "dateHeader".
+
+        Returns:
+            MessageId of the inserted message.
+        """
+        import base64
+
+        encoded = base64.urlsafe_b64encode(
+            raw_rfc2822.encode("utf-8")
+        ).decode("ascii")
+
+        payload: dict[str, Any] = {"raw": encoded}
+        if label_ids:
+            payload["labelIds"] = label_ids
+
+        params = {"internalDateSource": internal_date_source}
+        data = await self._request(
+            "POST",
+            "/users/me/messages/insert",
+            json=payload,
+            params=params,
+        )
+        return MessageId(
+            id=data.get("id", ""),
+            thread_id=data.get("threadId"),
+        )
+
+    @action("Batch delete messages permanently", dangerous=True)
+    async def batch_delete(
+        self,
+        email_ids: list[str],
+    ) -> None:
+        """Permanently delete multiple messages in a single request.
+
+        This action is irreversible. Use trash_email for recoverable
+        deletion. Maximum 1000 message IDs per request.
+
+        Args:
+            email_ids: List of message IDs to delete (max 1000).
+        """
+        await self._request(
+            "POST",
+            "/users/me/messages/batchDelete",
+            json={"ids": email_ids[:1000]},
+        )
