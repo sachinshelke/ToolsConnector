@@ -21,10 +21,12 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PageState, PaginatedList
 
 from .types import (
+    SendGridBounce,
     SendGridContact,
     SendGridJobId,
     SendGridList,
     SendGridResponse,
+    SendGridSpamReport,
     SendGridStat,
     SendGridTemplate,
     SendGridTemplateVersion,
@@ -420,3 +422,109 @@ class SendGrid(BaseConnector):
         """
         resp = await self._request("GET", f"/templates/{template_id}")
         return _parse_template(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions — Contact management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete a contact by ID", dangerous=True)
+    async def delete_contact(self, contact_id: str) -> bool:
+        """Delete a marketing contact by ID.
+
+        Args:
+            contact_id: The SendGrid contact ID.
+
+        Returns:
+            True if the delete request was accepted.
+        """
+        resp = await self._request(
+            "DELETE", "/marketing/contacts",
+            params={"ids": contact_id},
+        )
+        return resp.status_code in (200, 202, 204)
+
+    # ------------------------------------------------------------------
+    # Actions — List management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Create a new contact list", dangerous=True)
+    async def create_list(self, name: str) -> SendGridList:
+        """Create a new marketing contact list.
+
+        Args:
+            name: Name for the new list.
+
+        Returns:
+            The created SendGridList object.
+        """
+        resp = await self._request(
+            "POST", "/marketing/lists",
+            json_body={"name": name},
+        )
+        data = resp.json()
+        return SendGridList(
+            id=data.get("id"),
+            name=data.get("name"),
+            contact_count=data.get("contact_count", 0),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Bounces and spam reports
+    # ------------------------------------------------------------------
+
+    @action("Get bounced email addresses")
+    async def get_bounces(
+        self, limit: Optional[int] = None,
+    ) -> list[SendGridBounce]:
+        """Retrieve bounced email addresses.
+
+        Args:
+            limit: Maximum number of bounce records to return.
+
+        Returns:
+            List of SendGridBounce objects.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["limit"] = limit
+        resp = await self._request(
+            "GET", "/suppression/bounces", params=params or None,
+        )
+        return [
+            SendGridBounce(
+                email=b.get("email", ""),
+                created=b.get("created"),
+                reason=b.get("reason"),
+                status=b.get("status"),
+            )
+            for b in resp.json()
+        ]
+
+    @action("Get spam report records")
+    async def get_spam_reports(
+        self, limit: Optional[int] = None,
+    ) -> list[SendGridSpamReport]:
+        """Retrieve spam report records.
+
+        Args:
+            limit: Maximum number of spam reports to return.
+
+        Returns:
+            List of SendGridSpamReport objects.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["limit"] = limit
+        resp = await self._request(
+            "GET", "/suppression/spam_reports", params=params or None,
+        )
+        return [
+            SendGridSpamReport(
+                email=s.get("email", ""),
+                created=s.get("created"),
+                ip=s.get("ip"),
+            )
+            for s in resp.json()
+        ]

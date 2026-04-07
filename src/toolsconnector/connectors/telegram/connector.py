@@ -21,7 +21,13 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PaginatedList, PageState
 
-from .types import TelegramChat, TelegramMessage, TelegramUpdate, TelegramUser
+from .types import (
+    TelegramChat,
+    TelegramMessage,
+    TelegramUpdate,
+    TelegramUser,
+    TelegramWebhookInfo,
+)
 
 logger = logging.getLogger("toolsconnector.telegram")
 
@@ -363,6 +369,91 @@ class Telegram(BaseConnector):
             True if the message was deleted successfully.
         """
         result = await self._request("deleteMessage", json_body={
+            "chat_id": chat_id,
+            "message_id": message_id,
+        })
+        return bool(result)
+
+    # ------------------------------------------------------------------
+    # Actions — Webhook management
+    # ------------------------------------------------------------------
+
+    @action("Set a webhook URL for receiving updates")
+    async def set_webhook(self, url: str) -> bool:
+        """Set a webhook URL for the bot to receive updates via HTTPS POST.
+
+        Args:
+            url: HTTPS URL to send updates to.
+
+        Returns:
+            True if the webhook was set successfully.
+        """
+        result = await self._request(
+            "setWebhook", json_body={"url": url},
+        )
+        return bool(result)
+
+    @action("Delete the current webhook")
+    async def delete_webhook(self) -> bool:
+        """Remove the current webhook integration.
+
+        Returns:
+            True if the webhook was removed successfully.
+        """
+        result = await self._request("deleteWebhook")
+        return bool(result)
+
+    # ------------------------------------------------------------------
+    # Actions — Bot info
+    # ------------------------------------------------------------------
+
+    @action("Get information about the bot")
+    async def get_me(self) -> TelegramUser:
+        """Get basic information about the bot.
+
+        Returns:
+            TelegramUser representing the bot itself.
+        """
+        result = await self._request("getMe")
+        return TelegramUser(**result)
+
+    # ------------------------------------------------------------------
+    # Actions — Chat moderation
+    # ------------------------------------------------------------------
+
+    @action("Ban a user from a chat", dangerous=True)
+    async def ban_chat_member(
+        self, chat_id: str, user_id: int,
+    ) -> bool:
+        """Ban a user from a group, supergroup, or channel.
+
+        Args:
+            chat_id: Unique identifier of the target chat.
+            user_id: Unique identifier of the user to ban.
+
+        Returns:
+            True if the user was banned successfully.
+        """
+        result = await self._request("banChatMember", json_body={
+            "chat_id": chat_id,
+            "user_id": user_id,
+        })
+        return bool(result)
+
+    @action("Pin a message in a chat")
+    async def pin_message(
+        self, chat_id: str, message_id: int,
+    ) -> bool:
+        """Pin a message in a group, supergroup, or channel.
+
+        Args:
+            chat_id: Unique identifier of the target chat.
+            message_id: Identifier of the message to pin.
+
+        Returns:
+            True if the message was pinned successfully.
+        """
+        result = await self._request("pinChatMessage", json_body={
             "chat_id": chat_id,
             "message_id": message_id,
         })

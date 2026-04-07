@@ -14,7 +14,14 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import NotionBlock, NotionDatabase, NotionPage, NotionProperty
+from ._helpers import parse_block, parse_comment, parse_database, parse_page
+from .types import (
+    NotionBlock,
+    NotionComment,
+    NotionDatabase,
+    NotionPage,
+    NotionUser,
+)
 
 
 _NOTION_VERSION = "2022-06-28"
@@ -85,47 +92,7 @@ class Notion(BaseConnector):
             return response.json()
 
     # ------------------------------------------------------------------
-    # Response parsers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _parse_page(data: dict[str, Any]) -> NotionPage:
-        """Parse a raw Notion page JSON into a NotionPage model."""
-        props: dict[str, NotionProperty] = {}
-        for key, val in data.get("properties", {}).items():
-            props[key] = NotionProperty(**val)
-
-        return NotionPage(
-            id=data["id"],
-            object=data.get("object", "page"),
-            created_time=data.get("created_time"),
-            last_edited_time=data.get("last_edited_time"),
-            archived=data.get("archived", False),
-            url=data.get("url"),
-            parent=data.get("parent", {}),
-            properties=props,
-            icon=data.get("icon"),
-            cover=data.get("cover"),
-        )
-
-    @staticmethod
-    def _parse_block(data: dict[str, Any]) -> NotionBlock:
-        """Parse a raw Notion block JSON into a NotionBlock model."""
-        block_type = data.get("type", "")
-        return NotionBlock(
-            id=data["id"],
-            object=data.get("object", "block"),
-            type=block_type,
-            created_time=data.get("created_time"),
-            last_edited_time=data.get("last_edited_time"),
-            archived=data.get("archived", False),
-            has_children=data.get("has_children", False),
-            parent=data.get("parent", {}),
-            content=data.get(block_type, {}),
-        )
-
-    # ------------------------------------------------------------------
-    # Actions
+    # Actions -- Search & Pages
     # ------------------------------------------------------------------
 
     @action("Search pages and databases in the workspace")
@@ -155,7 +122,7 @@ class Notion(BaseConnector):
 
         data = await self._request("POST", "/search", json=body)
 
-        pages = [self._parse_page(r) for r in data.get("results", [])]
+        pages = [parse_page(r) for r in data.get("results", [])]
         has_more = data.get("has_more", False)
         next_cursor = data.get("next_cursor")
 
@@ -179,7 +146,7 @@ class Notion(BaseConnector):
             The requested NotionPage.
         """
         data = await self._request("GET", f"/pages/{page_id}")
-        return self._parse_page(data)
+        return parse_page(data)
 
     @action("Create a new page", dangerous=True)
     async def create_page(
@@ -200,16 +167,11 @@ class Notion(BaseConnector):
         Returns:
             The newly created NotionPage.
         """
-        # Determine parent type: database IDs are typically passed when
-        # creating pages inside databases; otherwise assume page parent.
         body: dict[str, Any] = {}
 
-        # Default: treat as database parent.  Callers wanting a page
-        # parent can pass ``properties`` with the full schema.
         if properties:
             body["parent"] = {"database_id": parent_id}
             body["properties"] = properties
-            # Ensure title is in properties if not already set
             if "title" not in properties and "Name" not in properties:
                 body["properties"]["title"] = {
                     "title": [{"text": {"content": title}}]
@@ -224,7 +186,7 @@ class Notion(BaseConnector):
             body["children"] = children
 
         data = await self._request("POST", "/pages", json=body)
-        return self._parse_page(data)
+        return parse_page(data)
 
     @action("Update page properties")
     async def update_page(
@@ -244,7 +206,11 @@ class Notion(BaseConnector):
         """
         body: dict[str, Any] = {"properties": properties}
         data = await self._request("PATCH", f"/pages/{page_id}", json=body)
-        return self._parse_page(data)
+        return parse_page(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Databases
+    # ------------------------------------------------------------------
 
     @action("Get a database schema and metadata")
     async def get_database(self, database_id: str) -> NotionDatabase:
@@ -257,30 +223,7 @@ class Notion(BaseConnector):
             The requested NotionDatabase with its schema.
         """
         data = await self._request("GET", f"/databases/{database_id}")
-        from .types import NotionRichText
-
-        title_items = [
-            NotionRichText(**t) for t in data.get("title", [])
-        ]
-        desc_items = [
-            NotionRichText(**d) for d in data.get("description", [])
-        ]
-
-        return NotionDatabase(
-            id=data["id"],
-            object=data.get("object", "database"),
-            title=title_items,
-            description=desc_items,
-            created_time=data.get("created_time"),
-            last_edited_time=data.get("last_edited_time"),
-            archived=data.get("archived", False),
-            url=data.get("url"),
-            parent=data.get("parent", {}),
-            properties=data.get("properties", {}),
-            icon=data.get("icon"),
-            cover=data.get("cover"),
-            is_inline=data.get("is_inline", False),
-        )
+        return parse_database(data)
 
     @action("Query a database with optional filters and sorts")
     async def query_database(
@@ -315,7 +258,7 @@ class Notion(BaseConnector):
             "POST", f"/databases/{database_id}/query", json=body
         )
 
-        pages = [self._parse_page(r) for r in data.get("results", [])]
+        pages = [parse_page(r) for r in data.get("results", [])]
         has_more = data.get("has_more", False)
         next_cursor = data.get("next_cursor")
 
@@ -327,6 +270,38 @@ class Notion(BaseConnector):
             ),
             total_count=None,
         )
+
+    @action("Create a new database", dangerous=True)
+    async def create_database(
+        self,
+        parent_id: str,
+        title: str,
+        properties: dict[str, Any],
+    ) -> NotionDatabase:
+        """Create a new database as a child of an existing page.
+
+        Args:
+            parent_id: UUID of the parent page.
+            title: Title for the new database.
+            properties: Database property schema.  Each key is a property
+                name and each value is a property configuration object
+                (e.g., ``{"Name": {"title": {}}, "Tags": {"multi_select":
+                {"options": []}}}``).
+
+        Returns:
+            The newly created NotionDatabase.
+        """
+        body: dict[str, Any] = {
+            "parent": {"page_id": parent_id},
+            "title": [{"text": {"content": title}}],
+            "properties": properties,
+        }
+        data = await self._request("POST", "/databases", json=body)
+        return parse_database(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Blocks
+    # ------------------------------------------------------------------
 
     @action("Get child blocks of a page or block")
     async def get_block_children(
@@ -353,7 +328,7 @@ class Notion(BaseConnector):
             "GET", f"/blocks/{block_id}/children", params=params
         )
 
-        blocks = [self._parse_block(b) for b in data.get("results", [])]
+        blocks = [parse_block(b) for b in data.get("results", [])]
         has_more = data.get("has_more", False)
         next_cursor = data.get("next_cursor")
 
@@ -388,4 +363,149 @@ class Notion(BaseConnector):
             "PATCH", f"/blocks/{block_id}/children", json=body
         )
 
-        return [self._parse_block(b) for b in data.get("results", [])]
+        return [parse_block(b) for b in data.get("results", [])]
+
+    @action("Delete a block", dangerous=True)
+    async def delete_block(self, block_id: str) -> None:
+        """Delete a block by its ID.
+
+        This is a destructive action.  The block and all of its children
+        are moved to the trash and can be restored within 30 days via
+        the Notion UI.
+
+        Args:
+            block_id: UUID of the block to delete.
+        """
+        await self._request("DELETE", f"/blocks/{block_id}")
+
+    @action("Update a block's content")
+    async def update_block(
+        self,
+        block_id: str,
+        content: dict[str, Any],
+    ) -> NotionBlock:
+        """Update the content of an existing block.
+
+        The ``content`` dict must match the shape expected by the block's
+        type.  For example, to update a paragraph block, pass::
+
+            {"paragraph": {"rich_text": [{"text": {"content": "new text"}}]}}
+
+        Args:
+            block_id: UUID of the block to update.
+            content: Block-type-specific content payload.
+
+        Returns:
+            The updated NotionBlock.
+        """
+        data = await self._request(
+            "PATCH", f"/blocks/{block_id}", json=content
+        )
+        return parse_block(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Users
+    # ------------------------------------------------------------------
+
+    @action("List all users in the workspace")
+    async def list_users(self) -> list[NotionUser]:
+        """List all users (members and bots) in the workspace.
+
+        Returns:
+            List of NotionUser objects.
+        """
+        data = await self._request("GET", "/users")
+        return [
+            NotionUser(
+                id=u["id"],
+                name=u.get("name"),
+                avatar_url=u.get("avatar_url"),
+                type=u.get("type", "person"),
+            )
+            for u in data.get("results", [])
+        ]
+
+    @action("Get a single user by ID")
+    async def get_user(self, user_id: str) -> NotionUser:
+        """Retrieve a single workspace user by their ID.
+
+        Args:
+            user_id: UUID of the user to retrieve.
+
+        Returns:
+            The requested NotionUser.
+        """
+        data = await self._request("GET", f"/users/{user_id}")
+        return NotionUser(
+            id=data["id"],
+            name=data.get("name"),
+            avatar_url=data.get("avatar_url"),
+            type=data.get("type", "person"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Comments
+    # ------------------------------------------------------------------
+
+    @action("List comments on a block or page")
+    async def list_comments(
+        self,
+        block_id: str,
+        limit: int = 50,
+        cursor: Optional[str] = None,
+    ) -> PaginatedList[NotionComment]:
+        """Retrieve comments on a block or page.
+
+        Args:
+            block_id: UUID of the block or page to list comments for.
+            limit: Maximum results per page (max 100).
+            cursor: Pagination cursor from a previous response.
+
+        Returns:
+            Paginated list of NotionComment objects.
+        """
+        params: dict[str, Any] = {
+            "block_id": block_id,
+            "page_size": min(limit, 100),
+        }
+        if cursor:
+            params["start_cursor"] = cursor
+
+        data = await self._request("GET", "/comments", params=params)
+
+        comments = [
+            parse_comment(c) for c in data.get("results", [])
+        ]
+        has_more = data.get("has_more", False)
+        next_cursor = data.get("next_cursor")
+
+        return PaginatedList(
+            items=comments,
+            page_state=PageState(
+                cursor=next_cursor,
+                has_more=has_more,
+            ),
+            total_count=None,
+        )
+
+    @action("Add a comment to a page", dangerous=True)
+    async def add_comment(
+        self,
+        page_id: str,
+        text: str,
+    ) -> NotionComment:
+        """Add a new comment to a Notion page.
+
+        Args:
+            page_id: UUID of the page to comment on.
+            text: Plain-text content of the comment.
+
+        Returns:
+            The newly created NotionComment.
+        """
+        body: dict[str, Any] = {
+            "parent": {"page_id": page_id},
+            "rich_text": [{"text": {"content": text}}],
+        }
+        data = await self._request("POST", "/comments", json=body)
+        return parse_comment(data)

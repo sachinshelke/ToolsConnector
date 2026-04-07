@@ -60,3 +60,16 @@ class AirtableRecord(BaseModel):
     id: str = ""
     created_time: Optional[str] = None
     fields: dict[str, Any] = Field(default_factory=dict)
+
+
+class AirtableWebhook(BaseModel):
+    """An Airtable webhook subscription."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str = ""
+    type: Optional[str] = None
+    is_hook_enabled: bool = True
+    notification_url: Optional[str] = None
+    expiration_time: Optional[str] = None
+    cursor_for_next_payload: Optional[int] = None

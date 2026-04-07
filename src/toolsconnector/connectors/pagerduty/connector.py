@@ -425,3 +425,111 @@ class PagerDuty(BaseConnector):
             items=items,
             page_state=PageState(has_more=False),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Incident management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Resolve an incident")
+    async def resolve_incident(
+        self, incident_id: str,
+    ) -> PDIncident:
+        """Resolve a PagerDuty incident.
+
+        Args:
+            incident_id: The incident ID.
+
+        Returns:
+            The resolved PDIncident.
+        """
+        payload: dict[str, Any] = {
+            "incident": {
+                "type": "incident_reference",
+                "status": "resolved",
+            },
+        }
+        resp = await self._request(
+            "PUT", f"/incidents/{incident_id}", json_body=payload,
+        )
+        data = resp.json()
+        return _parse_incident(data.get("incident", {}))
+
+    @action("Add a note to an incident")
+    async def add_note(
+        self, incident_id: str, content: str,
+    ) -> dict[str, Any]:
+        """Add a note to a PagerDuty incident.
+
+        Args:
+            incident_id: The incident ID.
+            content: The note content text.
+
+        Returns:
+            Dict with the created note details.
+        """
+        payload: dict[str, Any] = {
+            "note": {"content": content},
+        }
+        resp = await self._request(
+            "POST", f"/incidents/{incident_id}/notes", json_body=payload,
+        )
+        return resp.json().get("note", {})
+
+    # ------------------------------------------------------------------
+    # Actions -- Users
+    # ------------------------------------------------------------------
+
+    @action("List PagerDuty users")
+    async def list_users(
+        self, limit: Optional[int] = None,
+    ) -> list[PDUser]:
+        """List users in the PagerDuty account.
+
+        Args:
+            limit: Maximum number of users to return.
+
+        Returns:
+            List of PDUser objects.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["limit"] = min(limit, 100)
+        resp = await self._request(
+            "GET", "/users", params=params or None,
+        )
+        body = resp.json()
+        return [_parse_user(u) for u in body.get("users", [])]
+
+    # ------------------------------------------------------------------
+    # Actions -- Services
+    # ------------------------------------------------------------------
+
+    @action("Create a new PagerDuty service", dangerous=True)
+    async def create_service(
+        self,
+        name: str,
+        escalation_policy_id: str,
+    ) -> PDService:
+        """Create a new PagerDuty service.
+
+        Args:
+            name: Service name.
+            escalation_policy_id: ID of the escalation policy.
+
+        Returns:
+            The created PDService.
+        """
+        payload: dict[str, Any] = {
+            "service": {
+                "type": "service",
+                "name": name,
+                "escalation_policy": {
+                    "id": escalation_policy_id,
+                    "type": "escalation_policy_reference",
+                },
+            },
+        }
+        resp = await self._request(
+            "POST", "/services", json_body=payload,
+        )
+        return _parse_service(resp.json().get("service", {}))

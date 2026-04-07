@@ -86,3 +86,30 @@ class DatadogDashboard(BaseModel):
     created_at: Optional[str] = None
     modified_at: Optional[str] = None
     is_read_only: bool = False
+
+
+class DatadogHost(BaseModel):
+    """A Datadog host."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: Optional[str] = None
+    id: Optional[int] = None
+    aliases: list[str] = Field(default_factory=list)
+    apps: list[str] = Field(default_factory=list)
+    is_muted: bool = False
+    last_reported_time: Optional[int] = None
+    up: Optional[bool] = None
+
+
+class DatadogDowntime(BaseModel):
+    """A Datadog scheduled downtime."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: Optional[int] = None
+    scope: Optional[list[str]] = None
+    start: Optional[int] = None
+    end: Optional[int] = None
+    message: Optional[str] = None
+    active: bool = True

@@ -1,4 +1,7 @@
-"""GitHub connector — repositories, issues, PRs, commits, and code search.
+"""GitHub connector — full GitHub REST API coverage.
+
+Covers repositories, issues, pull requests, commits, branches, releases,
+file content, labels, workflows, gists, code search, and user management.
 
 Uses the GitHub REST API v2022-11-28 with personal access token auth.
 Link-header pagination and X-RateLimit header parsing included.
@@ -20,31 +23,46 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PageState, PaginatedList
 
 from ._parsers import (
+    parse_branch,
     parse_code_search_result,
     parse_comment,
     parse_commit,
+    parse_file_content,
+    parse_gist,
     parse_issue,
     parse_link_header,
+    parse_release,
     parse_repo,
+    parse_workflow,
+    parse_workflow_run,
 )
 from .types import (
+    Branch,
     CodeSearchResult,
     Commit,
     Comment,
+    FileContent,
+    GitHubGist,
     Issue,
     PullRequest,
+    Release,
     Repository,
+    Workflow,
+    WorkflowRun,
 )
 
 logger = logging.getLogger("toolsconnector.github")
 
 
 class GitHub(BaseConnector):
-    """Connect to GitHub to manage repositories, issues, PRs, and code search.
+    """Connect to GitHub with full REST API coverage.
 
     Supports personal access token (PAT) authentication via
     ``Authorization: Bearer <token>``.  Uses the GitHub REST API
     (version ``2022-11-28``).
+
+    Covers: repositories, issues, pull requests, commits, branches,
+    releases, file content, labels, workflows, gists, and search.
     """
 
     name = "github"
@@ -52,7 +70,10 @@ class GitHub(BaseConnector):
     category = ConnectorCategory.CODE_PLATFORM
     protocol = ProtocolType.REST
     base_url = "https://api.github.com"
-    description = "Connect to GitHub to manage repositories, issues, PRs, and code."
+    description = (
+        "Connect to GitHub — manage repositories, issues, PRs, branches, "
+        "releases, workflows, files, gists, and more."
+    )
     _rate_limit_config = RateLimitSpec(rate=5000, period=3600, burst=100)
 
     # ------------------------------------------------------------------
@@ -91,40 +112,18 @@ class GitHub(BaseConnector):
         params: Optional[dict[str, Any]] = None,
         json: Optional[dict[str, Any]] = None,
     ) -> httpx.Response:
-        """Send an authenticated request and handle errors.
-
-        Args:
-            method: HTTP method (GET, POST, etc.).
-            path: API path relative to base_url.
-            params: Query parameters.
-            json: JSON body for POST/PATCH/PUT.
-
-        Returns:
-            httpx.Response object.
-
-        Raises:
-            httpx.HTTPStatusError: On 4xx/5xx responses.
-        """
+        """Send an authenticated request and handle errors."""
         resp = await self._client.request(
             method, path, params=params, json=json,
         )
-
         remaining = resp.headers.get("X-RateLimit-Remaining")
         if remaining is not None:
             logger.debug("GitHub rate-limit remaining: %s", remaining)
-
         resp.raise_for_status()
         return resp
 
     def _build_page_state(self, resp: httpx.Response) -> PageState:
-        """Build a PageState from GitHub Link header pagination.
-
-        Args:
-            resp: The HTTP response to extract pagination from.
-
-        Returns:
-            PageState with cursor set to the next page URL if present.
-        """
+        """Build a PageState from GitHub Link header pagination."""
         links = parse_link_header(resp.headers.get("Link"))
         next_url = links.get("next")
         return PageState(has_more=next_url is not None, cursor=next_url)
@@ -135,25 +134,16 @@ class GitHub(BaseConnector):
         params: Optional[dict[str, Any]] = None,
         cursor: Optional[str] = None,
     ) -> httpx.Response:
-        """Fetch a page, using a cursor URL when available.
-
-        Args:
-            path: API path for the first page.
-            params: Query parameters for the first page.
-            cursor: Full URL from a previous Link header's ``next`` rel.
-
-        Returns:
-            httpx.Response for the requested page.
-        """
+        """Fetch a page, using a cursor URL when available."""
         if cursor:
             resp = await self._client.get(cursor)
             resp.raise_for_status()
             return resp
         return await self._request("GET", path, params=params)
 
-    # ------------------------------------------------------------------
-    # Actions -- Repositories
-    # ------------------------------------------------------------------
+    # ======================================================================
+    # REPOSITORIES
+    # ======================================================================
 
     @action("List repositories for a user or organisation")
     async def list_repos(
@@ -207,9 +197,68 @@ class GitHub(BaseConnector):
         resp = await self._request("GET", f"/repos/{owner}/{repo}")
         return parse_repo(resp.json())
 
-    # ------------------------------------------------------------------
-    # Actions -- Issues
-    # ------------------------------------------------------------------
+    @action("Create a new repository", dangerous=True)
+    async def create_repo(
+        self,
+        name: str,
+        description: Optional[str] = None,
+        private: bool = False,
+        auto_init: bool = False,
+        org: Optional[str] = None,
+    ) -> Repository:
+        """Create a new repository for the authenticated user or an org.
+
+        Args:
+            name: Repository name.
+            description: Short description.
+            private: If ``True``, create a private repository.
+            auto_init: If ``True``, initialize with a README.
+            org: Create under this organisation instead of the user.
+
+        Returns:
+            The created Repository object.
+        """
+        payload: dict[str, Any] = {
+            "name": name,
+            "private": private,
+            "auto_init": auto_init,
+        }
+        if description:
+            payload["description"] = description
+
+        path = f"/orgs/{org}/repos" if org else "/user/repos"
+        resp = await self._request("POST", path, json=payload)
+        return parse_repo(resp.json())
+
+    @action("Fork a repository", dangerous=True)
+    async def fork_repo(
+        self,
+        owner: str,
+        repo: str,
+        organization: Optional[str] = None,
+    ) -> Repository:
+        """Fork a repository to your account or an organisation.
+
+        Args:
+            owner: Source repository owner.
+            repo: Source repository name.
+            organization: Optional org to fork into.
+
+        Returns:
+            The forked Repository object.
+        """
+        payload: dict[str, Any] = {}
+        if organization:
+            payload["organization"] = organization
+
+        resp = await self._request(
+            "POST", f"/repos/{owner}/{repo}/forks", json=payload,
+        )
+        return parse_repo(resp.json())
+
+    # ======================================================================
+    # ISSUES
+    # ======================================================================
 
     @action("List issues for a repository")
     async def list_issues(
@@ -218,6 +267,7 @@ class GitHub(BaseConnector):
         repo: str,
         state: Optional[str] = None,
         labels: Optional[str] = None,
+        assignee: Optional[str] = None,
         limit: int = 30,
         page: Optional[str] = None,
     ) -> PaginatedList[Issue]:
@@ -228,6 +278,7 @@ class GitHub(BaseConnector):
             repo: Repository name.
             state: Filter by state: ``open``, ``closed``, or ``all``.
             labels: Comma-separated list of label names to filter by.
+            assignee: Filter by assignee username, or ``none`` / ``*``.
             limit: Maximum issues per page (max 100).
             page: Cursor URL for the next page.
 
@@ -240,6 +291,8 @@ class GitHub(BaseConnector):
             params["state"] = state
         if labels:
             params["labels"] = labels
+        if assignee:
+            params["assignee"] = assignee
 
         resp = await self._get_page(path, params=params, cursor=page)
         items = [parse_issue(i) for i in resp.json()]
@@ -307,11 +360,106 @@ class GitHub(BaseConnector):
         )
         return parse_issue(resp.json())
 
+    @action("Update an existing issue")
+    async def update_issue(
+        self,
+        owner: str,
+        repo: str,
+        issue_number: int,
+        title: Optional[str] = None,
+        body: Optional[str] = None,
+        state: Optional[str] = None,
+        labels: Optional[list[str]] = None,
+        assignees: Optional[list[str]] = None,
+    ) -> Issue:
+        """Update an existing issue's title, body, state, labels, or assignees.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            issue_number: The issue number.
+            title: New title.
+            body: New body in Markdown.
+            state: New state: ``open`` or ``closed``.
+            labels: Replace all labels with this list.
+            assignees: Replace all assignees with this list.
+
+        Returns:
+            The updated Issue object.
+        """
+        payload: dict[str, Any] = {}
+        if title is not None:
+            payload["title"] = title
+        if body is not None:
+            payload["body"] = body
+        if state is not None:
+            payload["state"] = state
+        if labels is not None:
+            payload["labels"] = labels
+        if assignees is not None:
+            payload["assignees"] = assignees
+
+        resp = await self._request(
+            "PATCH", f"/repos/{owner}/{repo}/issues/{issue_number}", json=payload,
+        )
+        return parse_issue(resp.json())
+
+    @action("Add labels to an issue")
+    async def add_labels(
+        self,
+        owner: str,
+        repo: str,
+        issue_number: int,
+        labels: list[str],
+    ) -> list[dict[str, Any]]:
+        """Add labels to an issue (without removing existing ones).
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            issue_number: The issue number.
+            labels: List of label names to add.
+
+        Returns:
+            List of all labels now on the issue.
+        """
+        resp = await self._request(
+            "POST",
+            f"/repos/{owner}/{repo}/issues/{issue_number}/labels",
+            json={"labels": labels},
+        )
+        return resp.json()
+
+    @action("Remove a label from an issue", dangerous=True)
+    async def remove_label(
+        self,
+        owner: str,
+        repo: str,
+        issue_number: int,
+        label_name: str,
+    ) -> None:
+        """Remove a single label from an issue.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            issue_number: The issue number.
+            label_name: Name of the label to remove.
+        """
+        await self._request(
+            "DELETE",
+            f"/repos/{owner}/{repo}/issues/{issue_number}/labels/{label_name}",
+        )
+
+    # ======================================================================
+    # COMMENTS
+    # ======================================================================
+
     @action("Create a comment on an issue or pull request", dangerous=True)
     async def create_comment(
         self, owner: str, repo: str, issue_number: int, body: str,
     ) -> Comment:
-        """Create a comment on an issue.
+        """Create a comment on an issue or PR.
 
         Args:
             owner: Repository owner.
@@ -329,9 +477,43 @@ class GitHub(BaseConnector):
         )
         return parse_comment(resp.json())
 
-    # ------------------------------------------------------------------
-    # Actions -- Pull Requests
-    # ------------------------------------------------------------------
+    @action("List comments on an issue")
+    async def list_comments(
+        self,
+        owner: str,
+        repo: str,
+        issue_number: int,
+        limit: int = 30,
+        page: Optional[str] = None,
+    ) -> PaginatedList[Comment]:
+        """List comments on an issue or pull request.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            issue_number: The issue (or PR) number.
+            limit: Maximum comments per page (max 100).
+            page: Cursor URL for the next page.
+
+        Returns:
+            Paginated list of Comment objects.
+        """
+        path = f"/repos/{owner}/{repo}/issues/{issue_number}/comments"
+        resp = await self._get_page(
+            path, params={"per_page": min(limit, 100)}, cursor=page,
+        )
+        items = [parse_comment(c) for c in resp.json()]
+        ps = self._build_page_state(resp)
+        result = PaginatedList(items=items, page_state=ps)
+        if ps.has_more:
+            result._fetch_next = lambda c=ps.cursor: self.alist_comments(
+                owner=owner, repo=repo, issue_number=issue_number, page=c,
+            )
+        return result
+
+    # ======================================================================
+    # PULL REQUESTS
+    # ======================================================================
 
     @action("List pull requests for a repository")
     async def list_pull_requests(
@@ -389,9 +571,83 @@ class GitHub(BaseConnector):
         )
         return PullRequest.from_api(resp.json())
 
-    # ------------------------------------------------------------------
-    # Actions -- Commits
-    # ------------------------------------------------------------------
+    @action("Create a pull request", dangerous=True)
+    async def create_pull_request(
+        self,
+        owner: str,
+        repo: str,
+        title: str,
+        head: str,
+        base: str,
+        body: Optional[str] = None,
+        draft: bool = False,
+    ) -> PullRequest:
+        """Create a new pull request.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            title: PR title.
+            head: Branch (or ``user:branch``) containing your changes.
+            base: Branch you want to merge into (e.g. ``main``).
+            body: PR description in Markdown.
+            draft: If ``True``, create as a draft PR.
+
+        Returns:
+            The created PullRequest object.
+        """
+        payload: dict[str, Any] = {
+            "title": title,
+            "head": head,
+            "base": base,
+            "draft": draft,
+        }
+        if body is not None:
+            payload["body"] = body
+
+        resp = await self._request(
+            "POST", f"/repos/{owner}/{repo}/pulls", json=payload,
+        )
+        return PullRequest.from_api(resp.json())
+
+    @action("Merge a pull request", dangerous=True)
+    async def merge_pull_request(
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int,
+        merge_method: str = "merge",
+        commit_title: Optional[str] = None,
+        commit_message: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Merge a pull request.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            pr_number: The pull request number.
+            merge_method: ``merge``, ``squash``, or ``rebase``.
+            commit_title: Custom merge commit title.
+            commit_message: Custom merge commit message.
+
+        Returns:
+            Dict with ``sha``, ``merged``, and ``message`` keys.
+        """
+        payload: dict[str, Any] = {"merge_method": merge_method}
+        if commit_title:
+            payload["commit_title"] = commit_title
+        if commit_message:
+            payload["commit_message"] = commit_message
+
+        resp = await self._request(
+            "PUT", f"/repos/{owner}/{repo}/pulls/{pr_number}/merge",
+            json=payload,
+        )
+        return resp.json()
+
+    # ======================================================================
+    # COMMITS
+    # ======================================================================
 
     @action("List commits for a repository")
     async def list_commits(
@@ -399,6 +655,8 @@ class GitHub(BaseConnector):
         owner: str,
         repo: str,
         sha: Optional[str] = None,
+        path: Optional[str] = None,
+        author: Optional[str] = None,
         limit: int = 30,
         page: Optional[str] = None,
     ) -> PaginatedList[Commit]:
@@ -408,18 +666,24 @@ class GitHub(BaseConnector):
             owner: Repository owner.
             repo: Repository name.
             sha: Branch name or commit SHA to start listing from.
+            path: Only commits containing this file path.
+            author: GitHub login or email to filter by.
             limit: Maximum commits per page (max 100).
             page: Cursor URL for the next page.
 
         Returns:
             Paginated list of Commit objects.
         """
-        path = f"/repos/{owner}/{repo}/commits"
+        api_path = f"/repos/{owner}/{repo}/commits"
         params: dict[str, Any] = {"per_page": min(limit, 100)}
         if sha:
             params["sha"] = sha
+        if path:
+            params["path"] = path
+        if author:
+            params["author"] = author
 
-        resp = await self._get_page(path, params=params, cursor=page)
+        resp = await self._get_page(api_path, params=params, cursor=page)
         items = [parse_commit(c) for c in resp.json()]
         ps = self._build_page_state(resp)
 
@@ -430,9 +694,455 @@ class GitHub(BaseConnector):
             )
         return result
 
-    # ------------------------------------------------------------------
-    # Actions -- Code Search
-    # ------------------------------------------------------------------
+    # ======================================================================
+    # BRANCHES
+    # ======================================================================
+
+    @action("List branches in a repository")
+    async def list_branches(
+        self,
+        owner: str,
+        repo: str,
+        limit: int = 30,
+        page: Optional[str] = None,
+    ) -> PaginatedList[Branch]:
+        """List branches in a repository.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            limit: Maximum branches per page (max 100).
+            page: Cursor URL for the next page.
+
+        Returns:
+            Paginated list of Branch objects.
+        """
+        resp = await self._get_page(
+            f"/repos/{owner}/{repo}/branches",
+            params={"per_page": min(limit, 100)},
+            cursor=page,
+        )
+        items = [parse_branch(b) for b in resp.json()]
+        ps = self._build_page_state(resp)
+        result = PaginatedList(items=items, page_state=ps)
+        if ps.has_more:
+            result._fetch_next = lambda c=ps.cursor: self.alist_branches(
+                owner=owner, repo=repo, page=c,
+            )
+        return result
+
+    @action("Get a single branch")
+    async def get_branch(
+        self, owner: str, repo: str, branch: str,
+    ) -> Branch:
+        """Get details for a single branch including protection status.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            branch: Branch name.
+
+        Returns:
+            Branch object.
+        """
+        resp = await self._request(
+            "GET", f"/repos/{owner}/{repo}/branches/{branch}",
+        )
+        return parse_branch(resp.json())
+
+    # ======================================================================
+    # RELEASES
+    # ======================================================================
+
+    @action("List releases for a repository")
+    async def list_releases(
+        self,
+        owner: str,
+        repo: str,
+        limit: int = 30,
+        page: Optional[str] = None,
+    ) -> PaginatedList[Release]:
+        """List releases for a repository (newest first).
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            limit: Maximum releases per page (max 100).
+            page: Cursor URL for the next page.
+
+        Returns:
+            Paginated list of Release objects.
+        """
+        resp = await self._get_page(
+            f"/repos/{owner}/{repo}/releases",
+            params={"per_page": min(limit, 100)},
+            cursor=page,
+        )
+        items = [parse_release(r) for r in resp.json()]
+        ps = self._build_page_state(resp)
+        result = PaginatedList(items=items, page_state=ps)
+        if ps.has_more:
+            result._fetch_next = lambda c=ps.cursor: self.alist_releases(
+                owner=owner, repo=repo, page=c,
+            )
+        return result
+
+    @action("Get the latest release")
+    async def get_latest_release(
+        self, owner: str, repo: str,
+    ) -> Release:
+        """Get the latest published release (excludes drafts and prereleases).
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+
+        Returns:
+            The latest Release object.
+        """
+        resp = await self._request(
+            "GET", f"/repos/{owner}/{repo}/releases/latest",
+        )
+        return parse_release(resp.json())
+
+    @action("Create a release", dangerous=True)
+    async def create_release(
+        self,
+        owner: str,
+        repo: str,
+        tag_name: str,
+        name: Optional[str] = None,
+        body: Optional[str] = None,
+        draft: bool = False,
+        prerelease: bool = False,
+        target_commitish: Optional[str] = None,
+    ) -> Release:
+        """Create a new release on a repository.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            tag_name: Git tag for the release.
+            name: Release title.
+            body: Release notes in Markdown.
+            draft: If ``True``, create as a draft.
+            prerelease: If ``True``, mark as pre-release.
+            target_commitish: Branch or commit SHA to tag (defaults
+                to default branch).
+
+        Returns:
+            The created Release object.
+        """
+        payload: dict[str, Any] = {
+            "tag_name": tag_name,
+            "draft": draft,
+            "prerelease": prerelease,
+        }
+        if name:
+            payload["name"] = name
+        if body:
+            payload["body"] = body
+        if target_commitish:
+            payload["target_commitish"] = target_commitish
+
+        resp = await self._request(
+            "POST", f"/repos/{owner}/{repo}/releases", json=payload,
+        )
+        return parse_release(resp.json())
+
+    # ======================================================================
+    # FILE CONTENT
+    # ======================================================================
+
+    @action("Get file or directory contents from a repository")
+    async def get_content(
+        self,
+        owner: str,
+        repo: str,
+        path: str,
+        ref: Optional[str] = None,
+    ) -> FileContent:
+        """Get the contents of a file or directory in a repository.
+
+        For files, returns base64-encoded ``content``. For directories,
+        returns a listing (use ``type`` field to distinguish).
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            path: Path to file or directory (e.g. ``src/main.py``).
+            ref: Branch, tag, or commit SHA (defaults to default branch).
+
+        Returns:
+            FileContent object.
+        """
+        params: dict[str, Any] = {}
+        if ref:
+            params["ref"] = ref
+
+        resp = await self._request(
+            "GET", f"/repos/{owner}/{repo}/contents/{path}", params=params,
+        )
+        return parse_file_content(resp.json())
+
+    @action("Create or update a file in a repository", dangerous=True)
+    async def create_or_update_file(
+        self,
+        owner: str,
+        repo: str,
+        path: str,
+        content: str,
+        message: str,
+        sha: Optional[str] = None,
+        branch: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Create or update a file in a repository.
+
+        To update an existing file, you must provide its current ``sha``.
+        To create a new file, omit ``sha``.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            path: Path for the file (e.g. ``docs/README.md``).
+            content: File content, **base64-encoded**.
+            message: Commit message.
+            sha: Current blob SHA of the file (required for updates).
+            branch: Branch to commit to (defaults to default branch).
+
+        Returns:
+            Dict with ``content`` and ``commit`` keys from the API.
+        """
+        payload: dict[str, Any] = {
+            "message": message,
+            "content": content,
+        }
+        if sha:
+            payload["sha"] = sha
+        if branch:
+            payload["branch"] = branch
+
+        resp = await self._request(
+            "PUT", f"/repos/{owner}/{repo}/contents/{path}", json=payload,
+        )
+        return resp.json()
+
+    @action("Delete a file from a repository", dangerous=True)
+    async def delete_file(
+        self,
+        owner: str,
+        repo: str,
+        path: str,
+        sha: str,
+        message: str,
+        branch: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Delete a file from a repository.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            path: Path to the file to delete.
+            sha: Current blob SHA of the file (required).
+            message: Commit message.
+            branch: Branch to commit to.
+
+        Returns:
+            Dict with ``commit`` key from the API.
+        """
+        payload: dict[str, Any] = {
+            "message": message,
+            "sha": sha,
+        }
+        if branch:
+            payload["branch"] = branch
+
+        resp = await self._request(
+            "DELETE", f"/repos/{owner}/{repo}/contents/{path}", json=payload,
+        )
+        return resp.json()
+
+    # ======================================================================
+    # WORKFLOWS (GitHub Actions)
+    # ======================================================================
+
+    @action("List workflows in a repository")
+    async def list_workflows(
+        self,
+        owner: str,
+        repo: str,
+        limit: int = 30,
+        page: Optional[str] = None,
+    ) -> PaginatedList[Workflow]:
+        """List GitHub Actions workflows defined in a repository.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            limit: Maximum workflows per page (max 100).
+            page: Cursor URL for the next page.
+
+        Returns:
+            Paginated list of Workflow objects.
+        """
+        resp = await self._get_page(
+            f"/repos/{owner}/{repo}/actions/workflows",
+            params={"per_page": min(limit, 100)},
+            cursor=page,
+        )
+        data = resp.json()
+        items = [parse_workflow(w) for w in data.get("workflows", [])]
+        ps = self._build_page_state(resp)
+        result = PaginatedList(
+            items=items, page_state=ps,
+            total_count=data.get("total_count", 0),
+        )
+        if ps.has_more:
+            result._fetch_next = lambda c=ps.cursor: self.alist_workflows(
+                owner=owner, repo=repo, page=c,
+            )
+        return result
+
+    @action("List workflow runs for a repository")
+    async def list_workflow_runs(
+        self,
+        owner: str,
+        repo: str,
+        workflow_id: Optional[int] = None,
+        branch: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 30,
+        page: Optional[str] = None,
+    ) -> PaginatedList[WorkflowRun]:
+        """List GitHub Actions workflow runs.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            workflow_id: Filter to a specific workflow. If omitted,
+                returns runs for all workflows.
+            branch: Filter by branch name.
+            status: Filter by status: ``queued``, ``in_progress``,
+                ``completed``, ``success``, ``failure``, etc.
+            limit: Maximum runs per page (max 100).
+            page: Cursor URL for the next page.
+
+        Returns:
+            Paginated list of WorkflowRun objects.
+        """
+        if workflow_id:
+            path = f"/repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs"
+        else:
+            path = f"/repos/{owner}/{repo}/actions/runs"
+
+        params: dict[str, Any] = {"per_page": min(limit, 100)}
+        if branch:
+            params["branch"] = branch
+        if status:
+            params["status"] = status
+
+        resp = await self._get_page(path, params=params, cursor=page)
+        data = resp.json()
+        items = [parse_workflow_run(r) for r in data.get("workflow_runs", [])]
+        ps = self._build_page_state(resp)
+        result = PaginatedList(
+            items=items, page_state=ps,
+            total_count=data.get("total_count", 0),
+        )
+        if ps.has_more:
+            result._fetch_next = lambda c=ps.cursor: self.alist_workflow_runs(
+                owner=owner, repo=repo, page=c,
+            )
+        return result
+
+    @action("Trigger a workflow dispatch", dangerous=True)
+    async def trigger_workflow(
+        self,
+        owner: str,
+        repo: str,
+        workflow_id: int,
+        ref: str = "main",
+        inputs: Optional[dict[str, str]] = None,
+    ) -> None:
+        """Trigger a GitHub Actions workflow via the workflow_dispatch event.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            workflow_id: Workflow ID or filename (e.g. ``ci.yml``).
+            ref: Git ref (branch or tag) to run the workflow on.
+            inputs: Optional workflow input parameters.
+        """
+        payload: dict[str, Any] = {"ref": ref}
+        if inputs:
+            payload["inputs"] = inputs
+
+        await self._request(
+            "POST",
+            f"/repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches",
+            json=payload,
+        )
+
+    # ======================================================================
+    # GISTS
+    # ======================================================================
+
+    @action("List gists for the authenticated user")
+    async def list_gists(
+        self,
+        limit: int = 30,
+        page: Optional[str] = None,
+    ) -> PaginatedList[GitHubGist]:
+        """List gists for the authenticated user.
+
+        Args:
+            limit: Maximum gists per page (max 100).
+            page: Cursor URL for the next page.
+
+        Returns:
+            Paginated list of GitHubGist objects.
+        """
+        resp = await self._get_page(
+            "/gists", params={"per_page": min(limit, 100)}, cursor=page,
+        )
+        items = [parse_gist(g) for g in resp.json()]
+        ps = self._build_page_state(resp)
+        result = PaginatedList(items=items, page_state=ps)
+        if ps.has_more:
+            result._fetch_next = lambda c=ps.cursor: self.alist_gists(page=c)
+        return result
+
+    @action("Create a gist", dangerous=True)
+    async def create_gist(
+        self,
+        files: dict[str, str],
+        description: Optional[str] = None,
+        public: bool = True,
+    ) -> GitHubGist:
+        """Create a new gist with one or more files.
+
+        Args:
+            files: Mapping of filename to file content.
+                E.g. ``{"hello.py": "print('hello')"}``.
+            description: Gist description.
+            public: If ``True``, create a public gist.
+
+        Returns:
+            The created GitHubGist object.
+        """
+        payload: dict[str, Any] = {
+            "files": {name: {"content": content} for name, content in files.items()},
+            "public": public,
+        }
+        if description:
+            payload["description"] = description
+
+        resp = await self._request("POST", "/gists", json=payload)
+        return parse_gist(resp.json())
+
+    # ======================================================================
+    # SEARCH
+    # ======================================================================
 
     @action("Search code across GitHub repositories")
     async def search_code(
@@ -470,3 +1180,139 @@ class GitHub(BaseConnector):
                 query=query, page=c,
             )
         return result
+
+    @action("Search repositories on GitHub")
+    async def search_repos(
+        self,
+        query: str,
+        sort: Optional[str] = None,
+        order: str = "desc",
+        limit: int = 30,
+        page: Optional[str] = None,
+    ) -> PaginatedList[Repository]:
+        """Search for repositories on GitHub.
+
+        Args:
+            query: Search query (e.g. ``"language:python stars:>1000"``).
+            sort: Sort field: ``stars``, ``forks``, ``help-wanted-issues``,
+                or ``updated``. Defaults to best match.
+            order: Sort order: ``asc`` or ``desc``.
+            limit: Maximum results per page (max 100).
+            page: Cursor URL for the next page.
+
+        Returns:
+            Paginated list of Repository objects.
+        """
+        params: dict[str, Any] = {
+            "q": query,
+            "order": order,
+            "per_page": min(limit, 100),
+        }
+        if sort:
+            params["sort"] = sort
+
+        resp = await self._get_page("/search/repositories", params=params, cursor=page)
+        data = resp.json()
+        items = [parse_repo(r) for r in data.get("items", [])]
+        ps = self._build_page_state(resp)
+        result = PaginatedList(
+            items=items, page_state=ps,
+            total_count=data.get("total_count", 0),
+        )
+        if ps.has_more:
+            result._fetch_next = lambda c=ps.cursor: self.asearch_repos(
+                query=query, page=c,
+            )
+        return result
+
+    @action("Search issues and pull requests on GitHub")
+    async def search_issues(
+        self,
+        query: str,
+        sort: Optional[str] = None,
+        order: str = "desc",
+        limit: int = 30,
+        page: Optional[str] = None,
+    ) -> PaginatedList[Issue]:
+        """Search for issues and pull requests across GitHub.
+
+        Args:
+            query: Search query (e.g. ``"is:issue is:open label:bug"``).
+            sort: Sort field: ``comments``, ``reactions``, ``created``,
+                or ``updated``. Defaults to best match.
+            order: Sort order: ``asc`` or ``desc``.
+            limit: Maximum results per page (max 100).
+            page: Cursor URL for the next page.
+
+        Returns:
+            Paginated list of Issue objects.
+        """
+        params: dict[str, Any] = {
+            "q": query,
+            "order": order,
+            "per_page": min(limit, 100),
+        }
+        if sort:
+            params["sort"] = sort
+
+        resp = await self._get_page(
+            "/search/issues", params=params, cursor=page,
+        )
+        data = resp.json()
+        items = [parse_issue(i) for i in data.get("items", [])]
+        ps = self._build_page_state(resp)
+        result = PaginatedList(
+            items=items, page_state=ps,
+            total_count=data.get("total_count", 0),
+        )
+        if ps.has_more:
+            result._fetch_next = lambda c=ps.cursor: self.asearch_issues(
+                query=query, page=c,
+            )
+        return result
+
+    # ======================================================================
+    # USER / RATE LIMIT
+    # ======================================================================
+
+    @action("Get the authenticated user's profile")
+    async def get_authenticated_user(self) -> dict[str, Any]:
+        """Get profile information for the authenticated user.
+
+        Returns:
+            Dict with user profile fields (login, name, email, bio,
+            public_repos, followers, etc.).
+        """
+        resp = await self._request("GET", "/user")
+        return resp.json()
+
+    @action("Get the current rate limit status")
+    async def get_rate_limit(self) -> dict[str, Any]:
+        """Check the current API rate limit status.
+
+        Returns:
+            Dict with ``resources`` (core, search, graphql limits)
+            and ``rate`` (overall) sections.
+        """
+        resp = await self._request("GET", "/rate_limit")
+        return resp.json()
+
+    @action("Star a repository", dangerous=True)
+    async def star_repo(self, owner: str, repo: str) -> None:
+        """Star a repository for the authenticated user.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+        """
+        await self._request("PUT", f"/user/starred/{owner}/{repo}")
+
+    @action("Unstar a repository", dangerous=True)
+    async def unstar_repo(self, owner: str, repo: str) -> None:
+        """Remove a star from a repository.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+        """
+        await self._request("DELETE", f"/user/starred/{owner}/{repo}")

@@ -90,3 +90,40 @@ class TwilioAccount(BaseModel):
     date_created: Optional[str] = None
     date_updated: Optional[str] = None
     uri: Optional[str] = None
+
+
+class TwilioRecording(BaseModel):
+    """A Twilio call recording."""
+
+    model_config = ConfigDict(frozen=True)
+
+    sid: str
+    account_sid: Optional[str] = None
+    call_sid: Optional[str] = None
+    duration: Optional[str] = None
+    channels: Optional[int] = None
+    status: Optional[str] = None
+    price: Optional[str] = None
+    price_unit: Optional[str] = None
+    source: Optional[str] = None
+    uri: Optional[str] = None
+    date_created: Optional[str] = None
+    date_updated: Optional[str] = None
+
+
+class TwilioUsageRecord(BaseModel):
+    """A Twilio usage record."""
+
+    model_config = ConfigDict(frozen=True)
+
+    category: str
+    description: Optional[str] = None
+    count: Optional[str] = None
+    count_unit: Optional[str] = None
+    usage: Optional[str] = None
+    usage_unit: Optional[str] = None
+    price: Optional[str] = None
+    price_unit: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    uri: Optional[str] = None

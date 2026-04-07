@@ -97,7 +97,7 @@ class DraftId(BaseModel):
 
 
 class Attachment(BaseModel):
-    """Email attachment metadata."""
+    """Email attachment metadata and optional data."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -105,3 +105,24 @@ class Attachment(BaseModel):
     filename: str
     mime_type: str
     size: int = 0
+    data: Optional[str] = None  # base64-encoded attachment data
+
+
+class Thread(BaseModel):
+    """Gmail conversation thread."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    snippet: str = ""
+    history_id: Optional[str] = None
+    messages_count: int = 0
+
+
+class LabelColor(BaseModel):
+    """Gmail label color specification."""
+
+    model_config = ConfigDict(frozen=True)
+
+    text_color: Optional[str] = None
+    background_color: Optional[str] = None

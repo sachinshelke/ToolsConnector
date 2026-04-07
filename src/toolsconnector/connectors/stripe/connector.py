@@ -24,9 +24,15 @@ from toolsconnector.types import PageState, PaginatedList
 from ._parsers import (
     flatten_metadata,
     parse_charge,
+    parse_checkout_session,
     parse_customer,
     parse_invoice,
     parse_payment_intent,
+    parse_payment_method,
+    parse_price,
+    parse_product,
+    parse_refund,
+    parse_subscription,
 )
 from .types import (
     PaymentIntent,
@@ -34,8 +40,14 @@ from .types import (
     StripeBalanceAvailable,
     StripeBalancePending,
     StripeCharge,
+    StripeCheckoutSession,
     StripeCustomer,
     StripeInvoice,
+    StripePaymentMethod,
+    StripePrice,
+    StripeProduct,
+    StripeRefund,
+    StripeSubscription,
 )
 
 logger = logging.getLogger("toolsconnector.stripe")
@@ -398,3 +410,555 @@ class Stripe(BaseConnector):
             ],
             livemode=body.get("livemode", False),
         )
+
+    # ------------------------------------------------------------------
+    # Actions — Customers (continued)
+    # ------------------------------------------------------------------
+
+    @action("Update a Stripe customer", dangerous=True)
+    async def update_customer(
+        self,
+        customer_id: str,
+        email: Optional[str] = None,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        metadata: Optional[dict[str, str]] = None,
+    ) -> StripeCustomer:
+        """Update an existing Stripe customer.
+
+        Args:
+            customer_id: The Stripe customer ID (e.g. ``cus_...``).
+            email: New email address for the customer.
+            name: New name for the customer.
+            description: New description for the customer.
+            metadata: Key-value metadata to set on the customer.
+
+        Returns:
+            The updated StripeCustomer object.
+        """
+        form_data: dict[str, Any] = {}
+        if email is not None:
+            form_data["email"] = email
+        if name is not None:
+            form_data["name"] = name
+        if description is not None:
+            form_data["description"] = description
+        if metadata:
+            form_data.update(flatten_metadata(metadata))
+
+        resp = await self._request("POST", f"/customers/{customer_id}", data=form_data)
+        return parse_customer(resp.json())
+
+    @action("Delete a Stripe customer", dangerous=True)
+    async def delete_customer(self, customer_id: str) -> None:
+        """Permanently delete a customer from Stripe.
+
+        Args:
+            customer_id: The Stripe customer ID (e.g. ``cus_...``).
+
+        Warning:
+            This permanently deletes the customer and cannot be undone.
+            Active subscriptions will be cancelled.
+        """
+        await self._request("DELETE", f"/customers/{customer_id}")
+
+    # ------------------------------------------------------------------
+    # Actions — Charges (create)
+    # ------------------------------------------------------------------
+
+    @action("Create a charge", dangerous=True)
+    async def create_charge(
+        self,
+        amount: int,
+        currency: str,
+        customer: Optional[str] = None,
+        source: Optional[str] = None,
+        description: Optional[str] = None,
+        metadata: Optional[dict[str, str]] = None,
+    ) -> StripeCharge:
+        """Create a new charge.
+
+        Args:
+            amount: Amount in the smallest currency unit (e.g. cents).
+            currency: Three-letter ISO currency code (e.g. ``usd``).
+            customer: Customer ID to charge.
+            source: Payment source token or ID.
+            description: Arbitrary description for the charge.
+            metadata: Key-value metadata to attach.
+
+        Returns:
+            The created StripeCharge object.
+        """
+        form_data: dict[str, Any] = {
+            "amount": str(amount),
+            "currency": currency,
+        }
+        if customer is not None:
+            form_data["customer"] = customer
+        if source is not None:
+            form_data["source"] = source
+        if description is not None:
+            form_data["description"] = description
+        if metadata:
+            form_data.update(flatten_metadata(metadata))
+
+        resp = await self._request("POST", "/charges", data=form_data)
+        return parse_charge(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions — Refunds
+    # ------------------------------------------------------------------
+
+    @action("Refund a charge", dangerous=True)
+    async def refund_charge(
+        self,
+        charge_id: str,
+        amount: Optional[int] = None,
+        reason: Optional[str] = None,
+    ) -> StripeRefund:
+        """Create a refund for a charge.
+
+        Args:
+            charge_id: The ID of the charge to refund.
+            amount: Amount to refund in cents. Omit for full refund.
+            reason: Reason for the refund: ``duplicate``,
+                ``fraudulent``, or ``requested_by_customer``.
+
+        Returns:
+            The created StripeRefund object.
+        """
+        form_data: dict[str, Any] = {"charge": charge_id}
+        if amount is not None:
+            form_data["amount"] = str(amount)
+        if reason is not None:
+            form_data["reason"] = reason
+
+        resp = await self._request("POST", "/refunds", data=form_data)
+        return parse_refund(resp.json())
+
+    @action("List refunds from your Stripe account")
+    async def list_refunds(
+        self,
+        charge: Optional[str] = None,
+        limit: int = 10,
+        starting_after: Optional[str] = None,
+    ) -> PaginatedList[StripeRefund]:
+        """List refunds with optional charge filter and cursor pagination.
+
+        Args:
+            charge: Filter refunds by charge ID.
+            limit: Maximum number of refunds to return (1-100).
+            starting_after: Refund ID to paginate after (cursor).
+
+        Returns:
+            Paginated list of StripeRefund objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        if charge:
+            params["charge"] = charge
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        resp = await self._request("GET", "/refunds", params=params)
+        body = resp.json()
+
+        items = [parse_refund(r) for r in body.get("data", [])]
+        page_state = self._build_page_state(body)
+
+        result = PaginatedList(
+            items=items, page_state=page_state,
+            total_count=body.get("total_count"),
+        )
+        result._fetch_next = (
+            (lambda cursor=page_state.cursor: self.alist_refunds(
+                charge=charge, limit=limit, starting_after=cursor,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    # ------------------------------------------------------------------
+    # Actions — Subscriptions
+    # ------------------------------------------------------------------
+
+    @action("Create a subscription", dangerous=True)
+    async def create_subscription(
+        self,
+        customer: str,
+        price: str,
+        trial_days: Optional[int] = None,
+    ) -> StripeSubscription:
+        """Create a new subscription for a customer.
+
+        Args:
+            customer: The customer ID to subscribe.
+            price: The price ID for the subscription.
+            trial_days: Number of days for a free trial period.
+
+        Returns:
+            The created StripeSubscription object.
+        """
+        form_data: dict[str, Any] = {
+            "customer": customer,
+            "items[0][price]": price,
+        }
+        if trial_days is not None:
+            form_data["trial_period_days"] = str(trial_days)
+
+        resp = await self._request("POST", "/subscriptions", data=form_data)
+        return parse_subscription(resp.json())
+
+    @action("Cancel a subscription", dangerous=True)
+    async def cancel_subscription(
+        self,
+        subscription_id: str,
+        at_period_end: bool = True,
+    ) -> StripeSubscription:
+        """Cancel an active subscription.
+
+        Args:
+            subscription_id: The subscription ID to cancel.
+            at_period_end: If True, cancel at end of current billing
+                period. If False, cancel immediately.
+
+        Returns:
+            The updated StripeSubscription object.
+
+        Warning:
+            Immediate cancellation stops billing and access right away.
+        """
+        if at_period_end:
+            form_data: dict[str, Any] = {"cancel_at_period_end": "true"}
+            resp = await self._request(
+                "POST", f"/subscriptions/{subscription_id}", data=form_data,
+            )
+        else:
+            resp = await self._request(
+                "DELETE", f"/subscriptions/{subscription_id}",
+            )
+        return parse_subscription(resp.json())
+
+    @action("List subscriptions from your Stripe account")
+    async def list_subscriptions(
+        self,
+        customer: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 10,
+        starting_after: Optional[str] = None,
+    ) -> PaginatedList[StripeSubscription]:
+        """List subscriptions with optional filters and cursor pagination.
+
+        Args:
+            customer: Filter by customer ID.
+            status: Filter by status (e.g. ``active``, ``past_due``,
+                ``canceled``, ``all``).
+            limit: Maximum number of subscriptions to return (1-100).
+            starting_after: Subscription ID to paginate after (cursor).
+
+        Returns:
+            Paginated list of StripeSubscription objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        if customer:
+            params["customer"] = customer
+        if status:
+            params["status"] = status
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        resp = await self._request("GET", "/subscriptions", params=params)
+        body = resp.json()
+
+        items = [parse_subscription(s) for s in body.get("data", [])]
+        page_state = self._build_page_state(body)
+
+        result = PaginatedList(
+            items=items, page_state=page_state,
+            total_count=body.get("total_count"),
+        )
+        result._fetch_next = (
+            (lambda cursor=page_state.cursor: self.alist_subscriptions(
+                customer=customer, status=status, limit=limit,
+                starting_after=cursor,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    @action("Retrieve a single Stripe subscription by ID")
+    async def get_subscription(self, subscription_id: str) -> StripeSubscription:
+        """Retrieve a single subscription.
+
+        Args:
+            subscription_id: The Stripe subscription ID (e.g. ``sub_...``).
+
+        Returns:
+            StripeSubscription object.
+        """
+        resp = await self._request("GET", f"/subscriptions/{subscription_id}")
+        return parse_subscription(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions — Products
+    # ------------------------------------------------------------------
+
+    @action("Create a Stripe product", dangerous=True)
+    async def create_product(
+        self,
+        name: str,
+        description: Optional[str] = None,
+        metadata: Optional[dict[str, str]] = None,
+    ) -> StripeProduct:
+        """Create a new product in Stripe.
+
+        Args:
+            name: Product name.
+            description: Product description.
+            metadata: Key-value metadata to attach.
+
+        Returns:
+            The created StripeProduct object.
+        """
+        form_data: dict[str, Any] = {"name": name}
+        if description is not None:
+            form_data["description"] = description
+        if metadata:
+            form_data.update(flatten_metadata(metadata))
+
+        resp = await self._request("POST", "/products", data=form_data)
+        return parse_product(resp.json())
+
+    @action("List products from your Stripe account")
+    async def list_products(
+        self,
+        limit: int = 10,
+        starting_after: Optional[str] = None,
+    ) -> PaginatedList[StripeProduct]:
+        """List products with cursor-based pagination.
+
+        Args:
+            limit: Maximum number of products to return (1-100).
+            starting_after: Product ID to paginate after (cursor).
+
+        Returns:
+            Paginated list of StripeProduct objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        resp = await self._request("GET", "/products", params=params)
+        body = resp.json()
+
+        items = [parse_product(p) for p in body.get("data", [])]
+        page_state = self._build_page_state(body)
+
+        result = PaginatedList(
+            items=items, page_state=page_state,
+            total_count=body.get("total_count"),
+        )
+        result._fetch_next = (
+            (lambda cursor=page_state.cursor: self.alist_products(
+                limit=limit, starting_after=cursor,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    # ------------------------------------------------------------------
+    # Actions — Prices
+    # ------------------------------------------------------------------
+
+    @action("Create a Stripe price", dangerous=True)
+    async def create_price(
+        self,
+        product: str,
+        unit_amount: int,
+        currency: str,
+        recurring_interval: Optional[str] = None,
+    ) -> StripePrice:
+        """Create a new price for a product.
+
+        Args:
+            product: The product ID to attach this price to.
+            unit_amount: Price amount in cents.
+            currency: Three-letter ISO currency code (e.g. ``usd``).
+            recurring_interval: If set, makes this a recurring price.
+                One of ``day``, ``week``, ``month``, or ``year``.
+
+        Returns:
+            The created StripePrice object.
+        """
+        form_data: dict[str, Any] = {
+            "product": product,
+            "unit_amount": str(unit_amount),
+            "currency": currency,
+        }
+        if recurring_interval is not None:
+            form_data["recurring[interval]"] = recurring_interval
+
+        resp = await self._request("POST", "/prices", data=form_data)
+        return parse_price(resp.json())
+
+    @action("List prices from your Stripe account")
+    async def list_prices(
+        self,
+        product: Optional[str] = None,
+        limit: int = 10,
+        starting_after: Optional[str] = None,
+    ) -> PaginatedList[StripePrice]:
+        """List prices with optional product filter and cursor pagination.
+
+        Args:
+            product: Filter prices by product ID.
+            limit: Maximum number of prices to return (1-100).
+            starting_after: Price ID to paginate after (cursor).
+
+        Returns:
+            Paginated list of StripePrice objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        if product:
+            params["product"] = product
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        resp = await self._request("GET", "/prices", params=params)
+        body = resp.json()
+
+        items = [parse_price(p) for p in body.get("data", [])]
+        page_state = self._build_page_state(body)
+
+        result = PaginatedList(
+            items=items, page_state=page_state,
+            total_count=body.get("total_count"),
+        )
+        result._fetch_next = (
+            (lambda cursor=page_state.cursor: self.alist_prices(
+                product=product, limit=limit, starting_after=cursor,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    # ------------------------------------------------------------------
+    # Actions — Checkout Sessions
+    # ------------------------------------------------------------------
+
+    @action("Create a Stripe Checkout Session", dangerous=True)
+    async def create_checkout_session(
+        self,
+        line_items: list[dict[str, Any]],
+        mode: str,
+        success_url: str,
+        cancel_url: str,
+    ) -> StripeCheckoutSession:
+        """Create a new Checkout Session for payment collection.
+
+        Args:
+            line_items: List of line item dicts, each with ``price`` (price ID)
+                and ``quantity``. Example:
+                ``[{"price": "price_xxx", "quantity": 1}]``.
+            mode: Checkout mode: ``payment``, ``subscription``, or ``setup``.
+            success_url: URL to redirect to after successful payment.
+            cancel_url: URL to redirect to if the user cancels.
+
+        Returns:
+            The created StripeCheckoutSession with a ``url`` for redirect.
+        """
+        form_data: dict[str, Any] = {
+            "mode": mode,
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+        }
+        for idx, item in enumerate(line_items):
+            form_data[f"line_items[{idx}][price]"] = item["price"]
+            form_data[f"line_items[{idx}][quantity]"] = str(item.get("quantity", 1))
+
+        resp = await self._request("POST", "/checkout/sessions", data=form_data)
+        return parse_checkout_session(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions — Payment Methods
+    # ------------------------------------------------------------------
+
+    @action("List payment methods for a customer")
+    async def list_payment_methods(
+        self,
+        customer: str,
+        type: Optional[str] = None,
+        limit: int = 10,
+        starting_after: Optional[str] = None,
+    ) -> PaginatedList[StripePaymentMethod]:
+        """List payment methods attached to a customer.
+
+        Args:
+            customer: The customer ID to list payment methods for.
+            type: Filter by payment method type (e.g. ``card``).
+            limit: Maximum number of payment methods to return (1-100).
+            starting_after: Payment method ID to paginate after (cursor).
+
+        Returns:
+            Paginated list of StripePaymentMethod objects.
+        """
+        params: dict[str, Any] = {
+            "customer": customer,
+            "limit": min(limit, 100),
+        }
+        if type:
+            params["type"] = type
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        resp = await self._request("GET", "/payment_methods", params=params)
+        body = resp.json()
+
+        items = [parse_payment_method(pm) for pm in body.get("data", [])]
+        page_state = self._build_page_state(body)
+
+        result = PaginatedList(
+            items=items, page_state=page_state,
+            total_count=body.get("total_count"),
+        )
+        result._fetch_next = (
+            (lambda cursor=page_state.cursor: self.alist_payment_methods(
+                customer=customer, type=type, limit=limit,
+                starting_after=cursor,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    # ------------------------------------------------------------------
+    # Actions — Invoices (continued)
+    # ------------------------------------------------------------------
+
+    @action("Retrieve a single Stripe invoice by ID")
+    async def get_invoice(self, invoice_id: str) -> StripeInvoice:
+        """Retrieve a single invoice.
+
+        Args:
+            invoice_id: The Stripe invoice ID (e.g. ``in_...``).
+
+        Returns:
+            StripeInvoice object.
+        """
+        resp = await self._request("GET", f"/invoices/{invoice_id}")
+        return parse_invoice(resp.json())
+
+    @action("Void a Stripe invoice", dangerous=True)
+    async def void_invoice(self, invoice_id: str) -> StripeInvoice:
+        """Void an open invoice so it can no longer be paid.
+
+        Args:
+            invoice_id: The Stripe invoice ID to void.
+
+        Returns:
+            The voided StripeInvoice object.
+
+        Warning:
+            Voiding an invoice is irreversible. The invoice status
+            changes to ``void`` and can no longer be paid.
+        """
+        resp = await self._request("POST", f"/invoices/{invoice_id}/void")
+        return parse_invoice(resp.json())

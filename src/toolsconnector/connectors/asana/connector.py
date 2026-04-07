@@ -17,6 +17,7 @@ from toolsconnector.types import PageState, PaginatedList
 from .types import (
     AsanaComment,
     AsanaProject,
+    AsanaTag,
     AsanaTask,
     AsanaUser,
     AsanaWorkspace,
@@ -427,4 +428,109 @@ class Asana(BaseConnector):
                 is_organization=w.get("is_organization"),
             )
             for w in data.get("data", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions — Task management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete a task by GID", dangerous=True)
+    async def delete_task(self, task_gid: str) -> bool:
+        """Permanently delete an Asana task.
+
+        Args:
+            task_gid: The globally unique identifier for the task.
+
+        Returns:
+            True if the task was deleted successfully.
+        """
+        await self._request("DELETE", f"/tasks/{task_gid}")
+        return True
+
+    @action("List subtasks of a task")
+    async def list_subtasks(self, task_gid: str) -> list[AsanaTask]:
+        """List all subtasks of an Asana task.
+
+        Args:
+            task_gid: The parent task GID.
+
+        Returns:
+            List of AsanaTask objects representing the subtasks.
+        """
+        params: dict[str, Any] = {
+            "opt_fields": (
+                "name,completed,completed_at,created_at,modified_at,"
+                "due_on,due_at,notes,assignee,assignee.name,assignee.email,"
+                "tags,tags.name,permalink_url,num_subtasks,start_on"
+            ),
+        }
+        data = await self._request(
+            "GET", f"/tasks/{task_gid}/subtasks", params=params,
+        )
+        return [self._parse_task(t) for t in data.get("data", [])]
+
+    @action("Create a subtask under a parent task", dangerous=True)
+    async def create_subtask(
+        self, task_gid: str, name: str,
+    ) -> AsanaTask:
+        """Create a subtask under a parent task.
+
+        Args:
+            task_gid: The parent task GID.
+            name: Name/title of the subtask.
+
+        Returns:
+            The newly created AsanaTask subtask.
+        """
+        body: dict[str, Any] = {"data": {"name": name}}
+        data = await self._request(
+            "POST", f"/tasks/{task_gid}/subtasks", json=body,
+        )
+        return self._parse_task(data.get("data", {}))
+
+    # ------------------------------------------------------------------
+    # Actions — Tags
+    # ------------------------------------------------------------------
+
+    @action("Add a tag to a task")
+    async def add_tag(self, task_gid: str, tag_gid: str) -> bool:
+        """Add a tag to a task.
+
+        Args:
+            task_gid: The task GID to tag.
+            tag_gid: The tag GID to add.
+
+        Returns:
+            True if the tag was added successfully.
+        """
+        body: dict[str, Any] = {"data": {"tag": tag_gid}}
+        await self._request(
+            "POST", f"/tasks/{task_gid}/addTag", json=body,
+        )
+        return True
+
+    @action("List tags in a workspace")
+    async def list_tags(self, workspace_gid: str) -> list[AsanaTag]:
+        """List all tags in a workspace.
+
+        Args:
+            workspace_gid: The workspace GID.
+
+        Returns:
+            List of AsanaTag objects.
+        """
+        params: dict[str, Any] = {
+            "workspace": workspace_gid,
+            "opt_fields": "name,color,created_at",
+        }
+        data = await self._request("GET", "/tags", params=params)
+        return [
+            AsanaTag(
+                gid=t.get("gid", ""),
+                name=t.get("name", ""),
+                resource_type=t.get("resource_type", "tag"),
+                color=t.get("color"),
+                created_at=t.get("created_at"),
+            )
+            for t in data.get("data", [])
         ]

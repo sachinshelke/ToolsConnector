@@ -22,6 +22,7 @@ from .types import (
     FilePermission,
     FileUploadResult,
     FolderId,
+    StorageQuota,
 )
 
 # Default fields to request from the Drive API for file metadata
@@ -467,4 +468,110 @@ class GoogleDrive(BaseConnector):
             email_address=data.get("emailAddress"),
             display_name=data.get("displayName"),
             domain=data.get("domain"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — File operations (extended)
+    # ------------------------------------------------------------------
+
+    @action("Move a file to a different folder")
+    async def move_file(
+        self, file_id: str, new_parent_id: str,
+    ) -> DriveFile:
+        """Move a file to a different folder.
+
+        Args:
+            file_id: The ID of the file to move.
+            new_parent_id: The ID of the destination folder.
+
+        Returns:
+            The updated DriveFile in its new location.
+        """
+        # Get current parents to remove
+        current = await self._request(
+            "GET", f"/files/{file_id}",
+            params={"fields": "parents"},
+        )
+        previous_parents = ",".join(current.get("parents", []))
+
+        data = await self._request(
+            "PATCH", f"/files/{file_id}",
+            params={
+                "addParents": new_parent_id,
+                "removeParents": previous_parents,
+                "fields": "id,name,mimeType,parents,modifiedTime,webViewLink",
+            },
+        )
+        return self._parse_file(data)
+
+    @action("Copy a file")
+    async def copy_file(
+        self,
+        file_id: str,
+        name: Optional[str] = None,
+    ) -> DriveFile:
+        """Create a copy of a file.
+
+        Args:
+            file_id: The ID of the file to copy.
+            name: Optional name for the copy. Defaults to original name.
+
+        Returns:
+            The newly created DriveFile copy.
+        """
+        body: dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        data = await self._request(
+            "POST", f"/files/{file_id}/copy",
+            json=body or None,
+            params={"fields": _FILE_FIELDS},
+        )
+        return self._parse_file(data)
+
+    @action("List permissions on a file")
+    async def list_permissions(
+        self, file_id: str,
+    ) -> list[FilePermission]:
+        """List all permissions on a file.
+
+        Args:
+            file_id: The ID of the file.
+
+        Returns:
+            List of FilePermission objects.
+        """
+        data = await self._request(
+            "GET", f"/files/{file_id}/permissions",
+            params={"fields": "permissions(id,type,role,emailAddress,displayName,domain)"},
+        )
+        return [
+            FilePermission(
+                id=p.get("id", ""),
+                type=p.get("type", ""),
+                role=p.get("role", ""),
+                email_address=p.get("emailAddress"),
+                display_name=p.get("displayName"),
+                domain=p.get("domain"),
+            )
+            for p in data.get("permissions", [])
+        ]
+
+    @action("Get storage quota information")
+    async def get_storage_quota(self) -> StorageQuota:
+        """Get the authenticated user's storage quota.
+
+        Returns:
+            StorageQuota with usage and limit information.
+        """
+        data = await self._request(
+            "GET", "/about",
+            params={"fields": "storageQuota"},
+        )
+        quota = data.get("storageQuota", {})
+        return StorageQuota(
+            limit=quota.get("limit"),
+            usage=quota.get("usage"),
+            usage_in_drive=quota.get("usageInDrive"),
+            usage_in_drive_trash=quota.get("usageInDriveTrash"),
         )

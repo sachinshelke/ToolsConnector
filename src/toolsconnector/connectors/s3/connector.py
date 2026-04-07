@@ -33,52 +33,29 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
+from ._helpers import (
+    build_presigned_url,
+    build_tagging_xml,
+    compute_content_md5,
+    extract_user_metadata as _extract_user_metadata,
+    find_text as _find_text,
+)
 from ._signing import sign_v4
 from .types import (
     S3Bucket,
+    S3BucketPolicy,
     S3CopyResult,
     S3Object,
     S3ObjectData,
     S3ObjectMetadata,
+    S3ObjectVersion,
+    S3PresignedUrl,
     S3PutResult,
 )
 
 logger = logging.getLogger("toolsconnector.s3")
 
 _S3_NS = "http://s3.amazonaws.com/doc/2006-03-01/"
-
-
-def _find_text(elem: ET.Element, tag: str) -> Optional[str]:
-    """Find a child element by tag (namespace-aware) and return its text.
-
-    Args:
-        elem: Parent XML element.
-        tag: Child element tag name (without namespace).
-
-    Returns:
-        Text content of the child element, or None if not found.
-    """
-    child = elem.find(f"{{{_S3_NS}}}{tag}")
-    if child is None:
-        child = elem.find(tag)
-    return child.text if child is not None else None
-
-
-def _extract_user_metadata(headers: httpx.Headers) -> dict[str, str]:
-    """Extract x-amz-meta-* headers into a dict.
-
-    Args:
-        headers: HTTP response headers.
-
-    Returns:
-        Dict of user metadata key-value pairs.
-    """
-    prefix = "x-amz-meta-"
-    return {
-        k[len(prefix):]: v
-        for k, v in headers.items()
-        if k.lower().startswith(prefix)
-    }
 
 
 class S3(BaseConnector):
@@ -449,4 +426,205 @@ class S3(BaseConnector):
             dest_key=f"{dest_bucket}/{dest_key}",
             etag=_find_text(root, "ETag"),
             last_modified=_find_text(root, "LastModified"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Bucket management
+    # ------------------------------------------------------------------
+
+    @action("Delete an S3 bucket", dangerous=True)
+    async def delete_bucket(self, bucket: str) -> None:
+        """Delete an S3 bucket.
+
+        The bucket must be empty before it can be deleted. This action
+        is irreversible.
+
+        Args:
+            bucket: Bucket name to delete.
+        """
+        await self._s3_request(
+            "DELETE", "/", host=self._bucket_host(bucket),
+        )
+
+    @action("Get the bucket policy")
+    async def get_bucket_policy(self, bucket: str) -> S3BucketPolicy:
+        """Retrieve the bucket policy for an S3 bucket.
+
+        Args:
+            bucket: Bucket name.
+
+        Returns:
+            S3BucketPolicy with the raw JSON policy document.
+        """
+        resp = await self._s3_request(
+            "GET", "/", host=self._bucket_host(bucket),
+            params={"policy": ""},
+        )
+        return S3BucketPolicy(bucket=bucket, policy=resp.text)
+
+    @action("Set the bucket policy", dangerous=True)
+    async def put_bucket_policy(
+        self,
+        bucket: str,
+        policy: str,
+    ) -> None:
+        """Set or replace the bucket policy for an S3 bucket.
+
+        Args:
+            bucket: Bucket name.
+            policy: JSON policy document as a string.
+        """
+        await self._s3_request(
+            "PUT",
+            "/",
+            host=self._bucket_host(bucket),
+            params={"policy": ""},
+            body=policy.encode("utf-8"),
+            extra_headers={"Content-Type": "application/json"},
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Object versioning
+    # ------------------------------------------------------------------
+
+    @action("List object versions in a bucket")
+    async def list_object_versions(
+        self,
+        bucket: str,
+        prefix: Optional[str] = None,
+        limit: int = 1000,
+        key_marker: Optional[str] = None,
+    ) -> PaginatedList[S3ObjectVersion]:
+        """List object versions in a versioning-enabled bucket.
+
+        Args:
+            bucket: Bucket name.
+            prefix: Filter versions by key prefix.
+            limit: Maximum versions per page (max 1000).
+            key_marker: Key marker from a previous response for pagination.
+
+        Returns:
+            Paginated list of S3ObjectVersion items.
+        """
+        params: dict[str, Any] = {
+            "versions": "",
+            "max-keys": str(min(limit, 1000)),
+        }
+        if prefix:
+            params["prefix"] = prefix
+        if key_marker:
+            params["key-marker"] = key_marker
+
+        bhost = self._bucket_host(bucket)
+        resp = await self._s3_request("GET", "/", host=bhost, params=params)
+        root = ET.fromstring(resp.text)
+
+        items: list[S3ObjectVersion] = []
+
+        # Parse <Version> elements
+        for v in root.iter(f"{{{_S3_NS}}}Version"):
+            sz = _find_text(v, "Size")
+            items.append(S3ObjectVersion(
+                key=_find_text(v, "Key") or "",
+                version_id=_find_text(v, "VersionId"),
+                is_latest=_find_text(v, "IsLatest") == "true",
+                last_modified=_find_text(v, "LastModified"),
+                etag=_find_text(v, "ETag"),
+                size=int(sz) if sz else 0,
+                storage_class=_find_text(v, "StorageClass"),
+                is_delete_marker=False,
+            ))
+
+        # Parse <DeleteMarker> elements
+        for dm in root.iter(f"{{{_S3_NS}}}DeleteMarker"):
+            items.append(S3ObjectVersion(
+                key=_find_text(dm, "Key") or "",
+                version_id=_find_text(dm, "VersionId"),
+                is_latest=_find_text(dm, "IsLatest") == "true",
+                last_modified=_find_text(dm, "LastModified"),
+                is_delete_marker=True,
+            ))
+
+        is_truncated = _find_text(root, "IsTruncated") == "true"
+        next_key_marker = _find_text(root, "NextKeyMarker")
+
+        ps = PageState(has_more=is_truncated, cursor=next_key_marker)
+        result = PaginatedList(items=items, page_state=ps)
+        if is_truncated:
+            result._fetch_next = lambda km=next_key_marker: self.alist_object_versions(
+                bucket=bucket, prefix=prefix, limit=limit, key_marker=km,
+            )
+        return result
+
+    # ------------------------------------------------------------------
+    # Actions — Pre-signed URLs
+    # ------------------------------------------------------------------
+
+    @action("Generate a pre-signed URL for an S3 object")
+    async def generate_presigned_url(
+        self,
+        bucket: str,
+        key: str,
+        expiration: int = 3600,
+        method: str = "GET",
+    ) -> S3PresignedUrl:
+        """Generate a pre-signed URL for time-limited access to an S3 object.
+
+        Uses AWS Signature Version 4 query-string authentication to
+        create a URL that grants temporary access without requiring
+        credentials.
+
+        Args:
+            bucket: Bucket name.
+            key: Object key.
+            expiration: URL validity in seconds (default 3600 = 1 hour,
+                max 604800 = 7 days).
+            method: HTTP method the URL authorises (``GET`` or ``PUT``).
+
+        Returns:
+            S3PresignedUrl with the signed URL string.
+        """
+        return build_presigned_url(
+            bucket=bucket,
+            key=key,
+            host=self._bucket_host(bucket),
+            region=self._region,
+            access_key_id=self._access_key_id,
+            secret_access_key=self._secret_access_key,
+            expiration=expiration,
+            method=method,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Object tagging
+    # ------------------------------------------------------------------
+
+    @action("Set tags on an S3 object")
+    async def set_object_tags(
+        self,
+        bucket: str,
+        key: str,
+        tags: dict[str, str],
+    ) -> None:
+        """Set or replace the tag set on an S3 object.
+
+        Args:
+            bucket: Bucket name.
+            key: Object key.
+            tags: Dictionary of tag key-value pairs (max 10 tags).
+        """
+        body_xml = build_tagging_xml(tags, _S3_NS)
+        enc_key = urllib.parse.quote(key, safe="/")
+        md5_b64 = compute_content_md5(body_xml)
+
+        await self._s3_request(
+            "PUT",
+            f"/{enc_key}",
+            host=self._bucket_host(bucket),
+            params={"tagging": ""},
+            body=body_xml,
+            extra_headers={
+                "Content-Type": "application/xml",
+                "Content-MD5": md5_b64,
+            },
         )

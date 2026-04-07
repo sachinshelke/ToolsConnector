@@ -17,132 +17,8 @@ from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import DraftId, Email, EmailAddress, Label, MessageId
-
-
-def _parse_email_address(raw: str) -> EmailAddress:
-    """Parse a 'Display Name <email>' string into an EmailAddress.
-
-    Args:
-        raw: Raw address string from a Gmail header value.
-
-    Returns:
-        Parsed EmailAddress with name and email fields.
-    """
-    raw = raw.strip()
-    if "<" in raw and raw.endswith(">"):
-        name_part = raw[: raw.index("<")].strip().strip('"')
-        email_part = raw[raw.index("<") + 1 : -1].strip()
-        return EmailAddress(email=email_part, name=name_part or None)
-    return EmailAddress(email=raw)
-
-
-def _get_header(headers: list[dict[str, str]], name: str) -> str:
-    """Extract a header value by name from the Gmail headers array.
-
-    Args:
-        headers: List of {"name": ..., "value": ...} dicts from the API.
-        name: Case-insensitive header name to find.
-
-    Returns:
-        The header value, or empty string if not found.
-    """
-    lower_name = name.lower()
-    for h in headers:
-        if h.get("name", "").lower() == lower_name:
-            return h.get("value", "")
-    return ""
-
-
-def _extract_body(payload: dict[str, Any]) -> tuple[Optional[str], Optional[str]]:
-    """Recursively extract plain-text and HTML body from message payload.
-
-    Args:
-        payload: The Gmail API message payload dict.
-
-    Returns:
-        Tuple of (plain_text_body, html_body), either may be None.
-    """
-    text_body: Optional[str] = None
-    html_body: Optional[str] = None
-
-    mime_type = payload.get("mimeType", "")
-
-    if mime_type == "text/plain":
-        data = payload.get("body", {}).get("data", "")
-        if data:
-            text_body = base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace")
-    elif mime_type == "text/html":
-        data = payload.get("body", {}).get("data", "")
-        if data:
-            html_body = base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace")
-    elif mime_type.startswith("multipart/"):
-        for part in payload.get("parts", []):
-            t, h = _extract_body(part)
-            if t and not text_body:
-                text_body = t
-            if h and not html_body:
-                html_body = h
-
-    return text_body, html_body
-
-
-def _has_attachments(payload: dict[str, Any]) -> bool:
-    """Check whether the message payload contains file attachments.
-
-    Args:
-        payload: The Gmail API message payload dict.
-
-    Returns:
-        True if at least one part has a non-empty filename.
-    """
-    for part in payload.get("parts", []):
-        if part.get("filename"):
-            return True
-        if part.get("parts"):
-            if _has_attachments(part):
-                return True
-    return False
-
-
-def _parse_message(data: dict[str, Any]) -> Email:
-    """Parse a Gmail API message response into an Email model.
-
-    Args:
-        data: Raw JSON response from GET /users/me/messages/{id}.
-
-    Returns:
-        Populated Email instance.
-    """
-    payload = data.get("payload", {})
-    headers = payload.get("headers", [])
-
-    subject = _get_header(headers, "Subject")
-    from_raw = _get_header(headers, "From")
-    to_raw = _get_header(headers, "To")
-    cc_raw = _get_header(headers, "Cc")
-    date_str = _get_header(headers, "Date")
-
-    from_addr = _parse_email_address(from_raw) if from_raw else None
-    to_addrs = [_parse_email_address(a) for a in to_raw.split(",") if a.strip()] if to_raw else []
-    cc_addrs = [_parse_email_address(a) for a in cc_raw.split(",") if a.strip()] if cc_raw else []
-
-    text_body, html_body = _extract_body(payload)
-
-    return Email(
-        id=data.get("id", ""),
-        thread_id=data.get("threadId", ""),
-        subject=subject,
-        from_address=from_addr,
-        to=to_addrs,
-        cc=cc_addrs,
-        date=date_str,
-        snippet=data.get("snippet", ""),
-        body_text=text_body,
-        body_html=html_body,
-        labels=data.get("labelIds", []),
-        has_attachments=_has_attachments(payload),
-    )
+from ._helpers import parse_message as _parse_message
+from .types import Attachment, DraftId, Email, EmailAddress, Label, LabelColor, MessageId, Thread
 
 
 class Gmail(BaseConnector):
@@ -477,3 +353,329 @@ class Gmail(BaseConnector):
             json=payload,
         )
         return _parse_message(data)
+
+    # ------------------------------------------------------------------
+    # Actions — Threads
+    # ------------------------------------------------------------------
+
+    @action("List email threads", requires_scope="read")
+    async def list_threads(
+        self,
+        query: Optional[str] = None,
+        limit: int = 10,
+        page_token: Optional[str] = None,
+    ) -> PaginatedList[Thread]:
+        """List conversation threads from the user's mailbox.
+
+        Args:
+            query: Gmail search query to filter threads (same syntax as
+                the Gmail search bar). Omit to list all threads.
+            limit: Maximum number of threads to return per page.
+            page_token: Token for fetching the next page of results.
+
+        Returns:
+            Paginated list of Thread objects.
+        """
+        params: dict[str, Any] = {"maxResults": limit}
+        if query:
+            params["q"] = query
+        if page_token:
+            params["pageToken"] = page_token
+
+        data = await self._request("GET", "/users/me/threads", params=params)
+
+        threads_meta = data.get("threads", [])
+        next_page_token = data.get("nextPageToken")
+
+        threads: list[Thread] = []
+        for meta in threads_meta:
+            threads.append(
+                Thread(
+                    id=meta.get("id", ""),
+                    snippet=meta.get("snippet", ""),
+                    history_id=meta.get("historyId"),
+                    messages_count=len(meta.get("messages", [])),
+                )
+            )
+
+        return PaginatedList(
+            items=threads,
+            page_state=PageState(
+                cursor=next_page_token,
+                has_more=next_page_token is not None,
+            ),
+            total_count=data.get("resultSizeEstimate"),
+        )
+
+    @action("Get a single thread by ID", requires_scope="read")
+    async def get_thread(
+        self,
+        thread_id: str,
+        format: str = "metadata",
+    ) -> Thread:
+        """Retrieve a single conversation thread by its ID.
+
+        Args:
+            thread_id: The ID of the thread to retrieve.
+            format: Response format: 'full', 'metadata', or 'minimal'.
+
+        Returns:
+            Thread object with message count populated.
+        """
+        data = await self._request(
+            "GET",
+            f"/users/me/threads/{thread_id}",
+            params={"format": format},
+        )
+        return Thread(
+            id=data.get("id", ""),
+            snippet=data.get("snippet", ""),
+            history_id=data.get("historyId"),
+            messages_count=len(data.get("messages", [])),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Trash / Untrash
+    # ------------------------------------------------------------------
+
+    @action("Move an email to trash", requires_scope="full")
+    async def trash_email(self, email_id: str) -> Email:
+        """Move an email to the trash folder.
+
+        The email can be recovered with ``untrash_email`` within 30 days.
+
+        Args:
+            email_id: The ID of the email to trash.
+
+        Returns:
+            The updated Email object with TRASH label applied.
+        """
+        data = await self._request(
+            "POST",
+            f"/users/me/messages/{email_id}/trash",
+        )
+        return _parse_message(data)
+
+    @action("Remove an email from trash", requires_scope="full")
+    async def untrash_email(self, email_id: str) -> Email:
+        """Remove an email from the trash folder.
+
+        Args:
+            email_id: The ID of the email to untrash.
+
+        Returns:
+            The updated Email object with TRASH label removed.
+        """
+        data = await self._request(
+            "POST",
+            f"/users/me/messages/{email_id}/untrash",
+        )
+        return _parse_message(data)
+
+    # ------------------------------------------------------------------
+    # Actions — Read / Unread / Star / Unstar
+    # ------------------------------------------------------------------
+
+    @action("Mark an email as read", requires_scope="full")
+    async def mark_as_read(self, email_id: str) -> Email:
+        """Mark an email as read by removing the UNREAD label.
+
+        Args:
+            email_id: The ID of the email to mark as read.
+
+        Returns:
+            The updated Email object.
+        """
+        return await self.amodify_labels(
+            email_id=email_id,
+            remove_labels=["UNREAD"],
+        )
+
+    @action("Mark an email as unread", requires_scope="full")
+    async def mark_as_unread(self, email_id: str) -> Email:
+        """Mark an email as unread by adding the UNREAD label.
+
+        Args:
+            email_id: The ID of the email to mark as unread.
+
+        Returns:
+            The updated Email object.
+        """
+        return await self.amodify_labels(
+            email_id=email_id,
+            add_labels=["UNREAD"],
+        )
+
+    @action("Star an email", requires_scope="full")
+    async def star_email(self, email_id: str) -> Email:
+        """Star an email by adding the STARRED label.
+
+        Args:
+            email_id: The ID of the email to star.
+
+        Returns:
+            The updated Email object.
+        """
+        return await self.amodify_labels(
+            email_id=email_id,
+            add_labels=["STARRED"],
+        )
+
+    @action("Remove star from an email", requires_scope="full")
+    async def unstar_email(self, email_id: str) -> Email:
+        """Remove the star from an email by removing the STARRED label.
+
+        Args:
+            email_id: The ID of the email to unstar.
+
+        Returns:
+            The updated Email object.
+        """
+        return await self.amodify_labels(
+            email_id=email_id,
+            remove_labels=["STARRED"],
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Labels (create / delete)
+    # ------------------------------------------------------------------
+
+    @action("Create a new label", requires_scope="full")
+    async def create_label(
+        self,
+        name: str,
+        label_color: Optional[LabelColor] = None,
+    ) -> Label:
+        """Create a new user label.
+
+        Args:
+            name: Display name for the label.
+            label_color: Optional color specification with text_color and
+                background_color hex values.
+
+        Returns:
+            The created Label object.
+        """
+        payload: dict[str, Any] = {
+            "name": name,
+            "labelListVisibility": "labelShow",
+            "messageListVisibility": "show",
+        }
+        if label_color:
+            payload["color"] = {}
+            if label_color.text_color:
+                payload["color"]["textColor"] = label_color.text_color
+            if label_color.background_color:
+                payload["color"]["backgroundColor"] = label_color.background_color
+
+        data = await self._request(
+            "POST",
+            "/users/me/labels",
+            json=payload,
+        )
+        return Label(
+            id=data.get("id", ""),
+            name=data.get("name", ""),
+            type=data.get("type", "user"),
+            messages_total=data.get("messagesTotal", 0),
+            messages_unread=data.get("messagesUnread", 0),
+        )
+
+    @action("Delete a label", requires_scope="full", dangerous=True)
+    async def delete_label(self, label_id: str) -> None:
+        """Permanently delete a user label.
+
+        System labels (INBOX, SPAM, TRASH, etc.) cannot be deleted.
+
+        Args:
+            label_id: The ID of the label to delete.
+
+        Warning:
+            This action permanently removes the label. Emails are not
+            deleted but will no longer have this label applied.
+        """
+        await self._request("DELETE", f"/users/me/labels/{label_id}")
+
+    # ------------------------------------------------------------------
+    # Actions — Attachments
+    # ------------------------------------------------------------------
+
+    @action("Download an email attachment", requires_scope="read")
+    async def get_attachment(
+        self,
+        email_id: str,
+        attachment_id: str,
+    ) -> Attachment:
+        """Download an attachment from an email.
+
+        Args:
+            email_id: The ID of the email containing the attachment.
+            attachment_id: The ID of the attachment to download.
+
+        Returns:
+            Attachment object with base64-encoded data populated.
+        """
+        # First get message metadata to find the attachment part info
+        msg_data = await self._request(
+            "GET",
+            f"/users/me/messages/{email_id}",
+            params={"format": "full"},
+        )
+
+        # Find the attachment part for filename and mime_type
+        filename = ""
+        mime_type = ""
+        size = 0
+        payload = msg_data.get("payload", {})
+        parts = payload.get("parts", [])
+        for part in parts:
+            body = part.get("body", {})
+            if body.get("attachmentId") == attachment_id:
+                filename = part.get("filename", "")
+                mime_type = part.get("mimeType", "")
+                size = body.get("size", 0)
+                break
+
+        # Fetch the actual attachment data
+        att_data = await self._request(
+            "GET",
+            f"/users/me/messages/{email_id}/attachments/{attachment_id}",
+        )
+
+        return Attachment(
+            id=attachment_id,
+            filename=filename,
+            mime_type=mime_type,
+            size=att_data.get("size", size),
+            data=att_data.get("data"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Batch operations
+    # ------------------------------------------------------------------
+
+    @action("Batch modify labels on multiple emails", requires_scope="full")
+    async def batch_modify(
+        self,
+        email_ids: list[str],
+        add_labels: Optional[list[str]] = None,
+        remove_labels: Optional[list[str]] = None,
+    ) -> None:
+        """Add or remove labels from multiple emails in a single request.
+
+        Args:
+            email_ids: List of message IDs to modify (max 1000).
+            add_labels: Label IDs to add to all specified messages.
+            remove_labels: Label IDs to remove from all specified messages.
+        """
+        payload: dict[str, Any] = {"ids": email_ids}
+        if add_labels:
+            payload["addLabelIds"] = add_labels
+        if remove_labels:
+            payload["removeLabelIds"] = remove_labels
+
+        await self._request(
+            "POST",
+            "/users/me/messages/batchModify",
+            json=payload,
+        )

@@ -88,3 +88,17 @@ class ZendeskSearchResult(BaseModel):
     status: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+class ZendeskGroup(BaseModel):
+    """A Zendesk group (agent group)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: Optional[str] = None
+    description: Optional[str] = None
+    default: bool = False
+    deleted: bool = False
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None

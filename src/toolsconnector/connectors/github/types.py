@@ -243,3 +243,98 @@ class CodeSearchResult(BaseModel):
     repository: Optional[Repository] = None
     score: float = 0.0
     text_matches: list[dict] = Field(default_factory=list)
+
+
+class Branch(BaseModel):
+    """A Git branch."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    sha: str = ""
+    protected: bool = False
+
+
+class Release(BaseModel):
+    """A GitHub release."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    tag_name: str
+    name: Optional[str] = None
+    body: Optional[str] = None
+    draft: bool = False
+    prerelease: bool = False
+    html_url: Optional[str] = None
+    author: Optional[GitHubUser] = None
+    created_at: Optional[str] = None
+    published_at: Optional[str] = None
+    tarball_url: Optional[str] = None
+    zipball_url: Optional[str] = None
+
+
+class FileContent(BaseModel):
+    """File or directory content from a repository."""
+
+    model_config = ConfigDict(frozen=True)
+
+    type: str = "file"  # "file", "dir", "symlink", "submodule"
+    name: str = ""
+    path: str = ""
+    sha: str = ""
+    size: int = 0
+    content: Optional[str] = None  # base64-encoded for files
+    encoding: Optional[str] = None
+    html_url: Optional[str] = None
+    download_url: Optional[str] = None
+
+
+class Workflow(BaseModel):
+    """A GitHub Actions workflow."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: str = ""
+    path: str = ""
+    state: str = "active"
+    html_url: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class WorkflowRun(BaseModel):
+    """A GitHub Actions workflow run."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: Optional[str] = None
+    head_branch: Optional[str] = None
+    head_sha: str = ""
+    status: Optional[str] = None  # queued, in_progress, completed
+    conclusion: Optional[str] = None  # success, failure, cancelled, etc.
+    workflow_id: int = 0
+    html_url: Optional[str] = None
+    run_number: int = 0
+    event: str = ""
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    actor: Optional[GitHubUser] = None
+
+
+class GitHubGist(BaseModel):
+    """A GitHub Gist."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    description: Optional[str] = None
+    public: bool = True
+    html_url: Optional[str] = None
+    files: dict = Field(default_factory=dict)
+    owner: Optional[GitHubUser] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    comments: int = 0

@@ -430,3 +430,156 @@ class Shopify(BaseConnector):
         """
         resp = await self._request("GET", f"/customers/{customer_id}.json")
         return parse_customer(resp.json()["customer"])
+
+    # ------------------------------------------------------------------
+    # Actions -- Order management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Update an existing order")
+    async def update_order(
+        self,
+        order_id: int,
+        note: Optional[str] = None,
+    ) -> ShopifyOrder:
+        """Update an order's properties.
+
+        Args:
+            order_id: The Shopify order ID.
+            note: New note for the order.
+
+        Returns:
+            The updated ShopifyOrder.
+        """
+        order_data: dict[str, Any] = {"id": order_id}
+        if note is not None:
+            order_data["note"] = note
+        resp = await self._request(
+            "PUT", f"/orders/{order_id}.json",
+            json_body={"order": order_data},
+        )
+        return parse_order(resp.json()["order"])
+
+    @action("Cancel an order", dangerous=True)
+    async def cancel_order(self, order_id: int) -> ShopifyOrder:
+        """Cancel an open order.
+
+        Args:
+            order_id: The Shopify order ID.
+
+        Returns:
+            The cancelled ShopifyOrder.
+        """
+        resp = await self._request(
+            "POST", f"/orders/{order_id}/cancel.json",
+        )
+        return parse_order(resp.json()["order"])
+
+    # ------------------------------------------------------------------
+    # Actions -- Discounts
+    # ------------------------------------------------------------------
+
+    @action("Create a price rule / discount", dangerous=True)
+    async def create_discount(
+        self,
+        title: str,
+        value: str,
+        type: str,
+    ) -> dict[str, Any]:
+        """Create a discount price rule.
+
+        Args:
+            title: The discount title.
+            value: The discount value (e.g. ``"-10.0"`` for 10 off).
+            type: Value type (``"percentage"`` or ``"fixed_amount"``).
+
+        Returns:
+            Dict with the created price rule data.
+        """
+        payload: dict[str, Any] = {
+            "price_rule": {
+                "title": title,
+                "target_type": "line_item",
+                "target_selection": "all",
+                "allocation_method": "across",
+                "value_type": type,
+                "value": value,
+                "customer_selection": "all",
+                "starts_at": "2020-01-01T00:00:00Z",
+            },
+        }
+        resp = await self._request(
+            "POST", "/price_rules.json", json_body=payload,
+        )
+        return resp.json().get("price_rule", {})
+
+    # ------------------------------------------------------------------
+    # Actions -- Collections
+    # ------------------------------------------------------------------
+
+    @action("List collections from your Shopify store")
+    async def list_collections(
+        self, limit: Optional[int] = None,
+    ) -> list[dict[str, Any]]:
+        """List custom collections.
+
+        Args:
+            limit: Maximum number of collections to return.
+
+        Returns:
+            List of collection dicts.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["limit"] = min(limit, 250)
+        resp = await self._request(
+            "GET", "/custom_collections.json", params=params or None,
+        )
+        return resp.json().get("custom_collections", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- Inventory
+    # ------------------------------------------------------------------
+
+    @action("List inventory levels by location")
+    async def list_inventory_levels(
+        self, location_id: Optional[int] = None,
+    ) -> list[dict[str, Any]]:
+        """List inventory levels, optionally filtered by location.
+
+        Args:
+            location_id: Optional location ID to filter by.
+
+        Returns:
+            List of inventory level dicts.
+        """
+        params: dict[str, Any] = {}
+        if location_id is not None:
+            params["location_ids"] = location_id
+        resp = await self._request(
+            "GET", "/inventory_levels.json", params=params or None,
+        )
+        return resp.json().get("inventory_levels", [])
+
+    @action("Update inventory quantity for an item")
+    async def update_inventory(
+        self,
+        inventory_item_id: int,
+        available: int,
+    ) -> dict[str, Any]:
+        """Set the available inventory for an item at a location.
+
+        Args:
+            inventory_item_id: The inventory item ID.
+            available: The new available quantity.
+
+        Returns:
+            Dict with the updated inventory level data.
+        """
+        payload: dict[str, Any] = {
+            "inventory_item_id": inventory_item_id,
+            "available": available,
+        }
+        resp = await self._request(
+            "POST", "/inventory_levels/set.json", json_body=payload,
+        )
+        return resp.json().get("inventory_level", {})

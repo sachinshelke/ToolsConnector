@@ -17,8 +17,11 @@ from toolsconnector.types import PageState, PaginatedList
 from .types import (
     PlaidAccount,
     PlaidBalance,
+    PlaidHolding,
     PlaidInstitution,
+    PlaidLiability,
     PlaidLinkToken,
+    PlaidProcessorToken,
     PlaidTransaction,
 )
 
@@ -470,3 +473,109 @@ class Plaid(BaseConnector):
             "item_id": data.get("item_id", ""),
             "request_id": data.get("request_id", ""),
         }
+
+    # ------------------------------------------------------------------
+    # Actions -- Investments
+    # ------------------------------------------------------------------
+
+    @action("Get investment holdings for an access token")
+    async def get_investment_holdings(
+        self, access_token: str,
+    ) -> list[PlaidHolding]:
+        """Retrieve investment holdings for the linked accounts.
+
+        Args:
+            access_token: A Plaid access token with the investments product.
+
+        Returns:
+            List of PlaidHolding objects.
+        """
+        data = await self._request(
+            "/investments/holdings/get",
+            json={"access_token": access_token},
+        )
+        return [
+            PlaidHolding(
+                account_id=h.get("account_id", ""),
+                security_id=h.get("security_id"),
+                quantity=h.get("quantity", 0.0),
+                institution_price=h.get("institution_price"),
+                institution_value=h.get("institution_value"),
+                cost_basis=h.get("cost_basis"),
+                iso_currency_code=h.get("iso_currency_code"),
+            )
+            for h in data.get("holdings", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Liabilities
+    # ------------------------------------------------------------------
+
+    @action("Get liabilities for an access token")
+    async def get_liabilities(
+        self, access_token: str,
+    ) -> dict[str, list[PlaidLiability]]:
+        """Retrieve liabilities (credit, student, mortgage) for linked accounts.
+
+        Args:
+            access_token: A Plaid access token with the liabilities product.
+
+        Returns:
+            Dict keyed by liability type with lists of PlaidLiability objects.
+        """
+        data = await self._request(
+            "/liabilities/get",
+            json={"access_token": access_token},
+        )
+        liabilities = data.get("liabilities", {})
+        result: dict[str, list[PlaidLiability]] = {}
+        for liability_type in ("credit", "student", "mortgage"):
+            items = liabilities.get(liability_type, [])
+            if items:
+                result[liability_type] = [
+                    PlaidLiability(
+                        account_id=item.get("account_id", ""),
+                        type=liability_type,
+                        last_payment_amount=item.get("last_payment_amount"),
+                        last_payment_date=item.get("last_payment_date"),
+                        minimum_payment_amount=item.get("minimum_payment_amount"),
+                        next_payment_due_date=item.get("next_payment_due_date"),
+                        aprs=item.get("aprs", []),
+                    )
+                    for item in items
+                ]
+        return result
+
+    # ------------------------------------------------------------------
+    # Actions -- Processor token
+    # ------------------------------------------------------------------
+
+    @action("Create a processor token for a third-party integration")
+    async def create_processor_token(
+        self,
+        access_token: str,
+        account_id: str,
+        processor: str,
+    ) -> PlaidProcessorToken:
+        """Create a processor token for use with a payment processor.
+
+        Args:
+            access_token: A Plaid access token.
+            account_id: The account ID to create the processor token for.
+            processor: Processor name (e.g. ``"dwolla"``, ``"stripe"``).
+
+        Returns:
+            PlaidProcessorToken with the generated token.
+        """
+        data = await self._request(
+            "/processor/token/create",
+            json={
+                "access_token": access_token,
+                "account_id": account_id,
+                "processor": processor,
+            },
+        )
+        return PlaidProcessorToken(
+            processor_token=data.get("processor_token", ""),
+            request_id=data.get("request_id", ""),
+        )

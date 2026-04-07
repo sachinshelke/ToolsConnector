@@ -15,12 +15,22 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
+from ._helpers import (
+    parse_comment,
+    parse_issue,
+    parse_project,
+    parse_status,
+    parse_user,
+)
 from .types import (
+    JiraAttachment,
+    JiraBoard,
     JiraComment,
     JiraIssue,
     JiraIssueType,
     JiraPriority,
     JiraProject,
+    JiraSprint,
     JiraStatus,
     JiraTransition,
     JiraUser,
@@ -106,115 +116,66 @@ class Jira(BaseConnector):
                 return {}
             return response.json()
 
+    def _agile_base_url(self) -> str:
+        """Derive the Jira Agile REST API base URL from the configured base_url.
+
+        Replaces ``/rest/api/3`` (or ``/rest/api/2``) with
+        ``/rest/agile/1.0``.
+
+        Returns:
+            The Agile API base URL string.
+        """
+        base = str(self._base_url)
+        for suffix in ("/rest/api/3", "/rest/api/2"):
+            if base.endswith(suffix):
+                return base[: -len(suffix)] + "/rest/agile/1.0"
+        # Fallback: append agile path to domain root
+        from urllib.parse import urlparse
+        parsed = urlparse(base)
+        return f"{parsed.scheme}://{parsed.netloc}/rest/agile/1.0"
+
+    async def _agile_request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """Execute an HTTP request against the Jira Agile REST API.
+
+        Args:
+            method: HTTP method.
+            path: API path relative to the Agile base URL.
+            params: Query parameters.
+
+        Returns:
+            Parsed JSON response dict.
+
+        Raises:
+            httpx.HTTPStatusError: On non-2xx responses.
+        """
+        url = f"{self._agile_base_url()}{path}"
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.request(
+                method,
+                url,
+                headers=self._headers(),
+                params=params,
+            )
+            response.raise_for_status()
+            if response.status_code == 204:
+                return {}
+            return response.json()
+
     # ------------------------------------------------------------------
-    # Response parsers
+    # Response parsers (delegated to _helpers module)
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _parse_user(data: Optional[dict[str, Any]]) -> Optional[JiraUser]:
-        """Parse a Jira user JSON fragment."""
-        if not data:
-            return None
-        return JiraUser(
-            account_id=data.get("accountId", ""),
-            display_name=data.get("displayName"),
-            email_address=data.get("emailAddress"),
-            active=data.get("active", True),
-            avatar_url=(data.get("avatarUrls") or {}).get("48x48"),
-        )
-
-    @staticmethod
-    def _parse_priority(
-        data: Optional[dict[str, Any]],
-    ) -> Optional[JiraPriority]:
-        """Parse a priority JSON fragment."""
-        if not data:
-            return None
-        return JiraPriority(
-            id=data.get("id", ""),
-            name=data.get("name", ""),
-            icon_url=data.get("iconUrl"),
-        )
-
-    @staticmethod
-    def _parse_status(
-        data: Optional[dict[str, Any]],
-    ) -> Optional[JiraStatus]:
-        """Parse a status JSON fragment."""
-        if not data:
-            return None
-        category = data.get("statusCategory", {})
-        return JiraStatus(
-            id=data.get("id", ""),
-            name=data.get("name", ""),
-            category_key=category.get("key"),
-        )
-
-    @staticmethod
-    def _parse_issue_type(
-        data: Optional[dict[str, Any]],
-    ) -> Optional[JiraIssueType]:
-        """Parse an issue-type JSON fragment."""
-        if not data:
-            return None
-        return JiraIssueType(
-            id=data.get("id", ""),
-            name=data.get("name", ""),
-            subtask=data.get("subtask", False),
-            icon_url=data.get("iconUrl"),
-        )
-
-    @classmethod
-    def _parse_issue(cls, data: dict[str, Any]) -> JiraIssue:
-        """Parse a raw Jira issue JSON into a JiraIssue model."""
-        fields = data.get("fields", {})
-        components = [c.get("name", "") for c in fields.get("components", [])]
-        fix_versions = [v.get("name", "") for v in fields.get("fixVersions", [])]
-        project = fields.get("project", {})
-
-        return JiraIssue(
-            id=data["id"],
-            key=data["key"],
-            self_url=data.get("self"),
-            summary=fields.get("summary", ""),
-            description=fields.get("description"),
-            status=cls._parse_status(fields.get("status")),
-            issue_type=cls._parse_issue_type(fields.get("issuetype")),
-            priority=cls._parse_priority(fields.get("priority")),
-            assignee=cls._parse_user(fields.get("assignee")),
-            reporter=cls._parse_user(fields.get("reporter")),
-            project_key=project.get("key", ""),
-            created=fields.get("created"),
-            updated=fields.get("updated"),
-            labels=fields.get("labels", []),
-            components=components,
-            fix_versions=fix_versions,
-        )
-
-    @classmethod
-    def _parse_project(cls, data: dict[str, Any]) -> JiraProject:
-        """Parse a raw Jira project JSON into a JiraProject model."""
-        return JiraProject(
-            id=data.get("id", ""),
-            key=data.get("key", ""),
-            name=data.get("name", ""),
-            project_type_key=data.get("projectTypeKey"),
-            lead=cls._parse_user(data.get("lead")),
-            avatar_url=(data.get("avatarUrls") or {}).get("48x48"),
-            self_url=data.get("self"),
-        )
-
-    @classmethod
-    def _parse_comment(cls, data: dict[str, Any]) -> JiraComment:
-        """Parse a Jira comment JSON into a JiraComment model."""
-        return JiraComment(
-            id=data.get("id", ""),
-            body=data.get("body"),
-            author=cls._parse_user(data.get("author")),
-            created=data.get("created"),
-            updated=data.get("updated"),
-            self_url=data.get("self"),
-        )
+    _parse_user = staticmethod(parse_user)
+    _parse_status = staticmethod(parse_status)
+    _parse_issue = staticmethod(parse_issue)
+    _parse_project = staticmethod(parse_project)
+    _parse_comment = staticmethod(parse_comment)
 
     # ------------------------------------------------------------------
     # Actions
@@ -469,3 +430,310 @@ class Jira(BaseConnector):
                 )
             )
         return transitions
+
+    # ------------------------------------------------------------------
+    # Actions — Issue management (continued)
+    # ------------------------------------------------------------------
+
+    @action("Delete an issue", dangerous=True)
+    async def delete_issue(self, issue_key: str) -> None:
+        """Permanently delete a Jira issue.
+
+        Args:
+            issue_key: The issue key (e.g., ``"PROJ-123"``).
+
+        Warning:
+            This action permanently deletes the issue and all its data
+            including comments, attachments, and worklogs.
+        """
+        await self._request("DELETE", f"/issue/{issue_key}")
+
+    @action("Assign an issue to a user")
+    async def assign_issue(
+        self,
+        issue_key: str,
+        assignee_account_id: str,
+    ) -> None:
+        """Assign an issue to a user.
+
+        Args:
+            issue_key: The issue key (e.g., ``"PROJ-123"``).
+            assignee_account_id: The Atlassian account ID of the user
+                to assign. Pass ``"-1"`` to set unassigned.
+        """
+        body: dict[str, Any] = {"accountId": assignee_account_id}
+        await self._request("PUT", f"/issue/{issue_key}/assignee", json=body)
+
+    @action("List comments on an issue")
+    async def list_comments(self, issue_key: str) -> list[JiraComment]:
+        """List all comments on a Jira issue.
+
+        Args:
+            issue_key: The issue key (e.g., ``"PROJ-123"``).
+
+        Returns:
+            List of JiraComment objects.
+        """
+        data = await self._request(
+            "GET", f"/issue/{issue_key}/comment"
+        )
+        return [
+            self._parse_comment(c)
+            for c in data.get("comments", [])
+        ]
+
+    @action("Delete a comment from an issue", dangerous=True)
+    async def delete_comment(
+        self,
+        issue_key: str,
+        comment_id: str,
+    ) -> None:
+        """Delete a comment from a Jira issue.
+
+        Args:
+            issue_key: The issue key (e.g., ``"PROJ-123"``).
+            comment_id: The ID of the comment to delete.
+
+        Warning:
+            This permanently deletes the comment.
+        """
+        await self._request(
+            "DELETE", f"/issue/{issue_key}/comment/{comment_id}"
+        )
+
+    @action("Add a watcher to an issue")
+    async def add_watcher(
+        self,
+        issue_key: str,
+        account_id: str,
+    ) -> None:
+        """Add a user as a watcher on an issue.
+
+        Args:
+            issue_key: The issue key (e.g., ``"PROJ-123"``).
+            account_id: The Atlassian account ID of the user to add
+                as a watcher.
+        """
+        # Jira REST API v3 expects the account ID as a raw JSON string
+        url = f"{self._base_url}/issue/{issue_key}/watchers"
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                url,
+                headers=self._headers(),
+                json=account_id,
+            )
+            response.raise_for_status()
+
+    # ------------------------------------------------------------------
+    # Actions — Agile (Boards & Sprints)
+    # ------------------------------------------------------------------
+
+    @action("List sprints for a board")
+    async def list_sprints(
+        self,
+        board_id: int,
+        state: Optional[str] = None,
+        limit: int = 50,
+        start_at: int = 0,
+    ) -> PaginatedList[JiraSprint]:
+        """List sprints for a given Agile board.
+
+        Args:
+            board_id: The ID of the Agile board.
+            state: Filter by sprint state: ``active``, ``closed``,
+                or ``future``. Omit to list all.
+            limit: Maximum sprints per page (max 50).
+            start_at: Offset for pagination (0-based).
+
+        Returns:
+            Paginated list of JiraSprint objects.
+        """
+        params: dict[str, Any] = {
+            "maxResults": min(limit, 50),
+            "startAt": start_at,
+        }
+        if state:
+            params["state"] = state
+
+        data = await self._agile_request(
+            "GET", f"/board/{board_id}/sprint", params=params,
+        )
+
+        sprints: list[JiraSprint] = []
+        for s in data.get("values", []):
+            sprints.append(
+                JiraSprint(
+                    id=s["id"],
+                    name=s.get("name", ""),
+                    state=s.get("state"),
+                    start_date=s.get("startDate"),
+                    end_date=s.get("endDate"),
+                    complete_date=s.get("completeDate"),
+                    board_id=s.get("originBoardId"),
+                    goal=s.get("goal"),
+                    self_url=s.get("self"),
+                )
+            )
+
+        total = data.get("total", len(sprints))
+        returned = len(sprints)
+        next_offset = start_at + returned
+
+        return PaginatedList(
+            items=sprints,
+            page_state=PageState(
+                offset=next_offset,
+                total_count=total,
+                has_more=data.get("isLast") is False,
+            ),
+            total_count=total,
+        )
+
+    @action("Get an Agile board by ID")
+    async def get_board(self, board_id: int) -> JiraBoard:
+        """Retrieve a single Agile board.
+
+        Args:
+            board_id: The ID of the board to retrieve.
+
+        Returns:
+            JiraBoard object.
+        """
+        data = await self._agile_request("GET", f"/board/{board_id}")
+        location = data.get("location", {})
+        return JiraBoard(
+            id=data["id"],
+            name=data.get("name", ""),
+            type=data.get("type"),
+            project_key=location.get("projectKey"),
+            self_url=data.get("self"),
+        )
+
+    @action("List Agile boards")
+    async def list_boards(
+        self,
+        project_key: Optional[str] = None,
+        limit: int = 50,
+        start_at: int = 0,
+    ) -> PaginatedList[JiraBoard]:
+        """List Agile boards with optional project filter.
+
+        Args:
+            project_key: Filter boards by project key.
+            limit: Maximum boards per page (max 50).
+            start_at: Offset for pagination (0-based).
+
+        Returns:
+            Paginated list of JiraBoard objects.
+        """
+        params: dict[str, Any] = {
+            "maxResults": min(limit, 50),
+            "startAt": start_at,
+        }
+        if project_key:
+            params["projectKeyOrId"] = project_key
+
+        data = await self._agile_request(
+            "GET", "/board", params=params,
+        )
+
+        boards: list[JiraBoard] = []
+        for b in data.get("values", []):
+            location = b.get("location", {})
+            boards.append(
+                JiraBoard(
+                    id=b["id"],
+                    name=b.get("name", ""),
+                    type=b.get("type"),
+                    project_key=location.get("projectKey"),
+                    self_url=b.get("self"),
+                )
+            )
+
+        total = data.get("total", len(boards))
+        returned = len(boards)
+        next_offset = start_at + returned
+
+        return PaginatedList(
+            items=boards,
+            page_state=PageState(
+                offset=next_offset,
+                total_count=total,
+                has_more=data.get("isLast") is False,
+            ),
+            total_count=total,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Attachments
+    # ------------------------------------------------------------------
+
+    @action("Add an attachment to an issue", dangerous=True)
+    async def add_attachment(
+        self,
+        issue_key: str,
+        filename: str,
+        content: bytes,
+    ) -> JiraAttachment:
+        """Upload a file attachment to a Jira issue.
+
+        Args:
+            issue_key: The issue key (e.g., ``"PROJ-123"``).
+            filename: The name of the file being uploaded.
+            content: Raw file content as bytes.
+
+        Returns:
+            The created JiraAttachment object.
+        """
+        url = f"{self._base_url}/issue/{issue_key}/attachments"
+        headers = self._headers()
+        # Jira requires this header for attachment uploads
+        headers["X-Atlassian-Token"] = "no-check"
+        # Remove Content-Type so httpx sets it for multipart
+        headers.pop("Content-Type", None)
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                url,
+                headers=headers,
+                files={"file": (filename, content)},
+            )
+            response.raise_for_status()
+            attachments = response.json()
+
+        # Jira returns a list; take the first (and usually only) item
+        att = attachments[0] if attachments else {}
+        return JiraAttachment(
+            id=att.get("id", ""),
+            filename=att.get("filename", filename),
+            mime_type=att.get("mimeType"),
+            size=att.get("size"),
+            author=self._parse_user(att.get("author")),
+            created=att.get("created"),
+            content_url=att.get("content"),
+            self_url=att.get("self"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Users
+    # ------------------------------------------------------------------
+
+    @action("Get a Jira user by account ID")
+    async def get_user(self, account_id: str) -> JiraUser:
+        """Retrieve a Jira user by their Atlassian account ID.
+
+        Args:
+            account_id: The Atlassian account ID of the user.
+
+        Returns:
+            JiraUser object with profile details.
+        """
+        data = await self._request(
+            "GET",
+            "/user",
+            params={"accountId": account_id},
+        )
+        user = self._parse_user(data)
+        if user is None:
+            return JiraUser(account_id=account_id)
+        return user

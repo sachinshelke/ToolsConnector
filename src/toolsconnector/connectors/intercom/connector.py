@@ -14,7 +14,7 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import IntercomContact, IntercomConversation, IntercomMessage
+from .types import IntercomAdmin, IntercomContact, IntercomConversation, IntercomMessage, IntercomTag
 
 
 class Intercom(BaseConnector):
@@ -423,3 +423,99 @@ class Intercom(BaseConnector):
         }
         data = await self._request("POST", "/messages", json=payload)
         return self._parse_message(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Admins
+    # ------------------------------------------------------------------
+
+    @action("List all admins in the workspace")
+    async def list_admins(self) -> list[IntercomAdmin]:
+        """List all admins and operators in the workspace.
+
+        Returns:
+            List of IntercomAdmin objects.
+        """
+        data = await self._request("GET", "/admins")
+        return [
+            IntercomAdmin(
+                id=a.get("id", ""),
+                type=a.get("type", "admin"),
+                name=a.get("name"),
+                email=a.get("email"),
+                job_title=a.get("job_title"),
+                has_inbox_seat=a.get("has_inbox_seat", False),
+                avatar=a.get("avatar", {}).get("image_url")
+                if isinstance(a.get("avatar"), dict) else None,
+            )
+            for a in data.get("admins", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Conversation management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Close a conversation")
+    async def close_conversation(
+        self, conversation_id: str,
+    ) -> IntercomConversation:
+        """Close an open conversation.
+
+        Args:
+            conversation_id: The Intercom conversation ID.
+
+        Returns:
+            The closed IntercomConversation.
+        """
+        payload: dict[str, Any] = {
+            "message_type": "close",
+            "type": "admin",
+            "body": "Closing conversation.",
+        }
+        data = await self._request(
+            "POST",
+            f"/conversations/{conversation_id}/parts",
+            json=payload,
+        )
+        return self._parse_conversation(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Tags
+    # ------------------------------------------------------------------
+
+    @action("Tag a contact", dangerous=True)
+    async def tag_contact(
+        self, contact_id: str, tag_name: str,
+    ) -> bool:
+        """Apply a tag to a contact.
+
+        Args:
+            contact_id: The Intercom contact ID.
+            tag_name: Name of the tag to apply.
+
+        Returns:
+            True if the tag was applied successfully.
+        """
+        payload: dict[str, Any] = {
+            "name": tag_name,
+            "users": [{"id": contact_id}],
+        }
+        await self._request("POST", "/tags", json=payload)
+        return True
+
+    @action("List all tags in the workspace")
+    async def list_tags(self) -> list[IntercomTag]:
+        """List all tags defined in the workspace.
+
+        Returns:
+            List of IntercomTag objects.
+        """
+        data = await self._request("GET", "/tags")
+        return [
+            IntercomTag(
+                id=t.get("id", ""),
+                name=t.get("name", ""),
+                type=t.get("type", "tag"),
+                applied_count=t.get("applied_count"),
+            )
+            for t in data.get("data", [])
+        ]

@@ -114,3 +114,34 @@ class MailchimpCampaign(BaseModel):
     web_id: Optional[int] = None
     settings: Optional[MailchimpCampaignSettings] = None
     recipients: Optional[MailchimpCampaignRecipients] = None
+
+
+class MailchimpSegment(BaseModel):
+    """A Mailchimp list segment (saved audience segment)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: str = ""
+    member_count: int = 0
+    type: Optional[str] = None
+    list_id: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class MailchimpCampaignReport(BaseModel):
+    """A Mailchimp campaign report with performance metrics."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    campaign_title: Optional[str] = None
+    emails_sent: int = 0
+    opens: int = 0
+    unique_opens: int = 0
+    clicks: int = 0
+    subscriber_clicks: int = 0
+    unsubscribed: int = 0
+    bounces: Optional[dict[str, Any]] = None
+    send_time: Optional[str] = None

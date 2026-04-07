@@ -73,3 +73,18 @@ class TelegramUpdate(BaseModel):
     edited_message: Optional[TelegramMessage] = None
     channel_post: Optional[TelegramMessage] = None
     callback_query: Optional[dict[str, Any]] = None
+
+
+class TelegramWebhookInfo(BaseModel):
+    """Information about the current webhook configuration."""
+
+    model_config = ConfigDict(frozen=True)
+
+    url: str = ""
+    has_custom_certificate: bool = False
+    pending_update_count: int = 0
+    ip_address: Optional[str] = None
+    last_error_date: Optional[int] = None
+    last_error_message: Optional[str] = None
+    max_connections: Optional[int] = None
+    allowed_updates: Optional[list[str]] = None

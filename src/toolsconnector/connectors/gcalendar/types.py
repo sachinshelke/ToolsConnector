@@ -110,3 +110,13 @@ class EventId(BaseModel):
     id: str
     html_link: Optional[str] = None
     status: str = "confirmed"
+
+
+class FreeBusyCalendar(BaseModel):
+    """Free/busy information for a single calendar."""
+
+    model_config = ConfigDict(frozen=True)
+
+    calendar_id: str = ""
+    busy: list[dict[str, str]] = Field(default_factory=list)
+    errors: list[dict[str, str]] = Field(default_factory=list)

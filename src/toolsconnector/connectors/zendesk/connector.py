@@ -21,7 +21,7 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PageState, PaginatedList
 
 from ._parsers import parse_search_result, parse_ticket, parse_user
-from .types import ZendeskComment, ZendeskSearchResult, ZendeskTicket, ZendeskUser
+from .types import ZendeskComment, ZendeskGroup, ZendeskSearchResult, ZendeskTicket, ZendeskUser
 
 logger = logging.getLogger("toolsconnector.zendesk")
 
@@ -400,3 +400,90 @@ class Zendesk(BaseConnector):
             total_count=body.get("count"),
         )
         return result
+
+    # ------------------------------------------------------------------
+    # Actions -- Ticket management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete a Zendesk ticket", dangerous=True)
+    async def delete_ticket(self, ticket_id: int) -> bool:
+        """Permanently delete a Zendesk ticket.
+
+        Args:
+            ticket_id: The Zendesk ticket ID.
+
+        Returns:
+            True if the ticket was deleted successfully.
+        """
+        resp = await self._request("DELETE", f"/tickets/{ticket_id}.json")
+        return resp.status_code in (200, 204)
+
+    @action("Assign a ticket to an agent")
+    async def assign_ticket(
+        self, ticket_id: int, assignee_id: int,
+    ) -> ZendeskTicket:
+        """Assign a ticket to a specific agent.
+
+        Args:
+            ticket_id: The Zendesk ticket ID.
+            assignee_id: The user ID of the agent to assign.
+
+        Returns:
+            The updated ZendeskTicket.
+        """
+        resp = await self._request(
+            "PUT", f"/tickets/{ticket_id}.json",
+            json_body={"ticket": {"assignee_id": assignee_id}},
+        )
+        return parse_ticket(resp.json()["ticket"])
+
+    # ------------------------------------------------------------------
+    # Actions -- Groups
+    # ------------------------------------------------------------------
+
+    @action("List agent groups in Zendesk")
+    async def list_groups(
+        self, limit: Optional[int] = None,
+    ) -> list[ZendeskGroup]:
+        """List all agent groups.
+
+        Args:
+            limit: Maximum number of groups to return.
+
+        Returns:
+            List of ZendeskGroup objects.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["per_page"] = min(limit, 100)
+        resp = await self._request(
+            "GET", "/groups.json", params=params or None,
+        )
+        body = resp.json()
+        return [
+            ZendeskGroup(
+                id=g["id"],
+                name=g.get("name"),
+                description=g.get("description"),
+                default=g.get("default", False),
+                deleted=g.get("deleted", False),
+                created_at=g.get("created_at"),
+                updated_at=g.get("updated_at"),
+            )
+            for g in body.get("groups", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Tags
+    # ------------------------------------------------------------------
+
+    @action("List all tags used in Zendesk")
+    async def list_tags(self) -> list[str]:
+        """List all tags currently used across tickets.
+
+        Returns:
+            List of tag name strings.
+        """
+        resp = await self._request("GET", "/tags.json")
+        body = resp.json()
+        return [t.get("name", "") for t in body.get("tags", [])]

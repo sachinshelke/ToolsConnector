@@ -19,6 +19,7 @@ from toolsconnector.spec.connector import (
 )
 
 from .types import (
+    AnthropicBatch,
     AnthropicMessage,
     AnthropicModel,
     ContentBlock,
@@ -221,4 +222,92 @@ class Anthropic(BaseConnector):
                 created_at=m.get("created_at"),
             )
             for m in data.get("data", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Batches
+    # ------------------------------------------------------------------
+
+    @action("Create a message batch", dangerous=True)
+    async def create_batch(
+        self, requests: list[dict[str, Any]],
+    ) -> AnthropicBatch:
+        """Create a Message Batch for async processing.
+
+        Args:
+            requests: List of batch request dicts, each with
+                ``custom_id`` and ``params`` keys.
+
+        Returns:
+            The created AnthropicBatch.
+        """
+        resp = await self._request(
+            "POST", "/v1/messages/batches",
+            json_body={"requests": requests},
+        )
+        data = resp.json()
+        return AnthropicBatch(
+            id=data.get("id", ""),
+            type=data.get("type", "message_batch"),
+            processing_status=data.get("processing_status"),
+            request_counts=data.get("request_counts"),
+            ended_at=data.get("ended_at"),
+            created_at=data.get("created_at"),
+            expires_at=data.get("expires_at"),
+        )
+
+    @action("Get a message batch by ID")
+    async def get_batch(self, batch_id: str) -> AnthropicBatch:
+        """Retrieve a Message Batch by ID.
+
+        Args:
+            batch_id: The batch ID.
+
+        Returns:
+            AnthropicBatch with current status.
+        """
+        resp = await self._request(
+            "GET", f"/v1/messages/batches/{batch_id}",
+        )
+        data = resp.json()
+        return AnthropicBatch(
+            id=data.get("id", ""),
+            type=data.get("type", "message_batch"),
+            processing_status=data.get("processing_status"),
+            request_counts=data.get("request_counts"),
+            ended_at=data.get("ended_at"),
+            created_at=data.get("created_at"),
+            expires_at=data.get("expires_at"),
+        )
+
+    @action("List message batches")
+    async def list_batches(
+        self, limit: Optional[int] = None,
+    ) -> list[AnthropicBatch]:
+        """List Message Batches.
+
+        Args:
+            limit: Maximum number of batches to return.
+
+        Returns:
+            List of AnthropicBatch objects.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["limit"] = limit
+        resp = await self._request(
+            "GET", "/v1/messages/batches", params=params or None,
+        )
+        data = resp.json()
+        return [
+            AnthropicBatch(
+                id=b.get("id", ""),
+                type=b.get("type", "message_batch"),
+                processing_status=b.get("processing_status"),
+                request_counts=b.get("request_counts"),
+                ended_at=b.get("ended_at"),
+                created_at=b.get("created_at"),
+                expires_at=b.get("expires_at"),
+            )
+            for b in data.get("data", [])
         ]

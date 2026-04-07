@@ -70,3 +70,54 @@ class OutlookMessageId(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     id: str
+
+
+# ---------------------------------------------------------------------------
+# Contact models
+# ---------------------------------------------------------------------------
+
+
+class OutlookContact(BaseModel):
+    """An Outlook contact from the MS Graph People/Contacts API."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    given_name: Optional[str] = None
+    surname: Optional[str] = None
+    display_name: Optional[str] = None
+    email_addresses: list[dict[str, Optional[str]]] = Field(default_factory=list)
+    phone_numbers: list[dict[str, Optional[str]]] = Field(default_factory=list)
+    company_name: Optional[str] = None
+    job_title: Optional[str] = None
+    created_datetime: Optional[str] = None
+    last_modified_datetime: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Calendar models
+# ---------------------------------------------------------------------------
+
+
+class OutlookCalendarEvent(BaseModel):
+    """An Outlook calendar event from the MS Graph Calendar API."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    subject: Optional[str] = None
+    body_preview: Optional[str] = None
+    body_content: Optional[str] = None
+    start_datetime: Optional[str] = None
+    start_timezone: Optional[str] = None
+    end_datetime: Optional[str] = None
+    end_timezone: Optional[str] = None
+    location: Optional[str] = None
+    is_all_day: bool = False
+    is_cancelled: bool = False
+    organizer_name: Optional[str] = None
+    organizer_email: Optional[str] = None
+    attendees: list[dict[str, Optional[str]]] = Field(default_factory=list)
+    web_link: Optional[str] = None
+    created_datetime: Optional[str] = None
+    last_modified_datetime: Optional[str] = None

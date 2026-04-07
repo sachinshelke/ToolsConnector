@@ -54,3 +54,15 @@ class ConfluencePage(BaseModel):
     created_at: Optional[str] = None
     author_id: Optional[str] = None
     web_url: Optional[str] = None
+
+
+class ConfluenceComment(BaseModel):
+    """A comment on a Confluence page."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    body_storage: Optional[str] = None
+    created_at: Optional[str] = None
+    author_id: Optional[str] = None
+    version: Optional[ConfluenceVersion] = None

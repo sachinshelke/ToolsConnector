@@ -85,3 +85,14 @@ class IntercomAdmin(BaseModel):
     job_title: Optional[str] = None
     has_inbox_seat: bool = False
     avatar: Optional[str] = None
+
+
+class IntercomTag(BaseModel):
+    """An Intercom tag."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: str = ""
+    type: str = "tag"
+    applied_count: Optional[int] = None

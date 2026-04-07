@@ -443,3 +443,73 @@ class Segment(BaseConnector):
             )
             for d in data.get("data", {}).get("destinations", [])
         ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Source management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Create a new Segment source", dangerous=True)
+    async def create_source(
+        self, name: str, catalog_name: str,
+    ) -> SegmentSource:
+        """Create a new Segment source.
+
+        Args:
+            name: Display name for the source.
+            catalog_name: Catalog name (e.g. ``"catalog/sources/javascript"``).
+
+        Returns:
+            The created SegmentSource.
+        """
+        payload: dict[str, Any] = {
+            "source": {
+                "name": name,
+                "catalog_name": catalog_name,
+            },
+        }
+        resp = await self._config_request(
+            "POST", "/sources", json_body=payload,
+        )
+        data = resp.json()
+        s = data.get("data", {}).get("source", {})
+        return SegmentSource(
+            id=s.get("id", ""),
+            name=s.get("name", ""),
+            slug=s.get("slug"),
+            catalog_name=s.get("catalog_name"),
+            workspace_id=s.get("workspace_id"),
+            enabled=s.get("enabled", True),
+            write_keys=s.get("write_keys", []),
+            metadata=s.get("metadata"),
+            created_at=s.get("created_at"),
+        )
+
+    @action("Delete a Segment source", dangerous=True)
+    async def delete_source(self, source_id: str) -> bool:
+        """Delete a Segment source.
+
+        Args:
+            source_id: The source ID.
+
+        Returns:
+            True if the source was deleted.
+        """
+        resp = await self._config_request(
+            "DELETE", f"/sources/{source_id}",
+        )
+        return resp.status_code in (200, 204)
+
+    # ------------------------------------------------------------------
+    # Actions -- Warehouses
+    # ------------------------------------------------------------------
+
+    @action("List connected warehouses")
+    async def list_warehouses(self) -> list[dict[str, Any]]:
+        """List all connected warehouses in the workspace.
+
+        Returns:
+            List of warehouse configuration dicts.
+        """
+        resp = await self._config_request("GET", "/warehouses")
+        data = resp.json()
+        return data.get("data", {}).get("warehouses", [])

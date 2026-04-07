@@ -21,12 +21,25 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PageState, PaginatedList
 
 from ._parsers import (
+    parse_branch,
+    parse_comment,
     parse_issue,
+    parse_job,
     parse_merge_request,
     parse_pipeline,
     parse_project,
+    parse_tag,
 )
-from .types import GitLabIssue, MergeRequest, Pipeline, Project
+from .types import (
+    GitLabBranch,
+    GitLabComment,
+    GitLabIssue,
+    GitLabJob,
+    GitLabTag,
+    MergeRequest,
+    Pipeline,
+    Project,
+)
 
 logger = logging.getLogger("toolsconnector.gitlab")
 
@@ -442,3 +455,203 @@ class GitLab(BaseConnector):
             "GET", f"/projects/{encoded}/pipelines/{pipeline_id}",
         )
         return parse_pipeline(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Merge Request details
+    # ------------------------------------------------------------------
+
+    @action("Get a single merge request by IID")
+    async def get_merge_request(
+        self,
+        project_id: str,
+        mr_iid: int,
+    ) -> MergeRequest:
+        """Retrieve a single merge request with full details.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            mr_iid: The merge request internal ID (IID).
+
+        Returns:
+            MergeRequest object.
+        """
+        encoded = _encode_project_id(project_id)
+        resp = await self._request(
+            "GET", f"/projects/{encoded}/merge_requests/{mr_iid}",
+        )
+        return parse_merge_request(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Comments (Notes)
+    # ------------------------------------------------------------------
+
+    @action("Create a comment on an issue", dangerous=True)
+    async def create_comment(
+        self,
+        project_id: str,
+        issue_iid: int,
+        body: str,
+    ) -> GitLabComment:
+        """Create a new comment (note) on a project issue.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            issue_iid: The issue internal ID (IID).
+            body: Comment text in Markdown format.
+
+        Returns:
+            The created GitLabComment object.
+        """
+        encoded = _encode_project_id(project_id)
+        payload: dict[str, Any] = {"body": body}
+        resp = await self._request(
+            "POST",
+            f"/projects/{encoded}/issues/{issue_iid}/notes",
+            json=payload,
+        )
+        return parse_comment(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- CI/CD Jobs
+    # ------------------------------------------------------------------
+
+    @action("List jobs for a pipeline")
+    async def list_jobs(
+        self,
+        project_id: str,
+        pipeline_id: int,
+    ) -> list[GitLabJob]:
+        """List all jobs for a CI/CD pipeline.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            pipeline_id: The pipeline ID.
+
+        Returns:
+            List of GitLabJob objects.
+        """
+        encoded = _encode_project_id(project_id)
+        resp = await self._request(
+            "GET",
+            f"/projects/{encoded}/pipelines/{pipeline_id}/jobs",
+            params={"per_page": 100},
+        )
+        return [parse_job(j) for j in resp.json()]
+
+    @action("Retry a failed pipeline", dangerous=True)
+    async def retry_pipeline(
+        self,
+        project_id: str,
+        pipeline_id: int,
+    ) -> Pipeline:
+        """Retry all failed jobs in a pipeline.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            pipeline_id: The pipeline ID to retry.
+
+        Returns:
+            The retried Pipeline object.
+        """
+        encoded = _encode_project_id(project_id)
+        resp = await self._request(
+            "POST",
+            f"/projects/{encoded}/pipelines/{pipeline_id}/retry",
+        )
+        return parse_pipeline(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Branches
+    # ------------------------------------------------------------------
+
+    @action("List branches for a project")
+    async def list_branches(
+        self,
+        project_id: str,
+        search: Optional[str] = None,
+        limit: int = 20,
+        page: int = 1,
+    ) -> list[GitLabBranch]:
+        """List repository branches for a project.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            search: Optional search string to filter branch names.
+            limit: Maximum branches per page (max 100).
+            page: Page number (1-indexed).
+
+        Returns:
+            List of GitLabBranch objects.
+        """
+        encoded = _encode_project_id(project_id)
+        params: dict[str, Any] = {"per_page": min(limit, 100), "page": page}
+        if search:
+            params["search"] = search
+
+        resp = await self._request(
+            "GET",
+            f"/projects/{encoded}/repository/branches",
+            params=params,
+        )
+        return [parse_branch(b) for b in resp.json()]
+
+    @action("Create a new branch", dangerous=True)
+    async def create_branch(
+        self,
+        project_id: str,
+        branch_name: str,
+        ref: str,
+    ) -> GitLabBranch:
+        """Create a new branch in a project repository.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            branch_name: Name for the new branch.
+            ref: The branch name or commit SHA to branch from.
+
+        Returns:
+            The created GitLabBranch object.
+        """
+        encoded = _encode_project_id(project_id)
+        payload: dict[str, Any] = {"branch": branch_name, "ref": ref}
+        resp = await self._request(
+            "POST",
+            f"/projects/{encoded}/repository/branches",
+            json=payload,
+        )
+        return parse_branch(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Tags
+    # ------------------------------------------------------------------
+
+    @action("List tags for a project")
+    async def list_tags(
+        self,
+        project_id: str,
+        search: Optional[str] = None,
+        limit: int = 20,
+        page: int = 1,
+    ) -> list[GitLabTag]:
+        """List repository tags for a project.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            search: Optional search string to filter tag names.
+            limit: Maximum tags per page (max 100).
+            page: Page number (1-indexed).
+
+        Returns:
+            List of GitLabTag objects.
+        """
+        encoded = _encode_project_id(project_id)
+        params: dict[str, Any] = {"per_page": min(limit, 100), "page": page}
+        if search:
+            params["search"] = search
+
+        resp = await self._request(
+            "GET",
+            f"/projects/{encoded}/repository/tags",
+            params=params,
+        )
+        return [parse_tag(t) for t in resp.json()]

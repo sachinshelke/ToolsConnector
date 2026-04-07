@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 from .connector import Notion
-from .types import NotionBlock, NotionDatabase, NotionPage, NotionProperty
+from .types import (
+    NotionBlock,
+    NotionComment,
+    NotionDatabase,
+    NotionPage,
+    NotionProperty,
+)
 
 __all__ = [
     "Notion",
     "NotionBlock",
+    "NotionComment",
     "NotionDatabase",
     "NotionPage",
     "NotionProperty",

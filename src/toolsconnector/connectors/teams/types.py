@@ -85,3 +85,26 @@ class TeamsMember(BaseModel):
     user_id: Optional[str] = None
     email: Optional[str] = None
     roles: list[str] = Field(default_factory=list)
+
+
+class TeamsChat(BaseModel):
+    """A Microsoft Teams 1:1, group, or meeting chat."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    topic: Optional[str] = None
+    chat_type: Optional[str] = None
+    created_datetime: Optional[str] = None
+    last_updated_datetime: Optional[str] = None
+    web_url: Optional[str] = None
+
+
+class TeamsPresence(BaseModel):
+    """A user's presence/availability status in Teams."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: Optional[str] = None
+    availability: Optional[str] = None
+    activity: Optional[str] = None

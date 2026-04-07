@@ -9,17 +9,23 @@ import re
 from typing import Optional
 
 from .types import (
+    Branch,
     CodeSearchResult,
     Commit,
     CommitAuthor,
     CommitDetail,
     Comment,
+    FileContent,
+    GitHubGist,
     GitHubLabel,
     GitHubMilestone,
     GitHubUser,
     Issue,
     PullRequest,
+    Release,
     Repository,
+    Workflow,
+    WorkflowRun,
 )
 
 _LINK_RE = re.compile(r'<([^>]+)>;\s*rel="(\w+)"')
@@ -183,3 +189,94 @@ def parse_code_search_result(item: dict) -> CodeSearchResult:
         score=item.get("score", 0.0),
         text_matches=item.get("text_matches", []),
     )
+
+
+def parse_branch(data: dict) -> Branch:
+    """Parse a single Branch from API JSON."""
+    commit = data.get("commit", {})
+    return Branch(
+        name=data["name"],
+        sha=commit.get("sha", ""),
+        protected=data.get("protected", False),
+    )
+
+
+def parse_release(data: dict) -> Release:
+    """Parse a single Release from API JSON."""
+    return Release(
+        id=data["id"],
+        tag_name=data["tag_name"],
+        name=data.get("name"),
+        body=data.get("body"),
+        draft=data.get("draft", False),
+        prerelease=data.get("prerelease", False),
+        html_url=data.get("html_url"),
+        author=parse_user(data.get("author")),
+        created_at=data.get("created_at"),
+        published_at=data.get("published_at"),
+        tarball_url=data.get("tarball_url"),
+        zipball_url=data.get("zipball_url"),
+    )
+
+
+def parse_file_content(data: dict) -> FileContent:
+    """Parse a single FileContent from API JSON."""
+    return FileContent(
+        type=data.get("type", "file"),
+        name=data.get("name", ""),
+        path=data.get("path", ""),
+        sha=data.get("sha", ""),
+        size=data.get("size", 0),
+        content=data.get("content"),
+        encoding=data.get("encoding"),
+        html_url=data.get("html_url"),
+        download_url=data.get("download_url"),
+    )
+
+
+def parse_workflow(data: dict) -> Workflow:
+    """Parse a single Workflow from API JSON."""
+    return Workflow(
+        id=data["id"],
+        name=data.get("name", ""),
+        path=data.get("path", ""),
+        state=data.get("state", "active"),
+        html_url=data.get("html_url"),
+        created_at=data.get("created_at"),
+        updated_at=data.get("updated_at"),
+    )
+
+
+def parse_workflow_run(data: dict) -> WorkflowRun:
+    """Parse a single WorkflowRun from API JSON."""
+    return WorkflowRun(
+        id=data["id"],
+        name=data.get("name"),
+        head_branch=data.get("head_branch"),
+        head_sha=data.get("head_sha", ""),
+        status=data.get("status"),
+        conclusion=data.get("conclusion"),
+        workflow_id=data.get("workflow_id", 0),
+        html_url=data.get("html_url"),
+        run_number=data.get("run_number", 0),
+        event=data.get("event", ""),
+        created_at=data.get("created_at"),
+        updated_at=data.get("updated_at"),
+        actor=parse_user(data.get("actor")),
+    )
+
+
+def parse_gist(data: dict) -> GitHubGist:
+    """Parse a single GitHubGist from API JSON."""
+    return GitHubGist(
+        id=data["id"],
+        description=data.get("description"),
+        public=data.get("public", True),
+        html_url=data.get("html_url"),
+        files=data.get("files", {}),
+        owner=parse_user(data.get("owner")),
+        created_at=data.get("created_at"),
+        updated_at=data.get("updated_at"),
+        comments=data.get("comments", 0),
+    )
+

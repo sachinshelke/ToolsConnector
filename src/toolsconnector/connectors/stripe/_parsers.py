@@ -12,8 +12,15 @@ from .types import (
     PaymentIntent,
     StripeAddress,
     StripeCharge,
+    StripeCheckoutSession,
     StripeCustomer,
     StripeInvoice,
+    StripePaymentMethod,
+    StripePrice,
+    StripeProduct,
+    StripeRecurring,
+    StripeRefund,
+    StripeSubscription,
 )
 
 
@@ -154,3 +161,166 @@ def flatten_metadata(metadata: dict[str, str]) -> dict[str, str]:
         Flattened dict with ``metadata[key]`` keys.
     """
     return {f"metadata[{k}]": v for k, v in metadata.items()}
+
+
+def parse_refund(data: dict[str, Any]) -> StripeRefund:
+    """Parse a StripeRefund from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Stripe API.
+
+    Returns:
+        A StripeRefund instance.
+    """
+    return StripeRefund(
+        id=data["id"],
+        object=data.get("object", "refund"),
+        amount=data.get("amount", 0),
+        currency=data.get("currency"),
+        charge=data.get("charge"),
+        payment_intent=data.get("payment_intent"),
+        reason=data.get("reason"),
+        status=data.get("status"),
+        receipt_number=data.get("receipt_number"),
+        metadata=data.get("metadata") or {},
+        created=data.get("created"),
+    )
+
+
+def parse_subscription(data: dict[str, Any]) -> StripeSubscription:
+    """Parse a StripeSubscription from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Stripe API.
+
+    Returns:
+        A StripeSubscription instance.
+    """
+    return StripeSubscription(
+        id=data["id"],
+        object=data.get("object", "subscription"),
+        customer=data.get("customer"),
+        status=data.get("status"),
+        current_period_start=data.get("current_period_start"),
+        current_period_end=data.get("current_period_end"),
+        cancel_at_period_end=data.get("cancel_at_period_end", False),
+        canceled_at=data.get("canceled_at"),
+        ended_at=data.get("ended_at"),
+        trial_start=data.get("trial_start"),
+        trial_end=data.get("trial_end"),
+        default_payment_method=data.get("default_payment_method"),
+        latest_invoice=data.get("latest_invoice"),
+        livemode=data.get("livemode", False),
+        metadata=data.get("metadata") or {},
+        created=data.get("created"),
+    )
+
+
+def parse_product(data: dict[str, Any]) -> StripeProduct:
+    """Parse a StripeProduct from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Stripe API.
+
+    Returns:
+        A StripeProduct instance.
+    """
+    return StripeProduct(
+        id=data["id"],
+        object=data.get("object", "product"),
+        name=data.get("name"),
+        description=data.get("description"),
+        active=data.get("active", True),
+        default_price=data.get("default_price"),
+        images=data.get("images") or [],
+        url=data.get("url"),
+        livemode=data.get("livemode", False),
+        metadata=data.get("metadata") or {},
+        created=data.get("created"),
+        updated=data.get("updated"),
+    )
+
+
+def parse_price(data: dict[str, Any]) -> StripePrice:
+    """Parse a StripePrice from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Stripe API.
+
+    Returns:
+        A StripePrice instance.
+    """
+    recurring_data = data.get("recurring")
+    recurring = None
+    if recurring_data:
+        recurring = StripeRecurring(
+            interval=recurring_data.get("interval"),
+            interval_count=recurring_data.get("interval_count", 1),
+            usage_type=recurring_data.get("usage_type"),
+        )
+
+    return StripePrice(
+        id=data["id"],
+        object=data.get("object", "price"),
+        product=data.get("product"),
+        unit_amount=data.get("unit_amount"),
+        currency=data.get("currency"),
+        active=data.get("active", True),
+        type=data.get("type"),
+        recurring=recurring,
+        livemode=data.get("livemode", False),
+        metadata=data.get("metadata") or {},
+        created=data.get("created"),
+    )
+
+
+def parse_checkout_session(data: dict[str, Any]) -> StripeCheckoutSession:
+    """Parse a StripeCheckoutSession from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Stripe API.
+
+    Returns:
+        A StripeCheckoutSession instance.
+    """
+    return StripeCheckoutSession(
+        id=data["id"],
+        object=data.get("object", "checkout.session"),
+        url=data.get("url"),
+        mode=data.get("mode"),
+        status=data.get("status"),
+        payment_status=data.get("payment_status"),
+        customer=data.get("customer"),
+        customer_email=data.get("customer_email"),
+        payment_intent=data.get("payment_intent"),
+        subscription=data.get("subscription"),
+        success_url=data.get("success_url"),
+        cancel_url=data.get("cancel_url"),
+        amount_total=data.get("amount_total"),
+        currency=data.get("currency"),
+        livemode=data.get("livemode", False),
+        metadata=data.get("metadata") or {},
+        created=data.get("created"),
+    )
+
+
+def parse_payment_method(data: dict[str, Any]) -> StripePaymentMethod:
+    """Parse a StripePaymentMethod from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Stripe API.
+
+    Returns:
+        A StripePaymentMethod instance.
+    """
+    return StripePaymentMethod(
+        id=data["id"],
+        object=data.get("object", "payment_method"),
+        type=data.get("type"),
+        customer=data.get("customer"),
+        billing_details=data.get("billing_details"),
+        card=data.get("card"),
+        livemode=data.get("livemode", False),
+        metadata=data.get("metadata") or {},
+        created=data.get("created"),
+    )

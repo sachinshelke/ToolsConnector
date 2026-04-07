@@ -356,3 +356,95 @@ class RabbitMQ(BaseConnector):
             message_stats=data.get("message_stats", {}),
             listeners=data.get("listeners", []),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Queue management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Create a new queue", dangerous=True)
+    async def create_queue(
+        self,
+        vhost: str,
+        queue_name: str,
+        durable: Optional[bool] = None,
+    ) -> bool:
+        """Create a new queue in a vhost.
+
+        Args:
+            vhost: The virtual host name (use ``%2F`` for the default ``/``).
+            queue_name: The name for the new queue.
+            durable: Whether the queue survives broker restart.
+
+        Returns:
+            True if the queue was created.
+        """
+        body: dict[str, Any] = {}
+        if durable is not None:
+            body["durable"] = durable
+        await self._request(
+            "PUT", f"/queues/{vhost}/{queue_name}", json_body=body,
+        )
+        return True
+
+    @action("Delete a queue", dangerous=True)
+    async def delete_queue(
+        self, vhost: str, queue_name: str,
+    ) -> bool:
+        """Delete a queue from a vhost.
+
+        Args:
+            vhost: The virtual host name.
+            queue_name: The queue name to delete.
+
+        Returns:
+            True if the queue was deleted.
+        """
+        await self._request(
+            "DELETE", f"/queues/{vhost}/{queue_name}",
+        )
+        return True
+
+    # ------------------------------------------------------------------
+    # Actions -- Exchange management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Create a new exchange", dangerous=True)
+    async def create_exchange(
+        self,
+        vhost: str,
+        name: str,
+        type: str,
+    ) -> bool:
+        """Create a new exchange in a vhost.
+
+        Args:
+            vhost: The virtual host name.
+            name: The exchange name.
+            type: Exchange type (``direct``, ``fanout``, ``topic``, ``headers``).
+
+        Returns:
+            True if the exchange was created.
+        """
+        body: dict[str, Any] = {"type": type, "durable": True}
+        await self._request(
+            "PUT", f"/exchanges/{vhost}/{name}", json_body=body,
+        )
+        return True
+
+    @action("Delete an exchange", dangerous=True)
+    async def delete_exchange(
+        self, vhost: str, name: str,
+    ) -> bool:
+        """Delete an exchange from a vhost.
+
+        Args:
+            vhost: The virtual host name.
+            name: The exchange name to delete.
+
+        Returns:
+            True if the exchange was deleted.
+        """
+        await self._request(
+            "DELETE", f"/exchanges/{vhost}/{name}",
+        )
+        return True

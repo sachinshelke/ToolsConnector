@@ -90,3 +90,74 @@ class HubSpotDeal(BaseModel):
     def pipeline(self) -> Optional[str]:
         """Shortcut to the pipeline property."""
         return self.properties.get("pipeline")
+
+
+class HubSpotCompany(BaseModel):
+    """A HubSpot CRM company."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    properties: dict[str, Any] = Field(default_factory=dict)
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    archived: bool = False
+
+    @property
+    def name(self) -> Optional[str]:
+        """Shortcut to the company name property."""
+        return self.properties.get("name")
+
+    @property
+    def domain(self) -> Optional[str]:
+        """Shortcut to the domain property."""
+        return self.properties.get("domain")
+
+    @property
+    def industry(self) -> Optional[str]:
+        """Shortcut to the industry property."""
+        return self.properties.get("industry")
+
+
+class HubSpotTicket(BaseModel):
+    """A HubSpot CRM ticket."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    properties: dict[str, Any] = Field(default_factory=dict)
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    archived: bool = False
+
+    @property
+    def subject(self) -> Optional[str]:
+        """Shortcut to the subject property."""
+        return self.properties.get("subject")
+
+    @property
+    def hs_pipeline(self) -> Optional[str]:
+        """Shortcut to the pipeline property."""
+        return self.properties.get("hs_pipeline")
+
+    @property
+    def hs_pipeline_stage(self) -> Optional[str]:
+        """Shortcut to the pipeline stage property."""
+        return self.properties.get("hs_pipeline_stage")
+
+    @property
+    def hs_ticket_priority(self) -> Optional[str]:
+        """Shortcut to the priority property."""
+        return self.properties.get("hs_ticket_priority")
+
+
+class HubSpotPipeline(BaseModel):
+    """A HubSpot CRM pipeline definition."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    label: str = ""
+    display_order: int = 0
+    archived: bool = False
+    stages: list[dict[str, Any]] = Field(default_factory=list)

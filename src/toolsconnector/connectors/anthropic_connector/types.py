@@ -80,3 +80,17 @@ class AnthropicModel(BaseModel):
     display_name: str = ""
     type: str = "model"
     created_at: Optional[str] = None
+
+
+class AnthropicBatch(BaseModel):
+    """A Message Batch from the Anthropic API."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    type: str = "message_batch"
+    processing_status: Optional[str] = None
+    request_counts: Optional[dict[str, int]] = None
+    ended_at: Optional[str] = None
+    created_at: Optional[str] = None
+    expires_at: Optional[str] = None

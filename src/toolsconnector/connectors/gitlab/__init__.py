@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from .connector import GitLab
 from .types import (
+    GitLabBranch,
+    GitLabComment,
     GitLabIssue,
+    GitLabJob,
     GitLabLabel,
     GitLabMilestone,
     GitLabNamespace,
+    GitLabTag,
     GitLabUser,
     MergeRequest,
     Pipeline,
@@ -16,10 +20,14 @@ from .types import (
 
 __all__ = [
     "GitLab",
+    "GitLabBranch",
+    "GitLabComment",
     "GitLabIssue",
+    "GitLabJob",
     "GitLabLabel",
     "GitLabMilestone",
     "GitLabNamespace",
+    "GitLabTag",
     "GitLabUser",
     "MergeRequest",
     "Pipeline",

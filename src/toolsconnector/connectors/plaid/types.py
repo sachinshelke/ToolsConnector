@@ -102,3 +102,40 @@ class PlaidLinkToken(BaseModel):
     link_token: str
     expiration: str = ""
     request_id: str = ""
+
+
+class PlaidHolding(BaseModel):
+    """An investment holding from Plaid."""
+
+    model_config = ConfigDict(frozen=True)
+
+    account_id: str = ""
+    security_id: Optional[str] = None
+    quantity: float = 0.0
+    institution_price: Optional[float] = None
+    institution_value: Optional[float] = None
+    cost_basis: Optional[float] = None
+    iso_currency_code: Optional[str] = None
+
+
+class PlaidLiability(BaseModel):
+    """A liability (loan/credit) from Plaid."""
+
+    model_config = ConfigDict(frozen=True)
+
+    account_id: str = ""
+    type: str = ""
+    last_payment_amount: Optional[float] = None
+    last_payment_date: Optional[str] = None
+    minimum_payment_amount: Optional[float] = None
+    next_payment_due_date: Optional[str] = None
+    aprs: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PlaidProcessorToken(BaseModel):
+    """A processor token for third-party integrations."""
+
+    model_config = ConfigDict(frozen=True)
+
+    processor_token: str
+    request_id: str = ""

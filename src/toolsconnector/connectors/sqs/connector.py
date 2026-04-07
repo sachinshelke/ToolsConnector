@@ -468,3 +468,62 @@ class SQS(BaseConnector):
             successful=successful,
             failed=body.get("Failed", []),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Queue management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete an SQS queue", dangerous=True)
+    async def delete_queue(self, queue_url: str) -> bool:
+        """Delete an SQS queue and all its messages.
+
+        Args:
+            queue_url: The URL of the queue to delete.
+
+        Returns:
+            True if the queue was deleted.
+        """
+        await self._sqs_request("DeleteQueue", {"QueueUrl": queue_url})
+        return True
+
+    @action("Set attributes on a queue")
+    async def set_queue_attributes(
+        self,
+        queue_url: str,
+        attributes: dict[str, str],
+    ) -> bool:
+        """Set attributes on a queue (e.g. visibility timeout, delay).
+
+        Args:
+            queue_url: The URL of the queue.
+            attributes: Dict of attribute names to values.
+
+        Returns:
+            True if attributes were set.
+        """
+        await self._sqs_request("SetQueueAttributes", {
+            "QueueUrl": queue_url,
+            "Attributes": attributes,
+        })
+        return True
+
+    @action("Add tags to a queue")
+    async def tag_queue(
+        self,
+        queue_url: str,
+        tags: dict[str, str],
+    ) -> bool:
+        """Add cost allocation tags to a queue.
+
+        Args:
+            queue_url: The URL of the queue.
+            tags: Dict of tag keys to values.
+
+        Returns:
+            True if tags were added.
+        """
+        await self._sqs_request("TagQueue", {
+            "QueueUrl": queue_url,
+            "Tags": tags,
+        })
+        return True

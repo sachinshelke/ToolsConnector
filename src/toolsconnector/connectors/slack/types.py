@@ -100,3 +100,121 @@ class SlackFile(BaseModel):
     permalink: str = ""
     channels: list[str] = Field(default_factory=list)
     created: int = 0
+
+
+class Reaction(BaseModel):
+    """A reaction on a Slack message."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    count: int = 0
+    users: list[str] = Field(default_factory=list)
+
+
+class PinnedItem(BaseModel):
+    """A pinned item in a Slack channel."""
+
+    model_config = ConfigDict(frozen=True)
+
+    type: str = ""
+    channel: Optional[str] = None
+    message: Optional[dict[str, Any]] = None
+    file: Optional[dict[str, Any]] = None
+    created: int = 0
+    created_by: Optional[str] = None
+
+
+class Reminder(BaseModel):
+    """A Slack reminder."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    creator: str = ""
+    text: str = ""
+    user: str = ""
+    recurring: bool = False
+    time: Optional[int] = None
+    complete_ts: Optional[int] = None
+
+
+class ScheduledMessage(BaseModel):
+    """A scheduled message in Slack."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    channel_id: str = ""
+    post_at: int = 0
+    date_created: int = 0
+    text: str = ""
+
+
+class UserPresence(BaseModel):
+    """Slack user presence information."""
+
+    model_config = ConfigDict(frozen=True)
+
+    presence: str = "away"  # "active" or "away"
+    online: bool = False
+    auto_away: bool = False
+    manual_away: bool = False
+    last_activity: Optional[int] = None
+
+
+class UserProfile(BaseModel):
+    """Slack user profile with extended fields."""
+
+    model_config = ConfigDict(frozen=True)
+
+    status_text: str = ""
+    status_emoji: str = ""
+    status_expiration: int = 0
+    real_name: str = ""
+    display_name: str = ""
+    email: Optional[str] = None
+    first_name: str = ""
+    last_name: str = ""
+    title: str = ""
+    phone: str = ""
+    image_72: str = ""
+    image_192: str = ""
+
+
+class Bookmark(BaseModel):
+    """A bookmark in a Slack channel."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    channel_id: str = ""
+    title: str = ""
+    link: str = ""
+    emoji: str = ""
+    type: str = "link"
+    created: int = 0
+    updated: int = 0
+
+
+class SearchResult(BaseModel):
+    """A search result from Slack."""
+
+    model_config = ConfigDict(frozen=True)
+
+    channel: Optional[dict[str, Any]] = None
+    ts: str = ""
+    text: str = ""
+    user: Optional[str] = None
+    permalink: str = ""
+    score: Optional[float] = None
+
+
+class CustomEmoji(BaseModel):
+    """A custom emoji in the workspace."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    url: str = ""
+    alias_for: Optional[str] = None
