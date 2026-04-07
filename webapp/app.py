@@ -131,7 +131,13 @@ def connectors_page():
         html += f'<h3 class="text-lg font-semibold mt-8 mb-3 text-slate-700 dark:text-slate-300">{_cat(cat)} <span class="text-sm font-normal text-slate-400">({len(items)})</span></h3><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'
         for name, sp in items:
             na = len(sp.get("actions", {}))
-            html += f'<a href="/connector/{name}" class="group block p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 bg-white dark:bg-slate-900 hover:shadow-md transition-all"><div class="flex items-start justify-between"><div><div class="font-semibold text-b-700 dark:text-b-400">{sp["display_name"]}</div><div class="text-xs text-slate-500 mt-0.5">{name}</div></div><span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">{na} actions</span></div><p class="text-sm text-slate-600 dark:text-slate-400 mt-2 line-clamp-2">{sp.get("description","")}</p></a>'
+            m = get_tool_meta(name)
+            if m.get("logo"):
+                icon = f'<img src="{m["logo"]}" alt="" class="w-8 h-8 rounded-lg flex-shrink-0" onerror="this.style.display=\'none\'">'
+            else:
+                ini = sp["display_name"][:2].upper()
+                icon = f'<div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:{m["color"]}">{ini}</div>'
+            html += f'<a href="/connector/{name}" class="group flex items-start gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 bg-white dark:bg-slate-900 hover:shadow-md transition-all">{icon}<div class="flex-1 min-w-0"><div class="flex items-start justify-between"><div><div class="font-semibold text-b-700 dark:text-b-400">{sp["display_name"]}</div><div class="text-xs text-slate-500 mt-0.5">{name}</div></div><span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">{na}</span></div><p class="text-sm text-slate-600 dark:text-slate-400 mt-1.5 line-clamp-2">{sp.get("description","")}</p></div></a>'
         html += "</div>"
     return _r("Connectors", f"""
 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -165,11 +171,22 @@ def _group_actions(actions: dict) -> list[tuple[str, str, list]]:
 
 
 def _best_first_action(actions: dict) -> str:
-    """Pick the most useful action for quickstart examples (prefer list/get over delete)."""
-    for prefix in ("list_", "get_", "search_", "fetch_", "send_", "create_"):
-        for aname in sorted(actions.keys()):
-            if aname.startswith(prefix):
-                return aname
+    """Pick the most useful action for quickstart examples."""
+    # Prefer specific common actions first
+    preferred = [
+        "list_emails", "list_messages", "list_files", "list_events",
+        "list_repos", "list_channels", "list_contacts", "list_issues",
+        "list_records", "list_tasks", "list_products", "list_projects",
+        "get_values", "get_spreadsheet", "get_document",
+        "search", "query",
+    ]
+    for name in preferred:
+        if name in actions:
+            return name
+    # Fall back to first list_ or get_ action
+    for aname in sorted(actions.keys()):
+        if aname.startswith("list_") or aname.startswith("get_"):
+            return aname
     return sorted(actions.keys())[0] if actions else "action"
 
 
@@ -462,18 +479,8 @@ result = kit.execute("{name}_{first_action}", {{"...": "..."}})'''
 <div id="ct-oai" class="ct hidden"><pre class="text-xs bg-slate-900 text-slate-100 p-5 overflow-x-auto"><code class="language-python">{openai_escaped}</code></pre></div>
 </div>
 </div>
-<button onclick="navigator.clipboard.writeText(this.closest('.rounded-xl').querySelector('code').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="text-[10px] px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 hover:text-slate-700 dark:hover:text-white cursor-pointer">Copy</button>
-</div>
-<pre class="text-xs bg-slate-900 text-slate-100 p-4 overflow-x-auto rounded-b-xl"><code class="language-python">{qs_escaped}</code></pre>
-</div>
-</div>
 
-<!-- Section 3: Quick Info Bar -->
-<div class="text-sm flex items-center flex-wrap gap-y-2 px-5 py-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 mb-10">
-{info_bar_content}
-</div>
-
-<!-- Section 4: Actions -->
+<!-- Actions -->
 <div class="mb-4 flex items-center justify-between flex-wrap gap-3">
 <h2 class="text-lg font-semibold text-slate-800 dark:text-slate-200">Actions</h2>
 <div class="relative"><svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
