@@ -200,7 +200,7 @@ def _action_param_table(params: list, connector_name: str, action_name: str) -> 
 <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Usage</span>
 <button onclick="navigator.clipboard.writeText(this.closest('.rounded-lg').querySelector('code').textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-400 hover:text-white cursor-pointer">Copy</button>
 </div>
-<code class="text-xs text-slate-100 font-mono">{usage_code}</code>
+<code class="text-xs text-slate-100 font-mono language-python">{usage_code}</code>
 </div></div>'''
 
     rows = ""
@@ -224,7 +224,7 @@ def _action_param_table(params: list, connector_name: str, action_name: str) -> 
 <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Usage</span>
 <button onclick="navigator.clipboard.writeText(this.closest('.rounded-lg').querySelector('code').textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-400 hover:text-white cursor-pointer">Copy</button>
 </div>
-<code class="text-xs text-slate-100 font-mono">{usage_code}</code>
+<code class="text-xs text-slate-100 font-mono language-python">{usage_code}</code>
 </div></div>'''
 
 
@@ -484,20 +484,19 @@ result = kit.execute("{name}_{first_action}", {{"...": "..."}})'''
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
 <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
 <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Environment Variable</h4>
-<code class="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-lg block overflow-x-auto">export TC_{name.upper()}_CREDENTIALS=your-token</code>
+<pre class="text-xs bg-slate-900 text-slate-100 rounded-lg p-3 overflow-x-auto"><code class="language-bash">export TC_{name.upper()}_CREDENTIALS=your-token</code></pre>
 </div>
-<div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-<h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Error Handling</h4>
-<pre class="text-[11px] font-mono text-slate-600 dark:text-slate-400 leading-relaxed">from toolsconnector.errors import (
-    RateLimitError,
-    AuthError,
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+<div class="px-4 pt-4 pb-2"><h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Error Handling</h4></div>
+<pre class="text-xs bg-slate-900 text-slate-100 p-4 overflow-x-auto"><code class="language-python">from toolsconnector.errors import (
+    RateLimitError, AuthError,
 )
 try:
-    result = kit.execute(...)
+    result = kit.execute("{name}_{first_action}", {{}})
 except RateLimitError as e:
-    print(e.retry_after_seconds)
+    print(f"Rate limited, retry in {{e.retry_after_seconds}}s")
 except AuthError as e:
-    print(e.suggestion)</pre>
+    print(e.suggestion)</code></pre>
 </div>
 <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
 <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Supported Frameworks</h4>
