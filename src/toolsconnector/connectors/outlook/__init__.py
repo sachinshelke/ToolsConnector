@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 from .connector import Outlook
-from .types import EmailRecipient, MailFolder, OutlookMessage, OutlookMessageId
+from .types import (
+    EmailRecipient,
+    MailFolder,
+    OutlookCalendarEvent,
+    OutlookContact,
+    OutlookMessage,
+    OutlookMessageId,
+)
 
 __all__ = [
     "Outlook",
+    "OutlookCalendarEvent",
+    "OutlookContact",
     "OutlookMessage",
     "MailFolder",
     "OutlookMessageId",

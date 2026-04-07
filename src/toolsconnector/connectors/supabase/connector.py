@@ -349,3 +349,95 @@ class Supabase(BaseConnector):
             ))
 
         return tables
+
+    # ------------------------------------------------------------------
+    # Actions -- Advanced operations
+    # ------------------------------------------------------------------
+
+    @action("Count records in a table")
+    async def count_records(
+        self,
+        table: str,
+        filter: Optional[dict[str, str]] = None,
+    ) -> int:
+        """Count records in a table, optionally filtered.
+
+        Args:
+            table: Name of the table.
+            filter: PostgREST filter dict (e.g. ``{"status": "eq.active"}``).
+
+        Returns:
+            Number of matching records.
+        """
+        params: dict[str, Any] = {}
+        if filter:
+            params.update(filter)
+
+        resp = await self._request(
+            "GET", f"/rest/v1/{table}",
+            params=params,
+            extra_headers={
+                "Prefer": "count=exact",
+                "Range": "0-0",
+            },
+        )
+        content_range = resp.headers.get("content-range", "")
+        # content-range looks like "0-0/42" or "*/42"
+        if "/" in content_range:
+            total = content_range.split("/")[1]
+            return int(total) if total != "*" else 0
+        return 0
+
+    @action("Upsert records into a table", dangerous=True)
+    async def upsert_records(
+        self,
+        table: str,
+        records: list[dict[str, Any]],
+    ) -> list[SupabaseRecord]:
+        """Upsert (insert or update on conflict) records into a table.
+
+        Args:
+            table: Name of the table.
+            records: List of record dicts to upsert.
+
+        Returns:
+            List of upserted SupabaseRecord objects.
+        """
+        resp = await self._request(
+            "POST", f"/rest/v1/{table}",
+            json_body=records,
+            extra_headers={
+                "Prefer": "resolution=merge-duplicates,return=representation",
+            },
+        )
+        rows = resp.json()
+        return [SupabaseRecord(data=r) for r in (rows if isinstance(rows, list) else [rows])]
+
+    @action("Call a Supabase Edge Function")
+    async def call_edge_function(
+        self,
+        name: str,
+        body: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """Invoke a Supabase Edge Function by name.
+
+        Args:
+            name: The edge function name.
+            body: Optional JSON body to send to the function.
+
+        Returns:
+            The function's JSON response.
+        """
+        # Edge functions are at a different URL pattern
+        base = str(self._client.base_url).replace("/rest/v1", "")
+        url = f"{base}/functions/v1/{name}"
+        resp = await self._client.post(
+            url,
+            json=body or {},
+            headers={
+                "Authorization": f"Bearer {self._service_role_key}",
+                "Content-Type": "application/json",
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()

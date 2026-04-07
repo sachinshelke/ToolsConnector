@@ -470,3 +470,125 @@ class Linear(BaseConnector):
                 has_more=page_info.get("hasNextPage", False),
             ),
         )
+
+    # ------------------------------------------------------------------
+    # Actions — Issue management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete an issue by ID", dangerous=True)
+    async def delete_issue(self, issue_id: str) -> bool:
+        """Permanently delete a Linear issue.
+
+        Args:
+            issue_id: UUID of the issue to delete.
+
+        Returns:
+            True if the issue was deleted successfully.
+        """
+        query = f"""
+        mutation {{ issueDelete(id: "{issue_id}") {{ success }} }}
+        """
+        data = await self._graphql(query)
+        return data.get("issueDelete", {}).get("success", False)
+
+    # ------------------------------------------------------------------
+    # Actions — Labels
+    # ------------------------------------------------------------------
+
+    @action("List issue labels, optionally filtered by team")
+    async def list_labels(
+        self, team_id: Optional[str] = None,
+    ) -> list[LinearLabel]:
+        """List issue labels in the workspace or for a specific team.
+
+        Args:
+            team_id: Optional team UUID to filter labels by.
+
+        Returns:
+            List of LinearLabel objects.
+        """
+        filter_arg = ""
+        if team_id:
+            filter_arg = f'filter: {{ team: {{ id: {{ eq: "{team_id}" }} }} }},'
+        query = f"""
+        query {{ issueLabels({filter_arg} first: 250) {{
+            nodes {{ id name color }}
+        }} }}
+        """
+        data = await self._graphql(query)
+        return [
+            LinearLabel(
+                id=lbl["id"],
+                name=lbl.get("name", ""),
+                color=lbl.get("color"),
+            )
+            for lbl in data.get("issueLabels", {}).get("nodes", [])
+        ]
+
+    @action("Create a new issue label", dangerous=True)
+    async def create_label(
+        self,
+        team_id: str,
+        name: str,
+        color: Optional[str] = None,
+    ) -> LinearLabel:
+        """Create a new issue label for a team.
+
+        Args:
+            team_id: UUID of the team to create the label in.
+            name: Label name.
+            color: Hex colour string (e.g. ``#ff0000``).
+
+        Returns:
+            The created LinearLabel.
+        """
+        inp = [f'teamId: "{team_id}"', f'name: "{name}"']
+        if color:
+            inp.append(f'color: "{color}"')
+        query = f"""
+        mutation {{ issueLabelCreate(input: {{ {", ".join(inp)} }}) {{
+            success issueLabel {{ id name color }}
+        }} }}
+        """
+        data = await self._graphql(query)
+        result = data.get("issueLabelCreate", {})
+        if not result.get("success"):
+            raise ValueError("Linear label creation failed")
+        lbl = result["issueLabel"]
+        return LinearLabel(
+            id=lbl["id"], name=lbl.get("name", ""), color=lbl.get("color"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Workflow states
+    # ------------------------------------------------------------------
+
+    @action("Get workflow states for a team")
+    async def get_workflow_states(self, team_id: str) -> list[LinearState]:
+        """List all workflow states for a team.
+
+        Args:
+            team_id: UUID of the team.
+
+        Returns:
+            List of LinearState objects ordered by position.
+        """
+        query = f"""
+        query {{ workflowStates(
+            filter: {{ team: {{ id: {{ eq: "{team_id}" }} }} }},
+            first: 100
+        ) {{
+            nodes {{ id name type color position }}
+        }} }}
+        """
+        data = await self._graphql(query)
+        return [
+            LinearState(
+                id=s["id"],
+                name=s.get("name", ""),
+                type=s.get("type", ""),
+                color=s.get("color"),
+                position=s.get("position"),
+            )
+            for s in data.get("workflowStates", {}).get("nodes", [])
+        ]

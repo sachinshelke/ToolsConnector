@@ -484,3 +484,63 @@ class Calendly(BaseConnector):
         )
         resource = data.get("resource", data)
         return self._parse_webhook(resource)
+
+    # ------------------------------------------------------------------
+    # Actions -- Organization and routing
+    # ------------------------------------------------------------------
+
+    @action("Get organization details")
+    async def get_organization(self) -> dict[str, Any]:
+        """Get the authenticated user's organization details.
+
+        Returns:
+            Dict with organization resource data.
+        """
+        # First get the current user to find org URI
+        user_data = await self._request("GET", "/users/me")
+        resource = user_data.get("resource", {})
+        org_uri = resource.get("current_organization")
+        if not org_uri:
+            return resource
+
+        # Extract org UUID from URI
+        org_uuid = org_uri.rstrip("/").split("/")[-1]
+        org_data = await self._request(
+            "GET", f"/organizations/{org_uuid}",
+        )
+        return org_data.get("resource", org_data)
+
+    @action("List routing forms")
+    async def list_routing_forms(self) -> list[dict[str, Any]]:
+        """List all routing forms in the organization.
+
+        Returns:
+            List of routing form resource dicts.
+        """
+        # Get current user's org
+        user_data = await self._request("GET", "/users/me")
+        resource = user_data.get("resource", {})
+        org_uri = resource.get("current_organization", "")
+
+        data = await self._request(
+            "GET", "/routing_forms",
+            params={"organization": org_uri},
+        )
+        return data.get("collection", [])
+
+    @action("Delete a webhook subscription", dangerous=True)
+    async def delete_webhook(
+        self, webhook_id: str,
+    ) -> bool:
+        """Delete a webhook subscription.
+
+        Args:
+            webhook_id: The webhook UUID.
+
+        Returns:
+            True if the webhook was deleted.
+        """
+        await self._request(
+            "DELETE", f"/webhook_subscriptions/{webhook_id}",
+        )
+        return True

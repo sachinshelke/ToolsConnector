@@ -481,3 +481,72 @@ class DockerHub(BaseConnector):
         """
         resp = await self._request("GET", f"/orgs/{orgname}/")
         return _parse_org(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Tag management
+    # ------------------------------------------------------------------
+
+    @action("Delete a repository tag", dangerous=True)
+    async def delete_tag(
+        self, namespace: str, repo: str, tag: str,
+    ) -> bool:
+        """Delete a specific tag from a repository.
+
+        Args:
+            namespace: Docker Hub namespace (user or org).
+            repo: Repository name.
+            tag: Tag name to delete.
+
+        Returns:
+            True if the tag was deleted.
+        """
+        resp = await self._request(
+            "DELETE", f"/repositories/{namespace}/{repo}/tags/{tag}/",
+        )
+        return resp.status_code in (200, 204)
+
+    # ------------------------------------------------------------------
+    # Actions -- Collaborators
+    # ------------------------------------------------------------------
+
+    @action("List collaborators of a repository")
+    async def list_collaborators(
+        self, namespace: str, repo: str,
+    ) -> list[dict[str, Any]]:
+        """List all collaborators on a repository.
+
+        Args:
+            namespace: Docker Hub namespace (user or org).
+            repo: Repository name.
+
+        Returns:
+            List of collaborator dicts with user and permission info.
+        """
+        resp = await self._request(
+            "GET", f"/repositories/{namespace}/{repo}/collaborators/",
+        )
+        body = resp.json()
+        return body.get("results", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- Build history
+    # ------------------------------------------------------------------
+
+    @action("Get build history for a repository")
+    async def get_build_history(
+        self, namespace: str, repo: str,
+    ) -> list[dict[str, Any]]:
+        """Get the automated build history of a repository.
+
+        Args:
+            namespace: Docker Hub namespace (user or org).
+            repo: Repository name.
+
+        Returns:
+            List of build history entry dicts.
+        """
+        resp = await self._request(
+            "GET", f"/repositories/{namespace}/{repo}/buildhistory/",
+        )
+        body = resp.json()
+        return body.get("results", [])

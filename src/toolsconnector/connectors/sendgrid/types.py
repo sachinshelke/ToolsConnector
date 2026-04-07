@@ -126,3 +126,24 @@ class SendGridTemplate(BaseModel):
     generation: Optional[str] = None
     updated_at: Optional[str] = None
     versions: list[SendGridTemplateVersion] = Field(default_factory=list)
+
+
+class SendGridBounce(BaseModel):
+    """A SendGrid bounced email record."""
+
+    model_config = ConfigDict(frozen=True)
+
+    email: str = ""
+    created: Optional[int] = None
+    reason: Optional[str] = None
+    status: Optional[str] = None
+
+
+class SendGridSpamReport(BaseModel):
+    """A SendGrid spam report record."""
+
+    model_config = ConfigDict(frozen=True)
+
+    email: str = ""
+    created: Optional[int] = None
+    ip: Optional[str] = None

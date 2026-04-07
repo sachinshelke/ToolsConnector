@@ -96,6 +96,26 @@ class DiscordMessage(BaseModel):
     reactions: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class DiscordRole(BaseModel):
+    """Discord guild role.
+
+    See https://discord.com/developers/docs/topics/permissions#role-object
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: str
+    color: int = 0
+    hoist: bool = False
+    position: int = 0
+    permissions: str = "0"
+    managed: bool = False
+    mentionable: bool = False
+    icon: Optional[str] = None
+    unicode_emoji: Optional[str] = None
+
+
 class GuildMember(BaseModel):
     """Discord guild (server) member."""
 

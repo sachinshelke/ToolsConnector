@@ -21,7 +21,9 @@ from toolsconnector.types import PageState, PaginatedList
 
 from .types import (
     DatadogDashboard,
+    DatadogDowntime,
     DatadogEvent,
+    DatadogHost,
     DatadogMetric,
     DatadogMetricPoint,
     DatadogMonitor,
@@ -403,4 +405,118 @@ class Datadog(BaseConnector):
         return PaginatedList(
             items=items,
             page_state=PageState(has_more=False),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Monitor management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete a Datadog monitor", dangerous=True)
+    async def delete_monitor(self, monitor_id: int) -> bool:
+        """Delete a Datadog monitor by ID.
+
+        Args:
+            monitor_id: The monitor ID.
+
+        Returns:
+            True if the monitor was deleted.
+        """
+        resp = await self._request("DELETE", f"/v1/monitor/{monitor_id}")
+        return resp.status_code == 200
+
+    # ------------------------------------------------------------------
+    # Actions -- Metrics
+    # ------------------------------------------------------------------
+
+    @action("Get metadata for a metric")
+    async def get_metric_metadata(
+        self, metric_name: str,
+    ) -> dict[str, Any]:
+        """Retrieve metadata for a specific metric.
+
+        Args:
+            metric_name: The fully qualified metric name.
+
+        Returns:
+            Dict with metric metadata (type, unit, description, etc.).
+        """
+        resp = await self._request(
+            "GET", f"/v1/metrics/{metric_name}",
+        )
+        return resp.json()
+
+    # ------------------------------------------------------------------
+    # Actions -- Hosts
+    # ------------------------------------------------------------------
+
+    @action("List hosts reporting to Datadog")
+    async def list_hosts(
+        self, filter: Optional[str] = None,
+    ) -> list[DatadogHost]:
+        """List hosts, optionally filtered by a search query.
+
+        Args:
+            filter: Filter string (e.g. host name or tag).
+
+        Returns:
+            List of DatadogHost objects.
+        """
+        params: dict[str, Any] = {}
+        if filter:
+            params["filter"] = filter
+        resp = await self._request(
+            "GET", "/v1/hosts", params=params or None,
+        )
+        body = resp.json()
+        return [
+            DatadogHost(
+                name=h.get("name"),
+                id=h.get("id"),
+                aliases=h.get("aliases", []),
+                apps=h.get("apps", []),
+                is_muted=h.get("is_muted", False),
+                last_reported_time=h.get("last_reported_time"),
+                up=h.get("up"),
+            )
+            for h in body.get("host_list", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Downtimes
+    # ------------------------------------------------------------------
+
+    @action("Schedule a downtime window", dangerous=True)
+    async def create_downtime(
+        self,
+        scope: str,
+        start: int,
+        end: Optional[int] = None,
+    ) -> DatadogDowntime:
+        """Schedule a downtime to suppress alerts.
+
+        Args:
+            scope: Scope of the downtime (e.g. ``"host:myhost"``).
+            start: POSIX timestamp for the start of the downtime.
+            end: Optional POSIX timestamp for the end. Omit for indefinite.
+
+        Returns:
+            The created DatadogDowntime.
+        """
+        payload: dict[str, Any] = {
+            "scope": scope,
+            "start": start,
+        }
+        if end is not None:
+            payload["end"] = end
+        resp = await self._request(
+            "POST", "/v1/downtime", json_body=payload,
+        )
+        data = resp.json()
+        return DatadogDowntime(
+            id=data.get("id"),
+            scope=data.get("scope"),
+            start=data.get("start"),
+            end=data.get("end"),
+            message=data.get("message"),
+            active=data.get("active", True),
         )

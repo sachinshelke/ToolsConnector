@@ -72,3 +72,29 @@ class CFPurgeResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     id: Optional[str] = None
+
+
+class CFWorker(BaseModel):
+    """A Cloudflare Worker script."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: Optional[str] = None
+    etag: Optional[str] = None
+    created_on: Optional[str] = None
+    modified_on: Optional[str] = None
+    size: Optional[int] = None
+
+
+class CFPageRule(BaseModel):
+    """A Cloudflare Page Rule."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[int] = None
+    targets: list[dict[str, Any]] = Field(default_factory=list)
+    actions: list[dict[str, Any]] = Field(default_factory=list)
+    created_on: Optional[str] = None
+    modified_on: Optional[str] = None

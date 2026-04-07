@@ -184,3 +184,75 @@ class Pipeline(BaseModel):
     queued_duration: Optional[float] = None
     coverage: Optional[str] = None
     user: Optional[GitLabUser] = None
+
+
+class GitLabComment(BaseModel):
+    """A comment (note) on a GitLab issue or merge request."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    body: str = ""
+    author: Optional[GitLabUser] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    system: bool = False
+    noteable_id: Optional[int] = None
+    noteable_type: Optional[str] = None
+    noteable_iid: Optional[int] = None
+
+
+class GitLabJob(BaseModel):
+    """A CI/CD job within a GitLab pipeline."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: str = ""
+    status: str = "created"
+    stage: str = ""
+    ref: Optional[str] = None
+    tag: bool = False
+    coverage: Optional[float] = None
+    allow_failure: bool = False
+    created_at: Optional[str] = None
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    duration: Optional[float] = None
+    queued_duration: Optional[float] = None
+    web_url: Optional[str] = None
+    pipeline_id: Optional[int] = None
+    user: Optional[GitLabUser] = None
+    runner_name: Optional[str] = None
+    failure_reason: Optional[str] = None
+
+
+class GitLabBranch(BaseModel):
+    """A branch in a GitLab project repository."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    merged: bool = False
+    protected: bool = False
+    default: bool = False
+    developers_can_push: bool = False
+    developers_can_merge: bool = False
+    can_push: bool = False
+    web_url: Optional[str] = None
+    commit_id: Optional[str] = None
+    commit_message: Optional[str] = None
+
+
+class GitLabTag(BaseModel):
+    """A tag in a GitLab project repository."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    message: Optional[str] = None
+    target: Optional[str] = None
+    protected: bool = False
+    release_description: Optional[str] = None
+    commit_id: Optional[str] = None
+    commit_message: Optional[str] = None

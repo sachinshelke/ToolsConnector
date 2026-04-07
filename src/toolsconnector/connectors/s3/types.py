@@ -89,3 +89,40 @@ class S3CopyResult(BaseModel):
     dest_key: str
     etag: Optional[str] = None
     last_modified: Optional[str] = None
+
+
+class S3BucketPolicy(BaseModel):
+    """Bucket policy document from GetBucketPolicy."""
+
+    model_config = ConfigDict(frozen=True)
+
+    bucket: str
+    policy: str
+    """The raw JSON policy document as a string."""
+
+
+class S3ObjectVersion(BaseModel):
+    """A single object version from ListObjectVersions."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+    version_id: Optional[str] = None
+    is_latest: bool = False
+    last_modified: Optional[str] = None
+    etag: Optional[str] = None
+    size: int = 0
+    storage_class: Optional[str] = None
+    is_delete_marker: bool = False
+
+
+class S3PresignedUrl(BaseModel):
+    """A pre-signed URL for time-limited access to an S3 object."""
+
+    model_config = ConfigDict(frozen=True)
+
+    bucket: str
+    key: str
+    url: str
+    expiration: int = 3600
+    method: str = "GET"

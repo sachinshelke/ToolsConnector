@@ -337,3 +337,79 @@ class Figma(BaseConnector):
             items=items,
             page_state=PageState(has_more=False),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- File nodes
+    # ------------------------------------------------------------------
+
+    @action("Get specific nodes from a Figma file")
+    async def get_file_nodes(
+        self,
+        file_key: str,
+        ids: list[str],
+    ) -> dict[str, Any]:
+        """Get specific nodes from a Figma file by their IDs.
+
+        Args:
+            file_key: The Figma file key.
+            ids: List of node IDs to retrieve.
+
+        Returns:
+            Dict with node data keyed by node ID.
+        """
+        resp = await self._request(
+            "GET", f"/files/{file_key}/nodes",
+            params={"ids": ",".join(ids)},
+        )
+        body = resp.json()
+        return body.get("nodes", {})
+
+    # ------------------------------------------------------------------
+    # Actions -- Comment management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete a comment from a Figma file", dangerous=True)
+    async def delete_comment(
+        self, file_key: str, comment_id: str,
+    ) -> bool:
+        """Delete a comment from a Figma file.
+
+        Args:
+            file_key: The Figma file key.
+            comment_id: The comment ID to delete.
+
+        Returns:
+            True if the comment was deleted.
+        """
+        resp = await self._request(
+            "DELETE", f"/files/{file_key}/comments/{comment_id}",
+        )
+        return resp.status_code in (200, 204)
+
+    # ------------------------------------------------------------------
+    # Actions -- Team projects
+    # ------------------------------------------------------------------
+
+    @action("List projects in a team")
+    async def list_team_projects(
+        self,
+        team_id: str,
+        limit: Optional[int] = None,
+    ) -> list[FigmaProject]:
+        """List projects within a team.
+
+        Args:
+            team_id: The Figma team ID.
+            limit: Maximum number of projects to return.
+
+        Returns:
+            List of FigmaProject objects.
+        """
+        resp = await self._request(
+            "GET", f"/teams/{team_id}/projects",
+        )
+        body = resp.json()
+        projects = [parse_project(p) for p in body.get("projects", [])]
+        if limit is not None:
+            projects = projects[:limit]
+        return projects

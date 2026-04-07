@@ -18,7 +18,7 @@ from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import ConfluencePage, ConfluenceSpace, ConfluenceVersion
+from .types import ConfluenceComment, ConfluencePage, ConfluenceSpace, ConfluenceVersion
 
 logger = logging.getLogger("toolsconnector.confluence")
 
@@ -447,3 +447,132 @@ class Confluence(BaseConnector):
         """
         data = await self._request("GET", f"/spaces/{space_id}")
         return _parse_space(data)
+
+    # ------------------------------------------------------------------
+    # Actions — Comments
+    # ------------------------------------------------------------------
+
+    @action("Add a comment to a page", dangerous=True)
+    async def add_comment(
+        self, page_id: str, body: str,
+    ) -> ConfluenceComment:
+        """Add a comment to a Confluence page.
+
+        Args:
+            page_id: The page ID to comment on.
+            body: Comment body in Confluence storage format (XHTML).
+
+        Returns:
+            The created ConfluenceComment.
+        """
+        payload: dict[str, Any] = {
+            "pageId": page_id,
+            "body": {
+                "representation": "storage",
+                "value": body,
+            },
+        }
+        data = await self._request(
+            "POST", "/footer-comments", json_body=payload,
+        )
+        body_raw = data.get("body", {})
+        body_val = body_raw.get("storage", {}).get("value") if body_raw else None
+        ver_raw = data.get("version")
+        version = ConfluenceVersion(
+            number=ver_raw.get("number", 1),
+            message=ver_raw.get("message"),
+            created_at=ver_raw.get("createdAt"),
+        ) if ver_raw else None
+
+        return ConfluenceComment(
+            id=data.get("id", ""),
+            body_storage=body_val,
+            created_at=data.get("createdAt"),
+            author_id=data.get("authorId"),
+            version=version,
+        )
+
+    @action("List comments on a page")
+    async def list_comments(
+        self, page_id: str,
+    ) -> list[ConfluenceComment]:
+        """List all footer comments on a Confluence page.
+
+        Args:
+            page_id: The page ID to list comments for.
+
+        Returns:
+            List of ConfluenceComment objects.
+        """
+        data = await self._request(
+            "GET", f"/pages/{page_id}/footer-comments",
+        )
+        comments: list[ConfluenceComment] = []
+        for c in data.get("results", []):
+            body_raw = c.get("body", {})
+            body_val = body_raw.get("storage", {}).get("value") if body_raw else None
+            ver_raw = c.get("version")
+            version = ConfluenceVersion(
+                number=ver_raw.get("number", 1),
+                message=ver_raw.get("message"),
+                created_at=ver_raw.get("createdAt"),
+            ) if ver_raw else None
+
+            comments.append(ConfluenceComment(
+                id=c.get("id", ""),
+                body_storage=body_val,
+                created_at=c.get("createdAt"),
+                author_id=c.get("authorId"),
+                version=version,
+            ))
+        return comments
+
+    # ------------------------------------------------------------------
+    # Actions — Page history and movement
+    # ------------------------------------------------------------------
+
+    @action("Get version history for a page")
+    async def get_page_history(
+        self, page_id: str,
+    ) -> list[ConfluenceVersion]:
+        """Get the version history of a Confluence page.
+
+        Args:
+            page_id: The page ID.
+
+        Returns:
+            List of ConfluenceVersion objects representing each version.
+        """
+        data = await self._request(
+            "GET", f"/pages/{page_id}/versions",
+        )
+        return [
+            ConfluenceVersion(
+                number=v.get("number", 1),
+                message=v.get("message"),
+                created_at=v.get("createdAt"),
+            )
+            for v in data.get("results", [])
+        ]
+
+    @action("Move a page to a new parent")
+    async def move_page(
+        self, page_id: str, target_id: str,
+    ) -> ConfluencePage:
+        """Move a page to become a child of another page.
+
+        Args:
+            page_id: The page ID to move.
+            target_id: The ID of the new parent page.
+
+        Returns:
+            The moved ConfluencePage in its new location.
+        """
+        payload: dict[str, Any] = {
+            "position": "append",
+            "targetId": target_id,
+        }
+        data = await self._request(
+            "PUT", f"/pages/{page_id}/move", json_body=payload,
+        )
+        return _parse_page(data)

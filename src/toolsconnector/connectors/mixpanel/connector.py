@@ -477,3 +477,76 @@ class Mixpanel(BaseConnector):
             )
 
         return MixpanelProfile(distinct_id=distinct_id)
+
+    # ------------------------------------------------------------------
+    # Actions -- Profile management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete a user profile", dangerous=True)
+    async def delete_profile(
+        self, distinct_id: str,
+    ) -> bool:
+        """Delete a user profile from Mixpanel.
+
+        Args:
+            distinct_id: The user's distinct ID.
+
+        Returns:
+            True if the delete request was sent.
+        """
+        payload: dict[str, Any] = {
+            "$distinct_id": distinct_id,
+            "$delete": "",
+            "$ignore_alias": True,
+        }
+        resp = await self._engage_request([payload])
+        return resp.status_code == 200
+
+    # ------------------------------------------------------------------
+    # Actions -- Cohorts
+    # ------------------------------------------------------------------
+
+    @action("List cohorts in Mixpanel")
+    async def list_cohorts(self) -> list[dict[str, Any]]:
+        """List all defined cohorts.
+
+        Returns:
+            List of cohort dicts with id, name, count, etc.
+        """
+        resp = await self._data_request("GET", "/cohorts/list")
+        return resp.json() if isinstance(resp.json(), list) else []
+
+    # ------------------------------------------------------------------
+    # Actions -- Segmentation
+    # ------------------------------------------------------------------
+
+    @action("Get segmentation data for an event")
+    async def get_segmentation(
+        self,
+        event: str,
+        from_date: str,
+        to_date: str,
+        segment_property: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Get segmentation (event count breakdown) data.
+
+        Args:
+            event: The event name to segment.
+            from_date: Start date in YYYY-MM-DD format.
+            to_date: End date in YYYY-MM-DD format.
+            segment_property: Optional property to segment by.
+
+        Returns:
+            Dict with segmentation data series.
+        """
+        params: dict[str, Any] = {
+            "event": event,
+            "from_date": from_date,
+            "to_date": to_date,
+        }
+        if segment_property:
+            params["on"] = f'properties["{segment_property}"]'
+        resp = await self._data_request(
+            "GET", "/segmentation", params=params,
+        )
+        return resp.json()

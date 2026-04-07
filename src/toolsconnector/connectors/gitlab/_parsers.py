@@ -8,9 +8,13 @@ from __future__ import annotations
 from typing import Optional
 
 from .types import (
+    GitLabBranch,
+    GitLabComment,
     GitLabIssue,
+    GitLabJob,
     GitLabMilestone,
     GitLabNamespace,
+    GitLabTag,
     GitLabUser,
     MergeRequest,
     Pipeline,
@@ -160,4 +164,77 @@ def parse_pipeline(data: dict) -> Pipeline:
         queued_duration=data.get("queued_duration"),
         coverage=data.get("coverage"),
         user=parse_user(data.get("user")),
+    )
+
+
+def parse_comment(data: dict) -> GitLabComment:
+    """Parse a single GitLabComment (note) from API JSON."""
+    return GitLabComment(
+        id=data["id"],
+        body=data.get("body", ""),
+        author=parse_user(data.get("author")),
+        created_at=data.get("created_at"),
+        updated_at=data.get("updated_at"),
+        system=data.get("system", False),
+        noteable_id=data.get("noteable_id"),
+        noteable_type=data.get("noteable_type"),
+        noteable_iid=data.get("noteable_iid"),
+    )
+
+
+def parse_job(data: dict) -> GitLabJob:
+    """Parse a single GitLabJob from API JSON."""
+    pipeline = data.get("pipeline", {})
+    runner = data.get("runner") or {}
+    return GitLabJob(
+        id=data["id"],
+        name=data.get("name", ""),
+        status=data.get("status", "created"),
+        stage=data.get("stage", ""),
+        ref=data.get("ref"),
+        tag=data.get("tag", False),
+        coverage=data.get("coverage"),
+        allow_failure=data.get("allow_failure", False),
+        created_at=data.get("created_at"),
+        started_at=data.get("started_at"),
+        finished_at=data.get("finished_at"),
+        duration=data.get("duration"),
+        queued_duration=data.get("queued_duration"),
+        web_url=data.get("web_url"),
+        pipeline_id=pipeline.get("id") if pipeline else None,
+        user=parse_user(data.get("user")),
+        runner_name=runner.get("description"),
+        failure_reason=data.get("failure_reason"),
+    )
+
+
+def parse_branch(data: dict) -> GitLabBranch:
+    """Parse a single GitLabBranch from API JSON."""
+    commit = data.get("commit", {})
+    return GitLabBranch(
+        name=data["name"],
+        merged=data.get("merged", False),
+        protected=data.get("protected", False),
+        default=data.get("default", False),
+        developers_can_push=data.get("developers_can_push", False),
+        developers_can_merge=data.get("developers_can_merge", False),
+        can_push=data.get("can_push", False),
+        web_url=data.get("web_url"),
+        commit_id=commit.get("id") if commit else None,
+        commit_message=commit.get("message") if commit else None,
+    )
+
+
+def parse_tag(data: dict) -> GitLabTag:
+    """Parse a single GitLabTag from API JSON."""
+    commit = data.get("commit", {})
+    release = data.get("release") or {}
+    return GitLabTag(
+        name=data["name"],
+        message=data.get("message"),
+        target=data.get("target"),
+        protected=data.get("protected", False),
+        release_description=release.get("description"),
+        commit_id=commit.get("id") if commit else None,
+        commit_message=commit.get("message") if commit else None,
     )

@@ -247,3 +247,73 @@ class Redis(BaseConnector):
         """
         resp = await self._request(["LRANGE", key, start, stop])
         return RedisResult(result=self._parse_result(resp))
+
+    # ------------------------------------------------------------------
+    # Actions -- Key management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Set a TTL (expiry) on a key")
+    async def expire(self, key: str, seconds: int) -> RedisResult:
+        """Set a timeout on a key.
+
+        Args:
+            key: Redis key to set expiry on.
+            seconds: Time to live in seconds.
+
+        Returns:
+            RedisResult with 1 if set, 0 if key does not exist.
+        """
+        resp = await self._request(["EXPIRE", key, seconds])
+        return RedisResult(result=self._parse_result(resp))
+
+    @action("Get the remaining TTL of a key")
+    async def ttl(self, key: str) -> RedisResult:
+        """Get the remaining time to live of a key in seconds.
+
+        Args:
+            key: Redis key to check.
+
+        Returns:
+            RedisResult with TTL in seconds, -1 if no expiry, -2 if missing.
+        """
+        resp = await self._request(["TTL", key])
+        return RedisResult(result=self._parse_result(resp))
+
+    @action("Increment a key's integer value")
+    async def incr(self, key: str) -> RedisResult:
+        """Increment the integer value of a key by one.
+
+        Args:
+            key: Redis key to increment.
+
+        Returns:
+            RedisResult with the new integer value.
+        """
+        resp = await self._request(["INCR", key])
+        return RedisResult(result=self._parse_result(resp))
+
+    @action("Check if one or more keys exist")
+    async def exists(self, keys: list[str]) -> RedisResult:
+        """Check if keys exist in Redis.
+
+        Args:
+            keys: List of keys to check.
+
+        Returns:
+            RedisResult with the number of existing keys.
+        """
+        resp = await self._request(["EXISTS", *keys])
+        return RedisResult(result=self._parse_result(resp))
+
+    @action("Get the type of a key")
+    async def type(self, key: str) -> RedisResult:
+        """Get the type stored at a key.
+
+        Args:
+            key: Redis key to check.
+
+        Returns:
+            RedisResult with the type (string, list, set, zset, hash, stream).
+        """
+        resp = await self._request(["TYPE", key])
+        return RedisResult(result=self._parse_result(resp))

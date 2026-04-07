@@ -95,3 +95,23 @@ class SObjectInfo(BaseModel):
     deletable: bool = False
     custom: bool = False
     urls: dict[str, str] = Field(default_factory=dict)
+
+
+class SalesforceLimits(BaseModel):
+    """Salesforce org API usage limits and remaining counts.
+
+    Each limit is represented as a dict with ``Max`` and ``Remaining``
+    keys, matching the structure returned by the ``/limits`` endpoint.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    daily_api_requests: dict[str, int] = Field(default_factory=dict)
+    daily_bulk_api_requests: dict[str, int] = Field(default_factory=dict)
+    daily_streaming_api_events: dict[str, int] = Field(default_factory=dict)
+    data_storage_mb: dict[str, int] = Field(default_factory=dict)
+    file_storage_mb: dict[str, int] = Field(default_factory=dict)
+    single_email: dict[str, int] = Field(default_factory=dict)
+    mass_email: dict[str, int] = Field(default_factory=dict)
+    hourly_time_based_workflow: dict[str, int] = Field(default_factory=dict)
+    raw: dict[str, Any] = Field(default_factory=dict)

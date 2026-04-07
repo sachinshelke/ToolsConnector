@@ -27,8 +27,10 @@ from .types import (
     ChatMessage,
     Embedding,
     EmbeddingData,
+    FineTuningJob,
     ImageData,
     ImageResult,
+    ModerationResult,
     OpenAIFile,
     OpenAIModel,
     ToolDefinition,
@@ -469,3 +471,123 @@ class OpenAI(BaseConnector):
             )
             for f in data.get("data", [])
         ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Fine-tuning
+    # ------------------------------------------------------------------
+
+    @action("Create a fine-tuning job", dangerous=True)
+    async def create_fine_tuning_job(
+        self,
+        model: str,
+        training_file: str,
+    ) -> FineTuningJob:
+        """Create a new fine-tuning job.
+
+        Args:
+            model: The base model to fine-tune (e.g. ``"gpt-4o-mini-2024-07-18"``).
+            training_file: The file ID of the uploaded training data.
+
+        Returns:
+            The created FineTuningJob.
+        """
+        payload: dict[str, Any] = {
+            "model": model,
+            "training_file": training_file,
+        }
+        resp = await self._request("POST", "/v1/fine_tuning/jobs", json_body=payload)
+        data = resp.json()
+        return FineTuningJob(
+            id=data.get("id", ""),
+            object=data.get("object", "fine_tuning.job"),
+            model=data.get("model", ""),
+            training_file=data.get("training_file", ""),
+            status=data.get("status"),
+            created_at=data.get("created_at", 0),
+            finished_at=data.get("finished_at"),
+            fine_tuned_model=data.get("fine_tuned_model"),
+            error=data.get("error"),
+        )
+
+    @action("List fine-tuning jobs")
+    async def list_fine_tuning_jobs(
+        self, limit: Optional[int] = None,
+    ) -> list[FineTuningJob]:
+        """List fine-tuning jobs.
+
+        Args:
+            limit: Maximum number of jobs to return.
+
+        Returns:
+            List of FineTuningJob objects.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["limit"] = limit
+        resp = await self._request(
+            "GET", "/v1/fine_tuning/jobs", params=params or None,
+        )
+        data = resp.json()
+        return [
+            FineTuningJob(
+                id=j.get("id", ""),
+                object=j.get("object", "fine_tuning.job"),
+                model=j.get("model", ""),
+                training_file=j.get("training_file", ""),
+                status=j.get("status"),
+                created_at=j.get("created_at", 0),
+                finished_at=j.get("finished_at"),
+                fine_tuned_model=j.get("fine_tuned_model"),
+                error=j.get("error"),
+            )
+            for j in data.get("data", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- File management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete an uploaded file", dangerous=True)
+    async def delete_file(self, file_id: str) -> bool:
+        """Delete a file from OpenAI.
+
+        Args:
+            file_id: The file ID to delete.
+
+        Returns:
+            True if the file was deleted.
+        """
+        resp = await self._request("DELETE", f"/v1/files/{file_id}")
+        data = resp.json()
+        return data.get("deleted", False)
+
+    # ------------------------------------------------------------------
+    # Actions -- Moderation
+    # ------------------------------------------------------------------
+
+    @action("Run content moderation on text")
+    async def create_moderation(
+        self, input: str,
+    ) -> ModerationResult:
+        """Check if text violates OpenAI content policy.
+
+        Args:
+            input: The text to moderate.
+
+        Returns:
+            ModerationResult with categories and scores.
+        """
+        resp = await self._request(
+            "POST", "/v1/moderations",
+            json_body={"input": input},
+        )
+        data = resp.json()
+        results = data.get("results", [{}])
+        r = results[0] if results else {}
+        return ModerationResult(
+            id=data.get("id", ""),
+            model=data.get("model", ""),
+            flagged=r.get("flagged", False),
+            categories=r.get("categories", {}),
+            category_scores=r.get("category_scores", {}),
+        )

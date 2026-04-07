@@ -80,3 +80,34 @@ class FreshdeskReply(BaseModel):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     attachments: list[Any] = Field(default_factory=list)
+
+
+class FreshdeskAgent(BaseModel):
+    """A Freshdesk agent."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: Optional[str] = None
+    email: Optional[str] = None
+    active: bool = True
+    occasional: bool = False
+    ticket_scope: Optional[int] = None
+    group_ids: list[int] = Field(default_factory=list)
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class FreshdeskNote(BaseModel):
+    """A private or public note on a Freshdesk ticket."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    body: str = ""
+    body_text: Optional[str] = None
+    user_id: Optional[int] = None
+    private: bool = True
+    incoming: bool = False
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None

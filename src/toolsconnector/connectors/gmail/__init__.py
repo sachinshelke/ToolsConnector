@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 from .connector import Gmail
-from .types import Attachment, DraftId, Email, EmailAddress, Label, MessageId
+from .types import Attachment, DraftId, Email, EmailAddress, Label, LabelColor, MessageId, Thread
 
 __all__ = [
     "Gmail",
+    "Attachment",
+    "DraftId",
     "Email",
     "EmailAddress",
     "Label",
+    "LabelColor",
     "MessageId",
-    "DraftId",
-    "Attachment",
+    "Thread",
 ]

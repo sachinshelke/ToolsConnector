@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
+import logging
 import time
 from typing import Any, Optional
 from xml.etree.ElementTree import Element, SubElement, tostring
@@ -416,6 +418,75 @@ class Webhook(BaseConnector):
         try:
             response = await self._client.post(
                 url, json=body, headers=merged
+            )
+            elapsed = (time.monotonic() - start) * 1000
+            return self._build_response(url, "POST", response, elapsed)
+        except Exception as exc:
+            return self._error_response(url, "POST", str(exc))
+
+    # ------------------------------------------------------------------
+    # Actions -- Retry and Multipart
+    # ------------------------------------------------------------------
+
+    @action("Send a webhook with automatic retries", dangerous=True)
+    async def send_with_retry(
+        self,
+        url: str,
+        payload: dict[str, Any],
+        max_retries: Optional[int] = None,
+        delay: Optional[float] = None,
+    ) -> WebhookResponse:
+        """Send a webhook with exponential backoff retries on failure.
+
+        Args:
+            url: The target URL.
+            payload: JSON-serialisable payload dict.
+            max_retries: Maximum retry attempts (default 3).
+            delay: Initial delay between retries in seconds (default 1.0).
+
+        Returns:
+            A WebhookResponse from the last attempt.
+        """
+        retries = max_retries if max_retries is not None else 3
+        wait = delay if delay is not None else 1.0
+
+        last_result: Optional[WebhookResponse] = None
+        for attempt in range(retries + 1):
+            result = await self.send_webhook(url, payload)
+            last_result = result
+            if result.success:
+                return result
+            if attempt < retries:
+                await asyncio.sleep(wait * (2 ** attempt))
+
+        return last_result  # type: ignore[return-value]
+
+    @action("Send a multipart form-data request", dangerous=True)
+    async def send_multipart(
+        self,
+        url: str,
+        files: dict[str, tuple[str, bytes, str]],
+        data: Optional[dict[str, str]] = None,
+    ) -> WebhookResponse:
+        """Send a multipart/form-data POST request with file uploads.
+
+        Args:
+            url: The target URL.
+            files: Dict mapping field names to tuples of
+                ``(filename, content_bytes, content_type)``.
+            data: Optional form fields to include alongside files.
+
+        Returns:
+            A WebhookResponse with delivery status.
+        """
+        multipart_files = {
+            name: (fname, content, ctype)
+            for name, (fname, content, ctype) in files.items()
+        }
+        start = time.monotonic()
+        try:
+            response = await self._client.post(
+                url, files=multipart_files, data=data or {},
             )
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)

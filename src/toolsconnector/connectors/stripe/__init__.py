@@ -9,8 +9,15 @@ from .types import (
     StripeBalanceAvailable,
     StripeBalancePending,
     StripeCharge,
+    StripeCheckoutSession,
     StripeCustomer,
     StripeInvoice,
+    StripePaymentMethod,
+    StripePrice,
+    StripeProduct,
+    StripeRecurring,
+    StripeRefund,
+    StripeSubscription,
 )
 
 __all__ = [
@@ -20,6 +27,13 @@ __all__ = [
     "StripeBalanceAvailable",
     "StripeBalancePending",
     "StripeCharge",
+    "StripeCheckoutSession",
     "StripeCustomer",
     "StripeInvoice",
+    "StripePaymentMethod",
+    "StripePrice",
+    "StripeProduct",
+    "StripeRecurring",
+    "StripeRefund",
+    "StripeSubscription",
 ]

@@ -15,7 +15,7 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import FreshdeskContact, FreshdeskReply, FreshdeskTicket
+from .types import FreshdeskAgent, FreshdeskContact, FreshdeskNote, FreshdeskReply, FreshdeskTicket
 
 
 class Freshdesk(BaseConnector):
@@ -398,3 +398,110 @@ class Freshdesk(BaseConnector):
             page_state=PageState(has_more=False),
             total_count=total,
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Ticket management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete a Freshdesk ticket", dangerous=True)
+    async def delete_ticket(self, ticket_id: int) -> bool:
+        """Permanently delete a support ticket.
+
+        Args:
+            ticket_id: The Freshdesk ticket ID.
+
+        Returns:
+            True if the ticket was deleted successfully.
+        """
+        await self._request("DELETE", f"/tickets/{ticket_id}")
+        return True
+
+    @action("Add a note to a ticket")
+    async def add_note(
+        self, ticket_id: int, body: str,
+    ) -> FreshdeskNote:
+        """Add a private note to a ticket.
+
+        Args:
+            ticket_id: The Freshdesk ticket ID.
+            body: Note body (HTML allowed).
+
+        Returns:
+            The created FreshdeskNote.
+        """
+        payload: dict[str, Any] = {"body": body, "private": True}
+        data = await self._request(
+            "POST", f"/tickets/{ticket_id}/notes", json=payload,
+        )
+        return FreshdeskNote(
+            id=data.get("id", 0),
+            body=data.get("body", ""),
+            body_text=data.get("body_text"),
+            user_id=data.get("user_id"),
+            private=data.get("private", True),
+            incoming=data.get("incoming", False),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
+        )
+
+    @action("Merge multiple tickets into one", dangerous=True)
+    async def merge_tickets(
+        self,
+        primary_id: int,
+        secondary_ids: list[int],
+    ) -> bool:
+        """Merge secondary tickets into a primary ticket.
+
+        Args:
+            primary_id: The ticket ID that will remain open.
+            secondary_ids: List of ticket IDs to merge into the primary.
+
+        Returns:
+            True if the merge was successful.
+        """
+        payload: dict[str, Any] = {
+            "primary_id": primary_id,
+            "ticket_ids": secondary_ids,
+        }
+        await self._request(
+            "POST", "/tickets/merge", json=payload,
+        )
+        return True
+
+    # ------------------------------------------------------------------
+    # Actions -- Agents
+    # ------------------------------------------------------------------
+
+    @action("List agents in Freshdesk")
+    async def list_agents(
+        self, limit: Optional[int] = None,
+    ) -> list[FreshdeskAgent]:
+        """List all agents in the helpdesk.
+
+        Args:
+            limit: Maximum number of agents to return.
+
+        Returns:
+            List of FreshdeskAgent objects.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["per_page"] = min(limit, 100)
+        data = await self._request(
+            "GET", "/agents", params=params or None,
+        )
+        agents_list = data if isinstance(data, list) else []
+        return [
+            FreshdeskAgent(
+                id=a.get("id", 0),
+                name=a.get("contact", {}).get("name"),
+                email=a.get("contact", {}).get("email"),
+                active=a.get("active", True),
+                occasional=a.get("occasional", False),
+                ticket_scope=a.get("ticket_scope"),
+                group_ids=a.get("group_ids", []),
+                created_at=a.get("created_at"),
+                updated_at=a.get("updated_at"),
+            )
+            for a in agents_list
+        ]

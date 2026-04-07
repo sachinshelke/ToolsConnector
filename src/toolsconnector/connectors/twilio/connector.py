@@ -23,7 +23,14 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PageState, PaginatedList
 
 from ._parsers import parse_call, parse_message, parse_phone_number
-from .types import PhoneNumber, TwilioAccount, TwilioCall, TwilioMessage
+from .types import (
+    PhoneNumber,
+    TwilioAccount,
+    TwilioCall,
+    TwilioMessage,
+    TwilioRecording,
+    TwilioUsageRecord,
+)
 
 logger = logging.getLogger("toolsconnector.twilio")
 
@@ -364,3 +371,118 @@ class Twilio(BaseConnector):
             date_updated=data.get("date_updated"),
             uri=data.get("uri"),
         )
+
+    # ------------------------------------------------------------------
+    # Actions — Usage
+    # ------------------------------------------------------------------
+
+    @action("Get account usage records for the current billing period")
+    async def get_account_usage(self) -> list[TwilioUsageRecord]:
+        """Retrieve usage records for the current billing period.
+
+        Returns:
+            List of TwilioUsageRecord objects summarising usage by category.
+        """
+        path = self._acct("Usage/Records.json")
+        resp = await self._request("GET", path)
+        body = resp.json()
+        return [
+            TwilioUsageRecord(
+                category=r.get("category", ""),
+                description=r.get("description"),
+                count=r.get("count"),
+                count_unit=r.get("count_unit"),
+                usage=r.get("usage"),
+                usage_unit=r.get("usage_unit"),
+                price=r.get("price"),
+                price_unit=r.get("price_unit"),
+                start_date=r.get("start_date"),
+                end_date=r.get("end_date"),
+                uri=r.get("uri"),
+            )
+            for r in body.get("usage_records", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions — Recordings
+    # ------------------------------------------------------------------
+
+    @action("List call recordings from your Twilio account")
+    async def list_recordings(
+        self, limit: Optional[int] = None,
+    ) -> list[TwilioRecording]:
+        """List call recordings.
+
+        Args:
+            limit: Maximum number of recordings to return.
+
+        Returns:
+            List of TwilioRecording objects.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["PageSize"] = min(limit, 1000)
+        path = self._acct("Recordings.json")
+        resp = await self._request("GET", path, params=params or None)
+        body = resp.json()
+        return [
+            TwilioRecording(
+                sid=r["sid"],
+                account_sid=r.get("account_sid"),
+                call_sid=r.get("call_sid"),
+                duration=r.get("duration"),
+                channels=r.get("channels"),
+                status=r.get("status"),
+                price=r.get("price"),
+                price_unit=r.get("price_unit"),
+                source=r.get("source"),
+                uri=r.get("uri"),
+                date_created=r.get("date_created"),
+                date_updated=r.get("date_updated"),
+            )
+            for r in body.get("recordings", [])
+        ]
+
+    @action("Delete a call recording by SID", dangerous=True)
+    async def delete_recording(self, sid: str) -> bool:
+        """Delete a call recording.
+
+        Args:
+            sid: The recording SID (e.g. ``RE...``).
+
+        Returns:
+            True if the recording was deleted successfully.
+        """
+        path = self._acct(f"Recordings/{sid}.json")
+        resp = await self._request("DELETE", path)
+        return resp.status_code == 204
+
+    # ------------------------------------------------------------------
+    # Actions — MMS
+    # ------------------------------------------------------------------
+
+    @action("Send an MMS message with media via Twilio", dangerous=True)
+    async def send_mms(
+        self, to: str, from_: str, body: str, media_url: str,
+    ) -> TwilioMessage:
+        """Send an MMS message with a media attachment.
+
+        Args:
+            to: Recipient phone number in E.164 format.
+            from_: Sender phone number (must be a Twilio number).
+            body: Message text content.
+            media_url: Public URL of the media to attach.
+
+        Returns:
+            The created TwilioMessage object.
+        """
+        form_data = {
+            "To": to,
+            "From": from_,
+            "Body": body,
+            "MediaUrl": media_url,
+        }
+        resp = await self._request(
+            "POST", self._acct("Messages.json"), data=form_data,
+        )
+        return parse_message(resp.json())

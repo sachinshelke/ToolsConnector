@@ -19,7 +19,7 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import CFAnalytics, CFDNSRecord, CFPurgeResult, CFZone
+from .types import CFAnalytics, CFDNSRecord, CFPageRule, CFPurgeResult, CFWorker, CFZone
 
 logger = logging.getLogger("toolsconnector.cloudflare")
 
@@ -432,3 +432,117 @@ class Cloudflare(BaseConnector):
             pageviews=totals.get("pageviews"),
             uniques=totals.get("uniques"),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Workers
+    # ------------------------------------------------------------------
+
+    @action("List Workers scripts for an account")
+    async def list_workers(
+        self, account_id: str,
+    ) -> list[CFWorker]:
+        """List all Worker scripts in the account.
+
+        Args:
+            account_id: Cloudflare account ID.
+
+        Returns:
+            List of CFWorker objects.
+        """
+        body = await self._cf_request(
+            "GET", f"/accounts/{account_id}/workers/scripts",
+        )
+        return [
+            CFWorker(
+                id=w.get("id"),
+                etag=w.get("etag"),
+                created_on=w.get("created_on"),
+                modified_on=w.get("modified_on"),
+                size=w.get("size"),
+            )
+            for w in body.get("result", [])
+        ]
+
+    @action("Get a Worker script by name")
+    async def get_worker(
+        self, account_id: str, script_name: str,
+    ) -> CFWorker:
+        """Get metadata for a specific Worker script.
+
+        Args:
+            account_id: Cloudflare account ID.
+            script_name: The script name.
+
+        Returns:
+            CFWorker with script details.
+        """
+        body = await self._cf_request(
+            "GET", f"/accounts/{account_id}/workers/scripts/{script_name}",
+        )
+        result = body.get("result", {})
+        return CFWorker(
+            id=result.get("id", script_name),
+            etag=result.get("etag"),
+            created_on=result.get("created_on"),
+            modified_on=result.get("modified_on"),
+            size=result.get("size"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Page Rules
+    # ------------------------------------------------------------------
+
+    @action("Create a page rule for a zone", dangerous=True)
+    async def create_page_rule(
+        self,
+        zone_id: str,
+        targets: list[dict[str, Any]],
+        actions: list[dict[str, Any]],
+    ) -> CFPageRule:
+        """Create a page rule for a zone.
+
+        Args:
+            zone_id: The zone ID.
+            targets: List of target URL pattern dicts.
+            actions: List of action configuration dicts.
+
+        Returns:
+            The created CFPageRule.
+        """
+        payload: dict[str, Any] = {
+            "targets": targets,
+            "actions": actions,
+            "status": "active",
+        }
+        body = await self._cf_request(
+            "POST", f"/zones/{zone_id}/pagerules", json_body=payload,
+        )
+        r = body.get("result", {})
+        return CFPageRule(
+            id=r.get("id"),
+            status=r.get("status"),
+            priority=r.get("priority"),
+            targets=r.get("targets", []),
+            actions=r.get("actions", []),
+            created_on=r.get("created_on"),
+            modified_on=r.get("modified_on"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Zone management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete a zone", dangerous=True)
+    async def delete_zone(self, zone_id: str) -> bool:
+        """Delete a zone from Cloudflare.
+
+        Args:
+            zone_id: The zone ID to delete.
+
+        Returns:
+            True if the zone was deleted.
+        """
+        body = await self._cf_request(
+            "DELETE", f"/zones/{zone_id}",
+        )
+        return body.get("success", False)

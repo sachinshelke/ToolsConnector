@@ -20,6 +20,7 @@ from .types import (
     EventAttendee,
     EventId,
     EventTime,
+    FreeBusyCalendar,
 )
 
 
@@ -451,3 +452,87 @@ class GoogleCalendar(BaseConnector):
                 has_more=next_token is not None,
             ),
         )
+
+    # ------------------------------------------------------------------
+    # Actions — Free/busy and advanced event operations
+    # ------------------------------------------------------------------
+
+    @action("Query free/busy information for calendars")
+    async def get_free_busy(
+        self,
+        time_min: str,
+        time_max: str,
+        calendar_ids: list[str],
+    ) -> list[FreeBusyCalendar]:
+        """Query free/busy information for one or more calendars.
+
+        Args:
+            time_min: Start of the time range (ISO 8601 datetime).
+            time_max: End of the time range (ISO 8601 datetime).
+            calendar_ids: List of calendar IDs to query.
+
+        Returns:
+            List of FreeBusyCalendar objects with busy time ranges.
+        """
+        body: dict[str, Any] = {
+            "timeMin": time_min,
+            "timeMax": time_max,
+            "items": [{"id": cid} for cid in calendar_ids],
+        }
+        data = await self._request(
+            "POST", "/freeBusy", json=body,
+        )
+        calendars_data = data.get("calendars", {})
+        results: list[FreeBusyCalendar] = []
+        for cal_id, cal_info in calendars_data.items():
+            results.append(FreeBusyCalendar(
+                calendar_id=cal_id,
+                busy=cal_info.get("busy", []),
+                errors=cal_info.get("errors", []),
+            ))
+        return results
+
+    @action("List instances of a recurring event")
+    async def list_event_instances(
+        self,
+        calendar_id: str,
+        event_id: str,
+    ) -> list[CalendarEvent]:
+        """List all instances of a recurring event.
+
+        Args:
+            calendar_id: Calendar ID containing the event.
+            event_id: The recurring event ID.
+
+        Returns:
+            List of CalendarEvent objects for each instance.
+        """
+        data = await self._request(
+            "GET",
+            f"/calendars/{calendar_id}/events/{event_id}/instances",
+        )
+        return [_parse_event(e) for e in data.get("items", [])]
+
+    @action("Move an event to a different calendar")
+    async def move_event(
+        self,
+        calendar_id: str,
+        event_id: str,
+        destination_calendar_id: str,
+    ) -> CalendarEvent:
+        """Move an event from one calendar to another.
+
+        Args:
+            calendar_id: Source calendar ID.
+            event_id: The event ID to move.
+            destination_calendar_id: Destination calendar ID.
+
+        Returns:
+            The moved CalendarEvent in its new calendar.
+        """
+        data = await self._request(
+            "POST",
+            f"/calendars/{calendar_id}/events/{event_id}/move",
+            params={"destination": destination_calendar_id},
+        )
+        return _parse_event(data)

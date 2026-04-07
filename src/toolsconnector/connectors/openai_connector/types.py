@@ -164,3 +164,31 @@ class OpenAIModel(BaseModel):
     object: str = "model"
     created: int = 0
     owned_by: str = ""
+
+
+class FineTuningJob(BaseModel):
+    """An OpenAI fine-tuning job."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    object: str = "fine_tuning.job"
+    model: str = ""
+    training_file: str = ""
+    status: Optional[str] = None
+    created_at: int = 0
+    finished_at: Optional[int] = None
+    fine_tuned_model: Optional[str] = None
+    error: Optional[dict[str, Any]] = None
+
+
+class ModerationResult(BaseModel):
+    """Result of an OpenAI moderation check."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    model: str = ""
+    flagged: bool = False
+    categories: dict[str, bool] = Field(default_factory=dict)
+    category_scores: dict[str, float] = Field(default_factory=dict)

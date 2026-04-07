@@ -561,3 +561,107 @@ class Firestore(BaseConnector):
             status=data.get("status", []),
             write_results=data.get("writeResults", []),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Advanced operations
+    # ------------------------------------------------------------------
+
+    @action("Run a transaction with multiple operations")
+    async def run_transaction(
+        self,
+        project: str,
+        operations: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Run a transaction that commits multiple writes atomically.
+
+        Args:
+            project: Google Cloud project ID.
+            operations: List of write operation dicts. Each should have
+                either ``"update"`` or ``"delete"`` keys.
+
+        Returns:
+            Dict with commit results including commit_time.
+        """
+        # Begin transaction
+        begin_path = f"/projects/{project}/databases/(default)/documents:beginTransaction"
+        begin_resp = await self._request("POST", begin_path, json_body={})
+        begin_data = begin_resp.json()
+        transaction_id = begin_data.get("transaction", "")
+
+        # Build writes
+        encoded_writes: list[dict[str, Any]] = []
+        for op in operations:
+            ew: dict[str, Any] = {}
+            if "update" in op:
+                update = op["update"]
+                ew["update"] = {
+                    "name": update["name"],
+                    "fields": _encode_fields(update.get("fields", {})),
+                }
+            if "delete" in op:
+                ew["delete"] = op["delete"]
+            encoded_writes.append(ew)
+
+        # Commit
+        commit_path = f"/projects/{project}/databases/(default)/documents:commit"
+        commit_body: dict[str, Any] = {
+            "writes": encoded_writes,
+            "transaction": transaction_id,
+        }
+        commit_resp = await self._request("POST", commit_path, json_body=commit_body)
+        return commit_resp.json()
+
+    @action("List indexes for a collection")
+    async def list_indexes(
+        self,
+        project: str,
+        collection: str,
+    ) -> list[dict[str, Any]]:
+        """List composite indexes for a Firestore collection.
+
+        Args:
+            project: Google Cloud project ID.
+            collection: The collection group ID.
+
+        Returns:
+            List of index configuration dicts.
+        """
+        path = (
+            f"/projects/{project}/databases/(default)"
+            f"/collectionGroups/{collection}/indexes"
+        )
+        resp = await self._request("GET", path)
+        data = resp.json()
+        return data.get("indexes", [])
+
+    @action("Export documents from a collection")
+    async def export_documents(
+        self,
+        project: str,
+        collection: str,
+    ) -> list[dict[str, Any]]:
+        """Export all documents from a Firestore collection.
+
+        Args:
+            project: Google Cloud project ID.
+            collection: The collection path.
+
+        Returns:
+            List of raw document dicts from the collection.
+        """
+        path = (
+            f"/projects/{project}/databases/(default)"
+            f"/documents/{collection}"
+        )
+        resp = await self._request("GET", path)
+        data = resp.json()
+        documents = data.get("documents", [])
+        return [
+            {
+                "name": doc.get("name", ""),
+                "fields": doc.get("fields", {}),
+                "createTime": doc.get("createTime"),
+                "updateTime": doc.get("updateTime"),
+            }
+            for doc in documents
+        ]

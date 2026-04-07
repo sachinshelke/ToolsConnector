@@ -14,7 +14,21 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import HubSpotContact, HubSpotDeal
+from ._helpers import (
+    extract_cursor,
+    parse_company,
+    parse_contact,
+    parse_deal,
+    parse_pipeline,
+    parse_ticket,
+)
+from .types import (
+    HubSpotCompany,
+    HubSpotContact,
+    HubSpotDeal,
+    HubSpotPipeline,
+    HubSpotTicket,
+)
 
 
 class HubSpot(BaseConnector):
@@ -32,7 +46,7 @@ class HubSpot(BaseConnector):
     base_url = "https://api.hubapi.com"
     description = (
         "Connect to HubSpot CRM to manage contacts, deals, "
-        "and search across CRM objects."
+        "companies, tickets, and pipelines."
     )
     _rate_limit_config = RateLimitSpec(rate=100, period=10, burst=20)
 
@@ -95,50 +109,6 @@ class HubSpot(BaseConnector):
         return response.json()
 
     # ------------------------------------------------------------------
-    # Response parsers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _parse_contact(data: dict[str, Any]) -> HubSpotContact:
-        """Parse a raw HubSpot contact JSON into a HubSpotContact model."""
-        return HubSpotContact(
-            id=data.get("id", ""),
-            properties=data.get("properties", {}),
-            created_at=data.get("createdAt"),
-            updated_at=data.get("updatedAt"),
-            archived=data.get("archived", False),
-        )
-
-    @staticmethod
-    def _parse_deal(data: dict[str, Any]) -> HubSpotDeal:
-        """Parse a raw HubSpot deal JSON into a HubSpotDeal model."""
-        return HubSpotDeal(
-            id=data.get("id", ""),
-            properties=data.get("properties", {}),
-            created_at=data.get("createdAt"),
-            updated_at=data.get("updatedAt"),
-            archived=data.get("archived", False),
-        )
-
-    @staticmethod
-    def _extract_cursor(data: dict[str, Any]) -> Optional[str]:
-        """Extract the next cursor from the HubSpot paging envelope.
-
-        Args:
-            data: Raw API response dict.
-
-        Returns:
-            The ``after`` cursor string, or ``None`` if no more pages.
-        """
-        paging = data.get("paging")
-        if not paging:
-            return None
-        next_page = paging.get("next")
-        if not next_page:
-            return None
-        return next_page.get("after")
-
-    # ------------------------------------------------------------------
     # Actions -- Contacts
     # ------------------------------------------------------------------
 
@@ -157,9 +127,7 @@ class HubSpot(BaseConnector):
         Returns:
             Paginated list of HubSpotContact objects.
         """
-        params: dict[str, Any] = {
-            "limit": min(limit, 100),
-        }
+        params: dict[str, Any] = {"limit": min(limit, 100)}
         if after:
             params["after"] = after
 
@@ -167,10 +135,8 @@ class HubSpot(BaseConnector):
             "GET", "/crm/v3/objects/contacts", params=params
         )
 
-        contacts = [
-            self._parse_contact(c) for c in data.get("results", [])
-        ]
-        next_cursor = self._extract_cursor(data)
+        contacts = [parse_contact(c) for c in data.get("results", [])]
+        next_cursor = extract_cursor(data)
 
         return PaginatedList(
             items=contacts,
@@ -193,7 +159,7 @@ class HubSpot(BaseConnector):
         data = await self._request(
             "GET", f"/crm/v3/objects/contacts/{contact_id}"
         )
-        return self._parse_contact(data)
+        return parse_contact(data)
 
     @action("Create a new contact", dangerous=True)
     async def create_contact(
@@ -230,7 +196,7 @@ class HubSpot(BaseConnector):
         data = await self._request(
             "POST", "/crm/v3/objects/contacts", json=body
         )
-        return self._parse_contact(data)
+        return parse_contact(data)
 
     @action("Update an existing contact")
     async def update_contact(
@@ -251,7 +217,56 @@ class HubSpot(BaseConnector):
         data = await self._request(
             "PATCH", f"/crm/v3/objects/contacts/{contact_id}", json=body
         )
-        return self._parse_contact(data)
+        return parse_contact(data)
+
+    @action("Delete a contact", dangerous=True)
+    async def delete_contact(self, contact_id: str) -> None:
+        """Delete a CRM contact by its ID.
+
+        This is a destructive action.  The contact is moved to the
+        recycling bin and can be restored within 90 days.
+
+        Args:
+            contact_id: The HubSpot contact ID to delete.
+        """
+        await self._request(
+            "DELETE", f"/crm/v3/objects/contacts/{contact_id}"
+        )
+
+    @action("Search contacts by query")
+    async def search_contacts(
+        self,
+        query: str,
+        limit: int = 10,
+    ) -> PaginatedList[HubSpotContact]:
+        """Search CRM contacts using a full-text query.
+
+        Args:
+            query: Search query string.
+            limit: Maximum results to return (max 100).
+
+        Returns:
+            Paginated list of matching HubSpotContact objects.
+        """
+        body: dict[str, Any] = {
+            "query": query,
+            "limit": min(limit, 100),
+        }
+        data = await self._request(
+            "POST", "/crm/v3/objects/contacts/search", json=body
+        )
+
+        contacts = [parse_contact(c) for c in data.get("results", [])]
+        next_cursor = extract_cursor(data)
+
+        return PaginatedList(
+            items=contacts,
+            page_state=PageState(
+                cursor=next_cursor,
+                has_more=next_cursor is not None,
+            ),
+            total_count=data.get("total"),
+        )
 
     # ------------------------------------------------------------------
     # Actions -- Deals
@@ -272,9 +287,7 @@ class HubSpot(BaseConnector):
         Returns:
             Paginated list of HubSpotDeal objects.
         """
-        params: dict[str, Any] = {
-            "limit": min(limit, 100),
-        }
+        params: dict[str, Any] = {"limit": min(limit, 100)}
         if after:
             params["after"] = after
 
@@ -282,8 +295,8 @@ class HubSpot(BaseConnector):
             "GET", "/crm/v3/objects/deals", params=params
         )
 
-        deals = [self._parse_deal(d) for d in data.get("results", [])]
-        next_cursor = self._extract_cursor(data)
+        deals = [parse_deal(d) for d in data.get("results", [])]
+        next_cursor = extract_cursor(data)
 
         return PaginatedList(
             items=deals,
@@ -306,7 +319,7 @@ class HubSpot(BaseConnector):
         data = await self._request(
             "GET", f"/crm/v3/objects/deals/{deal_id}"
         )
-        return self._parse_deal(data)
+        return parse_deal(data)
 
     @action("Create a new deal", dangerous=True)
     async def create_deal(
@@ -339,48 +352,180 @@ class HubSpot(BaseConnector):
         data = await self._request(
             "POST", "/crm/v3/objects/deals", json=body
         )
-        return self._parse_deal(data)
+        return parse_deal(data)
 
     # ------------------------------------------------------------------
-    # Actions -- Search
+    # Actions -- Companies
     # ------------------------------------------------------------------
 
-    @action("Search contacts by query")
-    async def search_contacts(
+    @action("List companies")
+    async def list_companies(
         self,
-        query: str,
-        limit: int = 10,
-    ) -> PaginatedList[HubSpotContact]:
-        """Search CRM contacts using a full-text query.
-
-        HubSpot's search endpoint searches across default searchable
-        properties (firstname, lastname, email, phone, etc.).
+        limit: int = 100,
+        after: Optional[str] = None,
+    ) -> PaginatedList[HubSpotCompany]:
+        """List CRM companies with cursor-based pagination.
 
         Args:
-            query: Search query string.
-            limit: Maximum results to return (max 100).
+            limit: Maximum results per page (max 100).
+            after: Cursor token from a previous response for the next page.
 
         Returns:
-            Paginated list of matching HubSpotContact objects.
+            Paginated list of HubSpotCompany objects.
         """
-        body: dict[str, Any] = {
-            "query": query,
-            "limit": min(limit, 100),
-        }
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        if after:
+            params["after"] = after
+
         data = await self._request(
-            "POST", "/crm/v3/objects/contacts/search", json=body
+            "GET", "/crm/v3/objects/companies", params=params
         )
 
-        contacts = [
-            self._parse_contact(c) for c in data.get("results", [])
-        ]
-        next_cursor = self._extract_cursor(data)
+        companies = [parse_company(c) for c in data.get("results", [])]
+        next_cursor = extract_cursor(data)
 
         return PaginatedList(
-            items=contacts,
+            items=companies,
             page_state=PageState(
                 cursor=next_cursor,
                 has_more=next_cursor is not None,
             ),
-            total_count=data.get("total"),
         )
+
+    @action("Get a single company by ID")
+    async def get_company(self, company_id: str) -> HubSpotCompany:
+        """Retrieve a single CRM company by its ID.
+
+        Args:
+            company_id: The HubSpot company ID.
+
+        Returns:
+            The requested HubSpotCompany.
+        """
+        data = await self._request(
+            "GET", f"/crm/v3/objects/companies/{company_id}"
+        )
+        return parse_company(data)
+
+    @action("Create a new company", dangerous=True)
+    async def create_company(
+        self,
+        name: str,
+        domain: Optional[str] = None,
+        properties: Optional[dict[str, Any]] = None,
+    ) -> HubSpotCompany:
+        """Create a new CRM company.
+
+        Args:
+            name: Company name (required).
+            domain: Company domain / website.
+            properties: Additional property key-value pairs.
+
+        Returns:
+            The newly created HubSpotCompany.
+        """
+        props: dict[str, Any] = {"name": name}
+        if domain is not None:
+            props["domain"] = domain
+        if properties:
+            props.update(properties)
+
+        body: dict[str, Any] = {"properties": props}
+        data = await self._request(
+            "POST", "/crm/v3/objects/companies", json=body
+        )
+        return parse_company(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Tickets
+    # ------------------------------------------------------------------
+
+    @action("List tickets")
+    async def list_tickets(
+        self,
+        limit: int = 100,
+        after: Optional[str] = None,
+    ) -> PaginatedList[HubSpotTicket]:
+        """List CRM tickets with cursor-based pagination.
+
+        Args:
+            limit: Maximum results per page (max 100).
+            after: Cursor token from a previous response for the next page.
+
+        Returns:
+            Paginated list of HubSpotTicket objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        if after:
+            params["after"] = after
+
+        data = await self._request(
+            "GET", "/crm/v3/objects/tickets", params=params
+        )
+
+        tickets = [parse_ticket(t) for t in data.get("results", [])]
+        next_cursor = extract_cursor(data)
+
+        return PaginatedList(
+            items=tickets,
+            page_state=PageState(
+                cursor=next_cursor,
+                has_more=next_cursor is not None,
+            ),
+        )
+
+    @action("Create a new ticket", dangerous=True)
+    async def create_ticket(
+        self,
+        subject: str,
+        pipeline: Optional[str] = None,
+        stage: Optional[str] = None,
+        priority: Optional[str] = None,
+    ) -> HubSpotTicket:
+        """Create a new CRM ticket.
+
+        Args:
+            subject: Ticket subject (required).
+            pipeline: Pipeline ID for the ticket.
+            stage: Pipeline stage ID.
+            priority: Ticket priority (e.g., ``"HIGH"``).
+
+        Returns:
+            The newly created HubSpotTicket.
+        """
+        properties: dict[str, Any] = {"subject": subject}
+        if pipeline is not None:
+            properties["hs_pipeline"] = pipeline
+        if stage is not None:
+            properties["hs_pipeline_stage"] = stage
+        if priority is not None:
+            properties["hs_ticket_priority"] = priority
+
+        body: dict[str, Any] = {"properties": properties}
+        data = await self._request(
+            "POST", "/crm/v3/objects/tickets", json=body
+        )
+        return parse_ticket(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Pipelines
+    # ------------------------------------------------------------------
+
+    @action("List pipelines for an object type")
+    async def list_pipelines(
+        self,
+        object_type: str = "deals",
+    ) -> list[HubSpotPipeline]:
+        """List all pipelines for a given CRM object type.
+
+        Args:
+            object_type: The CRM object type (e.g., ``"deals"``,
+                ``"tickets"``).  Defaults to ``"deals"``.
+
+        Returns:
+            List of HubSpotPipeline objects with their stages.
+        """
+        data = await self._request(
+            "GET", f"/crm/v3/pipelines/{object_type}"
+        )
+        return [parse_pipeline(p) for p in data.get("results", [])]

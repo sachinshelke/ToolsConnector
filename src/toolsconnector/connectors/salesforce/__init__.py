@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .connector import Salesforce
 from .types import (
+    SalesforceLimits,
     SalesforceRecord,
     SalesforceRecordId,
     SObjectDescription,
@@ -13,6 +14,7 @@ from .types import (
 
 __all__ = [
     "Salesforce",
+    "SalesforceLimits",
     "SalesforceRecord",
     "SalesforceRecordId",
     "SObjectDescription",

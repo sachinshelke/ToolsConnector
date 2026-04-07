@@ -455,3 +455,100 @@ class Auth0(BaseConnector):
             f"/users/{user_id}/roles",
             json_body={"roles": role_ids},
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- User management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Block a user", dangerous=True)
+    async def block_user(self, user_id: str) -> Auth0User:
+        """Block a user from logging in.
+
+        Args:
+            user_id: The user's Auth0 ID.
+
+        Returns:
+            The updated Auth0User with blocked=True.
+        """
+        data = await self._request(
+            "PATCH", f"/users/{user_id}",
+            json_body={"blocked": True},
+        )
+        return Auth0User(
+            user_id=data.get("user_id", ""),
+            email=data.get("email", ""),
+            email_verified=data.get("email_verified", False),
+            name=data.get("name", ""),
+            nickname=data.get("nickname", ""),
+            picture=data.get("picture", ""),
+            blocked=True,
+        )
+
+    @action("Unblock a user")
+    async def unblock_user(self, user_id: str) -> Auth0User:
+        """Unblock a previously blocked user.
+
+        Args:
+            user_id: The user's Auth0 ID.
+
+        Returns:
+            The updated Auth0User with blocked=False.
+        """
+        data = await self._request(
+            "PATCH", f"/users/{user_id}",
+            json_body={"blocked": False},
+        )
+        return Auth0User(
+            user_id=data.get("user_id", ""),
+            email=data.get("email", ""),
+            email_verified=data.get("email_verified", False),
+            name=data.get("name", ""),
+            nickname=data.get("nickname", ""),
+            picture=data.get("picture", ""),
+            blocked=False,
+        )
+
+    @action("List roles assigned to a user")
+    async def list_user_roles(
+        self, user_id: str,
+    ) -> list[Auth0Role]:
+        """List all roles assigned to a user.
+
+        Args:
+            user_id: The user's Auth0 ID.
+
+        Returns:
+            List of Auth0Role objects.
+        """
+        data = await self._request(
+            "GET", f"/users/{user_id}/roles",
+        )
+        roles_data = data if isinstance(data, list) else data.get("roles", [])
+        return [
+            Auth0Role(
+                id=r.get("id", ""),
+                name=r.get("name", ""),
+                description=r.get("description", ""),
+            )
+            for r in roles_data
+        ]
+
+    @action("List organizations in the tenant")
+    async def list_organizations(
+        self, limit: Optional[int] = None,
+    ) -> list[dict[str, Any]]:
+        """List organizations in the Auth0 tenant.
+
+        Args:
+            limit: Maximum number of organizations to return.
+
+        Returns:
+            List of organization dicts.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["per_page"] = min(limit, 100)
+        data = await self._request(
+            "GET", "/organizations", params=params or None,
+        )
+        return data.get("organizations", data if isinstance(data, list) else [])

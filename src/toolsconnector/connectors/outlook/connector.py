@@ -16,85 +16,22 @@ from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import EmailRecipient, MailFolder, OutlookMessage, OutlookMessageId
+from .types import (
+    MailFolder,
+    OutlookCalendarEvent,
+    OutlookContact,
+    OutlookMessage,
+    OutlookMessageId,
+)
+
+from ._helpers import (
+    parse_calendar_event as _parse_calendar_event,
+    parse_contact as _parse_contact,
+    parse_folder as _parse_folder,
+    parse_message as _parse_message,
+)
 
 logger = logging.getLogger("toolsconnector.outlook")
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _parse_recipient(raw: dict[str, Any]) -> EmailRecipient:
-    """Parse an MS Graph ``emailAddress`` object into an EmailRecipient.
-
-    Args:
-        raw: Dict with ``emailAddress`` containing ``name`` and ``address``.
-
-    Returns:
-        Parsed EmailRecipient.
-    """
-    addr = raw.get("emailAddress", {})
-    return EmailRecipient(
-        email=addr.get("address", ""),
-        name=addr.get("name") or None,
-    )
-
-
-def _parse_message(data: dict[str, Any]) -> OutlookMessage:
-    """Parse an MS Graph message JSON into an OutlookMessage model.
-
-    Args:
-        data: Raw JSON response from the messages endpoint.
-
-    Returns:
-        Populated OutlookMessage instance.
-    """
-    from_raw = data.get("from")
-    from_addr = _parse_recipient(from_raw) if from_raw else None
-
-    to_list = [_parse_recipient(r) for r in data.get("toRecipients", [])]
-    cc_list = [_parse_recipient(r) for r in data.get("ccRecipients", [])]
-
-    body = data.get("body", {})
-
-    return OutlookMessage(
-        id=data.get("id", ""),
-        subject=data.get("subject"),
-        body_preview=data.get("bodyPreview"),
-        body_content=body.get("content"),
-        body_content_type=body.get("contentType"),
-        from_address=from_addr,
-        to_recipients=to_list,
-        cc_recipients=cc_list,
-        received_datetime=data.get("receivedDateTime"),
-        sent_datetime=data.get("sentDateTime"),
-        is_read=data.get("isRead", False),
-        has_attachments=data.get("hasAttachments", False),
-        importance=data.get("importance", "normal"),
-        conversation_id=data.get("conversationId"),
-        web_link=data.get("webLink"),
-    )
-
-
-def _parse_folder(data: dict[str, Any]) -> MailFolder:
-    """Parse an MS Graph mailFolder JSON into a MailFolder model.
-
-    Args:
-        data: Raw JSON response from the mailFolders endpoint.
-
-    Returns:
-        Populated MailFolder instance.
-    """
-    return MailFolder(
-        id=data.get("id", ""),
-        display_name=data.get("displayName", ""),
-        parent_folder_id=data.get("parentFolderId"),
-        child_folder_count=data.get("childFolderCount", 0),
-        total_item_count=data.get("totalItemCount", 0),
-        unread_item_count=data.get("unreadItemCount", 0),
-    )
 
 
 class Outlook(BaseConnector):
@@ -422,3 +359,239 @@ class Outlook(BaseConnector):
             f"/me/messages/{message_id}/reply",
             json_body=payload,
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Contacts
+    # ------------------------------------------------------------------
+
+    @action("List contacts")
+    async def list_contacts(
+        self,
+        limit: int = 25,
+        skip: int = 0,
+        page_url: Optional[str] = None,
+    ) -> PaginatedList[OutlookContact]:
+        """List contacts from the user's default contacts folder.
+
+        Args:
+            limit: Maximum number of contacts per page (max 1000).
+            skip: Number of contacts to skip (offset pagination).
+            page_url: Full ``@odata.nextLink`` URL for the next page.
+
+        Returns:
+            Paginated list of OutlookContact objects.
+        """
+        if page_url:
+            data = await self._request("GET", "", full_url=page_url)
+        else:
+            params: dict[str, Any] = {"$top": min(limit, 1000)}
+            if skip > 0:
+                params["$skip"] = skip
+            data = await self._request("GET", "/me/contacts", params=params)
+
+        contacts = [_parse_contact(c) for c in data.get("value", [])]
+        next_link = data.get("@odata.nextLink")
+
+        return PaginatedList(
+            items=contacts,
+            page_state=PageState(
+                cursor=next_link,
+                has_more=next_link is not None,
+            ),
+        )
+
+    @action("Get a single contact by ID")
+    async def get_contact(self, contact_id: str) -> OutlookContact:
+        """Retrieve a single contact by its ID.
+
+        Args:
+            contact_id: The unique ID of the contact.
+
+        Returns:
+            The requested OutlookContact.
+        """
+        data = await self._request("GET", f"/me/contacts/{contact_id}")
+        return _parse_contact(data)
+
+    @action("Create a new contact", dangerous=True)
+    async def create_contact(
+        self,
+        given_name: str,
+        surname: Optional[str] = None,
+        email: Optional[str] = None,
+        phone: Optional[str] = None,
+    ) -> OutlookContact:
+        """Create a new contact in the user's default contacts folder.
+
+        Args:
+            given_name: First name of the contact.
+            surname: Last name of the contact.
+            email: Primary email address.
+            phone: Primary phone number.
+
+        Returns:
+            The created OutlookContact.
+        """
+        payload: dict[str, Any] = {"givenName": given_name}
+        if surname:
+            payload["surname"] = surname
+        if email:
+            payload["emailAddresses"] = [
+                {"address": email, "name": f"{given_name} {surname or ''}".strip()},
+            ]
+        if phone:
+            payload["businessPhones"] = [phone]
+
+        data = await self._request("POST", "/me/contacts", json_body=payload)
+        return _parse_contact(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Calendar
+    # ------------------------------------------------------------------
+
+    @action("List calendar events")
+    async def list_calendar_events(
+        self,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+        limit: int = 25,
+        page_url: Optional[str] = None,
+    ) -> PaginatedList[OutlookCalendarEvent]:
+        """List calendar events from the user's default calendar.
+
+        When ``start`` and ``end`` are provided, uses the calendarView
+        endpoint to return events within that time range. Otherwise lists
+        events ordered by start time.
+
+        Args:
+            start: ISO 8601 start datetime for the range filter
+                (e.g. ``2024-01-01T00:00:00Z``).
+            end: ISO 8601 end datetime for the range filter.
+            limit: Maximum events per page (max 1000).
+            page_url: Full ``@odata.nextLink`` URL for the next page.
+
+        Returns:
+            Paginated list of OutlookCalendarEvent objects.
+        """
+        if page_url:
+            data = await self._request("GET", "", full_url=page_url)
+        elif start and end:
+            params: dict[str, Any] = {
+                "startDateTime": start,
+                "endDateTime": end,
+                "$top": min(limit, 1000),
+                "$orderby": "start/dateTime",
+            }
+            data = await self._request(
+                "GET", "/me/calendarView", params=params,
+            )
+        else:
+            params = {
+                "$top": min(limit, 1000),
+                "$orderby": "start/dateTime",
+            }
+            data = await self._request("GET", "/me/events", params=params)
+
+        events = [_parse_calendar_event(e) for e in data.get("value", [])]
+        next_link = data.get("@odata.nextLink")
+
+        return PaginatedList(
+            items=events,
+            page_state=PageState(
+                cursor=next_link,
+                has_more=next_link is not None,
+            ),
+        )
+
+    @action("Create a calendar event", dangerous=True)
+    async def create_calendar_event(
+        self,
+        subject: str,
+        start: str,
+        end: str,
+        attendees: Optional[list[str]] = None,
+        body: Optional[str] = None,
+    ) -> OutlookCalendarEvent:
+        """Create a new event on the user's default calendar.
+
+        Args:
+            subject: Event title/subject.
+            start: ISO 8601 start datetime (e.g. ``2024-06-15T09:00:00``).
+            end: ISO 8601 end datetime (e.g. ``2024-06-15T10:00:00``).
+            attendees: Optional list of attendee email addresses.
+            body: Optional event body/description (HTML supported).
+
+        Returns:
+            The created OutlookCalendarEvent.
+        """
+        payload: dict[str, Any] = {
+            "subject": subject,
+            "start": {"dateTime": start, "timeZone": "UTC"},
+            "end": {"dateTime": end, "timeZone": "UTC"},
+        }
+        if attendees:
+            payload["attendees"] = [
+                {
+                    "emailAddress": {"address": addr},
+                    "type": "required",
+                }
+                for addr in attendees
+            ]
+        if body:
+            payload["body"] = {"contentType": "HTML", "content": body}
+
+        data = await self._request("POST", "/me/events", json_body=payload)
+        return _parse_calendar_event(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Message management
+    # ------------------------------------------------------------------
+
+    @action("Move a message to another folder")
+    async def move_message(
+        self,
+        message_id: str,
+        destination_folder_id: str,
+    ) -> OutlookMessage:
+        """Move an email message to a different mail folder.
+
+        Args:
+            message_id: The unique ID of the message to move.
+            destination_folder_id: The ID of the destination mail folder.
+
+        Returns:
+            The moved OutlookMessage with its updated ID.
+        """
+        payload: dict[str, Any] = {"destinationId": destination_folder_id}
+        data = await self._request(
+            "POST",
+            f"/me/messages/{message_id}/move",
+            json_body=payload,
+        )
+        return _parse_message(data)
+
+    @action("Create a mail folder", dangerous=True)
+    async def create_folder(
+        self,
+        display_name: str,
+        parent_folder_id: Optional[str] = None,
+    ) -> MailFolder:
+        """Create a new mail folder.
+
+        Args:
+            display_name: Display name for the new folder.
+            parent_folder_id: Optional parent folder ID. If omitted the
+                folder is created at the top level of the mailbox.
+
+        Returns:
+            The created MailFolder.
+        """
+        payload: dict[str, Any] = {"displayName": display_name}
+
+        if parent_folder_id:
+            path = f"/me/mailFolders/{parent_folder_id}/childFolders"
+        else:
+            path = "/me/mailFolders"
+
+        data = await self._request("POST", path, json_body=payload)
+        return _parse_folder(data)

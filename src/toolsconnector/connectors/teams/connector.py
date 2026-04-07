@@ -16,7 +16,16 @@ from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import Team, TeamsChannel, TeamsMember, TeamsMessage, TeamsMessageBody, TeamsMessageFrom
+from .types import (
+    Team,
+    TeamsChannel,
+    TeamsChat,
+    TeamsMember,
+    TeamsMessage,
+    TeamsMessageBody,
+    TeamsMessageFrom,
+    TeamsPresence,
+)
 
 logger = logging.getLogger("toolsconnector.teams")
 
@@ -398,3 +407,118 @@ class Teams(BaseConnector):
             f"/teams/{team_id}/channels/{channel_id}",
         )
         return _parse_channel(data)
+
+    # ------------------------------------------------------------------
+    # Actions — Replies
+    # ------------------------------------------------------------------
+
+    @action("Reply to a message in a Teams channel")
+    async def reply_to_message(
+        self,
+        team_id: str,
+        channel_id: str,
+        message_id: str,
+        content: str,
+    ) -> TeamsMessage:
+        """Reply to an existing message in a channel.
+
+        Args:
+            team_id: The unique ID of the team.
+            channel_id: The unique ID of the channel.
+            message_id: The ID of the message to reply to.
+            content: Reply content (HTML supported).
+
+        Returns:
+            The created reply TeamsMessage object.
+        """
+        payload: dict[str, Any] = {
+            "body": {
+                "contentType": "html",
+                "content": content,
+            },
+        }
+        data = await self._request(
+            "POST",
+            f"/teams/{team_id}/channels/{channel_id}/messages/{message_id}/replies",
+            json_body=payload,
+        )
+        return _parse_message(data)
+
+    # ------------------------------------------------------------------
+    # Actions — Chats
+    # ------------------------------------------------------------------
+
+    @action("List chats the user is part of")
+    async def list_chats(
+        self, limit: Optional[int] = None,
+    ) -> list[TeamsChat]:
+        """List all chats the authenticated user participates in.
+
+        Args:
+            limit: Maximum number of chats to return.
+
+        Returns:
+            List of TeamsChat objects.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["$top"] = min(limit, 50)
+        data = await self._request("GET", "/me/chats", params=params or None)
+        return [
+            TeamsChat(
+                id=c.get("id", ""),
+                topic=c.get("topic"),
+                chat_type=c.get("chatType"),
+                created_datetime=c.get("createdDateTime"),
+                last_updated_datetime=c.get("lastUpdatedDateTime"),
+                web_url=c.get("webUrl"),
+            )
+            for c in data.get("value", [])
+        ]
+
+    @action("Send a message to a Teams chat", dangerous=True)
+    async def send_chat_message(
+        self, chat_id: str, content: str,
+    ) -> TeamsMessage:
+        """Send a message to a 1:1 or group chat.
+
+        Args:
+            chat_id: The unique ID of the chat.
+            content: Message content (HTML supported).
+
+        Returns:
+            The sent TeamsMessage object.
+        """
+        payload: dict[str, Any] = {
+            "body": {
+                "contentType": "html",
+                "content": content,
+            },
+        }
+        data = await self._request(
+            "POST", f"/chats/{chat_id}/messages", json_body=payload,
+        )
+        return _parse_message(data)
+
+    # ------------------------------------------------------------------
+    # Actions — Presence
+    # ------------------------------------------------------------------
+
+    @action("Get a user's presence status in Teams")
+    async def get_user_presence(self, user_id: str) -> TeamsPresence:
+        """Get a user's current presence/availability status.
+
+        Args:
+            user_id: The unique ID of the user.
+
+        Returns:
+            TeamsPresence with availability and activity info.
+        """
+        data = await self._request(
+            "GET", f"/users/{user_id}/presence",
+        )
+        return TeamsPresence(
+            id=data.get("id"),
+            availability=data.get("availability"),
+            activity=data.get("activity"),
+        )

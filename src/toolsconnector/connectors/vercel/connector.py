@@ -19,7 +19,7 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import VercelDeployment, VercelDomain, VercelEnvVar, VercelProject
+from .types import VercelAlias, VercelDeployment, VercelDomain, VercelEnvVar, VercelProject
 
 logger = logging.getLogger("toolsconnector.vercel")
 
@@ -405,3 +405,89 @@ class Vercel(BaseConnector):
             "POST", f"/v10/projects/{project_id}/env", json=payload,
         )
         return _parse_env_var(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Deployment management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete a deployment", dangerous=True)
+    async def delete_deployment(
+        self, deployment_id: str,
+    ) -> bool:
+        """Delete a Vercel deployment.
+
+        Args:
+            deployment_id: The deployment ID or URL.
+
+        Returns:
+            True if the deployment was deleted.
+        """
+        resp = await self._request(
+            "DELETE", f"/v13/deployments/{deployment_id}",
+        )
+        return resp.status_code in (200, 204)
+
+    @action("Get logs for a deployment")
+    async def get_deployment_logs(
+        self, deployment_id: str,
+    ) -> list[dict[str, Any]]:
+        """Get build and runtime logs for a deployment.
+
+        Args:
+            deployment_id: The deployment ID.
+
+        Returns:
+            List of log entry dicts.
+        """
+        resp = await self._request(
+            "GET", f"/v3/deployments/{deployment_id}/events",
+        )
+        return resp.json() if isinstance(resp.json(), list) else []
+
+    @action("List deployment aliases")
+    async def list_aliases(
+        self, project_id: Optional[str] = None,
+    ) -> list[VercelAlias]:
+        """List aliases, optionally filtered by project.
+
+        Args:
+            project_id: Optional project ID to filter by.
+
+        Returns:
+            List of VercelAlias objects.
+        """
+        params: dict[str, Any] = {}
+        if project_id:
+            params["projectId"] = project_id
+        resp = await self._request(
+            "GET", "/v4/aliases", params=params or None,
+        )
+        body = resp.json()
+        return [
+            VercelAlias(
+                uid=a.get("uid"),
+                alias=a.get("alias"),
+                deployment_id=a.get("deploymentId"),
+                project_id=a.get("projectId"),
+                created_at=a.get("createdAt"),
+            )
+            for a in body.get("aliases", [])
+        ]
+
+    @action("Redeploy an existing deployment")
+    async def redeploy(
+        self, deployment_id: str,
+    ) -> VercelDeployment:
+        """Create a new deployment from an existing one (redeploy).
+
+        Args:
+            deployment_id: The deployment ID to redeploy.
+
+        Returns:
+            The new VercelDeployment.
+        """
+        resp = await self._request(
+            "POST", f"/v13/deployments",
+            json={"deploymentId": deployment_id},
+        )
+        return _parse_deployment(resp.json())

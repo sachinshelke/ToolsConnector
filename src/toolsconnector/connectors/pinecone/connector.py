@@ -435,3 +435,94 @@ class Pinecone(BaseConnector):
             )
             for idx in data.get("indexes", [])
         ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Index management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Create a new Pinecone index", dangerous=True)
+    async def create_index(
+        self,
+        name: str,
+        dimension: int,
+        metric: Optional[str] = None,
+    ) -> PineconeIndex:
+        """Create a new Pinecone index.
+
+        Args:
+            name: Name of the index.
+            dimension: Vector dimension.
+            metric: Distance metric (``cosine``, ``euclidean``, ``dotproduct``).
+
+        Returns:
+            The created PineconeIndex.
+        """
+        payload: dict[str, Any] = {
+            "name": name,
+            "dimension": dimension,
+            "metric": metric or "cosine",
+            "spec": {"serverless": {"cloud": "aws", "region": "us-east-1"}},
+        }
+        resp = await self._control_request(
+            "POST", "/indexes", json_body=payload,
+        )
+        data = resp.json()
+        return PineconeIndex(
+            name=data.get("name", ""),
+            dimension=data.get("dimension", dimension),
+            metric=data.get("metric", metric or "cosine"),
+            host=data.get("host", ""),
+            status=data.get("status"),
+            spec=data.get("spec"),
+        )
+
+    @action("Delete a Pinecone index", dangerous=True)
+    async def delete_index(self, name: str) -> bool:
+        """Delete a Pinecone index.
+
+        Args:
+            name: Name of the index to delete.
+
+        Returns:
+            True if the index was deleted.
+        """
+        resp = await self._control_request(
+            "DELETE", f"/indexes/{name}",
+        )
+        return resp.status_code in (200, 202, 204)
+
+    @action("Configure an existing Pinecone index")
+    async def configure_index(
+        self,
+        name: str,
+        replicas: Optional[int] = None,
+        pod_type: Optional[str] = None,
+    ) -> PineconeIndex:
+        """Update the configuration of a Pinecone index.
+
+        Args:
+            name: Name of the index to configure.
+            replicas: Number of replicas.
+            pod_type: Pod type (e.g. ``"p1.x1"``).
+
+        Returns:
+            The updated PineconeIndex.
+        """
+        spec: dict[str, Any] = {}
+        if replicas is not None:
+            spec["replicas"] = replicas
+        if pod_type is not None:
+            spec["pod_type"] = pod_type
+        payload: dict[str, Any] = {"spec": {"pod": spec}}
+        resp = await self._control_request(
+            "PATCH", f"/indexes/{name}", json_body=payload,
+        )
+        data = resp.json()
+        return PineconeIndex(
+            name=data.get("name", ""),
+            dimension=data.get("dimension", 0),
+            metric=data.get("metric", "cosine"),
+            host=data.get("host", ""),
+            status=data.get("status"),
+            spec=data.get("spec"),
+        )

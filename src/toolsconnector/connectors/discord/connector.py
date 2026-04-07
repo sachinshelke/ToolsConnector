@@ -23,7 +23,14 @@ from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PaginatedList
 
-from .types import DiscordChannel, DiscordMessage, DiscordUser, Embed, GuildMember
+from .types import (
+    DiscordChannel,
+    DiscordMessage,
+    DiscordRole,
+    DiscordUser,
+    Embed,
+    GuildMember,
+)
 
 logger = logging.getLogger("toolsconnector.discord")
 
@@ -347,3 +354,179 @@ class Discord(BaseConnector):
         """
         body = await self._request("GET", f"/users/{user_id}")
         return DiscordUser(**body)
+
+    @action("Delete a channel", dangerous=True)
+    async def delete_channel(self, channel_id: str) -> None:
+        """Delete a channel from a guild, or close a DM channel.
+
+        For guild channels this permanently deletes the channel and all
+        messages within it. This action cannot be undone.
+
+        Args:
+            channel_id: The channel snowflake ID to delete.
+        """
+        await self._request("DELETE", f"/channels/{channel_id}")
+
+    @action("Edit a message in a channel")
+    async def edit_message(
+        self,
+        channel_id: str,
+        message_id: str,
+        content: str,
+    ) -> DiscordMessage:
+        """Edit a previously sent message.
+
+        Only the ``content`` field is updated. Embeds and other fields
+        remain unchanged unless explicitly cleared.
+
+        Args:
+            channel_id: The channel snowflake ID containing the message.
+            message_id: The message snowflake ID to edit.
+            content: New message text content (max 2000 characters).
+
+        Returns:
+            The updated DiscordMessage object.
+        """
+        payload: dict[str, Any] = {"content": content}
+        body = await self._request(
+            "PATCH",
+            f"/channels/{channel_id}/messages/{message_id}",
+            json_body=payload,
+        )
+        return DiscordMessage(**body)
+
+    @action("Delete a message from a channel", dangerous=True)
+    async def delete_message(
+        self,
+        channel_id: str,
+        message_id: str,
+    ) -> None:
+        """Delete a message from a channel.
+
+        This permanently removes the message. Requires ``MANAGE_MESSAGES``
+        permission for messages sent by other users.
+
+        Args:
+            channel_id: The channel snowflake ID.
+            message_id: The message snowflake ID to delete.
+        """
+        await self._request(
+            "DELETE",
+            f"/channels/{channel_id}/messages/{message_id}",
+        )
+
+    @action("List roles in a guild")
+    async def list_roles(self, guild_id: str) -> list[DiscordRole]:
+        """List all roles in a Discord guild.
+
+        Args:
+            guild_id: The guild snowflake ID.
+
+        Returns:
+            List of DiscordRole objects ordered by position.
+        """
+        body = await self._request("GET", f"/guilds/{guild_id}/roles")
+        return [DiscordRole(**r) for r in body]
+
+    @action("Create a role in a guild", dangerous=True)
+    async def create_role(
+        self,
+        guild_id: str,
+        name: str,
+        permissions: Optional[str] = None,
+        color: Optional[int] = None,
+    ) -> DiscordRole:
+        """Create a new role in a Discord guild.
+
+        Args:
+            guild_id: The guild snowflake ID.
+            name: Name for the new role.
+            permissions: Permission bit set as a string. Defaults to
+                ``@everyone`` permissions of the guild.
+            color: RGB color value for the role (integer).
+
+        Returns:
+            The created DiscordRole object.
+        """
+        payload: dict[str, Any] = {"name": name}
+        if permissions is not None:
+            payload["permissions"] = permissions
+        if color is not None:
+            payload["color"] = color
+
+        body = await self._request(
+            "POST",
+            f"/guilds/{guild_id}/roles",
+            json_body=payload,
+        )
+        return DiscordRole(**body)
+
+    @action("Ban a member from a guild", dangerous=True)
+    async def ban_member(
+        self,
+        guild_id: str,
+        user_id: str,
+        reason: Optional[str] = None,
+    ) -> None:
+        """Ban a user from a guild and optionally delete recent messages.
+
+        Requires ``BAN_MEMBERS`` permission. The ban is permanent until
+        explicitly removed.
+
+        Args:
+            guild_id: The guild snowflake ID.
+            user_id: The user snowflake ID to ban.
+            reason: Optional audit log reason for the ban.
+        """
+        payload: dict[str, Any] = {}
+        extra_headers: dict[str, str] = {}
+        if reason:
+            extra_headers["X-Audit-Log-Reason"] = reason
+
+        # Note: Discord requires the reason in the audit-log header
+        # and an empty JSON body for PUT /bans
+        await self._request(
+            "PUT",
+            f"/guilds/{guild_id}/bans/{user_id}",
+            json_body=payload,
+        )
+
+    @action("Create a thread in a channel", dangerous=True)
+    async def create_thread(
+        self,
+        channel_id: str,
+        name: str,
+        message_id: Optional[str] = None,
+    ) -> DiscordChannel:
+        """Create a new thread in a channel.
+
+        If ``message_id`` is provided, the thread is created from that
+        message. Otherwise a new thread is created without a starter
+        message.
+
+        Args:
+            channel_id: The parent channel snowflake ID.
+            name: Name for the thread (1-100 characters).
+            message_id: Optional message snowflake ID to start the
+                thread from.
+
+        Returns:
+            The created DiscordChannel object (thread type).
+        """
+        if message_id:
+            # Create a thread from an existing message
+            payload: dict[str, Any] = {"name": name}
+            body = await self._request(
+                "POST",
+                f"/channels/{channel_id}/messages/{message_id}/threads",
+                json_body=payload,
+            )
+        else:
+            # Create a thread without a message (type 11 = public thread)
+            payload = {"name": name, "type": 11}
+            body = await self._request(
+                "POST",
+                f"/channels/{channel_id}/threads",
+                json_body=payload,
+            )
+        return DiscordChannel(**body)

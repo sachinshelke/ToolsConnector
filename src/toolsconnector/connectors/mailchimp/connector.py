@@ -23,7 +23,13 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PageState, PaginatedList
 
 from ._parsers import parse_campaign, parse_list, parse_member
-from .types import MailchimpCampaign, MailchimpList, MailchimpMember
+from .types import (
+    MailchimpCampaign,
+    MailchimpCampaignReport,
+    MailchimpList,
+    MailchimpMember,
+    MailchimpSegment,
+)
 
 logger = logging.getLogger("toolsconnector.mailchimp")
 
@@ -417,3 +423,134 @@ class Mailchimp(BaseConnector):
         if resp.status_code == 204:
             return {"status": "sent", "campaign_id": campaign_id}
         return resp.json()
+
+    # ------------------------------------------------------------------
+    # Actions — Member management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete a member from a list", dangerous=True)
+    async def delete_member(
+        self, list_id: str, email: str,
+    ) -> bool:
+        """Permanently delete a member from a list.
+
+        Args:
+            list_id: The Mailchimp list/audience ID.
+            email: The member's email address.
+
+        Returns:
+            True if the member was deleted successfully.
+        """
+        subscriber_hash = hashlib.md5(
+            email.lower().encode()
+        ).hexdigest()
+        resp = await self._request(
+            "DELETE",
+            f"/lists/{list_id}/members/{subscriber_hash}/actions/delete-permanent",
+        )
+        return resp.status_code in (200, 204)
+
+    # ------------------------------------------------------------------
+    # Actions — Segments
+    # ------------------------------------------------------------------
+
+    @action("List segments for an audience list")
+    async def list_segments(
+        self, list_id: str,
+    ) -> list[MailchimpSegment]:
+        """List all saved segments for an audience list.
+
+        Args:
+            list_id: The Mailchimp list/audience ID.
+
+        Returns:
+            List of MailchimpSegment objects.
+        """
+        resp = await self._request(
+            "GET", f"/lists/{list_id}/segments",
+        )
+        body = resp.json()
+        return [
+            MailchimpSegment(
+                id=s.get("id", 0),
+                name=s.get("name", ""),
+                member_count=s.get("member_count", 0),
+                type=s.get("type"),
+                list_id=s.get("list_id"),
+                created_at=s.get("created_at"),
+                updated_at=s.get("updated_at"),
+            )
+            for s in body.get("segments", [])
+        ]
+
+    @action("Create a segment for an audience list", dangerous=True)
+    async def create_segment(
+        self,
+        list_id: str,
+        name: str,
+        conditions: list[dict[str, Any]],
+    ) -> MailchimpSegment:
+        """Create a new segment for an audience list.
+
+        Args:
+            list_id: The Mailchimp list/audience ID.
+            name: Segment name.
+            conditions: List of condition dicts defining the segment rules.
+
+        Returns:
+            The created MailchimpSegment.
+        """
+        payload: dict[str, Any] = {
+            "name": name,
+            "options": {
+                "match": "all",
+                "conditions": conditions,
+            },
+        }
+        resp = await self._request(
+            "POST", f"/lists/{list_id}/segments",
+            json_body=payload,
+        )
+        data = resp.json()
+        return MailchimpSegment(
+            id=data.get("id", 0),
+            name=data.get("name", ""),
+            member_count=data.get("member_count", 0),
+            type=data.get("type"),
+            list_id=data.get("list_id"),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Campaign Reports
+    # ------------------------------------------------------------------
+
+    @action("Get a campaign performance report")
+    async def get_campaign_report(
+        self, campaign_id: str,
+    ) -> MailchimpCampaignReport:
+        """Get performance report for a sent campaign.
+
+        Args:
+            campaign_id: The Mailchimp campaign ID.
+
+        Returns:
+            MailchimpCampaignReport with performance metrics.
+        """
+        resp = await self._request(
+            "GET", f"/reports/{campaign_id}",
+        )
+        data = resp.json()
+        return MailchimpCampaignReport(
+            id=data.get("id", ""),
+            campaign_title=data.get("campaign_title"),
+            emails_sent=data.get("emails_sent", 0),
+            opens=data.get("opens", {}).get("opens_total", 0),
+            unique_opens=data.get("opens", {}).get("unique_opens", 0),
+            clicks=data.get("clicks", {}).get("clicks_total", 0),
+            subscriber_clicks=data.get("clicks", {}).get("unique_subscriber_clicks", 0),
+            unsubscribed=data.get("unsubscribed", 0),
+            bounces=data.get("bounces"),
+            send_time=data.get("send_time"),
+        )

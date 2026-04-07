@@ -19,7 +19,7 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import AirtableBase, AirtableField, AirtableRecord, AirtableTable
+from .types import AirtableBase, AirtableField, AirtableRecord, AirtableTable, AirtableWebhook
 
 logger = logging.getLogger("toolsconnector.airtable")
 
@@ -378,3 +378,97 @@ class Airtable(BaseConnector):
         await self._request(
             "DELETE", f"/{base_id}/{table_name}/{record_id}",
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Batch operations
+    # ------------------------------------------------------------------
+
+    @action("Delete multiple records from a table", dangerous=True)
+    async def delete_records(
+        self,
+        base_id: str,
+        table_name: str,
+        record_ids: list[str],
+    ) -> bool:
+        """Delete multiple records by their IDs.
+
+        Args:
+            base_id: Airtable base ID.
+            table_name: Table name or ID.
+            record_ids: List of record IDs to delete (max 10 per call).
+
+        Returns:
+            True if the deletion was successful.
+        """
+        params: dict[str, Any] = {}
+        for i, rid in enumerate(record_ids[:10]):
+            params[f"records[]"] = rid
+        # Airtable expects repeated query params for batch delete
+        query_parts = "&".join(f"records[]={rid}" for rid in record_ids[:10])
+        resp = await self._request(
+            "DELETE", f"/{base_id}/{table_name}?{query_parts}",
+        )
+        return resp.status_code == 200
+
+    @action("Update multiple records in a table")
+    async def update_records(
+        self,
+        base_id: str,
+        table_name: str,
+        records: list[dict[str, Any]],
+    ) -> list[AirtableRecord]:
+        """Update multiple records in a single request.
+
+        Args:
+            base_id: Airtable base ID.
+            table_name: Table name or ID.
+            records: List of dicts with ``id`` and ``fields`` keys.
+
+        Returns:
+            List of updated AirtableRecord objects.
+        """
+        body: dict[str, Any] = {"records": records}
+        resp = await self._request(
+            "PATCH", f"/{base_id}/{table_name}", json_body=body,
+        )
+        data = resp.json()
+        return [
+            AirtableRecord(
+                id=r.get("id", ""),
+                created_time=r.get("createdTime"),
+                fields=r.get("fields", {}),
+            )
+            for r in data.get("records", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Webhooks
+    # ------------------------------------------------------------------
+
+    @action("List webhooks for a base")
+    async def list_webhooks(
+        self, base_id: str,
+    ) -> list[AirtableWebhook]:
+        """List all webhook subscriptions for a base.
+
+        Args:
+            base_id: Airtable base ID.
+
+        Returns:
+            List of AirtableWebhook objects.
+        """
+        resp = await self._request(
+            "GET", f"/bases/{base_id}/webhooks",
+        )
+        data = resp.json()
+        return [
+            AirtableWebhook(
+                id=w.get("id", ""),
+                type=w.get("type"),
+                is_hook_enabled=w.get("isHookEnabled", True),
+                notification_url=w.get("notificationUrl"),
+                expiration_time=w.get("expirationTime"),
+                cursor_for_next_payload=w.get("cursorForNextPayload"),
+            )
+            for w in data.get("webhooks", [])
+        ]

@@ -122,3 +122,46 @@ class JiraTransition(BaseModel):
     name: str = ""
     to_status: Optional[JiraStatus] = None
     has_screen: bool = False
+
+
+class JiraSprint(BaseModel):
+    """A Jira Agile sprint."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: str = ""
+    state: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    complete_date: Optional[str] = None
+    board_id: Optional[int] = None
+    goal: Optional[str] = None
+    self_url: Optional[str] = None
+
+
+class JiraBoard(BaseModel):
+    """A Jira Agile board."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: str = ""
+    type: Optional[str] = None
+    project_key: Optional[str] = None
+    self_url: Optional[str] = None
+
+
+class JiraAttachment(BaseModel):
+    """An attachment on a Jira issue."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    filename: str = ""
+    mime_type: Optional[str] = None
+    size: Optional[int] = None
+    author: Optional[JiraUser] = None
+    created: Optional[str] = None
+    content_url: Optional[str] = None
+    self_url: Optional[str] = None

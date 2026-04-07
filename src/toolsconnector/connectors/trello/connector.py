@@ -21,7 +21,7 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PageState, PaginatedList
 
 from ._parsers import parse_board, parse_card, parse_comment, parse_list
-from .types import TrelloBoard, TrelloCard, TrelloComment, TrelloList
+from .types import TrelloBoard, TrelloCard, TrelloComment, TrelloList, TrelloMember
 
 logger = logging.getLogger("toolsconnector.trello")
 
@@ -288,3 +288,87 @@ class Trello(BaseConnector):
             params={"text": text},
         )
         return parse_comment(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Card management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Delete a Trello card", dangerous=True)
+    async def delete_card(self, card_id: str) -> bool:
+        """Permanently delete a Trello card.
+
+        Args:
+            card_id: The Trello card ID to delete.
+
+        Returns:
+            True if the card was deleted successfully.
+        """
+        resp = await self._request("DELETE", f"/cards/{card_id}")
+        return resp.status_code == 200
+
+    @action("Add a label to a Trello card")
+    async def add_label(self, card_id: str, label_id: str) -> bool:
+        """Add an existing label to a card.
+
+        Args:
+            card_id: The Trello card ID.
+            label_id: The label ID to add.
+
+        Returns:
+            True if the label was added successfully.
+        """
+        await self._request(
+            "POST", f"/cards/{card_id}/idLabels",
+            params={"value": label_id},
+        )
+        return True
+
+    # ------------------------------------------------------------------
+    # Actions -- Board members
+    # ------------------------------------------------------------------
+
+    @action("List members of a Trello board")
+    async def list_members(self, board_id: str) -> list[TrelloMember]:
+        """List all members of a board.
+
+        Args:
+            board_id: The Trello board ID.
+
+        Returns:
+            List of TrelloMember objects.
+        """
+        resp = await self._request("GET", f"/boards/{board_id}/members")
+        return [
+            TrelloMember(
+                id=m.get("id", ""),
+                username=m.get("username"),
+                full_name=m.get("fullName"),
+                initials=m.get("initials"),
+                avatar_url=m.get("avatarUrl"),
+                url=m.get("url"),
+            )
+            for m in resp.json()
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Lists
+    # ------------------------------------------------------------------
+
+    @action("Create a new list on a Trello board", dangerous=True)
+    async def create_list(
+        self, board_id: str, name: str,
+    ) -> TrelloList:
+        """Create a new list on a board.
+
+        Args:
+            board_id: The Trello board ID.
+            name: Name for the new list.
+
+        Returns:
+            The created TrelloList object.
+        """
+        resp = await self._request(
+            "POST", "/lists",
+            params={"name": name, "idBoard": board_id},
+        )
+        return parse_list(resp.json())

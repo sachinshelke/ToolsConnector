@@ -484,3 +484,86 @@ class Okta(BaseConnector):
                 has_more=has_more,
             ),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- User lifecycle (extended)
+    # ------------------------------------------------------------------
+
+    @action("Activate a user in Okta")
+    async def activate_user(self, user_id: str) -> bool:
+        """Activate a deactivated user in Okta.
+
+        Args:
+            user_id: The user's Okta ID.
+
+        Returns:
+            True if the activation was successful.
+        """
+        await self._request(
+            "POST", f"/users/{user_id}/lifecycle/activate",
+            params={"sendEmail": "false"},
+        )
+        return True
+
+    @action("Reset a user's password")
+    async def reset_password(self, user_id: str) -> dict[str, Any]:
+        """Trigger a password reset for a user.
+
+        Args:
+            user_id: The user's Okta ID.
+
+        Returns:
+            Dict with the reset password URL.
+        """
+        data, _ = await self._request(
+            "POST", f"/users/{user_id}/lifecycle/reset_password",
+            params={"sendEmail": "false"},
+        )
+        return data if isinstance(data, dict) else {}
+
+    @action("List groups a user belongs to")
+    async def list_user_groups(
+        self, user_id: str,
+    ) -> list[OktaGroup]:
+        """List all groups a user is a member of.
+
+        Args:
+            user_id: The user's Okta ID.
+
+        Returns:
+            List of OktaGroup objects.
+        """
+        data, _ = await self._request(
+            "GET", f"/users/{user_id}/groups",
+        )
+        groups: list[OktaGroup] = []
+        for g in (data or []):
+            gp = g.get("profile", {})
+            groups.append(OktaGroup(
+                id=g.get("id", ""),
+                created=g.get("created"),
+                lastUpdated=g.get("lastUpdated"),
+                type=g.get("type", ""),
+                name=gp.get("name", ""),
+                description=gp.get("description", ""),
+                profile=gp,
+            ))
+        return groups
+
+    @action("Remove a user from a group")
+    async def remove_user_from_group(
+        self, group_id: str, user_id: str,
+    ) -> bool:
+        """Remove a user from a group.
+
+        Args:
+            group_id: The group's Okta ID.
+            user_id: The user's Okta ID.
+
+        Returns:
+            True if the removal was successful.
+        """
+        await self._request(
+            "DELETE", f"/groups/{group_id}/users/{user_id}",
+        )
+        return True

@@ -227,7 +227,7 @@ class TestConnectorCounts:
             cls = get_connector_class(name)
             spec = cls.get_spec()
             total += len(spec.actions)
-        assert total == 395
+        assert total >= 600, f"Expected 600+ actions, got {total}"
 
     def test_dangerous_actions_exist(self) -> None:
         """At least some actions should be marked dangerous."""

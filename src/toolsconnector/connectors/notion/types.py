@@ -126,3 +126,18 @@ class NotionBlock(BaseModel):
     has_children: bool = False
     parent: dict[str, Any] = Field(default_factory=dict)
     content: dict[str, Any] = Field(default_factory=dict)
+
+
+class NotionComment(BaseModel):
+    """A Notion comment on a page or block."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    object: str = "comment"
+    parent: dict[str, Any] = Field(default_factory=dict)
+    discussion_id: Optional[str] = None
+    created_time: Optional[str] = None
+    last_edited_time: Optional[str] = None
+    created_by: Optional[NotionUser] = None
+    rich_text: list[NotionRichText] = Field(default_factory=list)

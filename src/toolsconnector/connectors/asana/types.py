@@ -100,3 +100,15 @@ class AsanaComment(BaseModel):
     created_at: Optional[str] = None
     created_by: Optional[AsanaUser] = None
     type: Optional[str] = None
+
+
+class AsanaTag(BaseModel):
+    """An Asana tag."""
+
+    model_config = ConfigDict(frozen=True)
+
+    gid: str
+    name: str = ""
+    resource_type: str = "tag"
+    color: Optional[str] = None
+    created_at: Optional[str] = None

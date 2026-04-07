@@ -93,3 +93,14 @@ class FileDownloadResult(BaseModel):
     mime_type: str = ""
     size: int = 0
     content_base64: str = ""
+
+
+class StorageQuota(BaseModel):
+    """Google Drive storage quota information."""
+
+    model_config = ConfigDict(frozen=True)
+
+    limit: Optional[str] = None
+    usage: Optional[str] = None
+    usage_in_drive: Optional[str] = None
+    usage_in_drive_trash: Optional[str] = None

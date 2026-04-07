@@ -85,3 +85,15 @@ class VercelEnvVar(BaseModel):
     updated_at: Optional[int] = None
     system: Optional[bool] = None
     configuration_id: Optional[str] = None
+
+
+class VercelAlias(BaseModel):
+    """A Vercel deployment alias."""
+
+    model_config = ConfigDict(frozen=True)
+
+    uid: Optional[str] = None
+    alias: Optional[str] = None
+    deployment_id: Optional[str] = None
+    project_id: Optional[str] = None
+    created_at: Optional[int] = None
