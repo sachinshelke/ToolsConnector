@@ -20,6 +20,7 @@ import httpx
 from toolsconnector.serve import ToolKit, list_connectors, get_connector_class
 from toolsconnector.health import HealthChecker
 from toolsconnector.codegen import extract_spec, extract_all_specs
+from tool_metadata import get_tool_meta
 
 app = Flask(__name__)
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
@@ -192,52 +193,103 @@ def connector_detail(name: str):
     dangerous_count = sum(1 for a in actions.values() if a.get("dangerous"))
     safe_count = len(actions) - dangerous_count
     param_count = sum(len(a.get("parameters",[])) for a in actions.values())
+    meta = get_tool_meta(name)
 
     ahtml = "".join(_action_card(an, act, name) for an, act in sorted(actions.items()))
 
     install_cmd = f"pip install toolsconnector[{name}]"
+    first_action = sorted(actions.keys())[0] if actions else "action"
     quick_start = f'''from toolsconnector.serve import ToolKit
 
 kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})
 tools = kit.list_tools()
-result = kit.execute("{name}_{list(actions.keys())[0]}", {{}})'''
+result = kit.execute("{name}_{first_action}", {{}})'''
+
+    mcp_example = f'''from toolsconnector.serve import ToolKit
+kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})
+kit.serve_mcp()  # Claude Desktop connects instantly'''
+
+    openai_example = f'''kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})
+tools = kit.to_openai_tools()
+# Pass to OpenAI: openai.chat.completions.create(tools=tools, ...)
+result = kit.execute("{name}_{first_action}", {{"...": "..."}})'''
 
     import html as _html
     qs_escaped = _html.escape(quick_start)
+    mcp_escaped = _html.escape(mcp_example)
+    openai_escaped = _html.escape(openai_example)
+
+    # Build external links
+    links_html = ""
+    if meta["website"]:
+        links_html += f'<a href="{meta["website"]}" target="_blank" rel="noopener" class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582"/></svg>Website</a>'
+    if meta["docs"]:
+        links_html += f'<a href="{meta["docs"]}" target="_blank" rel="noopener" class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>API Docs</a>'
+    if meta["github"]:
+        links_html += f'<a href="{meta["github"]}" target="_blank" rel="noopener" class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"><svg class="w-4 h-4 text-slate-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>GitHub</a>'
+
+    # Auth methods badges
+    auth_html = "".join(f'<span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">{m}</span>' for m in meta.get("auth_methods", []))
+
+    # Logo
+    logo_html = ""
+    if meta.get("logo"):
+        logo_html = f'<img src="{meta["logo"]}" alt="{sp["display_name"]}" class="w-14 h-14 rounded-xl" onerror="this.style.display=\'none\'">'
+    else:
+        initials = sp["display_name"][:2].upper()
+        logo_html = f'<div class="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg" style="background:{meta["color"]}">{initials}</div>'
 
     return _r(sp["display_name"], f"""
 <a href="/connectors" class="text-sm text-b-600 dark:text-b-400 hover:underline mb-6 inline-block">&larr; All Connectors</a>
-<div class="flex items-start justify-between flex-wrap gap-6 mb-8"><div class="flex-1 min-w-0">
-<h1 class="text-3xl font-bold text-slate-900 dark:text-white">{sp["display_name"]}</h1>
-<p class="text-lg text-slate-600 dark:text-slate-400 mt-2 max-w-2xl">{sp.get("description","")}</p>
-<div class="flex items-center gap-2 flex-wrap mt-4">
-<span class="text-xs px-3 py-1.5 rounded-full bg-b-100 dark:bg-b-900/30 text-b-700 dark:text-b-400 font-semibold">{_cat(sp["category"])}</span>
-<span class="text-xs px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">{sp.get("protocol","rest").upper()}</span>
-{f'<span class="text-xs px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono">{sp.get("base_url","")}</span>' if sp.get("base_url") else ""}
-</div></div></div>
 
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-<div class="text-center p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-<div class="text-2xl font-bold text-b-600 dark:text-b-400">{len(actions)}</div>
-<div class="text-xs text-slate-500 mt-1">Total Actions</div></div>
-<div class="text-center p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-<div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{safe_count}</div>
-<div class="text-xs text-slate-500 mt-1">Safe Actions</div></div>
-<div class="text-center p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-<div class="text-2xl font-bold text-red-500">{dangerous_count}</div>
-<div class="text-xs text-slate-500 mt-1">Destructive</div></div>
-<div class="text-center p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-<div class="text-2xl font-bold text-purple-600 dark:text-purple-400">{param_count}</div>
-<div class="text-xs text-slate-500 mt-1">Parameters</div></div></div>
+<div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden mb-8">
+<div class="p-6 sm:p-8" style="border-top: 4px solid {meta['color']}">
+<div class="flex items-start gap-5 flex-wrap">
+<div class="flex-shrink-0">{logo_html}</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-3 flex-wrap">
+<h1 class="text-3xl font-bold text-slate-900 dark:text-white">{sp["display_name"]}</h1>
+{f'<span class="text-sm text-slate-400">by {meta["company"]}</span>' if meta.get("company") else ""}
+</div>
+<p class="text-base text-slate-600 dark:text-slate-400 mt-1.5">{meta.get("tagline") or sp.get("description","")}</p>
+<div class="flex items-center gap-2 flex-wrap mt-3">
+<span class="text-xs px-3 py-1 rounded-full font-semibold text-white" style="background:{meta['color']}">{_cat(sp["category"])}</span>
+<span class="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">{sp.get("protocol","rest").upper()}</span>
+{f'<span class="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono">{sp.get("base_url","")}</span>' if sp.get("base_url") else ""}
+</div></div>
+<div class="flex items-center gap-2 flex-shrink-0 flex-wrap">{links_html}</div>
+</div></div>
+
+<div class="border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-200 dark:divide-slate-800">
+<div class="text-center p-4"><div class="text-2xl font-bold text-b-600 dark:text-b-400">{len(actions)}</div><div class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">Actions</div></div>
+<div class="text-center p-4"><div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{safe_count}</div><div class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">Safe</div></div>
+<div class="text-center p-4"><div class="text-2xl font-bold text-red-500">{dangerous_count}</div><div class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">Destructive</div></div>
+<div class="text-center p-4"><div class="text-2xl font-bold text-purple-600 dark:text-purple-400">{param_count}</div><div class="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">Parameters</div></div>
+</div></div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-<div class="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-<h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Install</h3>
-<div class="flex items-center gap-2"><code class="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-lg flex-1">{install_cmd}</code>
-<button onclick="navigator.clipboard.writeText('{install_cmd}');this.textContent='Done';setTimeout(()=>this.textContent='Copy',1500)" class="text-xs px-2 py-1 rounded bg-b-100 dark:bg-b-900/30 text-b-600 cursor-pointer">Copy</button></div></div>
-<div class="lg:col-span-2 p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-<h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Quick Start</h3>
-<pre class="text-xs bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code class="language-python">{qs_escaped}</code></pre></div></div>
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+<div class="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-500">Details</h3></div>
+<div class="p-5 space-y-3 text-sm">
+<div class="flex justify-between"><span class="text-slate-500">Authentication</span><div class="flex gap-1.5 flex-wrap justify-end">{auth_html or '<span class="text-slate-400">Bearer Token</span>'}</div></div>
+{f'<div class="flex justify-between"><span class="text-slate-500">Pricing</span><span class="text-slate-700 dark:text-slate-300 text-right">{meta["pricing"]}</span></div>' if meta.get("pricing") else ""}
+{f'<div class="flex justify-between"><span class="text-slate-500">Rate Limit</span><span class="text-slate-700 dark:text-slate-300 font-mono text-xs">{meta["rate_limit"]}</span></div>' if meta.get("rate_limit") else ""}
+<div class="flex justify-between"><span class="text-slate-500">Protocol</span><span class="text-slate-700 dark:text-slate-300">{sp.get("protocol","rest").upper()}</span></div>
+<div class="flex justify-between"><span class="text-slate-500">Install</span><div class="flex items-center gap-1.5"><code class="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">{install_cmd}</code><button onclick="navigator.clipboard.writeText('{install_cmd}');this.textContent='OK';setTimeout(()=>this.textContent='Copy',1200)" class="text-[10px] px-1.5 py-0.5 rounded bg-b-100 dark:bg-b-900/30 text-b-600 cursor-pointer">Copy</button></div></div>
+</div></div>
+
+<div class="lg:col-span-2 space-y-4">
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+<div class="flex items-center border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+<button onclick="document.querySelectorAll('.code-tab').forEach(t=>t.classList.add('hidden'));document.getElementById('tab-python').classList.remove('hidden');document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('text-b-600','border-b-600'));this.classList.add('text-b-600','border-b-600')" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 text-b-600 border-b-600">Python</button>
+<button onclick="document.querySelectorAll('.code-tab').forEach(t=>t.classList.add('hidden'));document.getElementById('tab-mcp').classList.remove('hidden');document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('text-b-600','border-b-600'));this.classList.add('text-b-600','border-b-600')" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">MCP Server</button>
+<button onclick="document.querySelectorAll('.code-tab').forEach(t=>t.classList.add('hidden'));document.getElementById('tab-openai').classList.remove('hidden');document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('text-b-600','border-b-600'));this.classList.add('text-b-600','border-b-600')" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">OpenAI</button>
+</div>
+<div id="tab-python" class="code-tab"><pre class="text-xs bg-slate-900 text-slate-100 p-4 overflow-x-auto"><code class="language-python">{qs_escaped}</code></pre></div>
+<div id="tab-mcp" class="code-tab hidden"><pre class="text-xs bg-slate-900 text-slate-100 p-4 overflow-x-auto"><code class="language-python">{mcp_escaped}</code></pre></div>
+<div id="tab-openai" class="code-tab hidden"><pre class="text-xs bg-slate-900 text-slate-100 p-4 overflow-x-auto"><code class="language-python">{openai_escaped}</code></pre></div>
+</div></div></div>
 
 <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
 <h2 class="text-xl font-semibold">Actions</h2>
