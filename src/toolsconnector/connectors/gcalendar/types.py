@@ -120,3 +120,31 @@ class FreeBusyCalendar(BaseModel):
     calendar_id: str = ""
     busy: list[dict[str, str]] = Field(default_factory=list)
     errors: list[dict[str, str]] = Field(default_factory=list)
+
+
+class CalendarACL(BaseModel):
+    """An access-control rule on a Google Calendar."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    role: str  # "none", "freeBusyReader", "reader", "writer", "owner"
+    scope_type: str  # "default", "user", "group", "domain"
+    scope_value: Optional[str] = None
+    etag: Optional[str] = None
+
+
+class CalendarColors(BaseModel):
+    """Available color definitions for calendars and events.
+
+    ``calendar`` and ``event`` are dicts mapping a color ID to a pair
+    of ``background`` / ``foreground`` hex strings, e.g.::
+
+        {"1": {"background": "#ac725e", "foreground": "#1d1d1d"}}
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    calendar: dict[str, dict[str, str]] = Field(default_factory=dict)
+    event: dict[str, dict[str, str]] = Field(default_factory=dict)
+    updated: Optional[str] = None

@@ -16,7 +16,9 @@ from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateL
 from toolsconnector.types import PageState, PaginatedList
 
 from .types import (
+    DriveComment,
     DriveFile,
+    DriveRevision,
     DriveUser,
     FileDownloadResult,
     FilePermission,
@@ -502,7 +504,7 @@ class GoogleDrive(BaseConnector):
                 "fields": "id,name,mimeType,parents,modifiedTime,webViewLink",
             },
         )
-        return self._parse_file(data)
+        return _parse_file(data)
 
     @action("Copy a file")
     async def copy_file(
@@ -527,7 +529,7 @@ class GoogleDrive(BaseConnector):
             json=body or None,
             params={"fields": _FILE_FIELDS},
         )
-        return self._parse_file(data)
+        return _parse_file(data)
 
     @action("List permissions on a file")
     async def list_permissions(
@@ -574,4 +576,364 @@ class GoogleDrive(BaseConnector):
             usage=quota.get("usage"),
             usage_in_drive=quota.get("usageInDrive"),
             usage_in_drive_trash=quota.get("usageInDriveTrash"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — File metadata updates
+    # ------------------------------------------------------------------
+
+    @action("Update file metadata", requires_scope="write")
+    async def update_file(
+        self,
+        file_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        starred: Optional[bool] = None,
+    ) -> DriveFile:
+        """Update metadata for a file.
+
+        Only provided fields will be updated. Uses PATCH semantics.
+
+        Args:
+            file_id: The ID of the file to update.
+            name: New filename.
+            description: New file description.
+            starred: Whether to star / unstar the file.
+
+        Returns:
+            The updated DriveFile.
+        """
+        body: dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        if description is not None:
+            body["description"] = description
+        if starred is not None:
+            body["starred"] = starred
+
+        data = await self._request(
+            "PATCH",
+            f"/files/{file_id}",
+            json=body,
+            params={"fields": _FILE_FIELDS},
+        )
+        return _parse_file(data)
+
+    @action("Export a Google Workspace file", requires_scope="read")
+    async def export_file(
+        self,
+        file_id: str,
+        mime_type: str,
+    ) -> str:
+        """Export a Google Workspace file to the requested MIME type.
+
+        Use this to convert Google Docs, Sheets, Slides, etc. into
+        downloadable formats such as PDF, DOCX, CSV, PPTX, etc.
+
+        Args:
+            file_id: The ID of the Google Workspace file to export.
+            mime_type: Target MIME type (e.g., 'application/pdf',
+                'text/csv', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document').
+
+        Returns:
+            Base64-encoded string of the exported file content.
+        """
+        export_url = f"{self._base_url}/files/{file_id}/export"
+        response = await self._request_raw(
+            "GET",
+            export_url,
+            params={"mimeType": mime_type},
+        )
+        return base64.b64encode(response.content).decode("ascii")
+
+    @action("Empty the trash", requires_scope="write", dangerous=True)
+    async def empty_trash(self) -> None:
+        """Permanently delete all files in the user's trash.
+
+        Warning:
+            This action permanently deletes every file currently in the
+            trash. It cannot be undone.
+        """
+        await self._request("DELETE", "/files/trash")
+
+    # ------------------------------------------------------------------
+    # Actions — Comments
+    # ------------------------------------------------------------------
+
+    @action("List comments on a file", requires_scope="read")
+    async def list_comments(
+        self,
+        file_id: str,
+        page_size: int = 20,
+        page_token: Optional[str] = None,
+    ) -> PaginatedList[DriveComment]:
+        """List comments on a file.
+
+        Args:
+            file_id: The ID of the file.
+            page_size: Maximum number of comments per page (max 100).
+            page_token: Token for fetching the next page of results.
+
+        Returns:
+            Paginated list of DriveComment objects.
+        """
+        params: dict[str, Any] = {
+            "pageSize": min(page_size, 100),
+            "fields": (
+                "nextPageToken,"
+                "comments(id,content,htmlContent,author(displayName,emailAddress,photoLink),"
+                "createdTime,modifiedTime,resolved)"
+            ),
+        }
+        if page_token:
+            params["pageToken"] = page_token
+
+        data = await self._request(
+            "GET",
+            f"/files/{file_id}/comments",
+            params=params,
+        )
+
+        comments: list[DriveComment] = []
+        for c in data.get("comments", []):
+            author = c.get("author", {})
+            comments.append(
+                DriveComment(
+                    id=c.get("id", ""),
+                    content=c.get("content", ""),
+                    author_display_name=author.get("displayName"),
+                    author_email=author.get("emailAddress"),
+                    author_photo_link=author.get("photoLink"),
+                    created_time=c.get("createdTime"),
+                    modified_time=c.get("modifiedTime"),
+                    resolved=c.get("resolved", False),
+                    html_content=c.get("htmlContent"),
+                )
+            )
+
+        next_token = data.get("nextPageToken")
+        return PaginatedList(
+            items=comments,
+            page_state=PageState(
+                cursor=next_token,
+                has_more=next_token is not None,
+            ),
+        )
+
+    @action("Create a comment on a file", requires_scope="write", dangerous=True)
+    async def create_comment(
+        self,
+        file_id: str,
+        content: str,
+    ) -> DriveComment:
+        """Create a comment on a file.
+
+        Args:
+            file_id: The ID of the file to comment on.
+            content: The plain-text content of the comment.
+
+        Returns:
+            The created DriveComment.
+        """
+        data = await self._request(
+            "POST",
+            f"/files/{file_id}/comments",
+            json={"content": content},
+            params={
+                "fields": (
+                    "id,content,htmlContent,"
+                    "author(displayName,emailAddress,photoLink),"
+                    "createdTime,modifiedTime,resolved"
+                ),
+            },
+        )
+        author = data.get("author", {})
+        return DriveComment(
+            id=data.get("id", ""),
+            content=data.get("content", ""),
+            author_display_name=author.get("displayName"),
+            author_email=author.get("emailAddress"),
+            author_photo_link=author.get("photoLink"),
+            created_time=data.get("createdTime"),
+            modified_time=data.get("modifiedTime"),
+            resolved=data.get("resolved", False),
+            html_content=data.get("htmlContent"),
+        )
+
+    @action("Delete a comment from a file", requires_scope="write", dangerous=True)
+    async def delete_comment(
+        self,
+        file_id: str,
+        comment_id: str,
+    ) -> None:
+        """Delete a comment from a file.
+
+        Args:
+            file_id: The ID of the file containing the comment.
+            comment_id: The ID of the comment to delete.
+
+        Warning:
+            This action permanently deletes the comment. It cannot be undone.
+        """
+        await self._request("DELETE", f"/files/{file_id}/comments/{comment_id}")
+
+    # ------------------------------------------------------------------
+    # Actions — Revisions
+    # ------------------------------------------------------------------
+
+    @action("List revisions of a file", requires_scope="read")
+    async def list_revisions(
+        self,
+        file_id: str,
+        page_size: int = 20,
+        page_token: Optional[str] = None,
+    ) -> PaginatedList[DriveRevision]:
+        """List revisions (version history) of a file.
+
+        Args:
+            file_id: The ID of the file.
+            page_size: Maximum number of revisions per page (max 1000).
+            page_token: Token for fetching the next page of results.
+
+        Returns:
+            Paginated list of DriveRevision objects.
+        """
+        params: dict[str, Any] = {
+            "pageSize": min(page_size, 1000),
+            "fields": (
+                "nextPageToken,"
+                "revisions(id,mimeType,modifiedTime,keepForever,published,"
+                "size,lastModifyingUser(displayName,emailAddress),originalFilename)"
+            ),
+        }
+        if page_token:
+            params["pageToken"] = page_token
+
+        data = await self._request(
+            "GET",
+            f"/files/{file_id}/revisions",
+            params=params,
+        )
+
+        revisions: list[DriveRevision] = []
+        for r in data.get("revisions", []):
+            lmu = r.get("lastModifyingUser", {})
+            size_raw = r.get("size")
+            revisions.append(
+                DriveRevision(
+                    id=r.get("id", ""),
+                    mime_type=r.get("mimeType"),
+                    modified_time=r.get("modifiedTime"),
+                    keep_forever=r.get("keepForever", False),
+                    published=r.get("published", False),
+                    size=int(size_raw) if size_raw is not None else None,
+                    last_modifying_user_display_name=lmu.get("displayName"),
+                    last_modifying_user_email=lmu.get("emailAddress"),
+                    original_filename=r.get("originalFilename"),
+                )
+            )
+
+        next_token = data.get("nextPageToken")
+        return PaginatedList(
+            items=revisions,
+            page_state=PageState(
+                cursor=next_token,
+                has_more=next_token is not None,
+            ),
+        )
+
+    @action("Get a specific revision of a file", requires_scope="read")
+    async def get_revision(
+        self,
+        file_id: str,
+        revision_id: str,
+    ) -> DriveRevision:
+        """Retrieve metadata for a specific file revision.
+
+        Args:
+            file_id: The ID of the file.
+            revision_id: The ID of the revision.
+
+        Returns:
+            The requested DriveRevision.
+        """
+        data = await self._request(
+            "GET",
+            f"/files/{file_id}/revisions/{revision_id}",
+            params={
+                "fields": (
+                    "id,mimeType,modifiedTime,keepForever,published,"
+                    "size,lastModifyingUser(displayName,emailAddress),"
+                    "originalFilename"
+                ),
+            },
+        )
+        lmu = data.get("lastModifyingUser", {})
+        size_raw = data.get("size")
+        return DriveRevision(
+            id=data.get("id", ""),
+            mime_type=data.get("mimeType"),
+            modified_time=data.get("modifiedTime"),
+            keep_forever=data.get("keepForever", False),
+            published=data.get("published", False),
+            size=int(size_raw) if size_raw is not None else None,
+            last_modifying_user_display_name=lmu.get("displayName"),
+            last_modifying_user_email=lmu.get("emailAddress"),
+            original_filename=data.get("originalFilename"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Permissions (extended)
+    # ------------------------------------------------------------------
+
+    @action("Get a specific permission on a file", requires_scope="read")
+    async def get_permission(
+        self,
+        file_id: str,
+        permission_id: str,
+    ) -> FilePermission:
+        """Retrieve a specific permission on a file.
+
+        Args:
+            file_id: The ID of the file.
+            permission_id: The ID of the permission entry.
+
+        Returns:
+            The requested FilePermission.
+        """
+        data = await self._request(
+            "GET",
+            f"/files/{file_id}/permissions/{permission_id}",
+            params={
+                "fields": "id,type,role,emailAddress,displayName,domain",
+            },
+        )
+        return FilePermission(
+            id=data.get("id", ""),
+            type=data.get("type", ""),
+            role=data.get("role", ""),
+            email_address=data.get("emailAddress"),
+            display_name=data.get("displayName"),
+            domain=data.get("domain"),
+        )
+
+    @action("Delete a permission from a file", requires_scope="write", dangerous=True)
+    async def delete_permission(
+        self,
+        file_id: str,
+        permission_id: str,
+    ) -> None:
+        """Delete a permission from a file, revoking access.
+
+        Args:
+            file_id: The ID of the file.
+            permission_id: The ID of the permission to delete.
+
+        Warning:
+            This revokes the user's or group's access to the file
+            immediately. It cannot be undone.
+        """
+        await self._request(
+            "DELETE",
+            f"/files/{file_id}/permissions/{permission_id}",
         )

@@ -67,6 +67,11 @@ plaid = []
 sendgrid = []
 mailchimp = []
 
+# --- Connectors: Productivity (Google) ---
+gsheets = []
+gdocs = []
+gtasks = []
+
 # --- Connectors: Storage ---
 gdrive = ["google-api-python-client>=2.0", "google-auth>=2.0"]
 gcalendar = ["google-api-python-client>=2.0", "google-auth>=2.0"]
@@ -132,7 +137,7 @@ mcp = ["mcp>=1.0"]
 rest = ["starlette>=0.27", "uvicorn>=0.23"]
 
 # --- Category bundles ---
-google = ["toolsconnector[gmail,gdrive,gcalendar]"]
+google = ["toolsconnector[gmail,gdrive,gcalendar,gsheets,gdocs,gtasks]"]
 microsoft = ["toolsconnector[outlook,teams]"]
 communication = ["toolsconnector[gmail,slack,discord,telegram,twilio]"]
 project-mgmt = ["toolsconnector[jira,asana,linear,trello]"]

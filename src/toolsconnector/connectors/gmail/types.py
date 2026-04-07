@@ -126,3 +126,53 @@ class LabelColor(BaseModel):
 
     text_color: Optional[str] = None
     background_color: Optional[str] = None
+
+
+class Draft(BaseModel):
+    """Gmail draft with its associated message."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    message: Optional[Email] = None
+
+
+class UserProfile(BaseModel):
+    """Gmail user profile information."""
+
+    model_config = ConfigDict(frozen=True)
+
+    email_address: str
+    messages_total: int = 0
+    threads_total: int = 0
+    history_id: str = ""
+
+
+class HistoryRecord(BaseModel):
+    """Gmail history record for incremental sync.
+
+    Each record represents a change event identified by a unique
+    history ID. The optional lists contain message IDs affected by
+    the corresponding change type.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    messages_added: list[str] = Field(default_factory=list)
+    messages_deleted: list[str] = Field(default_factory=list)
+    labels_added: list[str] = Field(default_factory=list)
+    labels_removed: list[str] = Field(default_factory=list)
+
+
+class VacationSettings(BaseModel):
+    """Gmail vacation auto-reply settings."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enable_auto_reply: bool = False
+    response_subject: Optional[str] = None
+    response_body_plain_text: Optional[str] = None
+    response_body_html: Optional[str] = None
+    start_time: Optional[str] = None  # epoch millis as string
+    end_time: Optional[str] = None  # epoch millis as string

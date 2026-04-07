@@ -104,3 +104,35 @@ class StorageQuota(BaseModel):
     usage: Optional[str] = None
     usage_in_drive: Optional[str] = None
     usage_in_drive_trash: Optional[str] = None
+
+
+class DriveComment(BaseModel):
+    """A comment on a Google Drive file."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    content: str = ""
+    author_display_name: Optional[str] = None
+    author_email: Optional[str] = None
+    author_photo_link: Optional[str] = None
+    created_time: Optional[str] = None
+    modified_time: Optional[str] = None
+    resolved: bool = False
+    html_content: Optional[str] = None
+
+
+class DriveRevision(BaseModel):
+    """A revision (version) of a Google Drive file."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    mime_type: Optional[str] = None
+    modified_time: Optional[str] = None
+    keep_forever: bool = False
+    published: bool = False
+    size: Optional[int] = None
+    last_modifying_user_display_name: Optional[str] = None
+    last_modifying_user_email: Optional[str] = None
+    original_filename: Optional[str] = None
