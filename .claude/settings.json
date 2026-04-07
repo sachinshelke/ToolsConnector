@@ -6,7 +6,9 @@
             "Bash",
             "Bash(git commit *)",
             "Bash(git * main)",
-            "Bash(*)"
+            "Bash(*)",
+            "WebSearch",
+            "WebFetch(*)"
         ],
         "deny": [
             "Bash(git push *)",

@@ -16,6 +16,8 @@ from toolsconnector.types import PageState, PaginatedList
 
 from .types import (
     Calendar,
+    CalendarACL,
+    CalendarColors,
     CalendarEvent,
     EventAttendee,
     EventId,
@@ -536,3 +538,302 @@ class GoogleCalendar(BaseConnector):
             params={"destination": destination_calendar_id},
         )
         return _parse_event(data)
+
+    # ------------------------------------------------------------------
+    # Actions — Calendar management
+    # ------------------------------------------------------------------
+
+    @action("Create a new calendar", requires_scope="write", dangerous=True)
+    async def create_calendar(
+        self,
+        summary: str,
+        description: Optional[str] = None,
+        time_zone: Optional[str] = None,
+    ) -> Calendar:
+        """Create a new secondary calendar.
+
+        Args:
+            summary: Title of the new calendar.
+            description: Optional calendar description.
+            time_zone: IANA timezone (e.g., 'America/New_York'). Defaults to
+                the authenticated user's timezone.
+
+        Returns:
+            The created Calendar object.
+        """
+        body: dict[str, Any] = {"summary": summary}
+        if description is not None:
+            body["description"] = description
+        if time_zone is not None:
+            body["timeZone"] = time_zone
+
+        data = await self._request("POST", "/calendars", json=body)
+        return Calendar(
+            id=data.get("id", ""),
+            summary=data.get("summary", ""),
+            description=data.get("description"),
+            time_zone=data.get("timeZone"),
+        )
+
+    @action("Delete a calendar", requires_scope="write", dangerous=True)
+    async def delete_calendar(self, calendar_id: str) -> None:
+        """Permanently delete a secondary calendar.
+
+        The primary calendar cannot be deleted.
+
+        Args:
+            calendar_id: The ID of the calendar to delete.
+
+        Warning:
+            This permanently deletes the calendar and all its events.
+            It cannot be undone.
+        """
+        await self._request("DELETE", f"/calendars/{calendar_id}")
+
+    @action("Update a calendar", requires_scope="write", dangerous=True)
+    async def update_calendar(
+        self,
+        calendar_id: str,
+        summary: Optional[str] = None,
+        description: Optional[str] = None,
+        time_zone: Optional[str] = None,
+    ) -> Calendar:
+        """Update a calendar's metadata.
+
+        Uses PUT semantics -- all provided fields replace existing values.
+        Fields set to ``None`` are left unchanged.
+
+        Args:
+            calendar_id: The ID of the calendar to update.
+            summary: New calendar title.
+            description: New calendar description.
+            time_zone: New IANA timezone.
+
+        Returns:
+            The updated Calendar object.
+        """
+        # GET current state to merge unchanged fields (PUT requires full body)
+        current = await self._request("GET", f"/calendars/{calendar_id}")
+        body: dict[str, Any] = {
+            "summary": summary if summary is not None else current.get("summary", ""),
+        }
+        if description is not None:
+            body["description"] = description
+        elif "description" in current:
+            body["description"] = current["description"]
+        if time_zone is not None:
+            body["timeZone"] = time_zone
+        elif "timeZone" in current:
+            body["timeZone"] = current["timeZone"]
+
+        data = await self._request(
+            "PUT", f"/calendars/{calendar_id}", json=body,
+        )
+        return Calendar(
+            id=data.get("id", ""),
+            summary=data.get("summary", ""),
+            description=data.get("description"),
+            time_zone=data.get("timeZone"),
+        )
+
+    @action("Clear all events from a calendar", requires_scope="write", dangerous=True)
+    async def clear_calendar(self, calendar_id: str) -> None:
+        """Remove all events from a calendar.
+
+        Only works on primary calendars. The calendar itself is not deleted.
+
+        Args:
+            calendar_id: The ID of the calendar to clear.
+
+        Warning:
+            This permanently deletes every event in the calendar.
+            It cannot be undone.
+        """
+        await self._request("POST", f"/calendars/{calendar_id}/clear")
+
+    # ------------------------------------------------------------------
+    # Actions — Calendar subscriptions (calendarList)
+    # ------------------------------------------------------------------
+
+    @action("Subscribe to an external calendar", requires_scope="write", dangerous=True)
+    async def subscribe_calendar(self, calendar_id: str) -> Calendar:
+        """Add an existing calendar to the authenticated user's calendar list.
+
+        Use this to subscribe to a public or shared calendar by its ID
+        (usually an email address).
+
+        Args:
+            calendar_id: The ID of the calendar to subscribe to.
+
+        Returns:
+            The subscribed Calendar entry.
+        """
+        data = await self._request(
+            "POST",
+            "/users/me/calendarList",
+            json={"id": calendar_id},
+        )
+        return Calendar(
+            id=data.get("id", ""),
+            summary=data.get("summary", ""),
+            description=data.get("description"),
+            time_zone=data.get("timeZone"),
+            color_id=data.get("colorId"),
+            background_color=data.get("backgroundColor"),
+            foreground_color=data.get("foregroundColor"),
+            selected=data.get("selected", True),
+            primary=data.get("primary", False),
+            access_role=data.get("accessRole", "reader"),
+        )
+
+    @action("Unsubscribe from a calendar", requires_scope="write", dangerous=True)
+    async def unsubscribe_calendar(self, calendar_id: str) -> None:
+        """Remove a calendar from the authenticated user's calendar list.
+
+        This only removes the subscription -- it does not delete the
+        underlying calendar.
+
+        Args:
+            calendar_id: The ID of the calendar to unsubscribe from.
+        """
+        await self._request(
+            "DELETE", f"/users/me/calendarList/{calendar_id}",
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — ACL (sharing)
+    # ------------------------------------------------------------------
+
+    @action("List access-control rules for a calendar", requires_scope="read")
+    async def list_calendar_acl(
+        self,
+        calendar_id: str,
+    ) -> list[CalendarACL]:
+        """List all access-control rules on a calendar.
+
+        Args:
+            calendar_id: The ID of the calendar.
+
+        Returns:
+            List of CalendarACL rule entries.
+        """
+        data = await self._request(
+            "GET", f"/calendars/{calendar_id}/acl",
+        )
+        rules: list[CalendarACL] = []
+        for item in data.get("items", []):
+            scope = item.get("scope", {})
+            rules.append(
+                CalendarACL(
+                    id=item.get("id", ""),
+                    role=item.get("role", ""),
+                    scope_type=scope.get("type", ""),
+                    scope_value=scope.get("value"),
+                    etag=item.get("etag"),
+                )
+            )
+        return rules
+
+    @action("Add an access-control rule to a calendar", requires_scope="write", dangerous=True)
+    async def add_calendar_acl(
+        self,
+        calendar_id: str,
+        email: str,
+        role: str = "reader",
+    ) -> CalendarACL:
+        """Grant a user access to a calendar.
+
+        Args:
+            calendar_id: The ID of the calendar to share.
+            email: The email address of the user to grant access to.
+            role: The access level: 'none', 'freeBusyReader', 'reader',
+                'writer', or 'owner'.
+
+        Returns:
+            The created CalendarACL rule.
+        """
+        body: dict[str, Any] = {
+            "role": role,
+            "scope": {
+                "type": "user",
+                "value": email,
+            },
+        }
+        data = await self._request(
+            "POST",
+            f"/calendars/{calendar_id}/acl",
+            json=body,
+        )
+        scope = data.get("scope", {})
+        return CalendarACL(
+            id=data.get("id", ""),
+            role=data.get("role", ""),
+            scope_type=scope.get("type", ""),
+            scope_value=scope.get("value"),
+            etag=data.get("etag"),
+        )
+
+    @action("Remove an access-control rule from a calendar", requires_scope="write", dangerous=True)
+    async def remove_calendar_acl(
+        self,
+        calendar_id: str,
+        rule_id: str,
+    ) -> None:
+        """Remove an access-control rule from a calendar.
+
+        Args:
+            calendar_id: The ID of the calendar.
+            rule_id: The ID of the ACL rule to delete.
+
+        Warning:
+            This revokes the user's access to the calendar immediately.
+        """
+        await self._request(
+            "DELETE",
+            f"/calendars/{calendar_id}/acl/{rule_id}",
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Quick add and colors
+    # ------------------------------------------------------------------
+
+    @action("Quick-add an event using natural language", requires_scope="write", dangerous=True)
+    async def quick_add_event(
+        self,
+        text: str,
+        calendar_id: str = "primary",
+    ) -> CalendarEvent:
+        """Create an event from a natural language description.
+
+        Google Calendar parses the text to extract summary, date, time,
+        and other details (e.g., "Lunch with John tomorrow at noon").
+
+        Args:
+            text: Natural language description of the event.
+            calendar_id: Calendar ID ('primary' for the user's main calendar).
+
+        Returns:
+            The created CalendarEvent parsed from the text.
+        """
+        data = await self._request(
+            "POST",
+            f"/calendars/{calendar_id}/events/quickAdd",
+            params={"text": text},
+        )
+        return _parse_event(data)
+
+    @action("Get available calendar and event colors", requires_scope="read")
+    async def get_colors(self) -> CalendarColors:
+        """Retrieve the set of colors available for calendars and events.
+
+        Returns:
+            CalendarColors with calendar and event color maps keyed by
+            color ID, each containing ``background`` and ``foreground``
+            hex strings.
+        """
+        data = await self._request("GET", "/colors")
+        return CalendarColors(
+            calendar=data.get("calendar", {}),
+            event=data.get("event", {}),
+            updated=data.get("updated"),
+        )

@@ -17,8 +17,28 @@ from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
-from ._helpers import parse_message as _parse_message
-from .types import Attachment, DraftId, Email, EmailAddress, Label, LabelColor, MessageId, Thread
+from ._helpers import (
+    parse_draft as _parse_draft,
+    parse_history_record as _parse_history_record,
+    parse_label as _parse_label,
+    parse_message as _parse_message,
+    parse_thread as _parse_thread,
+    parse_vacation_settings as _parse_vacation_settings,
+)
+from .types import (
+    Attachment,
+    Draft,
+    DraftId,
+    Email,
+    EmailAddress,
+    HistoryRecord,
+    Label,
+    LabelColor,
+    MessageId,
+    Thread,
+    UserProfile,
+    VacationSettings,
+)
 
 
 class Gmail(BaseConnector):
@@ -267,19 +287,7 @@ class Gmail(BaseConnector):
             List of Label objects including system and user-created labels.
         """
         data = await self._request("GET", "/users/me/labels")
-
-        labels: list[Label] = []
-        for lbl in data.get("labels", []):
-            labels.append(
-                Label(
-                    id=lbl.get("id", ""),
-                    name=lbl.get("name", ""),
-                    type=lbl.get("type", "user"),
-                    messages_total=lbl.get("messagesTotal", 0),
-                    messages_unread=lbl.get("messagesUnread", 0),
-                )
-            )
-        return labels
+        return [_parse_label(lbl) for lbl in data.get("labels", [])]
 
     @action("Create a draft email", requires_scope="send")
     async def create_draft(
@@ -387,19 +395,8 @@ class Gmail(BaseConnector):
         threads_meta = data.get("threads", [])
         next_page_token = data.get("nextPageToken")
 
-        threads: list[Thread] = []
-        for meta in threads_meta:
-            threads.append(
-                Thread(
-                    id=meta.get("id", ""),
-                    snippet=meta.get("snippet", ""),
-                    history_id=meta.get("historyId"),
-                    messages_count=len(meta.get("messages", [])),
-                )
-            )
-
         return PaginatedList(
-            items=threads,
+            items=[_parse_thread(meta) for meta in threads_meta],
             page_state=PageState(
                 cursor=next_page_token,
                 has_more=next_page_token is not None,
@@ -427,12 +424,7 @@ class Gmail(BaseConnector):
             f"/users/me/threads/{thread_id}",
             params={"format": format},
         )
-        return Thread(
-            id=data.get("id", ""),
-            snippet=data.get("snippet", ""),
-            history_id=data.get("historyId"),
-            messages_count=len(data.get("messages", [])),
-        )
+        return _parse_thread(data)
 
     # ------------------------------------------------------------------
     # Actions — Trash / Untrash
@@ -573,13 +565,7 @@ class Gmail(BaseConnector):
             "/users/me/labels",
             json=payload,
         )
-        return Label(
-            id=data.get("id", ""),
-            name=data.get("name", ""),
-            type=data.get("type", "user"),
-            messages_total=data.get("messagesTotal", 0),
-            messages_unread=data.get("messagesUnread", 0),
-        )
+        return _parse_label(data)
 
     @action("Delete a label", requires_scope="full", dangerous=True)
     async def delete_label(self, label_id: str) -> None:
@@ -679,3 +665,405 @@ class Gmail(BaseConnector):
             "/users/me/messages/batchModify",
             json=payload,
         )
+
+    # ------------------------------------------------------------------
+    # Actions — Drafts (full lifecycle)
+    # ------------------------------------------------------------------
+
+    @action("List drafts", requires_scope="read")
+    async def list_drafts(
+        self,
+        limit: int = 10,
+        page_token: Optional[str] = None,
+    ) -> PaginatedList[Draft]:
+        """List drafts in the user's mailbox.
+
+        Args:
+            limit: Maximum number of drafts to return per page.
+            page_token: Token for fetching the next page of results.
+
+        Returns:
+            Paginated list of Draft objects.
+        """
+        params: dict[str, Any] = {"maxResults": limit}
+        if page_token:
+            params["pageToken"] = page_token
+
+        data = await self._request("GET", "/users/me/drafts", params=params)
+
+        drafts_meta = data.get("drafts", [])
+        next_page_token = data.get("nextPageToken")
+
+        return PaginatedList(
+            items=[_parse_draft(meta) for meta in drafts_meta],
+            page_state=PageState(
+                cursor=next_page_token,
+                has_more=next_page_token is not None,
+            ),
+            total_count=data.get("resultSizeEstimate"),
+        )
+
+    @action("Get a single draft by ID", requires_scope="read")
+    async def get_draft(
+        self,
+        draft_id: str,
+        format: str = "full",
+    ) -> Draft:
+        """Retrieve a single draft by its ID.
+
+        Args:
+            draft_id: The ID of the draft to retrieve.
+            format: Response format: 'full', 'metadata', or 'minimal'.
+
+        Returns:
+            Draft object with its associated message.
+        """
+        data = await self._request(
+            "GET",
+            f"/users/me/drafts/{draft_id}",
+            params={"format": format},
+        )
+        return _parse_draft(data)
+
+    @action("Update a draft", requires_scope="send")
+    async def update_draft(
+        self,
+        draft_id: str,
+        to: str,
+        subject: str,
+        body: str,
+        cc: Optional[list[str]] = None,
+    ) -> Draft:
+        """Replace the content of an existing draft.
+
+        The entire message is replaced; partial updates are not supported
+        by the Gmail API.
+
+        Args:
+            draft_id: The ID of the draft to update.
+            to: Recipient email address.
+            subject: Email subject line.
+            body: Email body (supports HTML).
+            cc: Optional CC recipients.
+
+        Returns:
+            Updated Draft object.
+        """
+        raw = self._build_rfc2822(to=to, subject=subject, body=body, cc=cc)
+
+        data = await self._request(
+            "PUT",
+            f"/users/me/drafts/{draft_id}",
+            json={"message": {"raw": raw}},
+        )
+        return _parse_draft(data)
+
+    @action("Delete a draft", requires_scope="send", dangerous=True)
+    async def delete_draft(self, draft_id: str) -> None:
+        """Permanently delete a draft.
+
+        Args:
+            draft_id: The ID of the draft to delete.
+
+        Warning:
+            This action permanently deletes the draft. It cannot be undone.
+        """
+        await self._request("DELETE", f"/users/me/drafts/{draft_id}")
+
+    @action("Send a draft", requires_scope="send", dangerous=True)
+    async def send_draft(self, draft_id: str) -> MessageId:
+        """Send an existing draft.
+
+        The draft is removed from the drafts list after sending.
+
+        Args:
+            draft_id: The ID of the draft to send.
+
+        Returns:
+            MessageId with the sent message's ID and thread ID.
+        """
+        data = await self._request(
+            "POST",
+            "/users/me/drafts/send",
+            json={"id": draft_id},
+        )
+        return MessageId(
+            id=data.get("id", ""),
+            thread_id=data.get("threadId"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Threads (complete)
+    # ------------------------------------------------------------------
+
+    @action("Modify thread labels", requires_scope="full")
+    async def modify_thread(
+        self,
+        thread_id: str,
+        add_labels: Optional[list[str]] = None,
+        remove_labels: Optional[list[str]] = None,
+    ) -> Thread:
+        """Add or remove labels from all messages in a thread.
+
+        Args:
+            thread_id: The ID of the thread to modify.
+            add_labels: Label IDs to add (e.g., ["STARRED", "IMPORTANT"]).
+            remove_labels: Label IDs to remove (e.g., ["UNREAD"]).
+
+        Returns:
+            Updated Thread object.
+        """
+        payload: dict[str, Any] = {}
+        if add_labels:
+            payload["addLabelIds"] = add_labels
+        if remove_labels:
+            payload["removeLabelIds"] = remove_labels
+
+        data = await self._request(
+            "POST",
+            f"/users/me/threads/{thread_id}/modify",
+            json=payload,
+        )
+        return _parse_thread(data)
+
+    @action("Move a thread to trash", requires_scope="full")
+    async def trash_thread(self, thread_id: str) -> Thread:
+        """Move all messages in a thread to the trash folder.
+
+        The thread can be recovered with ``untrash_thread`` within 30 days.
+
+        Args:
+            thread_id: The ID of the thread to trash.
+
+        Returns:
+            Updated Thread object with TRASH label applied.
+        """
+        data = await self._request(
+            "POST",
+            f"/users/me/threads/{thread_id}/trash",
+        )
+        return _parse_thread(data)
+
+    @action("Remove a thread from trash", requires_scope="full")
+    async def untrash_thread(self, thread_id: str) -> Thread:
+        """Remove all messages in a thread from the trash folder.
+
+        Args:
+            thread_id: The ID of the thread to untrash.
+
+        Returns:
+            Updated Thread object with TRASH label removed.
+        """
+        data = await self._request(
+            "POST",
+            f"/users/me/threads/{thread_id}/untrash",
+        )
+        return _parse_thread(data)
+
+    @action("Permanently delete a thread", requires_scope="full", dangerous=True)
+    async def delete_thread(self, thread_id: str) -> None:
+        """Permanently delete a thread and all its messages.
+
+        Args:
+            thread_id: The ID of the thread to delete.
+
+        Warning:
+            This action permanently deletes the thread. It cannot be undone.
+        """
+        await self._request("DELETE", f"/users/me/threads/{thread_id}")
+
+    # ------------------------------------------------------------------
+    # Actions — Labels (complete)
+    # ------------------------------------------------------------------
+
+    @action("Get a single label by ID", requires_scope="read")
+    async def get_label(self, label_id: str) -> Label:
+        """Retrieve a single label by its ID.
+
+        Args:
+            label_id: The ID of the label to retrieve.
+
+        Returns:
+            The requested Label object with message counts.
+        """
+        data = await self._request("GET", f"/users/me/labels/{label_id}")
+        return _parse_label(data)
+
+    @action("Update a label", requires_scope="full")
+    async def update_label(
+        self,
+        label_id: str,
+        name: Optional[str] = None,
+        label_color: Optional[LabelColor] = None,
+    ) -> Label:
+        """Update a user label's name or color.
+
+        System labels (INBOX, SPAM, TRASH, etc.) cannot be updated.
+
+        Args:
+            label_id: The ID of the label to update.
+            name: New display name for the label.
+            label_color: Optional new color specification with text_color
+                and background_color hex values.
+
+        Returns:
+            The updated Label object.
+        """
+        # Fetch current label to merge with updates
+        current = await self._request("GET", f"/users/me/labels/{label_id}")
+
+        payload: dict[str, Any] = {
+            "name": name if name is not None else current.get("name", ""),
+        }
+        if label_color:
+            color: dict[str, str] = {}
+            if label_color.text_color:
+                color["textColor"] = label_color.text_color
+            if label_color.background_color:
+                color["backgroundColor"] = label_color.background_color
+            payload["color"] = color
+        elif "color" in current:
+            payload["color"] = current["color"]
+
+        data = await self._request(
+            "PUT",
+            f"/users/me/labels/{label_id}",
+            json=payload,
+        )
+        return _parse_label(data)
+
+    # ------------------------------------------------------------------
+    # Actions — User profile
+    # ------------------------------------------------------------------
+
+    @action("Get user profile", requires_scope="read")
+    async def get_profile(self) -> UserProfile:
+        """Retrieve the authenticated user's Gmail profile.
+
+        Returns:
+            UserProfile with email address, message and thread totals,
+            and the current history ID for incremental sync.
+        """
+        data = await self._request("GET", "/users/me/profile")
+        return UserProfile(
+            email_address=data.get("emailAddress", ""),
+            messages_total=data.get("messagesTotal", 0),
+            threads_total=data.get("threadsTotal", 0),
+            history_id=data.get("historyId", ""),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — History (incremental sync)
+    # ------------------------------------------------------------------
+
+    @action("List mailbox history", requires_scope="read")
+    async def list_history(
+        self,
+        start_history_id: str,
+        label_id: Optional[str] = None,
+        history_types: Optional[list[str]] = None,
+        limit: int = 100,
+        page_token: Optional[str] = None,
+    ) -> PaginatedList[HistoryRecord]:
+        """List history records for incremental mailbox sync.
+
+        Returns changes that occurred after the given history ID. Use
+        ``get_profile()`` to obtain the current history ID, then poll
+        this endpoint to detect new messages, deletions, and label
+        changes without re-fetching the entire mailbox.
+
+        Args:
+            start_history_id: History ID to start listing from. Only
+                changes after this ID are returned.
+            label_id: Only return history for this label ID.
+            history_types: Filter by change type. Valid values:
+                ``messageAdded``, ``messageDeleted``,
+                ``labelAdded``, ``labelRemoved``.
+            limit: Maximum number of history records per page.
+            page_token: Token for fetching the next page of results.
+
+        Returns:
+            Paginated list of HistoryRecord objects.
+        """
+        params: dict[str, Any] = {
+            "startHistoryId": start_history_id,
+            "maxResults": limit,
+        }
+        if label_id:
+            params["labelId"] = label_id
+        if history_types:
+            params["historyTypes"] = history_types
+        if page_token:
+            params["pageToken"] = page_token
+
+        data = await self._request("GET", "/users/me/history", params=params)
+
+        raw_history = data.get("history", [])
+        next_page_token = data.get("nextPageToken")
+
+        return PaginatedList(
+            items=[_parse_history_record(entry) for entry in raw_history],
+            page_state=PageState(
+                cursor=next_page_token,
+                has_more=next_page_token is not None,
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Settings (vacation auto-reply)
+    # ------------------------------------------------------------------
+
+    @action("Get vacation auto-reply settings", requires_scope="read")
+    async def get_vacation_settings(self) -> VacationSettings:
+        """Retrieve the user's vacation auto-reply settings.
+
+        Returns:
+            VacationSettings with current auto-reply configuration.
+        """
+        data = await self._request("GET", "/users/me/settings/vacation")
+        return _parse_vacation_settings(data)
+
+    @action("Update vacation auto-reply settings", requires_scope="full", dangerous=True)
+    async def update_vacation_settings(
+        self,
+        enable: bool,
+        response_subject: Optional[str] = None,
+        response_body: Optional[str] = None,
+        start_time: Optional[str] = None,
+        end_time: Optional[str] = None,
+    ) -> VacationSettings:
+        """Update the user's vacation auto-reply settings.
+
+        Args:
+            enable: Whether to enable the vacation auto-reply.
+            response_subject: Subject line for the auto-reply message.
+            response_body: Body of the auto-reply (supports HTML).
+            start_time: Start time as epoch milliseconds string.
+                Required when enabling auto-reply.
+            end_time: End time as epoch milliseconds string.
+                Required when enabling auto-reply.
+
+        Returns:
+            Updated VacationSettings.
+
+        Warning:
+            Enabling auto-reply will send automatic responses to
+            incoming emails. Use with caution.
+        """
+        payload: dict[str, Any] = {"enableAutoReply": enable}
+        if response_subject is not None:
+            payload["responseSubject"] = response_subject
+        if response_body is not None:
+            payload["responseBodyPlainText"] = response_body
+            payload["responseBodyHtml"] = response_body
+        if start_time is not None:
+            payload["startTime"] = int(start_time)
+        if end_time is not None:
+            payload["endTime"] = int(end_time)
+
+        data = await self._request(
+            "PUT",
+            "/users/me/settings/vacation",
+            json=payload,
+        )
+        return _parse_vacation_settings(data)

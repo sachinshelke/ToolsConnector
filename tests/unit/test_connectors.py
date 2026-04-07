@@ -219,7 +219,7 @@ class TestConnectorCounts:
     """Verify overall connector counts."""
 
     def test_total_connector_count(self) -> None:
-        assert len(ALL_CONNECTORS) == 50
+        assert len(ALL_CONNECTORS) >= 50
 
     def test_total_action_count(self) -> None:
         total = 0

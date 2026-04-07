@@ -9,7 +9,15 @@ from __future__ import annotations
 import base64
 from typing import Any, Optional
 
-from .types import Email, EmailAddress
+from .types import (
+    Draft,
+    Email,
+    EmailAddress,
+    HistoryRecord,
+    Label,
+    Thread,
+    VacationSettings,
+)
 
 
 def parse_email_address(raw: str) -> EmailAddress:
@@ -134,4 +142,109 @@ def parse_message(data: dict[str, Any]) -> Email:
         body_html=html_body,
         labels=data.get("labelIds", []),
         has_attachments=has_attachments(payload),
+    )
+
+
+def parse_thread(data: dict[str, Any]) -> Thread:
+    """Parse a Gmail API thread response into a Thread model.
+
+    Args:
+        data: Raw JSON response from a threads endpoint.
+
+    Returns:
+        Populated Thread instance.
+    """
+    return Thread(
+        id=data.get("id", ""),
+        snippet=data.get("snippet", ""),
+        history_id=data.get("historyId"),
+        messages_count=len(data.get("messages", [])),
+    )
+
+
+def parse_label(data: dict[str, Any]) -> Label:
+    """Parse a Gmail API label response into a Label model.
+
+    Args:
+        data: Raw JSON response from a labels endpoint.
+
+    Returns:
+        Populated Label instance.
+    """
+    return Label(
+        id=data.get("id", ""),
+        name=data.get("name", ""),
+        type=data.get("type", "user"),
+        messages_total=data.get("messagesTotal", 0),
+        messages_unread=data.get("messagesUnread", 0),
+    )
+
+
+def parse_draft(data: dict[str, Any]) -> Draft:
+    """Parse a Gmail API draft response into a Draft model.
+
+    Args:
+        data: Raw JSON response from a drafts endpoint.
+
+    Returns:
+        Populated Draft instance with parsed message if present.
+    """
+    msg_data = data.get("message", {})
+    message = parse_message(msg_data) if msg_data.get("id") else None
+    return Draft(
+        id=data.get("id", ""),
+        message=message,
+    )
+
+
+def parse_history_record(data: dict[str, Any]) -> HistoryRecord:
+    """Parse a Gmail API history entry into a HistoryRecord model.
+
+    Args:
+        data: A single entry from the history list response.
+
+    Returns:
+        Populated HistoryRecord instance.
+    """
+    messages_added = [
+        m.get("message", {}).get("id", "")
+        for m in data.get("messagesAdded", [])
+    ]
+    messages_deleted = [
+        m.get("message", {}).get("id", "")
+        for m in data.get("messagesDeleted", [])
+    ]
+    labels_added = [
+        m.get("message", {}).get("id", "")
+        for m in data.get("labelsAdded", [])
+    ]
+    labels_removed = [
+        m.get("message", {}).get("id", "")
+        for m in data.get("labelsRemoved", [])
+    ]
+    return HistoryRecord(
+        id=str(data.get("id", "")),
+        messages_added=messages_added,
+        messages_deleted=messages_deleted,
+        labels_added=labels_added,
+        labels_removed=labels_removed,
+    )
+
+
+def parse_vacation_settings(data: dict[str, Any]) -> VacationSettings:
+    """Parse a Gmail API vacation settings response.
+
+    Args:
+        data: Raw JSON response from the vacation settings endpoint.
+
+    Returns:
+        Populated VacationSettings instance.
+    """
+    return VacationSettings(
+        enable_auto_reply=data.get("enableAutoReply", False),
+        response_subject=data.get("responseSubject"),
+        response_body_plain_text=data.get("responseBodyPlainText"),
+        response_body_html=data.get("responseBodyHtml"),
+        start_time=str(data["startTime"]) if data.get("startTime") else None,
+        end_time=str(data["endTime"]) if data.get("endTime") else None,
     )
