@@ -140,17 +140,47 @@ def connectors_page():
 {html or '<p class="text-slate-500 py-8 text-center">No connectors match your search.</p>'}""")
 
 
-def _param_html(p: dict) -> str:
-    req = '<span class="text-red-500 text-xs ml-1">required</span>' if p.get("required") else '<span class="text-slate-400 text-xs ml-1">optional</span>'
-    return f'<div class="flex items-start gap-2 py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0"><code class="text-xs font-medium text-b-700 dark:text-b-400 whitespace-nowrap">{p["name"]}</code><span class="text-xs text-slate-400">{p.get("type","")}</span>{req}<span class="text-xs text-slate-500 ml-auto">{p.get("description","")}</span></div>'
+def _param_row(p: dict) -> str:
+    req = '<span class="inline-block px-1.5 py-0.5 text-[10px] rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold">REQUIRED</span>' if p.get("required") else '<span class="inline-block px-1.5 py-0.5 text-[10px] rounded bg-slate-100 dark:bg-slate-800 text-slate-400 font-medium">optional</span>'
+    default = f'<span class="text-[11px] text-slate-400 ml-1">= {p["default"]}</span>' if p.get("default") is not None else ""
+    type_badge = f'<span class="text-[11px] px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-mono">{p.get("type","any")}</span>'
+    return f'<tr class="border-b border-slate-100 dark:border-slate-800 last:border-0"><td class="py-2.5 pr-3 align-top"><code class="text-xs font-semibold text-b-700 dark:text-b-400">{p["name"]}</code>{default}</td><td class="py-2.5 pr-3 align-top">{type_badge}</td><td class="py-2.5 pr-3 align-top">{req}</td><td class="py-2.5 text-xs text-slate-500 dark:text-slate-400">{p.get("description","")}</td></tr>'
 
-def _action_html(an: str, act: dict) -> str:
+def _action_card(an: str, act: dict, connector_name: str) -> str:
     params = act.get("parameters", [])
-    ph = "".join(_param_html(p) for p in params)
-    db = '<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium ml-2">dangerous</span>' if act.get("dangerous") else ""
-    sb = f'<span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium ml-2">{act["requires_scope"]}</span>' if act.get("requires_scope") else ""
-    body = f'<div class="mt-3">{ph}</div>' if ph else ""
-    return f'<div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"><div class="flex items-center flex-wrap"><code class="font-semibold text-sm">{an}</code>{db}{sb}</div><p class="text-sm text-slate-600 dark:text-slate-400 mt-1">{act.get("description","")}</p>{body}</div>'
+    badges = ""
+    if act.get("dangerous"):
+        badges += '<span class="text-[10px] px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold uppercase tracking-wide">Destructive</span>'
+    if act.get("requires_scope"):
+        badges += f'<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium">scope: {act["requires_scope"]}</span>'
+    if act.get("idempotent"):
+        badges += '<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 font-medium">idempotent</span>'
+
+    param_sig = ", ".join(f'{p["name"]}' for p in params)
+    return_type = act.get("return_type", "Any")
+
+    param_table = ""
+    if params:
+        rows = "".join(_param_row(p) for p in params)
+        param_table = f'''<div class="mt-4">
+<h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Parameters</h4>
+<table class="w-full text-sm"><thead><tr class="text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider"><th class="pb-2 pr-3">Name</th><th class="pb-2 pr-3">Type</th><th class="pb-2 pr-3">Required</th><th class="pb-2">Description</th></tr></thead><tbody>{rows}</tbody></table></div>'''
+
+    tool_name = f"{connector_name}_{an}"
+    usage = f'''<div class="mt-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+<div class="flex items-center justify-between mb-1"><span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Usage</span>
+<button onclick="navigator.clipboard.writeText(this.parentElement.nextElementSibling.textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="text-[10px] px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 hover:text-slate-700 cursor-pointer">Copy</button></div>
+<code class="text-xs text-slate-600 dark:text-slate-300 font-mono block">kit.execute("{tool_name}", {{{", ".join(f'"{p["name"]}": ...' for p in params[:3])}{", ..." if len(params) > 3 else ""}}})</code></div>'''
+
+    return f'''<div class="action-card rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden transition-all hover:shadow-md" data-action="{an}">
+<div class="p-5">
+<div class="flex items-start justify-between gap-3 flex-wrap">
+<div><div class="flex items-center gap-2 flex-wrap">
+<code class="text-sm font-bold text-slate-900 dark:text-white font-mono">{an}</code>
+<span class="text-xs text-slate-400 font-mono">({param_sig}) &rarr; {return_type}</span></div>
+<p class="text-sm text-slate-600 dark:text-slate-400 mt-1.5">{act.get("description","")}</p></div>
+<div class="flex items-center gap-1.5 flex-shrink-0">{badges}</div></div>
+{param_table}{usage}</div></div>'''
 
 @app.route("/connector/<name>")
 def connector_detail(name: str):
@@ -159,17 +189,64 @@ def connector_detail(name: str):
     except Exception:
         return _r("Not Found", '<p class="text-center py-16 text-slate-500">Connector not found.</p>'), 404
     actions = sp.get("actions", {})
-    ahtml = "".join(_action_html(an, act) for an, act in sorted(actions.items()))
+    dangerous_count = sum(1 for a in actions.values() if a.get("dangerous"))
+    safe_count = len(actions) - dangerous_count
+    param_count = sum(len(a.get("parameters",[])) for a in actions.values())
+
+    ahtml = "".join(_action_card(an, act, name) for an, act in sorted(actions.items()))
+
+    install_cmd = f"pip install toolsconnector[{name}]"
+    quick_start = f'''from toolsconnector.serve import ToolKit
+
+kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})
+tools = kit.list_tools()
+result = kit.execute("{name}_{list(actions.keys())[0]}", {{}})'''
+
+    import html as _html
+    qs_escaped = _html.escape(quick_start)
+
     return _r(sp["display_name"], f"""
-<a href="/connectors" class="text-sm text-b-600 dark:text-b-400 hover:underline mb-4 inline-block">&larr; All Connectors</a>
-<div class="flex items-start justify-between flex-wrap gap-4 mb-6"><div>
-<h1 class="text-3xl font-bold">{sp["display_name"]}</h1>
-<p class="text-slate-600 dark:text-slate-400 mt-1">{sp.get("description","")}</p></div>
-<div class="flex items-center gap-2 flex-wrap">
-<span class="text-xs px-3 py-1 rounded-full bg-b-100 dark:bg-b-900/30 text-b-700 dark:text-b-400 font-medium">{_cat(sp["category"])}</span>
-<span class="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">{sp.get("protocol","rest").upper()}</span>
-<span class="text-xs px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-medium">{len(actions)} actions</span></div></div>
-<h2 class="text-xl font-semibold mb-4">Actions</h2><div class="space-y-3">{ahtml}</div>""")
+<a href="/connectors" class="text-sm text-b-600 dark:text-b-400 hover:underline mb-6 inline-block">&larr; All Connectors</a>
+<div class="flex items-start justify-between flex-wrap gap-6 mb-8"><div class="flex-1 min-w-0">
+<h1 class="text-3xl font-bold text-slate-900 dark:text-white">{sp["display_name"]}</h1>
+<p class="text-lg text-slate-600 dark:text-slate-400 mt-2 max-w-2xl">{sp.get("description","")}</p>
+<div class="flex items-center gap-2 flex-wrap mt-4">
+<span class="text-xs px-3 py-1.5 rounded-full bg-b-100 dark:bg-b-900/30 text-b-700 dark:text-b-400 font-semibold">{_cat(sp["category"])}</span>
+<span class="text-xs px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">{sp.get("protocol","rest").upper()}</span>
+{f'<span class="text-xs px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono">{sp.get("base_url","")}</span>' if sp.get("base_url") else ""}
+</div></div></div>
+
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+<div class="text-center p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+<div class="text-2xl font-bold text-b-600 dark:text-b-400">{len(actions)}</div>
+<div class="text-xs text-slate-500 mt-1">Total Actions</div></div>
+<div class="text-center p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+<div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{safe_count}</div>
+<div class="text-xs text-slate-500 mt-1">Safe Actions</div></div>
+<div class="text-center p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+<div class="text-2xl font-bold text-red-500">{dangerous_count}</div>
+<div class="text-xs text-slate-500 mt-1">Destructive</div></div>
+<div class="text-center p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+<div class="text-2xl font-bold text-purple-600 dark:text-purple-400">{param_count}</div>
+<div class="text-xs text-slate-500 mt-1">Parameters</div></div></div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+<div class="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+<h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Install</h3>
+<div class="flex items-center gap-2"><code class="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded-lg flex-1">{install_cmd}</code>
+<button onclick="navigator.clipboard.writeText('{install_cmd}');this.textContent='Done';setTimeout(()=>this.textContent='Copy',1500)" class="text-xs px-2 py-1 rounded bg-b-100 dark:bg-b-900/30 text-b-600 cursor-pointer">Copy</button></div></div>
+<div class="lg:col-span-2 p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+<h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Quick Start</h3>
+<pre class="text-xs bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code class="language-python">{qs_escaped}</code></pre></div></div>
+
+<div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+<h2 class="text-xl font-semibold">Actions</h2>
+<div class="relative"><svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+<input type="text" placeholder="Filter actions..." class="pl-9 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-b-500 outline-none w-56" oninput="document.querySelectorAll('.action-card').forEach(c=>c.style.display=c.dataset.action.includes(this.value.toLowerCase())?'':'none')"></div></div>
+<div class="space-y-4">{ahtml}</div>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script>document.querySelectorAll('pre code').forEach(b=>hljs.highlightElement(b));</script>""")
 
 
 @app.route("/playground")
@@ -182,8 +259,10 @@ def playground():
 <div class="lg:col-span-1 space-y-4">
 <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
 <h3 class="font-semibold mb-3">Select Connectors</h3>
-<div class="flex gap-2 mb-3"><button onclick="document.querySelectorAll('.ccb').forEach(c=>c.checked=true)" class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200">Select All</button><button onclick="document.querySelectorAll('.ccb').forEach(c=>c.checked=false)" class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200">Clear</button></div>
-<div class="max-h-64 overflow-y-auto space-y-0.5">""" + cbs + """</div></div>
+<div class="flex gap-2 mb-2"><button onclick="document.querySelectorAll('.ccb').forEach(c=>c.checked=true)" class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200">Select All</button><button onclick="document.querySelectorAll('.ccb').forEach(c=>c.checked=false)" class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200">Clear</button></div>
+<div class="relative mb-2"><svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+<input type="text" placeholder="Search connectors..." class="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs focus:ring-2 focus:ring-b-500 outline-none" oninput="document.querySelectorAll('.ccb-wrap').forEach(w=>w.style.display=w.textContent.toLowerCase().includes(this.value.toLowerCase())?'':'none')"></div>
+<div class="max-h-64 overflow-y-auto space-y-0.5">""" + cbs.replace('label class="flex', 'label class="ccb-wrap flex') + """</div></div>
 <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
 <h3 class="font-semibold mb-2">Options</h3>
 <div><label class="text-sm font-medium">Framework</label>
