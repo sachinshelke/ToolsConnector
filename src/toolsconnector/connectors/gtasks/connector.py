@@ -421,3 +421,44 @@ class GoogleTasks(BaseConnector):
             params=params,
         )
         return _parse_task(data)
+
+    @action("Update a task list title", dangerous=True)
+    async def update_task_list(
+        self,
+        task_list_id: str,
+        title: str,
+    ) -> TaskList:
+        """Rename a task list.
+
+        Args:
+            task_list_id: The task list ID.
+            title: New title for the task list.
+
+        Returns:
+            Updated TaskList.
+        """
+        data = await self._request(
+            "PUT",
+            f"/users/@me/lists/{task_list_id}",
+            json={"title": title},
+        )
+        return TaskList(
+            id=data.get("id", ""),
+            title=data.get("title", ""),
+            updated=data.get("updated"),
+        )
+
+    @action("Clear completed tasks from a list", dangerous=True)
+    async def clear_completed(
+        self,
+        task_list_id: str,
+    ) -> None:
+        """Remove all completed tasks from a task list.
+
+        Args:
+            task_list_id: The task list ID.
+        """
+        await self._request(
+            "POST",
+            f"/lists/{task_list_id}/clear",
+        )
