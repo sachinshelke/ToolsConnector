@@ -505,3 +505,98 @@ class Freshdesk(BaseConnector):
             )
             for a in agents_list
         ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Contact management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Create a new contact", dangerous=True)
+    async def create_contact(
+        self,
+        name: str,
+        email: str,
+    ) -> FreshdeskContact:
+        """Create a new contact in Freshdesk.
+
+        Args:
+            name: Contact's full name.
+            email: Contact's email address.
+
+        Returns:
+            The created FreshdeskContact.
+        """
+        payload: dict[str, Any] = {
+            "name": name,
+            "email": email,
+        }
+        data = await self._request("POST", "/contacts", json=payload)
+        return self._parse_contact(data)
+
+    @action("Update an existing contact")
+    async def update_contact(
+        self,
+        contact_id: int,
+        name: Optional[str] = None,
+        email: Optional[str] = None,
+    ) -> FreshdeskContact:
+        """Update a contact's name or email.
+
+        Args:
+            contact_id: The Freshdesk contact ID.
+            name: New name for the contact.
+            email: New email for the contact.
+
+        Returns:
+            The updated FreshdeskContact.
+        """
+        payload: dict[str, Any] = {}
+        if name is not None:
+            payload["name"] = name
+        if email is not None:
+            payload["email"] = email
+
+        data = await self._request(
+            "PUT", f"/contacts/{contact_id}", json=payload,
+        )
+        return self._parse_contact(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Groups
+    # ------------------------------------------------------------------
+
+    @action("List agent groups in Freshdesk")
+    async def list_groups(self) -> list[dict[str, Any]]:
+        """List all agent groups in the helpdesk.
+
+        Returns:
+            List of group dicts with id, name, description, etc.
+        """
+        data = await self._request("GET", "/groups")
+        return data if isinstance(data, list) else []
+
+    # ------------------------------------------------------------------
+    # Actions -- Agent details
+    # ------------------------------------------------------------------
+
+    @action("Get a single agent by ID")
+    async def get_agent(self, agent_id: int) -> FreshdeskAgent:
+        """Retrieve a single agent by their ID.
+
+        Args:
+            agent_id: The Freshdesk agent ID.
+
+        Returns:
+            FreshdeskAgent object.
+        """
+        data = await self._request("GET", f"/agents/{agent_id}")
+        return FreshdeskAgent(
+            id=data.get("id", 0),
+            name=data.get("contact", {}).get("name"),
+            email=data.get("contact", {}).get("email"),
+            active=data.get("active", True),
+            occasional=data.get("occasional", False),
+            ticket_scope=data.get("ticket_scope"),
+            group_ids=data.get("group_ids", []),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
+        )
