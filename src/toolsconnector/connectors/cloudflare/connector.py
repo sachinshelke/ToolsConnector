@@ -614,3 +614,124 @@ class Cloudflare(BaseConnector):
             json={"value": value},
         )
         return body.get("result", {})
+
+    # ------------------------------------------------------------------
+    # Actions — SSL/TLS
+    # ------------------------------------------------------------------
+
+    @action("Get SSL/TLS setting for a zone")
+    async def get_ssl_setting(self, zone_id: str) -> dict[str, Any]:
+        """Get the SSL/TLS encryption mode for a zone.
+
+        Args:
+            zone_id: The zone ID.
+
+        Returns:
+            Dict with SSL setting value (off, flexible, full, strict).
+        """
+        body = await self._request(
+            "GET", f"/zones/{zone_id}/settings/ssl",
+        )
+        return body.get("result", {})
+
+    @action("Update SSL/TLS setting", dangerous=True)
+    async def update_ssl_setting(self, zone_id: str, value: str) -> dict[str, Any]:
+        """Set the SSL/TLS encryption mode for a zone.
+
+        Args:
+            zone_id: The zone ID.
+            value: SSL mode: 'off', 'flexible', 'full', or 'strict'.
+
+        Returns:
+            Updated setting dict.
+        """
+        body = await self._request(
+            "PATCH", f"/zones/{zone_id}/settings/ssl",
+            json={"value": value},
+        )
+        return body.get("result", {})
+
+    @action("Create a zone", dangerous=True)
+    async def create_zone(self, name: str, account_id: str, type: str = "full") -> dict[str, Any]:
+        """Add a new domain to Cloudflare.
+
+        Args:
+            name: Domain name (e.g., 'example.com').
+            account_id: Cloudflare account ID.
+            type: Zone type: 'full' or 'partial'.
+
+        Returns:
+            Created zone dict with id, name, status.
+        """
+        body = await self._request(
+            "POST", "/zones",
+            json={"name": name, "account": {"id": account_id}, "type": type},
+        )
+        return body.get("result", {})
+
+    @action("List page rules for a zone")
+    async def list_page_rules(self, zone_id: str) -> list[dict[str, Any]]:
+        """List all page rules for a zone.
+
+        Args:
+            zone_id: The zone ID.
+
+        Returns:
+            List of page rule dicts.
+        """
+        body = await self._request("GET", f"/zones/{zone_id}/pagerules")
+        return body.get("result", [])
+
+    @action("Delete a page rule", dangerous=True)
+    async def delete_page_rule(self, zone_id: str, rule_id: str) -> None:
+        """Delete a page rule.
+
+        Args:
+            zone_id: The zone ID.
+            rule_id: The page rule ID to delete.
+        """
+        await self._request("DELETE", f"/zones/{zone_id}/pagerules/{rule_id}")
+
+    @action("List WAF rulesets for a zone")
+    async def list_waf_rulesets(self, zone_id: str) -> list[dict[str, Any]]:
+        """List WAF managed rulesets deployed on a zone.
+
+        Args:
+            zone_id: The zone ID.
+
+        Returns:
+            List of ruleset dicts.
+        """
+        body = await self._request("GET", f"/zones/{zone_id}/rulesets")
+        return body.get("result", [])
+
+    @action("Deploy a worker script", dangerous=True)
+    async def deploy_worker(self, account_id: str, script_name: str, script_content: str) -> dict[str, Any]:
+        """Upload and deploy a Cloudflare Worker script.
+
+        Args:
+            account_id: Cloudflare account ID.
+            script_name: Name for the worker script.
+            script_content: The JavaScript worker code.
+
+        Returns:
+            Deployed worker dict.
+        """
+        body = await self._request(
+            "PUT", f"/accounts/{account_id}/workers/scripts/{script_name}",
+            content=script_content.encode("utf-8"),
+            headers={"Content-Type": "application/javascript"},
+        )
+        return body.get("result", {})
+
+    @action("Delete a worker script", dangerous=True)
+    async def delete_worker(self, account_id: str, script_name: str) -> None:
+        """Delete a Cloudflare Worker script.
+
+        Args:
+            account_id: Cloudflare account ID.
+            script_name: Name of the worker script to delete.
+        """
+        await self._request(
+            "DELETE", f"/accounts/{account_id}/workers/scripts/{script_name}",
+        )
