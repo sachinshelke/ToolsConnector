@@ -22,19 +22,25 @@ from toolsconnector.types import PageState, PaginatedList
 from ._parsers import (
     parse_comment,
     parse_component,
+    parse_component_set,
     parse_file,
     parse_image,
+    parse_page,
     parse_project,
     parse_project_file,
+    parse_style,
     parse_version,
 )
 from .types import (
     FigmaComment,
     FigmaComponent,
+    FigmaComponentSet,
     FigmaFile,
     FigmaImage,
+    FigmaPage,
     FigmaProject,
     FigmaProjectFile,
+    FigmaStyle,
     FigmaVersion,
 )
 
@@ -430,23 +436,23 @@ class Figma(BaseConnector):
     # ------------------------------------------------------------------
 
     @action("List styles in a Figma file")
-    async def list_file_styles(
+    async def get_file_styles(
         self, file_key: str,
-    ) -> list[dict[str, Any]]:
+    ) -> list[FigmaStyle]:
         """List all published styles (colors, text, effects) in a file.
 
         Args:
             file_key: The file key from the Figma URL.
 
         Returns:
-            List of style dicts with key, name, style_type, etc.
+            List of FigmaStyle objects.
         """
         resp = await self._request(
             "GET", f"/files/{file_key}/styles",
         )
         body = resp.json()
         meta = body.get("meta", {})
-        return meta.get("styles", [])
+        return [parse_style(s) for s in meta.get("styles", [])]
 
     # ------------------------------------------------------------------
     # Actions -- File pages
