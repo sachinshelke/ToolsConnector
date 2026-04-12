@@ -21,7 +21,7 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PageState, PaginatedList
 
 from ._parsers import parse_search_result, parse_ticket, parse_user
-from .types import ZendeskComment, ZendeskGroup, ZendeskSearchResult, ZendeskTicket, ZendeskUser
+from .types import ZendeskComment, ZendeskGroup, ZendeskOrganization, ZendeskSearchResult, ZendeskTicket, ZendeskUser
 
 logger = logging.getLogger("toolsconnector.zendesk")
 
@@ -487,3 +487,150 @@ class Zendesk(BaseConnector):
         resp = await self._request("GET", "/tags.json")
         body = resp.json()
         return [t.get("name", "") for t in body.get("tags", [])]
+
+    # ------------------------------------------------------------------
+    # Actions -- User management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Create a new Zendesk user", dangerous=True)
+    async def create_user(
+        self,
+        name: str,
+        email: str,
+    ) -> ZendeskUser:
+        """Create a new user in Zendesk.
+
+        Args:
+            name: The user's full name.
+            email: The user's email address.
+
+        Returns:
+            The created ZendeskUser object.
+        """
+        user_data: dict[str, Any] = {
+            "name": name,
+            "email": email,
+        }
+        resp = await self._request(
+            "POST", "/users.json",
+            json_body={"user": user_data},
+        )
+        return parse_user(resp.json()["user"])
+
+    @action("Update an existing Zendesk user")
+    async def update_user(
+        self,
+        user_id: int,
+        name: Optional[str] = None,
+        email: Optional[str] = None,
+    ) -> ZendeskUser:
+        """Update a user's name or email.
+
+        Args:
+            user_id: The Zendesk user ID.
+            name: New name for the user.
+            email: New email for the user.
+
+        Returns:
+            The updated ZendeskUser object.
+        """
+        user_data: dict[str, Any] = {}
+        if name is not None:
+            user_data["name"] = name
+        if email is not None:
+            user_data["email"] = email
+
+        resp = await self._request(
+            "PUT", f"/users/{user_id}.json",
+            json_body={"user": user_data},
+        )
+        return parse_user(resp.json()["user"])
+
+    # ------------------------------------------------------------------
+    # Actions -- Ticket comments
+    # ------------------------------------------------------------------
+
+    @action("List comments on a Zendesk ticket")
+    async def list_ticket_comments(
+        self, ticket_id: int,
+    ) -> list[ZendeskComment]:
+        """List all comments (conversation) on a ticket.
+
+        Args:
+            ticket_id: The Zendesk ticket ID.
+
+        Returns:
+            List of ZendeskComment objects.
+        """
+        resp = await self._request(
+            "GET", f"/tickets/{ticket_id}/comments.json",
+        )
+        body = resp.json()
+        return [
+            ZendeskComment(
+                id=c["id"],
+                type=c.get("type"),
+                body=c.get("body"),
+                html_body=c.get("html_body"),
+                plain_body=c.get("plain_body"),
+                public=c.get("public", True),
+                author_id=c.get("author_id"),
+                created_at=c.get("created_at"),
+            )
+            for c in body.get("comments", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Organizations
+    # ------------------------------------------------------------------
+
+    @action("List organizations in Zendesk")
+    async def list_organizations(
+        self,
+        limit: int = 25,
+        page: Optional[int] = None,
+    ) -> PaginatedList[ZendeskOrganization]:
+        """List organizations with offset pagination.
+
+        Args:
+            limit: Maximum number of organizations per page (1-100).
+            page: Page number for offset pagination.
+
+        Returns:
+            Paginated list of ZendeskOrganization objects.
+        """
+        params: dict[str, Any] = {"per_page": min(limit, 100)}
+        if page is not None:
+            params["page"] = page
+
+        resp = await self._request(
+            "GET", "/organizations.json", params=params,
+        )
+        body = resp.json()
+
+        items = [
+            ZendeskOrganization(
+                id=o["id"],
+                name=o.get("name"),
+                details=o.get("details"),
+                notes=o.get("notes"),
+                group_id=o.get("group_id"),
+                domain_names=o.get("domain_names", []),
+                tags=o.get("tags", []),
+                shared_tickets=o.get("shared_tickets", False),
+                shared_comments=o.get("shared_comments", False),
+                external_id=o.get("external_id"),
+                created_at=o.get("created_at"),
+                updated_at=o.get("updated_at"),
+            )
+            for o in body.get("organizations", [])
+        ]
+
+        next_page = body.get("next_page")
+        has_more = next_page is not None
+
+        return PaginatedList(
+            items=items,
+            page_state=PageState(has_more=has_more, cursor=next_page),
+            total_count=body.get("count"),
+        )

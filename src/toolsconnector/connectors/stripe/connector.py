@@ -1,4 +1,8 @@
-"""Stripe connector — customers, charges, payment intents, invoices, and balance.
+"""Stripe connector — comprehensive API coverage.
+
+Covers customers, charges, payment intents (full lifecycle), invoices,
+subscriptions, products, prices, checkout sessions, payment methods,
+refunds, disputes, payouts, events, setup intents, and account balance.
 
 Uses the Stripe REST API v1 with API key authentication (Basic auth).
 Stripe requires form-encoded request bodies (application/x-www-form-urlencoded),
@@ -1064,19 +1068,12 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_dispute(d) for d in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_disputes(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_disputes(
                 limit=limit, starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     @action("Retrieve a single Stripe dispute by ID")
     async def get_dispute(self, dispute_id: str) -> StripeDispute:
@@ -1137,19 +1134,12 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_payout(p) for p in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_payouts(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_payouts(
                 limit=limit, starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     @action("Create a payout to your bank account", dangerous=True)
     async def create_payout(
@@ -1224,19 +1214,12 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_event(e) for e in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_events(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_events(
                 type=type, limit=limit, starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     @action("Retrieve a single Stripe event by ID")
     async def get_event(self, event_id: str) -> StripeEvent:

@@ -507,6 +507,77 @@ class HubSpot(BaseConnector):
         )
         return parse_ticket(data)
 
+    @action("Get a single ticket by ID")
+    async def get_ticket(self, ticket_id: str) -> HubSpotTicket:
+        """Retrieve a single CRM ticket by its ID.
+
+        Args:
+            ticket_id: The HubSpot ticket ID.
+
+        Returns:
+            The requested HubSpotTicket.
+        """
+        data = await self._request(
+            "GET", f"/crm/v3/objects/tickets/{ticket_id}"
+        )
+        return parse_ticket(data)
+
+    @action("Update an existing deal")
+    async def update_deal(
+        self,
+        deal_id: str,
+        properties: dict[str, Any],
+    ) -> HubSpotDeal:
+        """Update properties on an existing CRM deal.
+
+        Args:
+            deal_id: The HubSpot deal ID.
+            properties: Dict of property names to new values.
+
+        Returns:
+            The updated HubSpotDeal.
+        """
+        body: dict[str, Any] = {"properties": properties}
+        data = await self._request(
+            "PATCH", f"/crm/v3/objects/deals/{deal_id}", json=body
+        )
+        return parse_deal(data)
+
+    @action("Update an existing ticket")
+    async def update_ticket(
+        self,
+        ticket_id: str,
+        properties: dict[str, Any],
+    ) -> HubSpotTicket:
+        """Update properties on an existing CRM ticket.
+
+        Args:
+            ticket_id: The HubSpot ticket ID.
+            properties: Dict of property names to new values.
+
+        Returns:
+            The updated HubSpotTicket.
+        """
+        body: dict[str, Any] = {"properties": properties}
+        data = await self._request(
+            "PATCH", f"/crm/v3/objects/tickets/{ticket_id}", json=body
+        )
+        return parse_ticket(data)
+
+    @action("Delete a deal", dangerous=True)
+    async def delete_deal(self, deal_id: str) -> None:
+        """Delete a CRM deal by its ID.
+
+        This is a destructive action. The deal is moved to the
+        recycling bin and can be restored within 90 days.
+
+        Args:
+            deal_id: The HubSpot deal ID to delete.
+        """
+        await self._request(
+            "DELETE", f"/crm/v3/objects/deals/{deal_id}"
+        )
+
     # ------------------------------------------------------------------
     # Actions -- Pipelines
     # ------------------------------------------------------------------

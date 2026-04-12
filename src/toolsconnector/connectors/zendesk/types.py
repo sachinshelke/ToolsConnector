@@ -102,3 +102,22 @@ class ZendeskGroup(BaseModel):
     deleted: bool = False
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+class ZendeskOrganization(BaseModel):
+    """A Zendesk organization."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: Optional[str] = None
+    details: Optional[str] = None
+    notes: Optional[str] = None
+    group_id: Optional[int] = None
+    domain_names: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    shared_tickets: bool = False
+    shared_comments: bool = False
+    external_id: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
