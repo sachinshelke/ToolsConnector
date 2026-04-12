@@ -550,3 +550,87 @@ class DockerHub(BaseConnector):
         )
         body = resp.json()
         return body.get("results", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- Repository management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Create a Docker Hub repository", dangerous=True)
+    async def create_repo(
+        self,
+        namespace: str,
+        name: str,
+        description: Optional[str] = None,
+        is_private: Optional[bool] = None,
+    ) -> DockerRepo:
+        """Create a new repository on Docker Hub.
+
+        Args:
+            namespace: Repository namespace (user or org).
+            name: Repository name.
+            description: Optional short description.
+            is_private: Whether the repository is private.
+
+        Returns:
+            The created DockerRepo object.
+        """
+        payload: dict[str, Any] = {
+            "namespace": namespace,
+            "name": name,
+        }
+        if description is not None:
+            payload["description"] = description
+        if is_private is not None:
+            payload["is_private"] = is_private
+
+        resp = await self._request(
+            "POST", f"/repositories/{namespace}/",
+            json=payload,
+        )
+        return _parse_repo(resp.json())
+
+    @action("Update a Docker Hub repository")
+    async def update_repo(
+        self,
+        namespace: str,
+        repo: str,
+        description: Optional[str] = None,
+    ) -> DockerRepo:
+        """Update a repository's metadata.
+
+        Args:
+            namespace: Repository namespace (user or org).
+            repo: Repository name.
+            description: New short description for the repository.
+
+        Returns:
+            The updated DockerRepo object.
+        """
+        payload: dict[str, Any] = {}
+        if description is not None:
+            payload["description"] = description
+
+        resp = await self._request(
+            "PATCH", f"/repositories/{namespace}/{repo}/",
+            json=payload,
+        )
+        return _parse_repo(resp.json())
+
+    @action("List build triggers for a repository")
+    async def list_build_triggers(
+        self, namespace: str, repo: str,
+    ) -> list[dict[str, Any]]:
+        """List automated build triggers (build links/hooks) for a repository.
+
+        Args:
+            namespace: Docker Hub namespace (user or org).
+            repo: Repository name.
+
+        Returns:
+            List of build trigger dicts.
+        """
+        resp = await self._request(
+            "GET", f"/repositories/{namespace}/{repo}/autobuild/",
+        )
+        body = resp.json()
+        return body.get("build_tags", body.get("results", []))

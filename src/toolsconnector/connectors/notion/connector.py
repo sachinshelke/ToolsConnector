@@ -509,3 +509,126 @@ class Notion(BaseConnector):
         }
         data = await self._request("POST", "/comments", json=body)
         return parse_comment(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Database management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Update a database's title, description, or properties")
+    async def update_database(
+        self,
+        database_id: str,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        properties: Optional[dict[str, Any]] = None,
+    ) -> NotionDatabase:
+        """Update an existing Notion database.
+
+        Args:
+            database_id: UUID of the database to update.
+            title: New title for the database, or ``None`` to keep
+                the current title.
+            description: New description text, or ``None`` to keep
+                the current description.
+            properties: Property schema updates.  Each key is a property
+                name and each value is a property configuration object.
+                Pass ``None`` for a property value to remove it.
+
+        Returns:
+            The updated NotionDatabase.
+        """
+        body: dict[str, Any] = {}
+        if title is not None:
+            body["title"] = [{"text": {"content": title}}]
+        if description is not None:
+            body["description"] = [{"text": {"content": description}}]
+        if properties is not None:
+            body["properties"] = properties
+
+        data = await self._request(
+            "PATCH", f"/databases/{database_id}", json=body
+        )
+        return parse_database(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Page lifecycle
+    # ------------------------------------------------------------------
+
+    @action("Archive (soft-delete) a page", dangerous=True)
+    async def archive_page(self, page_id: str) -> NotionPage:
+        """Archive a Notion page by setting its ``archived`` flag to true.
+
+        Archived pages are moved to the trash and can be restored
+        within 30 days.
+
+        Args:
+            page_id: UUID of the page to archive.
+
+        Returns:
+            The archived NotionPage.
+        """
+        body: dict[str, Any] = {"archived": True}
+        data = await self._request("PATCH", f"/pages/{page_id}", json=body)
+        return parse_page(data)
+
+    @action("Restore an archived page")
+    async def restore_page(self, page_id: str) -> NotionPage:
+        """Restore a previously archived Notion page.
+
+        Args:
+            page_id: UUID of the page to restore.
+
+        Returns:
+            The restored NotionPage with ``archived=False``.
+        """
+        body: dict[str, Any] = {"archived": False}
+        data = await self._request("PATCH", f"/pages/{page_id}", json=body)
+        return parse_page(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Blocks (extended)
+    # ------------------------------------------------------------------
+
+    @action("Get a single block by ID")
+    async def get_block(self, block_id: str) -> NotionBlock:
+        """Retrieve a single Notion block by its ID.
+
+        Args:
+            block_id: UUID of the block to retrieve.
+
+        Returns:
+            The requested NotionBlock.
+        """
+        data = await self._request("GET", f"/blocks/{block_id}")
+        return parse_block(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Page properties
+    # ------------------------------------------------------------------
+
+    @action("Get a page property value by ID")
+    async def get_page_property(
+        self,
+        page_id: str,
+        property_id: str,
+    ) -> dict[str, Any]:
+        """Retrieve a specific property value from a Notion page.
+
+        This endpoint is useful for paginated property types such as
+        ``title``, ``rich_text``, ``relation``, and ``rollup`` where
+        the page object truncates values.
+
+        Args:
+            page_id: UUID of the page.
+            property_id: The ID of the property to retrieve (found in
+                the page's ``properties`` dict under each property's
+                ``id`` field).
+
+        Returns:
+            Raw property value dict from the Notion API.  The shape
+            depends on the property type.
+        """
+        data = await self._request(
+            "GET", f"/pages/{page_id}/properties/{property_id}"
+        )
+        return data

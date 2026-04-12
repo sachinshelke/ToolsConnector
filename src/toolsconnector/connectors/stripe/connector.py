@@ -343,19 +343,12 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_invoice(inv) for inv in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_invoices(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_invoices(
                 customer=customer, limit=limit, starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     # ------------------------------------------------------------------
     # Actions — Balance
@@ -544,19 +537,12 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_refund(r) for r in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_refunds(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_refunds(
                 charge=charge, limit=limit, starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     # ------------------------------------------------------------------
     # Actions — Subscriptions
@@ -651,20 +637,13 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_subscription(s) for s in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_subscriptions(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_subscriptions(
                 customer=customer, status=status, limit=limit,
                 starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     @action("Retrieve a single Stripe subscription by ID")
     async def get_subscription(self, subscription_id: str) -> StripeSubscription:
@@ -732,19 +711,12 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_product(p) for p in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_products(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_products(
                 limit=limit, starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     # ------------------------------------------------------------------
     # Actions — Prices
@@ -808,19 +780,12 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_price(p) for p in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_prices(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_prices(
                 product=product, limit=limit, starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     # ------------------------------------------------------------------
     # Actions — Checkout Sessions
@@ -895,20 +860,13 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_payment_method(pm) for pm in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_payment_methods(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_payment_methods(
                 customer=customer, type=type, limit=limit,
                 starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     # ------------------------------------------------------------------
     # Actions — Invoices (continued)
@@ -993,19 +951,12 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_payment_intent(pi) for pi in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_payment_intents(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_payment_intents(
                 customer=customer, limit=limit, starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     @action("Confirm a Stripe PaymentIntent", dangerous=True)
     async def confirm_payment_intent(
