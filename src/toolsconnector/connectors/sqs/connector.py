@@ -527,3 +527,75 @@ class SQS(BaseConnector):
             "Tags": tags,
         })
         return True
+
+    # ------------------------------------------------------------------
+    # Actions -- Queue URL lookup
+    # ------------------------------------------------------------------
+
+    @action("Get queue URL by name")
+    async def get_queue_url(self, queue_name: str) -> str:
+        """Look up a queue's URL by its name.
+
+        Args:
+            queue_name: The name of the SQS queue.
+
+        Returns:
+            The full queue URL string.
+        """
+        body = await self._sqs_request("GetQueueUrl", {
+            "QueueName": queue_name,
+        })
+        return body.get("QueueUrl", "")
+
+    # ------------------------------------------------------------------
+    # Actions -- Dead letter queues
+    # ------------------------------------------------------------------
+
+    @action("List dead letter source queues")
+    async def list_dead_letter_queues(
+        self,
+        source_queue_arn: str,
+    ) -> list[str]:
+        """List queues that have the specified queue as their dead-letter queue.
+
+        Args:
+            source_queue_arn: The ARN of the dead-letter queue to query.
+
+        Returns:
+            List of source queue URLs that send to this DLQ.
+        """
+        body = await self._sqs_request("ListDeadLetterSourceQueues", {
+            "QueueUrl": source_queue_arn,
+        })
+        return body.get("queueUrls", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- Message visibility
+    # ------------------------------------------------------------------
+
+    @action("Change message visibility timeout")
+    async def change_message_visibility(
+        self,
+        queue_url: str,
+        receipt_handle: str,
+        timeout: int,
+    ) -> bool:
+        """Change the visibility timeout of a received message.
+
+        This extends or shortens the time before a message becomes
+        visible again for other consumers.
+
+        Args:
+            queue_url: The URL of the SQS queue.
+            receipt_handle: The receipt handle of the message.
+            timeout: New visibility timeout in seconds (0-43200).
+
+        Returns:
+            True if the visibility timeout was changed.
+        """
+        await self._sqs_request("ChangeMessageVisibility", {
+            "QueueUrl": queue_url,
+            "ReceiptHandle": receipt_handle,
+            "VisibilityTimeout": timeout,
+        })
+        return True

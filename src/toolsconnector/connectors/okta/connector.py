@@ -567,3 +567,98 @@ class Okta(BaseConnector):
             "DELETE", f"/groups/{group_id}/users/{user_id}",
         )
         return True
+
+    # ------------------------------------------------------------------
+    # Actions -- User applications
+    # ------------------------------------------------------------------
+
+    @action("List applications assigned to a user")
+    async def list_user_apps(
+        self, user_id: str,
+    ) -> list[OktaApplication]:
+        """List all applications assigned to a specific user.
+
+        Args:
+            user_id: The user's Okta ID.
+
+        Returns:
+            List of OktaApplication objects assigned to the user.
+        """
+        data, _ = await self._request(
+            "GET", f"/users/{user_id}/appLinks",
+        )
+        return [
+            OktaApplication(
+                id=a.get("appInstanceId", a.get("id", "")),
+                name=a.get("appName", ""),
+                label=a.get("label", ""),
+                status=a.get("status", "ACTIVE"),
+                created=a.get("created"),
+                signOnMode=a.get("credentialsType"),
+            )
+            for a in (data or [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Suspend / Unsuspend
+    # ------------------------------------------------------------------
+
+    @action("Suspend a user in Okta", dangerous=True)
+    async def suspend_user(self, user_id: str) -> bool:
+        """Suspend a user in Okta. The user cannot sign in while suspended.
+
+        Unlike deactivation, suspension is reversible and does not
+        remove the user's sessions or application assignments.
+
+        Args:
+            user_id: The user's Okta ID.
+
+        Returns:
+            True if the suspension was successful.
+        """
+        await self._request(
+            "POST", f"/users/{user_id}/lifecycle/suspend",
+        )
+        return True
+
+    @action("Unsuspend a user in Okta")
+    async def unsuspend_user(self, user_id: str) -> bool:
+        """Unsuspend a previously suspended user in Okta.
+
+        Args:
+            user_id: The user's Okta ID.
+
+        Returns:
+            True if the unsuspension was successful.
+        """
+        await self._request(
+            "POST", f"/users/{user_id}/lifecycle/unsuspend",
+        )
+        return True
+
+    # ------------------------------------------------------------------
+    # Actions -- Group details
+    # ------------------------------------------------------------------
+
+    @action("Get a single group by ID")
+    async def get_group(self, group_id: str) -> OktaGroup:
+        """Retrieve a single Okta group by its ID.
+
+        Args:
+            group_id: The group's Okta ID.
+
+        Returns:
+            OktaGroup object.
+        """
+        data, _ = await self._request("GET", f"/groups/{group_id}")
+        gp = data.get("profile", {})
+        return OktaGroup(
+            id=data.get("id", ""),
+            created=data.get("created"),
+            lastUpdated=data.get("lastUpdated"),
+            lastMembershipUpdated=data.get("lastMembershipUpdated"),
+            type=data.get("type", ""),
+            name=gp.get("name", ""),
+            description=gp.get("description", ""),
+            profile=gp,
+        )

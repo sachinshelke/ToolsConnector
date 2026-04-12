@@ -552,3 +552,83 @@ class Auth0(BaseConnector):
             "GET", "/organizations", params=params or None,
         )
         return data.get("organizations", data if isinstance(data, list) else [])
+
+    # ------------------------------------------------------------------
+    # Actions -- Permissions
+    # ------------------------------------------------------------------
+
+    @action("Get permissions assigned to a user")
+    async def get_user_permissions(
+        self, user_id: str,
+    ) -> list[dict[str, Any]]:
+        """List all permissions directly assigned to a user.
+
+        Args:
+            user_id: The user's Auth0 ID.
+
+        Returns:
+            List of permission dicts with permission_name, description,
+            and resource_server_identifier.
+        """
+        data = await self._request(
+            "GET", f"/users/{user_id}/permissions",
+        )
+        perms = data if isinstance(data, list) else data.get("permissions", [])
+        return perms
+
+    @action("Assign permissions to a user", dangerous=True)
+    async def assign_permissions(
+        self,
+        user_id: str,
+        permissions: list[dict[str, str]],
+    ) -> None:
+        """Assign permissions directly to a user.
+
+        Each permission dict should contain ``permission_name`` and
+        ``resource_server_identifier``.
+
+        Args:
+            user_id: The user's Auth0 ID.
+            permissions: List of permission dicts to assign.
+        """
+        await self._request(
+            "POST",
+            f"/users/{user_id}/permissions",
+            json_body={"permissions": permissions},
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Clients (Applications)
+    # ------------------------------------------------------------------
+
+    @action("List clients (applications) in the tenant")
+    async def list_clients(
+        self,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """List all client applications in the Auth0 tenant.
+
+        Args:
+            limit: Maximum number of clients to return (max 100).
+
+        Returns:
+            List of client dicts with id, name, app_type, etc.
+        """
+        params: dict[str, Any] = {"per_page": min(limit, 100)}
+        data = await self._request(
+            "GET", "/clients", params=params,
+        )
+        return data if isinstance(data, list) else data.get("clients", [])
+
+    @action("Get a single client by ID")
+    async def get_client(self, client_id: str) -> dict[str, Any]:
+        """Retrieve a single client application by its ID.
+
+        Args:
+            client_id: The Auth0 client/application ID.
+
+        Returns:
+            Dict with client details (name, app_type, callbacks, etc.).
+        """
+        data = await self._request("GET", f"/clients/{client_id}")
+        return data if isinstance(data, dict) else {}

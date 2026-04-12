@@ -528,3 +528,97 @@ class SendGrid(BaseConnector):
             )
             for s in resp.json()
         ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Template versions
+    # ------------------------------------------------------------------
+
+    @action("Get a specific template version")
+    async def get_template_version(
+        self,
+        template_id: str,
+        version_id: str,
+    ) -> SendGridTemplateVersion:
+        """Retrieve a specific version of a transactional template.
+
+        Args:
+            template_id: The SendGrid template ID.
+            version_id: The template version ID.
+
+        Returns:
+            SendGridTemplateVersion with full content details.
+        """
+        resp = await self._request(
+            "GET",
+            f"/templates/{template_id}/versions/{version_id}",
+        )
+        data = resp.json()
+        return SendGridTemplateVersion(
+            id=data.get("id"),
+            name=data.get("name"),
+            subject=data.get("subject"),
+            active=data.get("active", 0),
+            html_content=data.get("html_content"),
+            plain_content=data.get("plain_content"),
+            editor=data.get("editor"),
+            updated_at=data.get("updated_at"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Template email sending
+    # ------------------------------------------------------------------
+
+    @action("Send an email using a dynamic template", dangerous=True)
+    async def send_template_email(
+        self,
+        to: str,
+        from_email: str,
+        template_id: str,
+        dynamic_data: Optional[dict[str, Any]] = None,
+    ) -> SendGridResponse:
+        """Send an email using a SendGrid dynamic template.
+
+        Args:
+            to: Recipient email address.
+            from_email: Sender email address.
+            template_id: The SendGrid template ID to use.
+            dynamic_data: Dynamic template data (Handlebars variables).
+
+        Returns:
+            SendGridResponse confirming acceptance.
+        """
+        personalization: dict[str, Any] = {
+            "to": [{"email": to}],
+        }
+        if dynamic_data:
+            personalization["dynamic_template_data"] = dynamic_data
+
+        payload: dict[str, Any] = {
+            "personalizations": [personalization],
+            "from": {"email": from_email},
+            "template_id": template_id,
+        }
+
+        resp = await self._request("POST", "/mail/send", json=payload)
+        message_id = resp.headers.get("X-Message-Id")
+        return SendGridResponse(
+            status_code=resp.status_code,
+            message="Template email accepted for delivery",
+            message_id=message_id,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Suppressions (global)
+    # ------------------------------------------------------------------
+
+    @action("List global email suppressions")
+    async def list_suppressions(self) -> list[dict[str, Any]]:
+        """List all globally suppressed (unsubscribed) email addresses.
+
+        Returns:
+            List of suppression dicts with email and creation timestamp.
+        """
+        resp = await self._request(
+            "GET", "/suppression/unsubscribes",
+        )
+        return resp.json() if isinstance(resp.json(), list) else []
