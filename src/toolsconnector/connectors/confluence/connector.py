@@ -778,3 +778,112 @@ class Confluence(BaseConnector):
                 has_more=next_cursor is not None,
             ),
         )
+
+    # ------------------------------------------------------------------
+    # Actions — Attachments
+    # ------------------------------------------------------------------
+
+    @action("List attachments on a page")
+    async def list_attachments(self, page_id: str, limit: int = 25) -> list[dict[str, Any]]:
+        """List all attachments on a Confluence page.
+
+        Args:
+            page_id: The page ID.
+            limit: Maximum attachments to return.
+
+        Returns:
+            List of attachment dicts.
+        """
+        data = await self._request("GET", f"/pages/{page_id}/attachments", params={"limit": limit})
+        return data.get("results", [])
+
+    # ------------------------------------------------------------------
+    # Actions — Blog Posts
+    # ------------------------------------------------------------------
+
+    @action("List blog posts")
+    async def list_blog_posts(self, space_id: Optional[str] = None, limit: int = 25) -> list[dict[str, Any]]:
+        """List blog posts, optionally filtered by space.
+
+        Args:
+            space_id: Filter by space ID.
+            limit: Maximum posts to return.
+
+        Returns:
+            List of blog post dicts.
+        """
+        params: dict[str, Any] = {"limit": limit}
+        if space_id:
+            params["space-id"] = space_id
+        data = await self._request("GET", "/blogposts", params=params)
+        return data.get("results", [])
+
+    @action("Get a blog post by ID")
+    async def get_blog_post(self, blog_post_id: str) -> dict[str, Any]:
+        """Retrieve a single blog post.
+
+        Args:
+            blog_post_id: The blog post ID.
+
+        Returns:
+            Blog post dict.
+        """
+        return await self._request("GET", f"/blogposts/{blog_post_id}")
+
+    @action("Create a blog post", dangerous=True)
+    async def create_blog_post(self, space_id: str, title: str, body: str) -> dict[str, Any]:
+        """Create a new blog post.
+
+        Args:
+            space_id: The space ID.
+            title: Blog post title.
+            body: Content in storage format (HTML).
+
+        Returns:
+            Created blog post dict.
+        """
+        return await self._request("POST", "/blogposts", json_body={
+            "spaceId": space_id, "title": title, "status": "current",
+            "body": {"representation": "storage", "value": body},
+        })
+
+    # ------------------------------------------------------------------
+    # Actions — Content Properties
+    # ------------------------------------------------------------------
+
+    @action("Get content properties for a page")
+    async def get_page_properties(self, page_id: str) -> list[dict[str, Any]]:
+        """Get metadata properties attached to a page.
+
+        Args:
+            page_id: The page ID.
+
+        Returns:
+            List of property dicts with key, value.
+        """
+        data = await self._request("GET", f"/pages/{page_id}/properties")
+        return data.get("results", [])
+
+    @action("Set a content property on a page", dangerous=True)
+    async def set_page_property(self, page_id: str, key: str, value: Any) -> dict[str, Any]:
+        """Set a metadata property on a page.
+
+        Args:
+            page_id: The page ID.
+            key: Property key name.
+            value: JSON-serializable value (max 32KB).
+
+        Returns:
+            Created/updated property dict.
+        """
+        return await self._request("POST", f"/pages/{page_id}/properties", json_body={"key": key, "value": value})
+
+    @action("Remove a label from a page", dangerous=True)
+    async def remove_page_label(self, page_id: str, label_id: str) -> None:
+        """Remove a label from a page.
+
+        Args:
+            page_id: The page ID.
+            label_id: The label ID to remove.
+        """
+        await self._request("DELETE", f"/pages/{page_id}/labels/{label_id}")
