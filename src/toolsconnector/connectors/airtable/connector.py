@@ -670,3 +670,265 @@ class Airtable(BaseConnector):
             description=t.get("description"),
             fields=parsed_fields,
         )
+
+    # ------------------------------------------------------------------
+    # Actions — Views
+    # ------------------------------------------------------------------
+
+    @action("List views in a table")
+    async def list_views(
+        self,
+        base_id: str,
+        table_id: str,
+    ) -> list[dict[str, Any]]:
+        """List all views in a table.
+
+        Args:
+            base_id: The base ID.
+            table_id: The table ID or name.
+
+        Returns:
+            List of view dicts with id, name, type.
+        """
+        data = await self._request(
+            "GET", f"/meta/bases/{base_id}/tables/{table_id}/views",
+        )
+        return data.get("views", [])
+
+    @action("Get a specific view")
+    async def get_view(
+        self,
+        base_id: str,
+        table_id: str,
+        view_id: str,
+    ) -> dict[str, Any]:
+        """Get details of a specific view.
+
+        Args:
+            base_id: The base ID.
+            table_id: The table ID or name.
+            view_id: The view ID.
+
+        Returns:
+            View dict with id, name, type, and configuration.
+        """
+        data = await self._request(
+            "GET",
+            f"/meta/bases/{base_id}/tables/{table_id}/views/{view_id}",
+        )
+        return data
+
+    # ------------------------------------------------------------------
+    # Actions — Comments
+    # ------------------------------------------------------------------
+
+    @action("List comments on a record")
+    async def list_comments(
+        self,
+        base_id: str,
+        table_name: str,
+        record_id: str,
+    ) -> list[dict[str, Any]]:
+        """List all comments on a record.
+
+        Args:
+            base_id: The base ID.
+            table_name: The table name or ID.
+            record_id: The record ID.
+
+        Returns:
+            List of comment dicts.
+        """
+        data = await self._request(
+            "GET",
+            f"/{base_id}/{table_name}/{record_id}/comments",
+        )
+        return data.get("comments", [])
+
+    @action("Create a comment on a record", dangerous=True)
+    async def create_comment(
+        self,
+        base_id: str,
+        table_name: str,
+        record_id: str,
+        text: str,
+    ) -> dict[str, Any]:
+        """Add a comment to a record.
+
+        Args:
+            base_id: The base ID.
+            table_name: The table name or ID.
+            record_id: The record ID.
+            text: The comment text.
+
+        Returns:
+            The created comment dict.
+        """
+        data = await self._request(
+            "POST",
+            f"/{base_id}/{table_name}/{record_id}/comments",
+            json={"text": text},
+        )
+        return data
+
+    @action("Update a comment on a record", dangerous=True)
+    async def update_comment(
+        self,
+        base_id: str,
+        table_name: str,
+        record_id: str,
+        comment_id: str,
+        text: str,
+    ) -> dict[str, Any]:
+        """Update an existing comment.
+
+        Args:
+            base_id: The base ID.
+            table_name: The table name or ID.
+            record_id: The record ID.
+            comment_id: The comment ID to update.
+            text: New comment text.
+
+        Returns:
+            The updated comment dict.
+        """
+        data = await self._request(
+            "PATCH",
+            f"/{base_id}/{table_name}/{record_id}/comments/{comment_id}",
+            json={"text": text},
+        )
+        return data
+
+    @action("Delete a comment on a record", dangerous=True)
+    async def delete_comment(
+        self,
+        base_id: str,
+        table_name: str,
+        record_id: str,
+        comment_id: str,
+    ) -> None:
+        """Delete a comment from a record.
+
+        Args:
+            base_id: The base ID.
+            table_name: The table name or ID.
+            record_id: The record ID.
+            comment_id: The comment ID to delete.
+        """
+        await self._request(
+            "DELETE",
+            f"/{base_id}/{table_name}/{record_id}/comments/{comment_id}",
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Table update
+    # ------------------------------------------------------------------
+
+    @action("Update a table", dangerous=True)
+    async def update_table(
+        self,
+        base_id: str,
+        table_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Update a table's name or description.
+
+        Args:
+            base_id: The base ID.
+            table_id: The table ID.
+            name: New table name.
+            description: New table description.
+
+        Returns:
+            Updated table dict.
+        """
+        payload: dict[str, Any] = {}
+        if name is not None:
+            payload["name"] = name
+        if description is not None:
+            payload["description"] = description
+        data = await self._request(
+            "PATCH",
+            f"/meta/bases/{base_id}/tables/{table_id}",
+            json=payload,
+        )
+        return data
+
+    # ------------------------------------------------------------------
+    # Actions — Webhooks (expanded)
+    # ------------------------------------------------------------------
+
+    @action("Create a webhook", dangerous=True)
+    async def create_webhook(
+        self,
+        base_id: str,
+        notification_url: str,
+        specification: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """Create a webhook to receive notifications about changes.
+
+        Args:
+            base_id: The base ID.
+            notification_url: URL to receive webhook notifications.
+            specification: Optional filter specification for which
+                changes to notify about.
+
+        Returns:
+            Created webhook dict with id, notification_url, etc.
+        """
+        payload: dict[str, Any] = {
+            "notificationUrl": notification_url,
+        }
+        if specification:
+            payload["specification"] = specification
+        data = await self._request(
+            "POST",
+            f"/bases/{base_id}/webhooks",
+            json=payload,
+        )
+        return data
+
+    @action("Delete a webhook", dangerous=True)
+    async def delete_webhook(
+        self,
+        base_id: str,
+        webhook_id: str,
+    ) -> None:
+        """Delete a webhook.
+
+        Args:
+            base_id: The base ID.
+            webhook_id: The webhook ID to delete.
+        """
+        await self._request(
+            "DELETE",
+            f"/bases/{base_id}/webhooks/{webhook_id}",
+        )
+
+    @action("List webhook payloads")
+    async def list_webhook_payloads(
+        self,
+        base_id: str,
+        webhook_id: str,
+        cursor: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """List payloads for a webhook (change history).
+
+        Args:
+            base_id: The base ID.
+            webhook_id: The webhook ID.
+            cursor: Pagination cursor from previous response.
+
+        Returns:
+            Dict with payloads list and cursor for pagination.
+        """
+        params: dict[str, Any] = {}
+        if cursor:
+            params["cursor"] = cursor
+        data = await self._request(
+            "GET",
+            f"/bases/{base_id}/webhooks/{webhook_id}/payloads",
+            params=params,
+        )
+        return data
