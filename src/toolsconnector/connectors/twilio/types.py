@@ -127,3 +127,84 @@ class TwilioUsageRecord(BaseModel):
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     uri: Optional[str] = None
+
+
+class TwilioVerifyService(BaseModel):
+    """A Twilio Verify service configuration."""
+
+    model_config = ConfigDict(frozen=True)
+
+    sid: str
+    account_sid: Optional[str] = None
+    friendly_name: Optional[str] = None
+    code_length: Optional[int] = None
+    lookup_enabled: Optional[bool] = None
+    date_created: Optional[str] = None
+    date_updated: Optional[str] = None
+    url: Optional[str] = None
+
+
+class TwilioVerification(BaseModel):
+    """A Twilio Verify verification attempt."""
+
+    model_config = ConfigDict(frozen=True)
+
+    sid: str
+    service_sid: Optional[str] = None
+    account_sid: Optional[str] = None
+    to: Optional[str] = None
+    channel: Optional[str] = None
+    status: Optional[str] = None
+    valid: Optional[bool] = None
+    date_created: Optional[str] = None
+    date_updated: Optional[str] = None
+    url: Optional[str] = None
+
+
+class TwilioVerificationCheck(BaseModel):
+    """A Twilio Verify verification check result."""
+
+    model_config = ConfigDict(frozen=True)
+
+    sid: str
+    service_sid: Optional[str] = None
+    account_sid: Optional[str] = None
+    to: Optional[str] = None
+    channel: Optional[str] = None
+    status: Optional[str] = None
+    valid: Optional[bool] = None
+    date_created: Optional[str] = None
+    date_updated: Optional[str] = None
+
+
+class TwilioLookupResult(BaseModel):
+    """A Twilio Lookup v2 phone number result."""
+
+    model_config = ConfigDict(frozen=True)
+
+    phone_number: Optional[str] = None
+    national_format: Optional[str] = None
+    country_code: Optional[str] = None
+    calling_country_code: Optional[str] = None
+    valid: Optional[bool] = None
+    validation_errors: Optional[list[str]] = None
+    caller_name: Optional[dict[str, Any]] = None
+    line_type_intelligence: Optional[dict[str, Any]] = None
+    url: Optional[str] = None
+
+
+class TwilioConversation(BaseModel):
+    """A Twilio Conversations resource."""
+
+    model_config = ConfigDict(frozen=True)
+
+    sid: str
+    account_sid: Optional[str] = None
+    chat_service_sid: Optional[str] = None
+    friendly_name: Optional[str] = None
+    unique_name: Optional[str] = None
+    state: Optional[str] = None
+    attributes: Optional[str] = None
+    date_created: Optional[str] = None
+    date_updated: Optional[str] = None
+    url: Optional[str] = None

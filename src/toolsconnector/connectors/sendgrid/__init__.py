@@ -10,6 +10,7 @@ from .types import (
     SendGridResponse,
     SendGridStat,
     SendGridStatMetrics,
+    SendGridSuppression,
     SendGridTemplate,
     SendGridTemplateVersion,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "SendGridResponse",
     "SendGridStat",
     "SendGridStatMetrics",
+    "SendGridSuppression",
     "SendGridTemplate",
     "SendGridTemplateVersion",
 ]

@@ -75,6 +75,29 @@ class TelegramUpdate(BaseModel):
     callback_query: Optional[dict[str, Any]] = None
 
 
+class TelegramChatMember(BaseModel):
+    """Information about a member of a chat."""
+
+    model_config = ConfigDict(frozen=True)
+
+    user: Optional[TelegramUser] = None
+    status: str = ""
+    custom_title: Optional[str] = None
+    is_anonymous: Optional[bool] = None
+    can_be_edited: Optional[bool] = None
+    can_manage_chat: Optional[bool] = None
+    can_delete_messages: Optional[bool] = None
+    can_manage_video_chats: Optional[bool] = None
+    can_restrict_members: Optional[bool] = None
+    can_promote_members: Optional[bool] = None
+    can_change_info: Optional[bool] = None
+    can_invite_users: Optional[bool] = None
+    can_post_messages: Optional[bool] = None
+    can_edit_messages: Optional[bool] = None
+    can_pin_messages: Optional[bool] = None
+    until_date: Optional[int] = None
+
+
 class TelegramWebhookInfo(BaseModel):
     """Information about the current webhook configuration."""
 

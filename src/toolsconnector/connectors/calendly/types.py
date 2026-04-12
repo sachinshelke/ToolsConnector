@@ -84,6 +84,30 @@ class CalendlyInvitee(BaseModel):
     questions_and_answers: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class CalendlyAvailableTime(BaseModel):
+    """An available time slot for a Calendly event type."""
+
+    model_config = ConfigDict(frozen=True)
+
+    status: str = "available"
+    invitees_remaining: Optional[int] = None
+    start_time: Optional[str] = None
+    scheduling_url: Optional[str] = None
+
+
+class CalendlyOrganizationMembership(BaseModel):
+    """A membership record in a Calendly organization."""
+
+    model_config = ConfigDict(frozen=True)
+
+    uri: str
+    role: Optional[str] = None
+    user: Optional[dict[str, Any]] = None
+    organization: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
 class CalendlyWebhook(BaseModel):
     """A Calendly webhook subscription."""
 

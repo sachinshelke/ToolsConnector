@@ -15,9 +15,11 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PageState, PaginatedList
 
 from .types import (
+    CalendlyAvailableTime,
     CalendlyEvent,
     CalendlyEventType,
     CalendlyInvitee,
+    CalendlyOrganizationMembership,
     CalendlyUser,
     CalendlyWebhook,
 )
@@ -610,6 +612,91 @@ class Calendly(BaseConnector):
         )
         resource = data.get("resource", data)
         return self._parse_invitee(resource)
+
+    # ------------------------------------------------------------------
+    # Actions -- Invitee cancellation
+    # ------------------------------------------------------------------
+
+    @action("Cancel a scheduled event invitee", dangerous=True)
+    async def cancel_invitee(
+        self,
+        event_uuid: str,
+        reason: Optional[str] = None,
+    ) -> None:
+        """Cancel a scheduled event (effectively canceling the invitee).
+
+        The Calendly v2 API cancels events, not individual invitees.
+        This posts a cancellation to the scheduled event.
+
+        Args:
+            event_uuid: The UUID of the scheduled event.
+            reason: Optional cancellation reason.
+        """
+        body: dict[str, Any] = {}
+        if reason is not None:
+            body["reason"] = reason
+
+        await self._request(
+            "POST",
+            f"/scheduled_events/{event_uuid}/cancellation",
+            json=body,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Organization members
+    # ------------------------------------------------------------------
+
+    @action("List organization members")
+    async def list_organization_members(
+        self,
+        organization_uri: str,
+        limit: int = 20,
+        page_token: Optional[str] = None,
+    ) -> PaginatedList[CalendlyOrganizationMembership]:
+        """List all members in a Calendly organization.
+
+        Args:
+            organization_uri: The Calendly organization URI.
+            limit: Maximum results per page (max 100).
+            page_token: Cursor from a previous response for the
+                next page.
+
+        Returns:
+            Paginated list of CalendlyOrganizationMembership objects.
+        """
+        params: dict[str, Any] = {
+            "organization": organization_uri,
+            "count": min(limit, 100),
+        }
+        if page_token:
+            params["page_token"] = page_token
+
+        data = await self._request(
+            "GET", "/organization_memberships", params=params,
+        )
+
+        collection = data.get("collection", [])
+        members = [
+            CalendlyOrganizationMembership(
+                uri=m.get("uri", ""),
+                role=m.get("role"),
+                user=m.get("user"),
+                organization=m.get("organization"),
+                created_at=m.get("created_at"),
+                updated_at=m.get("updated_at"),
+            )
+            for m in collection
+        ]
+        pagination = data.get("pagination", {})
+        next_token = self._extract_page_token(pagination)
+
+        return PaginatedList(
+            items=members,
+            page_state=PageState(
+                cursor=next_token,
+                has_more=next_token is not None,
+            ),
+        )
 
     @action("Delete a webhook subscription", dangerous=True)
     async def delete_webhook(
