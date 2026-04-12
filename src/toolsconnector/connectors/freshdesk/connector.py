@@ -15,7 +15,15 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import FreshdeskAgent, FreshdeskContact, FreshdeskNote, FreshdeskReply, FreshdeskTicket
+from .types import (
+    FreshdeskAgent,
+    FreshdeskCompany,
+    FreshdeskContact,
+    FreshdeskNote,
+    FreshdeskReply,
+    FreshdeskTicket,
+    FreshdeskTicketField,
+)
 
 
 class Freshdesk(BaseConnector):
@@ -600,3 +608,197 @@ class Freshdesk(BaseConnector):
             created_at=data.get("created_at"),
             updated_at=data.get("updated_at"),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Companies
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _parse_company(data: dict[str, Any]) -> FreshdeskCompany:
+        """Parse raw JSON into a FreshdeskCompany."""
+        return FreshdeskCompany(
+            id=data.get("id", 0),
+            name=data.get("name"),
+            description=data.get("description"),
+            domains=data.get("domains", []),
+            note=data.get("note"),
+            health_score=data.get("health_score"),
+            account_tier=data.get("account_tier"),
+            renewal_date=data.get("renewal_date"),
+            industry=data.get("industry"),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
+        )
+
+    @action("List companies in Freshdesk")
+    async def list_companies(
+        self,
+        limit: int = 30,
+        page: int = 1,
+    ) -> PaginatedList[FreshdeskCompany]:
+        """List companies with page-number pagination.
+
+        Args:
+            limit: Number of companies per page (max 100).
+            page: Page number (1-indexed).
+
+        Returns:
+            Paginated list of FreshdeskCompany objects.
+        """
+        params: dict[str, Any] = {
+            "per_page": min(limit, 100),
+            "page": page,
+        }
+        data = await self._request("GET", "/companies", params=params)
+
+        companies = [
+            self._parse_company(c)
+            for c in (data if isinstance(data, list) else [])
+        ]
+        has_more = len(companies) >= min(limit, 100)
+
+        return PaginatedList(
+            items=companies,
+            page_state=PageState(
+                page_number=page,
+                has_more=has_more,
+            ),
+        )
+
+    @action("Get a single company by ID")
+    async def get_company(self, company_id: int) -> FreshdeskCompany:
+        """Retrieve a single company by its ID.
+
+        Args:
+            company_id: The Freshdesk company ID.
+
+        Returns:
+            The requested FreshdeskCompany.
+        """
+        data = await self._request("GET", f"/companies/{company_id}")
+        return self._parse_company(data)
+
+    @action("Create a new company", dangerous=True)
+    async def create_company(
+        self,
+        name: str,
+        domains: Optional[list[str]] = None,
+        description: Optional[str] = None,
+    ) -> FreshdeskCompany:
+        """Create a new company in Freshdesk.
+
+        Args:
+            name: Company name.
+            domains: List of email domains associated with the company.
+            description: Company description.
+
+        Returns:
+            The created FreshdeskCompany.
+        """
+        payload: dict[str, Any] = {"name": name}
+        if domains is not None:
+            payload["domains"] = domains
+        if description is not None:
+            payload["description"] = description
+
+        data = await self._request("POST", "/companies", json=payload)
+        return self._parse_company(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Ticket Fields
+    # ------------------------------------------------------------------
+
+    @action("List ticket fields in Freshdesk")
+    async def list_ticket_fields(self) -> list[FreshdeskTicketField]:
+        """List all ticket field definitions in the helpdesk.
+
+        Returns:
+            List of FreshdeskTicketField objects describing each
+            system and custom ticket field.
+        """
+        data = await self._request("GET", "/ticket_fields")
+        fields_list = data if isinstance(data, list) else []
+        return [
+            FreshdeskTicketField(
+                id=f.get("id", 0),
+                name=f.get("name", ""),
+                label=f.get("label", ""),
+                type=f.get("type", ""),
+                default=f.get("default", False),
+                required_for_closure=f.get("required_for_closure", False),
+                required_for_agents=f.get("required_for_agents", False),
+                required_for_customers=f.get("required_for_customers", False),
+                position=f.get("position", 0),
+                choices=f.get("choices", []),
+                created_at=f.get("created_at"),
+                updated_at=f.get("updated_at"),
+            )
+            for f in fields_list
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Satisfaction Ratings
+    # ------------------------------------------------------------------
+
+    @action("List satisfaction ratings")
+    async def list_satisfaction_ratings(
+        self,
+        limit: int = 30,
+        page: int = 1,
+    ) -> PaginatedList[dict[str, Any]]:
+        """List customer satisfaction ratings.
+
+        Args:
+            limit: Number of ratings per page (max 100).
+            page: Page number (1-indexed).
+
+        Returns:
+            Paginated list of satisfaction rating dicts containing
+            id, survey_id, rating, feedback, etc.
+        """
+        params: dict[str, Any] = {
+            "per_page": min(limit, 100),
+            "page": page,
+        }
+        data = await self._request(
+            "GET", "/surveys/satisfaction_ratings", params=params,
+        )
+        ratings = data if isinstance(data, list) else []
+        has_more = len(ratings) >= min(limit, 100)
+
+        return PaginatedList(
+            items=ratings,
+            page_state=PageState(
+                page_number=page,
+                has_more=has_more,
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Canned Responses
+    # ------------------------------------------------------------------
+
+    @action("List canned responses")
+    async def list_canned_responses(self) -> list[dict[str, Any]]:
+        """List all canned response templates in the helpdesk.
+
+        Returns:
+            List of canned response dicts with id, title, content, etc.
+        """
+        data = await self._request("GET", "/canned_responses")
+        return data if isinstance(data, list) else []
+
+    # ------------------------------------------------------------------
+    # Actions -- Email Configs
+    # ------------------------------------------------------------------
+
+    @action("List email configurations")
+    async def list_email_configs(self) -> list[dict[str, Any]]:
+        """List all configured email addresses for the helpdesk.
+
+        Returns:
+            List of email config dicts with id, name, reply_email,
+            to_email, primary_role, etc.
+        """
+        data = await self._request("GET", "/email_configs")
+        return data if isinstance(data, list) else []

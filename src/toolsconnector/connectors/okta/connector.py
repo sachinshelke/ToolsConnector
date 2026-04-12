@@ -26,7 +26,7 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PaginatedList, PageState
 
-from .types import OktaApplication, OktaGroup, OktaProfile, OktaUser
+from .types import OktaApplication, OktaGroup, OktaLogEvent, OktaProfile, OktaUser
 
 logger = logging.getLogger("toolsconnector.okta")
 
@@ -661,4 +661,221 @@ class Okta(BaseConnector):
             name=gp.get("name", ""),
             description=gp.get("description", ""),
             profile=gp,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Group members
+    # ------------------------------------------------------------------
+
+    @action("List members of a group")
+    async def list_group_members(
+        self,
+        group_id: str,
+        limit: int = 200,
+    ) -> PaginatedList[OktaUser]:
+        """List all users that are members of a group.
+
+        Args:
+            group_id: The group's Okta ID.
+            limit: Maximum number of members to return (max 200).
+
+        Returns:
+            Paginated list of OktaUser objects in the group.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 200)}
+        data, next_url = await self._request(
+            "GET", f"/groups/{group_id}/users", params=params,
+        )
+
+        users: list[OktaUser] = []
+        for u in (data or []):
+            profile_data = u.get("profile", {})
+            profile = OktaProfile(
+                firstName=profile_data.get("firstName"),
+                lastName=profile_data.get("lastName"),
+                email=profile_data.get("email"),
+                login=profile_data.get("login"),
+                mobilePhone=profile_data.get("mobilePhone"),
+                secondEmail=profile_data.get("secondEmail"),
+                displayName=profile_data.get("displayName"),
+                title=profile_data.get("title"),
+                department=profile_data.get("department"),
+                organization=profile_data.get("organization"),
+            )
+            users.append(OktaUser(
+                id=u.get("id", ""),
+                status=u.get("status", ""),
+                created=u.get("created"),
+                activated=u.get("activated"),
+                lastLogin=u.get("lastLogin"),
+                lastUpdated=u.get("lastUpdated"),
+                statusChanged=u.get("statusChanged"),
+                profile=profile,
+            ))
+
+        has_more = next_url is not None
+        return PaginatedList(
+            items=users,
+            page_state=PageState(
+                cursor=next_url if has_more else None,
+                has_more=has_more,
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Group CRUD
+    # ------------------------------------------------------------------
+
+    @action("Create a new group in Okta")
+    async def create_group(
+        self,
+        name: str,
+        description: Optional[str] = None,
+    ) -> OktaGroup:
+        """Create a new OKTA_GROUP in the organization.
+
+        Args:
+            name: The group name.
+            description: Optional group description.
+
+        Returns:
+            The created OktaGroup.
+        """
+        profile: dict[str, Any] = {"name": name}
+        if description is not None:
+            profile["description"] = description
+
+        data, _ = await self._request(
+            "POST", "/groups", json_body={"profile": profile},
+        )
+        gp = data.get("profile", {})
+        return OktaGroup(
+            id=data.get("id", ""),
+            created=data.get("created"),
+            lastUpdated=data.get("lastUpdated"),
+            lastMembershipUpdated=data.get("lastMembershipUpdated"),
+            type=data.get("type", ""),
+            name=gp.get("name", ""),
+            description=gp.get("description", ""),
+            profile=gp,
+        )
+
+    @action("Delete a group from Okta", dangerous=True)
+    async def delete_group(self, group_id: str) -> bool:
+        """Delete an OKTA_GROUP from the organization.
+
+        Only groups with OKTA_GROUP type can be deleted.  Deleting a
+        group does not delete the users in that group.
+
+        Args:
+            group_id: The group's Okta ID.
+
+        Returns:
+            True if the group was deleted.
+        """
+        await self._request("DELETE", f"/groups/{group_id}")
+        return True
+
+    # ------------------------------------------------------------------
+    # Actions -- Application user assignment
+    # ------------------------------------------------------------------
+
+    @action("Assign a user to an application")
+    async def assign_user_to_app(
+        self,
+        app_id: str,
+        user_id: str,
+        profile: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """Assign a user to an application for SSO and provisioning.
+
+        Args:
+            app_id: The application's Okta ID.
+            user_id: The user's Okta ID.
+            profile: Optional app-specific profile attributes for the
+                user (e.g. SSO username mappings).
+
+        Returns:
+            Dict with the application user assignment details.
+        """
+        body: dict[str, Any] = {
+            "id": user_id,
+            "scope": "USER",
+        }
+        if profile is not None:
+            body["profile"] = profile
+
+        data, _ = await self._request(
+            "POST", f"/apps/{app_id}/users", json_body=body,
+        )
+        return data if isinstance(data, dict) else {}
+
+    # ------------------------------------------------------------------
+    # Actions -- System Log
+    # ------------------------------------------------------------------
+
+    @action("List system log events")
+    async def list_system_logs(
+        self,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        filter: Optional[str] = None,
+        q: Optional[str] = None,
+        limit: int = 100,
+    ) -> PaginatedList[OktaLogEvent]:
+        """Query the Okta System Log for audit events.
+
+        The System Log records authentication events, user lifecycle
+        changes, policy evaluations, and administrator actions.
+
+        Args:
+            since: Lower time bound (ISO 8601, e.g.
+                ``2024-01-01T00:00:00Z``).
+            until: Upper time bound (ISO 8601).
+            filter: SCIM filter expression (e.g.
+                ``eventType eq "user.session.start"``).
+            q: Free-text search query across log event fields.
+            limit: Maximum events to return (max 1000, default 100).
+
+        Returns:
+            Paginated list of OktaLogEvent objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 1000)}
+        if since:
+            params["since"] = since
+        if until:
+            params["until"] = until
+        if filter:
+            params["filter"] = filter
+        if q:
+            params["q"] = q
+
+        data, next_url = await self._request(
+            "GET", "/logs", params=params,
+        )
+
+        events: list[OktaLogEvent] = []
+        for e in (data or []):
+            events.append(OktaLogEvent(
+                uuid=e.get("uuid", ""),
+                published=e.get("published"),
+                eventType=e.get("eventType"),
+                severity=e.get("severity"),
+                displayMessage=e.get("displayMessage"),
+                actor=e.get("actor"),
+                client=e.get("client"),
+                outcome=e.get("outcome"),
+                target=e.get("target") or [],
+                transaction=e.get("transaction"),
+                debugContext=e.get("debugContext"),
+                authenticationContext=e.get("authenticationContext"),
+            ))
+
+        has_more = next_url is not None
+        return PaginatedList(
+            items=events,
+            page_state=PageState(
+                cursor=next_url if has_more else None,
+                has_more=has_more,
+            ),
         )

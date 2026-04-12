@@ -126,3 +126,48 @@ class S3PresignedUrl(BaseModel):
     url: str
     expiration: int = 3600
     method: str = "GET"
+
+
+class S3ObjectTagSet(BaseModel):
+    """Tag set for an S3 object."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+    tags: dict[str, str] = Field(default_factory=dict)
+    version_id: Optional[str] = None
+
+
+class S3BucketLocation(BaseModel):
+    """Location (region) of an S3 bucket."""
+
+    model_config = ConfigDict(frozen=True)
+
+    bucket: str
+    location: Optional[str] = None
+    """AWS region code, or None for us-east-1."""
+
+
+class S3MultipartUpload(BaseModel):
+    """An in-progress multipart upload."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: str = ""
+    upload_id: str = ""
+    initiated: Optional[str] = None
+    storage_class: Optional[str] = None
+    owner_id: Optional[str] = None
+    initiator_id: Optional[str] = None
+
+
+class S3BucketVersioning(BaseModel):
+    """Versioning configuration for an S3 bucket."""
+
+    model_config = ConfigDict(frozen=True)
+
+    bucket: str
+    status: Optional[str] = None
+    """Versioning status: 'Enabled', 'Suspended', or None (never enabled)."""
+    mfa_delete: Optional[str] = None
+    """MFA delete status: 'Enabled', 'Disabled', or None."""

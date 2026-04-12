@@ -139,3 +139,22 @@ class PlaidProcessorToken(BaseModel):
 
     processor_token: str
     request_id: str = ""
+
+
+class PlaidInvestmentTransaction(BaseModel):
+    """An investment transaction from Plaid."""
+
+    model_config = ConfigDict(frozen=True)
+
+    investment_transaction_id: str = ""
+    account_id: str = ""
+    security_id: Optional[str] = None
+    date: str = ""
+    name: str = ""
+    quantity: float = 0.0
+    amount: float = 0.0
+    price: float = 0.0
+    type: str = ""
+    subtype: Optional[str] = None
+    iso_currency_code: Optional[str] = None
+    unofficial_currency_code: Optional[str] = None

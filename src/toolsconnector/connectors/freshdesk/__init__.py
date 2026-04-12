@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 from .connector import Freshdesk
-from .types import FreshdeskContact, FreshdeskReply, FreshdeskTicket
+from .types import (
+    FreshdeskCompany,
+    FreshdeskContact,
+    FreshdeskReply,
+    FreshdeskTicket,
+    FreshdeskTicketField,
+)
 
 __all__ = [
     "Freshdesk",
+    "FreshdeskCompany",
     "FreshdeskContact",
     "FreshdeskReply",
     "FreshdeskTicket",
+    "FreshdeskTicketField",
 ]

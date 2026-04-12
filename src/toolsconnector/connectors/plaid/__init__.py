@@ -7,6 +7,7 @@ from .types import (
     PlaidAccount,
     PlaidBalance,
     PlaidInstitution,
+    PlaidInvestmentTransaction,
     PlaidLinkToken,
     PlaidTransaction,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "PlaidAccount",
     "PlaidBalance",
     "PlaidInstitution",
+    "PlaidInvestmentTransaction",
     "PlaidLinkToken",
     "PlaidTransaction",
 ]

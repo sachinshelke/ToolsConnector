@@ -96,3 +96,39 @@ class IntercomTag(BaseModel):
     name: str = ""
     type: str = "tag"
     applied_count: Optional[int] = None
+
+
+class IntercomCompany(BaseModel):
+    """An Intercom company (organization)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    type: str = "company"
+    name: Optional[str] = None
+    company_id: Optional[str] = None
+    plan: Optional[str] = None
+    size: Optional[int] = None
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    monthly_spend: Optional[float] = None
+    session_count: Optional[int] = None
+    user_count: Optional[int] = None
+    remote_created_at: Optional[int] = None
+    created_at: Optional[int] = None
+    updated_at: Optional[int] = None
+    custom_attributes: dict[str, Any] = Field(default_factory=dict)
+
+
+class IntercomSegment(BaseModel):
+    """An Intercom segment (saved filter)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    type: str = "segment"
+    name: str = ""
+    count: Optional[int] = None
+    person_type: str = "user"
+    created_at: Optional[int] = None
+    updated_at: Optional[int] = None

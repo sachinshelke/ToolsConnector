@@ -14,7 +14,15 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import IntercomAdmin, IntercomContact, IntercomConversation, IntercomMessage, IntercomTag
+from .types import (
+    IntercomAdmin,
+    IntercomCompany,
+    IntercomContact,
+    IntercomConversation,
+    IntercomMessage,
+    IntercomSegment,
+    IntercomTag,
+)
 
 
 class Intercom(BaseConnector):

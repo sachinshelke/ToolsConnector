@@ -19,7 +19,17 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import PDEscalationPolicy, PDIncident, PDOncall, PDSchedule, PDService, PDUser
+from .types import (
+    PDEscalationPolicy,
+    PDIncident,
+    PDMaintenanceWindow,
+    PDOncall,
+    PDPriority,
+    PDSchedule,
+    PDService,
+    PDTeam,
+    PDUser,
+)
 
 logger = logging.getLogger("toolsconnector.pagerduty")
 
@@ -449,7 +459,7 @@ class PagerDuty(BaseConnector):
             },
         }
         resp = await self._request(
-            "PUT", f"/incidents/{incident_id}", json_body=payload,
+            "PUT", f"/incidents/{incident_id}", json=payload,
         )
         data = resp.json()
         return _parse_incident(data.get("incident", {}))
@@ -471,7 +481,7 @@ class PagerDuty(BaseConnector):
             "note": {"content": content},
         }
         resp = await self._request(
-            "POST", f"/incidents/{incident_id}/notes", json_body=payload,
+            "POST", f"/incidents/{incident_id}/notes", json=payload,
         )
         return resp.json().get("note", {})
 
@@ -530,7 +540,7 @@ class PagerDuty(BaseConnector):
             },
         }
         resp = await self._request(
-            "POST", "/services", json_body=payload,
+            "POST", "/services", json=payload,
         )
         return _parse_service(resp.json().get("service", {}))
 

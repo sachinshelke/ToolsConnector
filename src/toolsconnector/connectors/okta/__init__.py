@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from .connector import Okta
-from .types import OktaApplication, OktaGroup, OktaProfile, OktaUser
+from .types import OktaApplication, OktaGroup, OktaLogEvent, OktaProfile, OktaUser
 
 __all__ = [
     "Okta",
     "OktaApplication",
     "OktaGroup",
+    "OktaLogEvent",
     "OktaProfile",
     "OktaUser",
 ]

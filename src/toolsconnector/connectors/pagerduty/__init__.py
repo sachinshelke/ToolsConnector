@@ -3,14 +3,27 @@
 from __future__ import annotations
 
 from .connector import PagerDuty
-from .types import PDEscalationPolicy, PDIncident, PDOncall, PDSchedule, PDService, PDUser
+from .types import (
+    PDEscalationPolicy,
+    PDIncident,
+    PDMaintenanceWindow,
+    PDOncall,
+    PDPriority,
+    PDSchedule,
+    PDService,
+    PDTeam,
+    PDUser,
+)
 
 __all__ = [
     "PagerDuty",
     "PDEscalationPolicy",
     "PDIncident",
+    "PDMaintenanceWindow",
     "PDOncall",
+    "PDPriority",
     "PDSchedule",
     "PDService",
+    "PDTeam",
     "PDUser",
 ]
