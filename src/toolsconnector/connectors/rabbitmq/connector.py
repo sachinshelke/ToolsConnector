@@ -448,3 +448,98 @@ class RabbitMQ(BaseConnector):
             "DELETE", f"/exchanges/{vhost}/{name}",
         )
         return True
+
+    # ------------------------------------------------------------------
+    # Actions -- Exchange details
+    # ------------------------------------------------------------------
+
+    @action("Get details for a specific exchange")
+    async def get_exchange(
+        self,
+        vhost: str,
+        name: str,
+    ) -> RabbitExchange:
+        """Get detailed information about a specific exchange.
+
+        Args:
+            vhost: Virtual host containing the exchange.
+            name: Name of the exchange.
+
+        Returns:
+            RabbitExchange with full details.
+        """
+        encoded_vhost = self._encode_vhost(vhost)
+        encoded_name = urllib.parse.quote(name, safe="")
+        path = f"/exchanges/{encoded_vhost}/{encoded_name}"
+        data = await self._request("GET", path)
+        return RabbitExchange(**data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Bindings
+    # ------------------------------------------------------------------
+
+    @action("List bindings in a virtual host")
+    async def list_bindings(
+        self,
+        vhost: str,
+    ) -> list[dict[str, Any]]:
+        """List all bindings in a virtual host.
+
+        Bindings connect exchanges to queues or other exchanges
+        with routing keys.
+
+        Args:
+            vhost: Virtual host name.
+
+        Returns:
+            List of binding dicts with source, destination, routing_key, etc.
+        """
+        encoded_vhost = self._encode_vhost(vhost)
+        data = await self._request(
+            "GET", f"/bindings/{encoded_vhost}",
+        )
+        return data if isinstance(data, list) else []
+
+    # ------------------------------------------------------------------
+    # Actions -- Queue purge
+    # ------------------------------------------------------------------
+
+    @action("Purge all messages from a queue", dangerous=True)
+    async def purge_queue(
+        self,
+        vhost: str,
+        queue_name: str,
+    ) -> bool:
+        """Purge all messages from a queue without deleting the queue.
+
+        This is a destructive action -- all messages in the queue
+        will be permanently removed.
+
+        Args:
+            vhost: Virtual host containing the queue.
+            queue_name: Name of the queue to purge.
+
+        Returns:
+            True if the queue was purged.
+        """
+        encoded_vhost = self._encode_vhost(vhost)
+        encoded_queue = urllib.parse.quote(queue_name, safe="")
+        await self._request(
+            "DELETE",
+            f"/queues/{encoded_vhost}/{encoded_queue}/contents",
+        )
+        return True
+
+    # ------------------------------------------------------------------
+    # Actions -- Node info
+    # ------------------------------------------------------------------
+
+    @action("Get information about a broker node")
+    async def get_node_info(self) -> list[dict[str, Any]]:
+        """Get information about all nodes in the RabbitMQ cluster.
+
+        Returns:
+            List of node dicts with name, type, memory, disk, etc.
+        """
+        data = await self._request("GET", "/nodes")
+        return data if isinstance(data, list) else []

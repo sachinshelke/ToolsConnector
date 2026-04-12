@@ -579,3 +579,76 @@ class Plaid(BaseConnector):
             processor_token=data.get("processor_token", ""),
             request_id=data.get("request_id", ""),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Auth (account & routing numbers)
+    # ------------------------------------------------------------------
+
+    @action("Get account and routing numbers")
+    async def get_auth(
+        self,
+        access_token: str,
+    ) -> dict[str, Any]:
+        """Retrieve bank account and routing numbers for ACH payments.
+
+        Requires the ``auth`` product to be enabled for the Item.
+
+        Args:
+            access_token: A Plaid access token with the auth product.
+
+        Returns:
+            Dict containing ``accounts`` and ``numbers`` (ACH, EFT, etc.).
+        """
+        data = await self._request(
+            "/auth/get",
+            json={"access_token": access_token},
+        )
+        return data
+
+    # ------------------------------------------------------------------
+    # Actions -- Item management
+    # ------------------------------------------------------------------
+
+    @action("Get Item details")
+    async def get_item(
+        self,
+        access_token: str,
+    ) -> dict[str, Any]:
+        """Retrieve metadata about a linked Item (bank connection).
+
+        Returns information about the Item's status, institution,
+        available products, and consent expiration.
+
+        Args:
+            access_token: A Plaid access token.
+
+        Returns:
+            Dict containing ``item`` and ``status`` objects.
+        """
+        data = await self._request(
+            "/item/get",
+            json={"access_token": access_token},
+        )
+        return data
+
+    @action("Remove a linked Item", dangerous=True)
+    async def remove_item(
+        self,
+        access_token: str,
+    ) -> dict[str, Any]:
+        """Remove a linked Item and invalidate its access token.
+
+        This is a destructive action -- the access token will be
+        permanently invalidated and all associated data removed.
+
+        Args:
+            access_token: A Plaid access token to remove.
+
+        Returns:
+            Dict confirming the removal with request_id.
+        """
+        data = await self._request(
+            "/item/remove",
+            json={"access_token": access_token},
+        )
+        return data

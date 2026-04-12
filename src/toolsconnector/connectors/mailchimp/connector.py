@@ -554,3 +554,96 @@ class Mailchimp(BaseConnector):
             bounces=data.get("bounces"),
             send_time=data.get("send_time"),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Member details
+    # ------------------------------------------------------------------
+
+    @action("Get a single member from an audience list")
+    async def get_member(
+        self,
+        list_id: str,
+        email: str,
+    ) -> MailchimpMember:
+        """Retrieve a single member by email from an audience list.
+
+        Uses the MD5 hash of the lowercased email as the member
+        identifier per Mailchimp API requirements.
+
+        Args:
+            list_id: The Mailchimp list/audience ID.
+            email: The member's email address.
+
+        Returns:
+            MailchimpMember object.
+        """
+        subscriber_hash = self._subscriber_hash(email)
+        resp = await self._request(
+            "GET", f"/lists/{list_id}/members/{subscriber_hash}",
+        )
+        return parse_member(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Campaign management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Update an existing campaign")
+    async def update_campaign(
+        self,
+        campaign_id: str,
+        settings: dict[str, Any],
+    ) -> MailchimpCampaign:
+        """Update campaign settings (subject, from_name, etc.).
+
+        Args:
+            campaign_id: The Mailchimp campaign ID.
+            settings: Dict of campaign settings to update (e.g.
+                ``subject_line``, ``from_name``, ``reply_to``).
+
+        Returns:
+            The updated MailchimpCampaign.
+        """
+        payload: dict[str, Any] = {"settings": settings}
+        resp = await self._request(
+            "PATCH", f"/campaigns/{campaign_id}",
+            json_body=payload,
+        )
+        return parse_campaign(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Automations
+    # ------------------------------------------------------------------
+
+    @action("List automations")
+    async def list_automations(self) -> list[dict[str, Any]]:
+        """List all automations in the Mailchimp account.
+
+        Returns:
+            List of automation dicts with id, status, settings, etc.
+        """
+        resp = await self._request("GET", "/automations")
+        body = resp.json()
+        return body.get("automations", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- List growth history
+    # ------------------------------------------------------------------
+
+    @action("Get list growth history")
+    async def get_list_growth(
+        self, list_id: str,
+    ) -> list[dict[str, Any]]:
+        """Get growth history (subscriber counts over time) for a list.
+
+        Args:
+            list_id: The Mailchimp list/audience ID.
+
+        Returns:
+            List of growth history dicts with month, existing,
+            imports, opt-ins, etc.
+        """
+        resp = await self._request(
+            "GET", f"/lists/{list_id}/growth-history",
+        )
+        body = resp.json()
+        return body.get("history", [])
