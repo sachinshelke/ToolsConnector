@@ -401,3 +401,93 @@ class Anthropic(BaseConnector):
             batch_id: The batch ID to delete.
         """
         await self._request("DELETE", f"/messages/batches/{batch_id}")
+
+    # ------------------------------------------------------------------
+    # Actions — Files (Beta)
+    # ------------------------------------------------------------------
+
+    @action("Upload a file for use across API calls", dangerous=True)
+    async def upload_file(
+        self,
+        content: str,
+        filename: str,
+        media_type: str = "text/plain",
+    ) -> dict[str, Any]:
+        """Upload a file to use in subsequent Messages API calls.
+
+        Files can be referenced across multiple conversations without
+        re-uploading. Requires the ``anthropic-beta: files-api-2025-04-14``
+        header.
+
+        Args:
+            content: The file content as a string.
+            filename: Name for the uploaded file.
+            media_type: MIME type (e.g., 'text/plain', 'application/pdf').
+
+        Returns:
+            Dict with file id, filename, media_type, size_bytes.
+        """
+        import base64
+        encoded = base64.standard_b64encode(content.encode("utf-8")).decode("ascii")
+        data = await self._request(
+            "POST",
+            "/files",
+            json={
+                "filename": filename,
+                "media_type": media_type,
+                "data": encoded,
+            },
+            headers={"anthropic-beta": "files-api-2025-04-14"},
+        )
+        return data
+
+    @action("List uploaded files")
+    async def list_files(
+        self,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """List files uploaded to the API.
+
+        Args:
+            limit: Maximum number of files to return.
+
+        Returns:
+            List of file dicts with id, filename, media_type, size.
+        """
+        data = await self._request(
+            "GET",
+            "/files",
+            params={"limit": limit},
+            headers={"anthropic-beta": "files-api-2025-04-14"},
+        )
+        return data.get("data", [])
+
+    @action("Get a file by ID")
+    async def get_file(self, file_id: str) -> dict[str, Any]:
+        """Retrieve metadata for an uploaded file.
+
+        Args:
+            file_id: The file ID.
+
+        Returns:
+            File dict with id, filename, media_type, size_bytes.
+        """
+        data = await self._request(
+            "GET",
+            f"/files/{file_id}",
+            headers={"anthropic-beta": "files-api-2025-04-14"},
+        )
+        return data
+
+    @action("Delete an uploaded file", dangerous=True)
+    async def delete_file(self, file_id: str) -> None:
+        """Delete an uploaded file.
+
+        Args:
+            file_id: The file ID to delete.
+        """
+        await self._request(
+            "DELETE",
+            f"/files/{file_id}",
+            headers={"anthropic-beta": "files-api-2025-04-14"},
+        )
