@@ -491,3 +491,92 @@ class Vercel(BaseConnector):
             json={"deploymentId": deployment_id},
         )
         return _parse_deployment(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Environment variable management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Get environment variables for a project")
+    async def get_project_env_vars(
+        self, project_id: str,
+    ) -> list[VercelEnvVar]:
+        """Retrieve all environment variables for a specific project.
+
+        This returns decrypted values where the token has permission.
+
+        Args:
+            project_id: The project ID or name.
+
+        Returns:
+            List of VercelEnvVar objects with values.
+        """
+        resp = await self._request(
+            "GET", f"/v9/projects/{project_id}/env",
+            params={"decrypt": "true"},
+        )
+        body = resp.json()
+        return [_parse_env_var(e) for e in body.get("envs", [])]
+
+    @action("Delete an environment variable from a project", dangerous=True)
+    async def delete_env_var(
+        self,
+        project_id: str,
+        env_id: str,
+    ) -> bool:
+        """Delete an environment variable from a project.
+
+        This is a destructive action -- the variable will be permanently
+        removed from all deployments.
+
+        Args:
+            project_id: The project ID or name.
+            env_id: The environment variable ID to delete.
+
+        Returns:
+            True if the variable was deleted.
+        """
+        resp = await self._request(
+            "DELETE", f"/v9/projects/{project_id}/env/{env_id}",
+        )
+        return resp.status_code in (200, 204)
+
+    @action("Trigger a new deployment for a project", dangerous=True)
+    async def trigger_deploy(
+        self, project_id: str,
+    ) -> VercelDeployment:
+        """Trigger a new deployment via a Deploy Hook or by creating
+        a deployment from the latest production source.
+
+        Args:
+            project_id: The project ID or name.
+
+        Returns:
+            The triggered VercelDeployment.
+        """
+        payload: dict[str, Any] = {
+            "name": project_id,
+            "target": "production",
+        }
+        resp = await self._request(
+            "POST", "/v13/deployments", json=payload,
+        )
+        return _parse_deployment(resp.json())
+
+    @action("List team members")
+    async def list_team_members(self) -> list[dict[str, Any]]:
+        """List all members of the current team.
+
+        Returns:
+            List of team member dicts with user details and roles.
+        """
+        resp = await self._request("GET", "/v2/teams")
+        body = resp.json()
+        teams = body.get("teams", [])
+        if not teams:
+            return []
+        # Get members for the first (current) team
+        team_id = teams[0].get("id", "")
+        resp = await self._request(
+            "GET", f"/v2/teams/{team_id}/members",
+        )
+        return resp.json().get("members", [])

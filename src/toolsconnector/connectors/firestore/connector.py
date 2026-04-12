@@ -665,3 +665,209 @@ class Firestore(BaseConnector):
             }
             for doc in documents
         ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Partial updates, counting, and field access
+    # ------------------------------------------------------------------
+
+    @action("Update specific fields in a Firestore document")
+    async def update_fields(
+        self,
+        project: str,
+        collection: str,
+        document_id: str,
+        fields: dict[str, Any],
+        update_mask: Optional[list[str]] = None,
+    ) -> FirestoreDocument:
+        """Update only the specified fields of a document.
+
+        If ``update_mask`` is provided, only those field paths are
+        written.  Otherwise the mask is derived from the ``fields``
+        dict keys.
+
+        Args:
+            project: GCP project ID.
+            collection: Collection name.
+            document_id: Document ID to update.
+            fields: Dict of field names to new Python-native values.
+            update_mask: Explicit list of field paths to update.
+                Defaults to the keys of ``fields``.
+
+        Returns:
+            FirestoreDocument with the updated document.
+        """
+        path = _doc_path(project, collection, document_id)
+        encoded = _encode_fields(fields)
+
+        mask_paths = update_mask if update_mask else list(fields.keys())
+        params: dict[str, Any] = {"updateMask.fieldPaths": mask_paths}
+
+        body = {"fields": encoded}
+        resp = await self._request(
+            "PATCH", path, params=params, json_body=body,
+        )
+        return _parse_document(resp.json())
+
+    @action("Count documents in a Firestore collection")
+    async def count_documents(
+        self,
+        project: str,
+        collection: str,
+        filter: Optional[list[dict[str, Any]]] = None,
+    ) -> int:
+        """Count documents in a collection using an aggregation query.
+
+        Uses ``runAggregationQuery`` with a ``COUNT`` aggregation for
+        an efficient server-side count.
+
+        Args:
+            project: GCP project ID.
+            collection: Collection name.
+            filter: Optional list of field filter dicts (same format as
+                the ``query`` action's ``where`` parameter).
+
+        Returns:
+            Number of matching documents.
+        """
+        structured_query: dict[str, Any] = {
+            "from": [{"collectionId": collection}],
+        }
+
+        if filter:
+            filters = []
+            for w in filter:
+                filters.append({
+                    "fieldFilter": {
+                        "field": {"fieldPath": w["field"]},
+                        "op": w.get("op", "EQUAL"),
+                        "value": _encode_value(w.get("value")),
+                    },
+                })
+            if len(filters) == 1:
+                structured_query["where"] = filters[0]
+            else:
+                structured_query["where"] = {
+                    "compositeFilter": {
+                        "op": "AND",
+                        "filters": filters,
+                    },
+                }
+
+        path = (
+            f"/projects/{project}/databases/(default)/documents"
+            ":runAggregationQuery"
+        )
+        body: dict[str, Any] = {
+            "structuredAggregationQuery": {
+                "structuredQuery": structured_query,
+                "aggregations": [
+                    {
+                        "alias": "count",
+                        "count": {},
+                    },
+                ],
+            },
+        }
+
+        resp = await self._request("POST", path, json_body=body)
+        data = resp.json()
+
+        # Response is a list of result entries
+        results = data if isinstance(data, list) else [data]
+        for entry in results:
+            agg_result = entry.get("result", {}).get("aggregateFields", {})
+            count_val = agg_result.get("count", {})
+            if "integerValue" in count_val:
+                return int(count_val["integerValue"])
+        return 0
+
+    @action("Create a collection group index in Firestore", dangerous=True)
+    async def create_collection_group_index(
+        self,
+        project: str,
+        collection_group: str,
+        fields: list[dict[str, str]],
+    ) -> dict[str, Any]:
+        """Create a composite index for a collection group.
+
+        Each field dict should have ``fieldPath`` and ``order``
+        (``ASCENDING`` or ``DESCENDING``) or ``arrayConfig``
+        (``CONTAINS``) keys.
+
+        Args:
+            project: GCP project ID.
+            collection_group: The collection group ID.
+            fields: List of index field configurations.
+
+        Returns:
+            Dict with the created index metadata from the API.
+        """
+        index_fields = []
+        for f in fields:
+            entry: dict[str, str] = {"fieldPath": f["fieldPath"]}
+            if "order" in f:
+                entry["order"] = f["order"]
+            elif "arrayConfig" in f:
+                entry["arrayConfig"] = f["arrayConfig"]
+            else:
+                entry["order"] = "ASCENDING"
+            index_fields.append(entry)
+
+        path = (
+            f"/projects/{project}/databases/(default)"
+            f"/collectionGroups/{collection_group}/indexes"
+        )
+        body: dict[str, Any] = {
+            "queryScope": "COLLECTION_GROUP",
+            "fields": index_fields,
+        }
+
+        resp = await self._request("POST", path, json_body=body)
+        return resp.json()
+
+    @action("Get a single field value from a Firestore document")
+    async def get_document_field(
+        self,
+        project: str,
+        collection: str,
+        document_id: str,
+        field_path: str,
+    ) -> Any:
+        """Retrieve a single field value from a document.
+
+        Fetches the full document using a field mask to limit the
+        response to the requested field, then returns the decoded value.
+
+        Args:
+            project: GCP project ID.
+            collection: Collection name.
+            document_id: Document ID.
+            field_path: Dot-separated field path (e.g. ``"address.city"``).
+
+        Returns:
+            The decoded Python-native value of the field, or None if
+            the field does not exist.
+        """
+        path = _doc_path(project, collection, document_id)
+        params: dict[str, Any] = {"mask.fieldPaths": [field_path]}
+
+        resp = await self._request("GET", path, params=params)
+        doc = resp.json()
+
+        raw_fields = doc.get("fields", {})
+        # Navigate dotted path
+        parts = field_path.split(".")
+        current: Any = raw_fields
+        for part in parts:
+            if isinstance(current, dict):
+                if part in current:
+                    current = current[part]
+                else:
+                    return None
+            else:
+                return None
+
+        # current should be a Firestore value descriptor
+        if isinstance(current, dict):
+            return _decode_value(current)
+        return current

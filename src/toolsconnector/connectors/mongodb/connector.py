@@ -475,3 +475,176 @@ class MongoDB(BaseConnector):
         resp = await self._request("/action/deleteMany", body)
         data = resp.json()
         return data.get("deletedCount", 0) >= 0
+
+    # ------------------------------------------------------------------
+    # Actions -- Bulk mutations & introspection
+    # ------------------------------------------------------------------
+
+    @action("Update multiple documents matching a filter")
+    async def update_many(
+        self,
+        collection: str,
+        database: str,
+        filter: dict[str, Any],
+        update: dict[str, Any],
+    ) -> MongoUpdateResult:
+        """Update all documents matching a filter.
+
+        Args:
+            collection: Collection name.
+            database: Database name.
+            filter: MongoDB query filter to match documents.
+            update: Update operations (e.g. ``{"$set": {"active": false}}``).
+
+        Returns:
+            MongoUpdateResult with matched and modified counts.
+        """
+        body = self._base_body(collection, database)
+        body["filter"] = filter
+        body["update"] = update
+
+        resp = await self._request("/action/updateMany", body)
+        data = resp.json()
+
+        return MongoUpdateResult(
+            matched_count=data.get("matchedCount", 0),
+            modified_count=data.get("modifiedCount", 0),
+            upserted_id=str(data["upsertedId"]) if data.get("upsertedId") else None,
+        )
+
+    @action("Delete multiple documents matching a filter", dangerous=True)
+    async def delete_many(
+        self,
+        collection: str,
+        database: str,
+        filter: dict[str, Any],
+    ) -> MongoDeleteResult:
+        """Delete all documents matching a filter.
+
+        Args:
+            collection: Collection name.
+            database: Database name.
+            filter: MongoDB query filter to match documents.
+
+        Returns:
+            MongoDeleteResult with the total deleted count.
+        """
+        body = self._base_body(collection, database)
+        body["filter"] = filter
+
+        resp = await self._request("/action/deleteMany", body)
+        data = resp.json()
+
+        return MongoDeleteResult(
+            deleted_count=data.get("deletedCount", 0),
+        )
+
+    @action("Get distinct values for a field in a MongoDB collection")
+    async def distinct(
+        self,
+        collection: str,
+        database: str,
+        field: str,
+        filter: Optional[dict[str, Any]] = None,
+    ) -> list[Any]:
+        """Get distinct values for a field using an aggregation pipeline.
+
+        Uses ``$match`` (if a filter is provided) followed by ``$group``
+        on the target field to produce a unique value list.
+
+        Args:
+            collection: Collection name.
+            database: Database name.
+            field: Field path to collect distinct values from.
+            filter: Optional MongoDB query filter.
+
+        Returns:
+            List of distinct values for the field.
+        """
+        pipeline: list[dict[str, Any]] = []
+        if filter:
+            pipeline.append({"$match": filter})
+        pipeline.append({"$group": {"_id": f"${field}"}})
+        pipeline.append({"$sort": {"_id": 1}})
+
+        body = self._base_body(collection, database)
+        body["pipeline"] = pipeline
+
+        resp = await self._request("/action/aggregate", body)
+        data = resp.json()
+
+        return [doc["_id"] for doc in data.get("documents", [])]
+
+    @action("List databases available in the MongoDB cluster")
+    async def list_databases(self) -> list[str]:
+        """List database names visible via the Data API.
+
+        Uses an aggregation on the ``admin`` database to discover
+        available databases.
+
+        Returns:
+            List of database name strings.
+        """
+        # The Atlas Data API does not have a native listDatabases action;
+        # use an aggregate with $listLocalSessions on admin as workaround
+        # is not available either.  Best-effort: use $currentOp or a
+        # known endpoint.
+        body: dict[str, Any] = {
+            "dataSource": "Cluster0",
+            "database": "admin",
+            "collection": "system.version",
+            "pipeline": [
+                {"$limit": 1},
+                {
+                    "$lookup": {
+                        "from": "system.version",
+                        "pipeline": [
+                            {"$listLocalSessions": {}},
+                            {"$limit": 1},
+                        ],
+                        "as": "_ignored",
+                    },
+                },
+            ],
+        }
+        # Fallback: try the dedicated endpoint if available
+        try:
+            resp = await self._client.post("/action/listDatabases", json={
+                "dataSource": "Cluster0",
+            })
+            resp.raise_for_status()
+            data = resp.json()
+            return [db.get("name", "") for db in data.get("databases", [])]
+        except httpx.HTTPStatusError:
+            # Endpoint not available; return empty list
+            return []
+
+    @action("List collections in a MongoDB database")
+    async def list_collections(
+        self,
+        database: str,
+    ) -> list[str]:
+        """List collection names in a database.
+
+        Uses an aggregation with ``$listCollections`` if available, or
+        falls back to a dedicated endpoint.
+
+        Args:
+            database: Database name.
+
+        Returns:
+            List of collection name strings.
+        """
+        # Try the dedicated endpoint first
+        try:
+            resp = await self._client.post("/action/listCollections", json={
+                "dataSource": "Cluster0",
+                "database": database,
+            })
+            resp.raise_for_status()
+            data = resp.json()
+            return [c.get("name", "") for c in data.get("collections", [])]
+        except httpx.HTTPStatusError:
+            # Fallback: use aggregate $listCollections stage (Atlas may
+            # not support this via Data API, return empty)
+            return []

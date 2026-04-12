@@ -412,7 +412,7 @@ class Teams(BaseConnector):
     # Actions — Replies
     # ------------------------------------------------------------------
 
-    @action("Reply to a message in a Teams channel")
+    @action("Reply to a message in a Teams channel", dangerous=True)
     async def reply_to_message(
         self,
         team_id: str,
@@ -521,4 +521,163 @@ class Teams(BaseConnector):
             id=data.get("id"),
             availability=data.get("availability"),
             activity=data.get("activity"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Chat messages
+    # ------------------------------------------------------------------
+
+    @action("List messages in a Teams chat")
+    async def list_chat_messages(
+        self,
+        chat_id: str,
+        limit: int = 50,
+        page_url: Optional[str] = None,
+    ) -> PaginatedList[TeamsMessage]:
+        """List messages in a 1:1 or group chat.
+
+        Args:
+            chat_id: The unique ID of the chat.
+            limit: Maximum number of messages per page (max 50).
+            page_url: Full ``@odata.nextLink`` URL for the next page.
+
+        Returns:
+            Paginated list of TeamsMessage objects.
+        """
+        if page_url:
+            data = await self._request("GET", "", full_url=page_url)
+        else:
+            params: dict[str, Any] = {"$top": min(limit, 50)}
+            data = await self._request(
+                "GET",
+                f"/chats/{chat_id}/messages",
+                params=params,
+            )
+
+        messages = [_parse_message(m) for m in data.get("value", [])]
+        next_link = data.get("@odata.nextLink")
+
+        return PaginatedList(
+            items=messages,
+            page_state=PageState(
+                cursor=next_link,
+                has_more=next_link is not None,
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Channel management
+    # ------------------------------------------------------------------
+
+    @action("Update a channel in a team")
+    async def update_channel(
+        self,
+        team_id: str,
+        channel_id: str,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> TeamsChannel:
+        """Update the display name or description of a channel.
+
+        Args:
+            team_id: The unique ID of the team.
+            channel_id: The unique ID of the channel.
+            display_name: New display name for the channel.
+            description: New description for the channel.
+
+        Returns:
+            The updated TeamsChannel object.
+        """
+        payload: dict[str, Any] = {}
+        if display_name is not None:
+            payload["displayName"] = display_name
+        if description is not None:
+            payload["description"] = description
+
+        data = await self._request(
+            "PATCH",
+            f"/teams/{team_id}/channels/{channel_id}",
+            json_body=payload,
+        )
+        return _parse_channel(data)
+
+    @action("Delete a channel from a team", dangerous=True)
+    async def delete_channel(
+        self,
+        team_id: str,
+        channel_id: str,
+    ) -> None:
+        """Delete a channel from a team.
+
+        Only standard channels can be deleted; the General channel cannot
+        be removed.
+
+        Args:
+            team_id: The unique ID of the team.
+            channel_id: The unique ID of the channel to delete.
+
+        Warning:
+            This permanently deletes the channel and all its messages.
+        """
+        await self._request(
+            "DELETE",
+            f"/teams/{team_id}/channels/{channel_id}",
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Member management
+    # ------------------------------------------------------------------
+
+    @action("Add a member to a team", dangerous=True)
+    async def add_member(
+        self,
+        team_id: str,
+        user_id: str,
+        roles: Optional[list[str]] = None,
+    ) -> TeamsMember:
+        """Add a user as a member of a team.
+
+        Args:
+            team_id: The unique ID of the team.
+            user_id: The Azure AD object ID of the user to add.
+            roles: Optional list of roles to assign (e.g.
+                ``["owner"]``). Defaults to member if omitted.
+
+        Returns:
+            The created TeamsMember object.
+        """
+        payload: dict[str, Any] = {
+            "@odata.type": "#microsoft.graph.aadUserConversationMember",
+            "roles": roles or [],
+            "user@odata.bind": (
+                f"https://graph.microsoft.com/v1.0/users('{user_id}')"
+            ),
+        }
+        data = await self._request(
+            "POST",
+            f"/teams/{team_id}/members",
+            json_body=payload,
+        )
+        return _parse_member(data)
+
+    @action("Remove a member from a team", dangerous=True)
+    async def remove_member(
+        self,
+        team_id: str,
+        member_id: str,
+    ) -> None:
+        """Remove a member from a team.
+
+        Args:
+            team_id: The unique ID of the team.
+            member_id: The membership ID of the member to remove
+                (this is the conversation member ID, not the user ID).
+
+        Warning:
+            The member will immediately lose access to the team and
+            all its channels.
+        """
+        await self._request(
+            "DELETE",
+            f"/teams/{team_id}/members/{member_id}",
         )

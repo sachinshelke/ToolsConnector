@@ -129,3 +129,53 @@ class GuildMember(BaseModel):
     mute: bool = False
     avatar: Optional[str] = None
     pending: bool = False
+
+
+class DiscordGuild(BaseModel):
+    """Discord guild (server).
+
+    See https://discord.com/developers/docs/resources/guild#guild-object
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: str = ""
+    icon: Optional[str] = None
+    description: Optional[str] = None
+    owner_id: str = ""
+    region: Optional[str] = None
+    afk_channel_id: Optional[str] = None
+    afk_timeout: int = 0
+    verification_level: int = 0
+    default_message_notifications: int = 0
+    explicit_content_filter: int = 0
+    roles: list[DiscordRole] = Field(default_factory=list)
+    features: list[str] = Field(default_factory=list)
+    member_count: Optional[int] = None
+    max_members: Optional[int] = None
+    premium_tier: int = 0
+    premium_subscription_count: int = 0
+    preferred_locale: str = "en-US"
+    banner: Optional[str] = None
+    vanity_url_code: Optional[str] = None
+    nsfw_level: int = 0
+
+
+class DiscordWebhook(BaseModel):
+    """Discord webhook.
+
+    See https://discord.com/developers/docs/resources/webhook#webhook-object
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    type: int = 1
+    guild_id: Optional[str] = None
+    channel_id: Optional[str] = None
+    name: Optional[str] = None
+    avatar: Optional[str] = None
+    token: Optional[str] = None
+    url: Optional[str] = None
+    user: Optional[DiscordUser] = None

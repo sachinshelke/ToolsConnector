@@ -210,6 +210,47 @@ class SearchResult(BaseModel):
     score: Optional[float] = None
 
 
+class SlackUserGroup(BaseModel):
+    """A Slack user group (formerly called 'user groups' or 'teams').
+
+    User groups let you mention and notify many people at once via
+    a handle like ``@engineering``.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    team_id: str = ""
+    name: str = ""
+    handle: str = ""
+    description: str = ""
+    is_external: bool = False
+    is_usergroup: bool = True
+    auto_type: Optional[str] = None
+    date_create: int = 0
+    date_update: int = 0
+    date_delete: int = 0
+    created_by: str = ""
+    updated_by: str = ""
+    user_count: int = 0
+    users: list[str] = Field(default_factory=list)
+    channels: list[str] = Field(default_factory=list)
+
+
+class SlackTeam(BaseModel):
+    """Slack workspace (team) information."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: str = ""
+    domain: str = ""
+    email_domain: str = ""
+    icon: Optional[dict[str, Any]] = None
+    enterprise_id: Optional[str] = None
+    enterprise_name: Optional[str] = None
+
+
 class CustomEmoji(BaseModel):
     """A custom emoji in the workspace."""
 

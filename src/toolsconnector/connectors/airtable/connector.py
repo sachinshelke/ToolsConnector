@@ -472,3 +472,201 @@ class Airtable(BaseConnector):
             )
             for w in data.get("webhooks", [])
         ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Meta API (tables, fields, collaborators)
+    # ------------------------------------------------------------------
+
+    @action("Get all tables in an Airtable base")
+    async def get_base_tables(
+        self, base_id: str,
+    ) -> list[AirtableTable]:
+        """Retrieve all tables and their fields from a base.
+
+        Uses the Meta API endpoint ``/meta/bases/{base_id}/tables``.
+
+        Args:
+            base_id: Airtable base ID (e.g. ``appXXXXXXXXXXXXXX``).
+
+        Returns:
+            List of AirtableTable objects with field metadata.
+        """
+        resp = await self._client.get(
+            f"https://api.airtable.com/v0/meta/bases/{base_id}/tables",
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        tables: list[AirtableTable] = []
+        for t in data.get("tables", []):
+            fields = [
+                AirtableField(
+                    id=f.get("id"),
+                    name=f.get("name", ""),
+                    type=f.get("type"),
+                    description=f.get("description"),
+                )
+                for f in t.get("fields", [])
+            ]
+            tables.append(AirtableTable(
+                id=t.get("id"),
+                name=t.get("name", ""),
+                description=t.get("description"),
+                fields=fields,
+            ))
+
+        return tables
+
+    @action("Create a field in an Airtable table", dangerous=True)
+    async def create_field(
+        self,
+        base_id: str,
+        table_id: str,
+        name: str,
+        type: str,
+        options: Optional[dict[str, Any]] = None,
+    ) -> AirtableField:
+        """Create a new field (column) in a table via the Meta API.
+
+        Args:
+            base_id: Airtable base ID.
+            table_id: Table ID (e.g. ``tblXXXXXXXXXXXXXX``).
+            name: Display name for the new field.
+            type: Airtable field type (e.g. ``singleLineText``, ``number``).
+            options: Optional type-specific configuration dict.
+
+        Returns:
+            AirtableField with the created field metadata.
+        """
+        body: dict[str, Any] = {"name": name, "type": type}
+        if options:
+            body["options"] = options
+
+        resp = await self._client.post(
+            f"https://api.airtable.com/v0/meta/bases/{base_id}/tables/{table_id}/fields",
+            json=body,
+        )
+        resp.raise_for_status()
+        f = resp.json()
+
+        return AirtableField(
+            id=f.get("id"),
+            name=f.get("name", ""),
+            type=f.get("type"),
+            description=f.get("description"),
+        )
+
+    @action("Update a field in an Airtable table")
+    async def update_field(
+        self,
+        base_id: str,
+        table_id: str,
+        field_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> AirtableField:
+        """Update a field's name or description via the Meta API.
+
+        Args:
+            base_id: Airtable base ID.
+            table_id: Table ID.
+            field_id: Field ID (e.g. ``fldXXXXXXXXXXXXXX``).
+            name: New display name for the field.
+            description: New description for the field.
+
+        Returns:
+            AirtableField with the updated field metadata.
+        """
+        body: dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        if description is not None:
+            body["description"] = description
+
+        resp = await self._client.patch(
+            f"https://api.airtable.com/v0/meta/bases/{base_id}/tables/{table_id}/fields/{field_id}",
+            json=body,
+        )
+        resp.raise_for_status()
+        f = resp.json()
+
+        return AirtableField(
+            id=f.get("id"),
+            name=f.get("name", ""),
+            type=f.get("type"),
+            description=f.get("description"),
+        )
+
+    @action("List collaborators on an Airtable base")
+    async def list_collaborators(
+        self, base_id: str,
+    ) -> list[dict[str, Any]]:
+        """List all collaborators who have access to a base.
+
+        Uses the Meta API endpoint
+        ``/meta/bases/{base_id}/collaborators``.
+
+        Args:
+            base_id: Airtable base ID.
+
+        Returns:
+            List of collaborator dicts with user info and permission level.
+        """
+        resp = await self._client.get(
+            f"https://api.airtable.com/v0/meta/bases/{base_id}/collaborators",
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        return data.get("collaborators", [])
+
+    @action("Create a table in an Airtable base", dangerous=True)
+    async def create_table(
+        self,
+        base_id: str,
+        name: str,
+        fields: list[dict[str, Any]],
+        description: Optional[str] = None,
+    ) -> AirtableTable:
+        """Create a new table in a base via the Meta API.
+
+        Each field dict should contain at minimum ``name`` and ``type``
+        keys.  At least one field must be provided.
+
+        Args:
+            base_id: Airtable base ID.
+            name: Display name for the new table.
+            fields: List of field definition dicts (``name``, ``type``,
+                and optional ``options``).
+            description: Optional description for the table.
+
+        Returns:
+            AirtableTable with the created table metadata.
+        """
+        body: dict[str, Any] = {"name": name, "fields": fields}
+        if description:
+            body["description"] = description
+
+        resp = await self._client.post(
+            f"https://api.airtable.com/v0/meta/bases/{base_id}/tables",
+            json=body,
+        )
+        resp.raise_for_status()
+        t = resp.json()
+
+        parsed_fields = [
+            AirtableField(
+                id=f.get("id"),
+                name=f.get("name", ""),
+                type=f.get("type"),
+                description=f.get("description"),
+            )
+            for f in t.get("fields", [])
+        ]
+
+        return AirtableTable(
+            id=t.get("id"),
+            name=t.get("name", ""),
+            description=t.get("description"),
+            fields=parsed_fields,
+        )

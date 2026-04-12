@@ -18,7 +18,13 @@ from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import ConfluenceComment, ConfluencePage, ConfluenceSpace, ConfluenceVersion
+from .types import (
+    ConfluenceComment,
+    ConfluenceLabel,
+    ConfluencePage,
+    ConfluenceSpace,
+    ConfluenceVersion,
+)
 
 logger = logging.getLogger("toolsconnector.confluence")
 
@@ -576,3 +582,199 @@ class Confluence(BaseConnector):
             "PUT", f"/pages/{page_id}/move", json_body=payload,
         )
         return _parse_page(data)
+
+    # ------------------------------------------------------------------
+    # Actions — Page lookup and hierarchy
+    # ------------------------------------------------------------------
+
+    @action("Get a page by title within a space")
+    async def get_page_by_title(
+        self,
+        space_id: str,
+        title: str,
+    ) -> ConfluencePage:
+        """Retrieve a Confluence page by its title within a given space.
+
+        Args:
+            space_id: The ID of the space to search in.
+            title: Exact page title to match.
+
+        Returns:
+            The matching ConfluencePage.
+
+        Raises:
+            NotFoundError: If no page with the given title exists in the
+                specified space.
+        """
+        params: dict[str, Any] = {
+            "title": title,
+            "limit": 1,
+        }
+        data = await self._request(
+            "GET", f"/spaces/{space_id}/pages", params=params,
+        )
+        results = data.get("results", [])
+        if not results:
+            from toolsconnector.errors import NotFoundError
+            raise NotFoundError(
+                f"Page titled '{title}' not found in space {space_id}",
+                connector="confluence",
+                action="get_page_by_title",
+            )
+        return _parse_page(results[0])
+
+    @action("List child pages of a page")
+    async def list_page_children(
+        self,
+        page_id: str,
+        limit: int = 25,
+        cursor: Optional[str] = None,
+    ) -> PaginatedList[ConfluencePage]:
+        """List the direct child pages of a Confluence page.
+
+        Args:
+            page_id: The ID of the parent page.
+            limit: Maximum number of child pages to return (max 250).
+            cursor: Cursor token for paginating through children.
+
+        Returns:
+            Paginated list of child ConfluencePage objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 250)}
+        if cursor:
+            params["cursor"] = cursor
+
+        data = await self._request(
+            "GET", f"/pages/{page_id}/children", params=params,
+        )
+
+        pages = [_parse_page(p) for p in data.get("results", [])]
+        links = data.get("_links", {})
+        next_cursor = links.get("next")
+
+        return PaginatedList(
+            items=pages,
+            page_state=PageState(
+                cursor=next_cursor,
+                has_more=next_cursor is not None,
+            ),
+        )
+
+    @action("List ancestor pages of a page")
+    async def list_page_ancestors(
+        self,
+        page_id: str,
+    ) -> list[ConfluencePage]:
+        """List the ancestor (parent chain) pages of a Confluence page.
+
+        Returns pages from the immediate parent up to the space root.
+
+        Args:
+            page_id: The ID of the page to get ancestors for.
+
+        Returns:
+            List of ancestor ConfluencePage objects, ordered from
+            immediate parent to root.
+        """
+        data = await self._request(
+            "GET", f"/pages/{page_id}/ancestors",
+        )
+        return [_parse_page(a) for a in data.get("results", [])]
+
+    # ------------------------------------------------------------------
+    # Actions — Labels
+    # ------------------------------------------------------------------
+
+    @action("Get labels on a page")
+    async def get_page_labels(
+        self,
+        page_id: str,
+    ) -> list[ConfluenceLabel]:
+        """Get all labels attached to a Confluence page.
+
+        Args:
+            page_id: The ID of the page to get labels for.
+
+        Returns:
+            List of ConfluenceLabel objects.
+        """
+        data = await self._request(
+            "GET", f"/pages/{page_id}/labels",
+        )
+        return [
+            ConfluenceLabel(
+                id=lbl.get("id", ""),
+                name=lbl.get("name", ""),
+                prefix=lbl.get("prefix"),
+            )
+            for lbl in data.get("results", [])
+        ]
+
+    @action("Add a label to a page", dangerous=True)
+    async def add_page_label(
+        self,
+        page_id: str,
+        name: str,
+    ) -> ConfluenceLabel:
+        """Add a label to a Confluence page.
+
+        Args:
+            page_id: The ID of the page to label.
+            name: The label name (e.g., ``"important"``).
+
+        Returns:
+            The created ConfluenceLabel.
+        """
+        payload: dict[str, Any] = {
+            "name": name,
+        }
+        data = await self._request(
+            "POST", f"/pages/{page_id}/labels", json_body=payload,
+        )
+        # v2 API may return the label directly or within a results array
+        lbl = data if "name" in data else data.get("results", [{}])[0]
+        return ConfluenceLabel(
+            id=lbl.get("id", ""),
+            name=lbl.get("name", name),
+            prefix=lbl.get("prefix"),
+        )
+
+    @action("List pages in a specific space")
+    async def list_space_pages(
+        self,
+        space_id: str,
+        limit: int = 25,
+        cursor: Optional[str] = None,
+    ) -> PaginatedList[ConfluencePage]:
+        """List all pages belonging to a specific Confluence space.
+
+        This is a convenience alias that calls the space-scoped pages
+        endpoint directly.
+
+        Args:
+            space_id: The ID of the space to list pages from.
+            limit: Maximum pages per request (max 250).
+            cursor: Cursor token for pagination.
+
+        Returns:
+            Paginated list of ConfluencePage objects in the space.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 250)}
+        if cursor:
+            params["cursor"] = cursor
+
+        data = await self._request(
+            "GET", f"/spaces/{space_id}/pages", params=params,
+        )
+
+        pages = [_parse_page(p) for p in data.get("results", [])]
+        links = data.get("_links", {})
+        next_cursor = links.get("next")
+
+        return PaginatedList(
+            items=pages,
+            page_state=PageState(
+                cursor=next_cursor,
+                has_more=next_cursor is not None,
+            ),
+        )

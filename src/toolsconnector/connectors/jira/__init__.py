@@ -8,11 +8,15 @@ from .types import (
     JiraBoard,
     JiraComment,
     JiraIssue,
+    JiraIssueType,
     JiraPriority,
     JiraProject,
+    JiraResolution,
     JiraSprint,
+    JiraStatus,
     JiraTransition,
     JiraUser,
+    JiraWorklog,
 )
 
 __all__ = [
@@ -21,9 +25,13 @@ __all__ = [
     "JiraBoard",
     "JiraComment",
     "JiraIssue",
+    "JiraIssueType",
     "JiraPriority",
     "JiraProject",
+    "JiraResolution",
     "JiraSprint",
+    "JiraStatus",
     "JiraTransition",
     "JiraUser",
+    "JiraWorklog",
 ]

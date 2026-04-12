@@ -165,3 +165,32 @@ class JiraAttachment(BaseModel):
     created: Optional[str] = None
     content_url: Optional[str] = None
     self_url: Optional[str] = None
+
+
+class JiraWorklog(BaseModel):
+    """A worklog entry on a Jira issue."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    issue_id: Optional[str] = None
+    author: Optional[JiraUser] = None
+    update_author: Optional[JiraUser] = None
+    time_spent: str = ""
+    time_spent_seconds: int = 0
+    comment: Optional[Any] = None
+    started: Optional[str] = None
+    created: Optional[str] = None
+    updated: Optional[str] = None
+    self_url: Optional[str] = None
+
+
+class JiraResolution(BaseModel):
+    """An issue resolution."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str = ""
+    name: str = ""
+    description: Optional[str] = None
+    self_url: Optional[str] = None

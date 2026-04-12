@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 from .connector import Confluence
-from .types import ConfluencePage, ConfluenceSpace
+from .types import (
+    ConfluenceComment,
+    ConfluenceLabel,
+    ConfluencePage,
+    ConfluenceSpace,
+    ConfluenceVersion,
+)
 
 __all__ = [
     "Confluence",
+    "ConfluenceComment",
+    "ConfluenceLabel",
     "ConfluencePage",
     "ConfluenceSpace",
+    "ConfluenceVersion",
 ]

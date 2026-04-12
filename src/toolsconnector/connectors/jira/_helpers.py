@@ -14,8 +14,10 @@ from .types import (
     JiraIssueType,
     JiraPriority,
     JiraProject,
+    JiraResolution,
     JiraStatus,
     JiraUser,
+    JiraWorklog,
 )
 
 
@@ -164,5 +166,46 @@ def parse_comment(data: dict[str, Any]) -> JiraComment:
         author=parse_user(data.get("author")),
         created=data.get("created"),
         updated=data.get("updated"),
+        self_url=data.get("self"),
+    )
+
+
+def parse_worklog(data: dict[str, Any]) -> JiraWorklog:
+    """Parse a Jira worklog JSON into a JiraWorklog model.
+
+    Args:
+        data: Raw worklog JSON dict from the Jira API.
+
+    Returns:
+        JiraWorklog instance.
+    """
+    return JiraWorklog(
+        id=data.get("id", ""),
+        issue_id=data.get("issueId"),
+        author=parse_user(data.get("author")),
+        update_author=parse_user(data.get("updateAuthor")),
+        time_spent=data.get("timeSpent", ""),
+        time_spent_seconds=data.get("timeSpentSeconds", 0),
+        comment=data.get("comment"),
+        started=data.get("started"),
+        created=data.get("created"),
+        updated=data.get("updated"),
+        self_url=data.get("self"),
+    )
+
+
+def parse_resolution(data: dict[str, Any]) -> JiraResolution:
+    """Parse a Jira resolution JSON into a JiraResolution model.
+
+    Args:
+        data: Raw resolution JSON dict from the Jira API.
+
+    Returns:
+        JiraResolution instance.
+    """
+    return JiraResolution(
+        id=data.get("id", ""),
+        name=data.get("name", ""),
+        description=data.get("description"),
         self_url=data.get("self"),
     )

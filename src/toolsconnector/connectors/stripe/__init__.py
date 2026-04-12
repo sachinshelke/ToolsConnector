@@ -1,4 +1,4 @@
-"""Stripe connector — customers, charges, payment intents, invoices, and balance."""
+"""Stripe connector — customers, charges, payment intents, invoices, balance, and more."""
 
 from __future__ import annotations
 
@@ -11,12 +11,16 @@ from .types import (
     StripeCharge,
     StripeCheckoutSession,
     StripeCustomer,
+    StripeDispute,
+    StripeEvent,
     StripeInvoice,
     StripePaymentMethod,
+    StripePayout,
     StripePrice,
     StripeProduct,
     StripeRecurring,
     StripeRefund,
+    StripeSetupIntent,
     StripeSubscription,
 )
 
@@ -29,11 +33,15 @@ __all__ = [
     "StripeCharge",
     "StripeCheckoutSession",
     "StripeCustomer",
+    "StripeDispute",
+    "StripeEvent",
     "StripeInvoice",
     "StripePaymentMethod",
+    "StripePayout",
     "StripePrice",
     "StripeProduct",
     "StripeRecurring",
     "StripeRefund",
+    "StripeSetupIntent",
     "StripeSubscription",
 ]

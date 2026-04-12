@@ -290,3 +290,82 @@ class StripePaymentMethod(BaseModel):
     livemode: bool = False
     metadata: dict[str, str] = Field(default_factory=dict)
     created: Optional[int] = None
+
+
+class StripeDispute(BaseModel):
+    """A Stripe dispute (chargeback) object."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    object: str = "dispute"
+    amount: int = 0
+    currency: Optional[str] = None
+    charge: Optional[str] = None
+    payment_intent: Optional[str] = None
+    reason: Optional[str] = None
+    status: Optional[str] = None
+    is_charge_refundable: bool = False
+    has_evidence: bool = False
+    evidence_due_by: Optional[int] = None
+    livemode: bool = False
+    metadata: dict[str, str] = Field(default_factory=dict)
+    created: Optional[int] = None
+
+
+class StripePayout(BaseModel):
+    """A Stripe payout object."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    object: str = "payout"
+    amount: int = 0
+    currency: Optional[str] = None
+    status: Optional[str] = None
+    type: Optional[str] = None
+    method: Optional[str] = None
+    description: Optional[str] = None
+    destination: Optional[str] = None
+    arrival_date: Optional[int] = None
+    failure_code: Optional[str] = None
+    failure_message: Optional[str] = None
+    livemode: bool = False
+    metadata: dict[str, str] = Field(default_factory=dict)
+    created: Optional[int] = None
+
+
+class StripeEvent(BaseModel):
+    """A Stripe event (webhook event) object."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    object: str = "event"
+    type: Optional[str] = None
+    api_version: Optional[str] = None
+    data: Optional[dict[str, Any]] = None
+    request: Optional[dict[str, Any]] = None
+    pending_webhooks: int = 0
+    livemode: bool = False
+    created: Optional[int] = None
+
+
+class StripeSetupIntent(BaseModel):
+    """A Stripe SetupIntent object for collecting payment methods."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    object: str = "setup_intent"
+    status: Optional[str] = None
+    client_secret: Optional[str] = None
+    customer: Optional[str] = None
+    description: Optional[str] = None
+    payment_method: Optional[str] = None
+    payment_method_types: list[str] = Field(default_factory=list)
+    usage: Optional[str] = None
+    latest_attempt: Optional[str] = None
+    livemode: bool = False
+    metadata: dict[str, str] = Field(default_factory=dict)
+    created: Optional[int] = None

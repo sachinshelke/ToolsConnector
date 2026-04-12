@@ -19,7 +19,7 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from .types import PDIncident, PDOncall, PDService, PDUser
+from .types import PDEscalationPolicy, PDIncident, PDOncall, PDSchedule, PDService, PDUser
 
 logger = logging.getLogger("toolsconnector.pagerduty")
 
@@ -533,3 +533,150 @@ class PagerDuty(BaseConnector):
             "POST", "/services", json_body=payload,
         )
         return _parse_service(resp.json().get("service", {}))
+
+    # ------------------------------------------------------------------
+    # Actions -- Incident merging
+    # ------------------------------------------------------------------
+
+    @action("Merge incidents into a target incident", dangerous=True)
+    async def merge_incidents(
+        self,
+        source_ids: list[str],
+        target_id: str,
+    ) -> PDIncident:
+        """Merge one or more source incidents into a target incident.
+
+        This is a destructive action -- source incidents will be resolved
+        and their alerts moved to the target incident.
+
+        Args:
+            source_ids: List of incident IDs to merge from.
+            target_id: The incident ID to merge into.
+
+        Returns:
+            The merged target PDIncident.
+        """
+        payload: dict[str, Any] = {
+            "source_incidents": [
+                {"id": sid, "type": "incident_reference"}
+                for sid in source_ids
+            ],
+        }
+        resp = await self._request(
+            "PUT", f"/incidents/{target_id}/merge", json=payload,
+        )
+        return _parse_incident(resp.json().get("incident", {}))
+
+    # ------------------------------------------------------------------
+    # Actions -- Escalation Policies
+    # ------------------------------------------------------------------
+
+    @action("List escalation policies")
+    async def list_escalation_policies(
+        self,
+        limit: int = 25,
+    ) -> PaginatedList[PDEscalationPolicy]:
+        """List all escalation policies in the PagerDuty account.
+
+        Args:
+            limit: Maximum policies per page (max 100).
+
+        Returns:
+            Paginated list of PDEscalationPolicy objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        resp = await self._request(
+            "GET", "/escalation_policies", params=params,
+        )
+        body = resp.json()
+        items = [
+            PDEscalationPolicy(
+                id=ep.get("id"),
+                type=ep.get("type", "escalation_policy"),
+                name=ep.get("name"),
+                description=ep.get("description"),
+                html_url=ep.get("html_url"),
+                summary=ep.get("summary"),
+                num_loops=ep.get("num_loops", 0),
+                on_call_handoff_notifications=ep.get("on_call_handoff_notifications"),
+                escalation_rules=ep.get("escalation_rules", []),
+                services=ep.get("services", []),
+                teams=ep.get("teams", []),
+            )
+            for ep in body.get("escalation_policies", [])
+        ]
+        return PaginatedList(
+            items=items,
+            page_state=PageState(has_more=False),
+        )
+
+    @action("Get a single escalation policy by ID")
+    async def get_escalation_policy(
+        self, policy_id: str,
+    ) -> PDEscalationPolicy:
+        """Retrieve a single escalation policy by its ID.
+
+        Args:
+            policy_id: The PagerDuty escalation policy ID.
+
+        Returns:
+            PDEscalationPolicy object.
+        """
+        resp = await self._request(
+            "GET", f"/escalation_policies/{policy_id}",
+        )
+        ep = resp.json().get("escalation_policy", {})
+        return PDEscalationPolicy(
+            id=ep.get("id"),
+            type=ep.get("type", "escalation_policy"),
+            name=ep.get("name"),
+            description=ep.get("description"),
+            html_url=ep.get("html_url"),
+            summary=ep.get("summary"),
+            num_loops=ep.get("num_loops", 0),
+            on_call_handoff_notifications=ep.get("on_call_handoff_notifications"),
+            escalation_rules=ep.get("escalation_rules", []),
+            services=ep.get("services", []),
+            teams=ep.get("teams", []),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Schedules
+    # ------------------------------------------------------------------
+
+    @action("List schedules")
+    async def list_schedules(
+        self,
+        limit: int = 25,
+    ) -> PaginatedList[PDSchedule]:
+        """List all on-call schedules in the PagerDuty account.
+
+        Args:
+            limit: Maximum schedules per page (max 100).
+
+        Returns:
+            Paginated list of PDSchedule objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        resp = await self._request(
+            "GET", "/schedules", params=params,
+        )
+        body = resp.json()
+        items = [
+            PDSchedule(
+                id=s.get("id"),
+                type=s.get("type", "schedule"),
+                name=s.get("name"),
+                description=s.get("description"),
+                html_url=s.get("html_url"),
+                summary=s.get("summary"),
+                time_zone=s.get("time_zone"),
+                escalation_policies=s.get("escalation_policies", []),
+                users=s.get("users", []),
+            )
+            for s in body.get("schedules", [])
+        ]
+        return PaginatedList(
+            items=items,
+            page_state=PageState(has_more=False),
+        )
