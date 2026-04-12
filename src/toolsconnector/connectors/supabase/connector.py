@@ -441,3 +441,151 @@ class Supabase(BaseConnector):
         )
         resp.raise_for_status()
         return resp.json()
+
+    # ------------------------------------------------------------------
+    # Actions -- Filtered updates & bulk operations
+    # ------------------------------------------------------------------
+
+    @action("Update records matching a filter in a Supabase table")
+    async def update_records(
+        self,
+        table: str,
+        filter_column: str,
+        filter_value: str,
+        data: dict[str, Any],
+    ) -> list[SupabaseRecord]:
+        """Update all records matching a PostgREST filter expression.
+
+        Uses PATCH with a query-parameter filter so multiple rows can be
+        updated in a single call.
+
+        Args:
+            table: Table name.
+            filter_column: Column to filter on.
+            filter_value: PostgREST filter expression (e.g. ``"eq.active"``).
+            data: Dict of column-name to new value.
+
+        Returns:
+            List of SupabaseRecord objects for the updated rows.
+        """
+        params: dict[str, str] = {filter_column: filter_value}
+        resp = await self._request(
+            "PATCH", f"/{table}", params=params, json_body=data,
+        )
+        rows = resp.json()
+        return [SupabaseRecord(data=r) for r in (rows if isinstance(rows, list) else [rows])]
+
+    @action("Select specific columns from a Supabase table")
+    async def select_columns(
+        self,
+        table: str,
+        columns: list[str],
+        filter: Optional[dict[str, str]] = None,
+        limit: int = 100,
+    ) -> list[SupabaseRecord]:
+        """Select specific columns from a table with optional filtering.
+
+        Args:
+            table: Table name.
+            columns: List of column names to include in the response.
+            filter: Optional PostgREST filter dict.
+            limit: Maximum number of records to return.
+
+        Returns:
+            List of SupabaseRecord objects with only the requested columns.
+        """
+        params: dict[str, Any] = {"select": ",".join(columns)}
+        if filter:
+            params.update(filter)
+
+        extra_headers = {"Range": f"0-{limit - 1}"}
+        resp = await self._request(
+            "GET", f"/{table}", params=params, extra_headers=extra_headers,
+        )
+        rows = resp.json()
+        return [SupabaseRecord(data=r) for r in rows]
+
+    @action("Get an exact count of records in a Supabase table")
+    async def count_exact(
+        self,
+        table: str,
+        filter: Optional[dict[str, str]] = None,
+    ) -> int:
+        """Get an exact count of records using the HEAD method.
+
+        Uses the ``Prefer: count=exact`` header with a HEAD request so
+        no row data is transferred.
+
+        Args:
+            table: Table name.
+            filter: Optional PostgREST filter dict.
+
+        Returns:
+            Exact number of matching records.
+        """
+        params: dict[str, Any] = {"select": "*"}
+        if filter:
+            params.update(filter)
+
+        extra_headers = {"Prefer": "count=exact"}
+        resp = await self._request(
+            "HEAD", f"/{table}", params=params, extra_headers=extra_headers,
+        )
+        content_range = resp.headers.get("content-range", "")
+        if "/" in content_range:
+            total = content_range.split("/")[-1]
+            return int(total) if total != "*" else 0
+        return 0
+
+    @action("Insert multiple records into a Supabase table", dangerous=True)
+    async def insert_many(
+        self,
+        table: str,
+        records: list[dict[str, Any]],
+    ) -> list[SupabaseRecord]:
+        """Insert multiple records in a single POST request.
+
+        The array of record dicts is sent as the JSON body.  All rows
+        are inserted within a single transaction.
+
+        Args:
+            table: Table name.
+            records: List of dicts, each mapping column names to values.
+
+        Returns:
+            List of SupabaseRecord objects for the inserted rows.
+        """
+        resp = await self._request("POST", f"/{table}", json_body=records)
+        rows = resp.json()
+        return [SupabaseRecord(data=r) for r in (rows if isinstance(rows, list) else [rows])]
+
+    @action("Sign up a new user via Supabase Auth", dangerous=True)
+    async def auth_sign_up(
+        self,
+        email: str,
+        password: str,
+    ) -> dict[str, Any]:
+        """Create a new user account via the Supabase Auth endpoint.
+
+        Sends a POST request to ``/auth/v1/signup`` with email and
+        password credentials.
+
+        Args:
+            email: The new user's email address.
+            password: The new user's password.
+
+        Returns:
+            Dict with user and session data from the Auth response.
+        """
+        base = str(self._client.base_url).replace("/rest/v1", "")
+        url = f"{base}/auth/v1/signup"
+        resp = await self._client.post(
+            url,
+            json={"email": email, "password": password},
+            headers={
+                "apikey": self._anon_key,
+                "Content-Type": "application/json",
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()

@@ -18,9 +18,13 @@ from toolsconnector.types import PageState, PaginatedList
 from ._helpers import (
     parse_comment,
     parse_issue,
+    parse_issue_type,
+    parse_priority,
     parse_project,
+    parse_resolution,
     parse_status,
     parse_user,
+    parse_worklog,
 )
 from .types import (
     JiraAttachment,
@@ -30,10 +34,12 @@ from .types import (
     JiraIssueType,
     JiraPriority,
     JiraProject,
+    JiraResolution,
     JiraSprint,
     JiraStatus,
     JiraTransition,
     JiraUser,
+    JiraWorklog,
 )
 
 
@@ -737,3 +743,255 @@ class Jira(BaseConnector):
         if user is None:
             return JiraUser(account_id=account_id)
         return user
+
+    # ------------------------------------------------------------------
+    # Actions — Projects (extended)
+    # ------------------------------------------------------------------
+
+    @action("Create a new project", dangerous=True)
+    async def create_project(
+        self,
+        name: str,
+        key: str,
+        project_type_key: str,
+        lead_account_id: str,
+    ) -> JiraProject:
+        """Create a new Jira project.
+
+        Args:
+            name: Display name for the project.
+            key: Unique project key (e.g., ``"PROJ"``).  Must be uppercase
+                alphanumeric, 2-10 characters.
+            project_type_key: The type of project (e.g., ``"software"``,
+                ``"service_desk"``, ``"business"``).
+            lead_account_id: Atlassian account ID of the project lead.
+
+        Returns:
+            The newly created JiraProject.
+        """
+        body: dict[str, Any] = {
+            "name": name,
+            "key": key,
+            "projectTypeKey": project_type_key,
+            "leadAccountId": lead_account_id,
+        }
+        data = await self._request("POST", "/project", json=body)
+        # Jira returns minimal data; fetch the full project.
+        return self._parse_project(
+            await self._request("GET", f"/project/{data.get('key', key)}")
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Issue types & metadata
+    # ------------------------------------------------------------------
+
+    @action("List issue types available in the instance")
+    async def list_issue_types(
+        self,
+        project_id: Optional[str] = None,
+    ) -> list[JiraIssueType]:
+        """List issue types, optionally filtered by project.
+
+        Args:
+            project_id: Optional project ID to scope the issue types to
+                a specific project.  When omitted, returns all global
+                issue types.
+
+        Returns:
+            List of JiraIssueType objects.
+        """
+        if project_id:
+            data = await self._request(
+                "GET",
+                "/issuetype/project",
+                params={"projectId": project_id},
+            )
+        else:
+            data = await self._request("GET", "/issuetype")
+
+        # data is a list when fetching all issue types
+        items = data if isinstance(data, list) else data.get("issueTypes", data)
+        return [parse_issue_type(it) for it in items if it]
+
+    @action("List available priorities")
+    async def list_priorities(self) -> list[JiraPriority]:
+        """List all issue priorities configured in the Jira instance.
+
+        Returns:
+            List of JiraPriority objects ordered by sequence.
+        """
+        data = await self._request("GET", "/priority")
+        items = data if isinstance(data, list) else data.get("values", [])
+        return [parse_priority(p) for p in items if p]
+
+    @action("List available resolutions")
+    async def list_resolutions(self) -> list[JiraResolution]:
+        """List all issue resolutions configured in the Jira instance.
+
+        Returns:
+            List of JiraResolution objects.
+        """
+        data = await self._request("GET", "/resolution")
+        items = data if isinstance(data, list) else data.get("values", [])
+        return [parse_resolution(r) for r in items if r]
+
+    # ------------------------------------------------------------------
+    # Actions — Worklogs
+    # ------------------------------------------------------------------
+
+    @action("Add a worklog entry to an issue", dangerous=True)
+    async def add_worklog(
+        self,
+        issue_key: str,
+        time_spent: str,
+        comment: Optional[str] = None,
+    ) -> JiraWorklog:
+        """Log time spent on a Jira issue.
+
+        Args:
+            issue_key: The issue key (e.g., ``"PROJ-123"``).
+            time_spent: Time spent in Jira duration format
+                (e.g., ``"2h 30m"``, ``"1d"``, ``"45m"``).
+            comment: Optional plain-text comment describing the work done.
+
+        Returns:
+            The created JiraWorklog entry.
+        """
+        body: dict[str, Any] = {"timeSpent": time_spent}
+        if comment:
+            body["comment"] = {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [{"type": "text", "text": comment}],
+                    }
+                ],
+            }
+
+        data = await self._request(
+            "POST", f"/issue/{issue_key}/worklog", json=body
+        )
+        return parse_worklog(data)
+
+    @action("List worklog entries on an issue")
+    async def list_worklogs(self, issue_key: str) -> list[JiraWorklog]:
+        """List all worklog entries on a Jira issue.
+
+        Args:
+            issue_key: The issue key (e.g., ``"PROJ-123"``).
+
+        Returns:
+            List of JiraWorklog entries.
+        """
+        data = await self._request(
+            "GET", f"/issue/{issue_key}/worklog"
+        )
+        return [
+            parse_worklog(w) for w in data.get("worklogs", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions — Watchers (extended)
+    # ------------------------------------------------------------------
+
+    @action("List watchers on an issue")
+    async def list_watchers(self, issue_key: str) -> list[JiraUser]:
+        """List all users watching a Jira issue.
+
+        Args:
+            issue_key: The issue key (e.g., ``"PROJ-123"``).
+
+        Returns:
+            List of JiraUser objects watching the issue.
+        """
+        data = await self._request(
+            "GET", f"/issue/{issue_key}/watchers"
+        )
+        watchers: list[JiraUser] = []
+        for w in data.get("watchers", []):
+            user = self._parse_user(w)
+            if user is not None:
+                watchers.append(user)
+        return watchers
+
+    @action("Remove a watcher from an issue")
+    async def remove_watcher(
+        self,
+        issue_key: str,
+        account_id: str,
+    ) -> None:
+        """Remove a user from an issue's watcher list.
+
+        Args:
+            issue_key: The issue key (e.g., ``"PROJ-123"``).
+            account_id: The Atlassian account ID of the user to remove.
+        """
+        await self._request(
+            "DELETE",
+            f"/issue/{issue_key}/watchers",
+            params={"accountId": account_id},
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Issue links
+    # ------------------------------------------------------------------
+
+    @action("Create a link between two issues", dangerous=True)
+    async def link_issues(
+        self,
+        inward_key: str,
+        outward_key: str,
+        link_type: str,
+    ) -> None:
+        """Create a link between two Jira issues.
+
+        Args:
+            inward_key: The issue key for the inward issue
+                (e.g., ``"PROJ-100"``).
+            outward_key: The issue key for the outward issue
+                (e.g., ``"PROJ-200"``).
+            link_type: The name of the link type (e.g., ``"Blocks"``,
+                ``"Duplicate"``, ``"Relates"``).
+        """
+        body: dict[str, Any] = {
+            "type": {"name": link_type},
+            "inwardIssue": {"key": inward_key},
+            "outwardIssue": {"key": outward_key},
+        }
+        await self._request("POST", "/issueLink", json=body)
+
+    # ------------------------------------------------------------------
+    # Actions — User search
+    # ------------------------------------------------------------------
+
+    @action("Search for Jira users")
+    async def search_users(
+        self,
+        query: str,
+        limit: int = 50,
+    ) -> list[JiraUser]:
+        """Search for Jira users by display name or email address.
+
+        Args:
+            query: The search string to match against user display names
+                and email addresses.
+            limit: Maximum number of results to return (max 1000).
+
+        Returns:
+            List of matching JiraUser objects.
+        """
+        params: dict[str, Any] = {
+            "query": query,
+            "maxResults": min(limit, 1000),
+        }
+        data = await self._request("GET", "/user/search", params=params)
+        # /user/search returns a bare list
+        items = data if isinstance(data, list) else []
+        users: list[JiraUser] = []
+        for u in items:
+            user = self._parse_user(u)
+            if user is not None:
+                users.append(user)
+        return users

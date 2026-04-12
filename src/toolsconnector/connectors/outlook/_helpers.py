@@ -10,7 +10,11 @@ from typing import Any
 from .types import (
     EmailRecipient,
     MailFolder,
+    MailRule,
+    MailTip,
+    OutlookAttachment,
     OutlookCalendarEvent,
+    OutlookCategory,
     OutlookContact,
     OutlookMessage,
 )
@@ -161,4 +165,85 @@ def parse_folder(data: dict[str, Any]) -> MailFolder:
         child_folder_count=data.get("childFolderCount", 0),
         total_item_count=data.get("totalItemCount", 0),
         unread_item_count=data.get("unreadItemCount", 0),
+    )
+
+
+def parse_attachment(data: dict[str, Any]) -> OutlookAttachment:
+    """Parse an MS Graph attachment JSON into an OutlookAttachment model.
+
+    Args:
+        data: Raw JSON response from the attachments endpoint.
+
+    Returns:
+        Populated OutlookAttachment instance.
+    """
+    return OutlookAttachment(
+        id=data.get("id", ""),
+        name=data.get("name"),
+        content_type=data.get("contentType"),
+        size=data.get("size", 0),
+        is_inline=data.get("isInline", False),
+        last_modified_datetime=data.get("lastModifiedDateTime"),
+        content_id=data.get("contentId"),
+        content_bytes=data.get("contentBytes"),
+    )
+
+
+def parse_mail_rule(data: dict[str, Any]) -> MailRule:
+    """Parse an MS Graph messageRule JSON into a MailRule model.
+
+    Args:
+        data: Raw JSON response from the messageRules endpoint.
+
+    Returns:
+        Populated MailRule instance.
+    """
+    return MailRule(
+        id=data.get("id", ""),
+        display_name=data.get("displayName"),
+        sequence=data.get("sequence", 0),
+        is_enabled=data.get("isEnabled", True),
+        conditions=data.get("conditions"),
+        actions=data.get("actions"),
+        exceptions=data.get("exceptions"),
+        has_error=data.get("hasError", False),
+        is_read_only=data.get("isReadOnly", False),
+    )
+
+
+def parse_category(data: dict[str, Any]) -> OutlookCategory:
+    """Parse an MS Graph outlookCategory JSON into an OutlookCategory model.
+
+    Args:
+        data: Raw JSON response from the masterCategories endpoint.
+
+    Returns:
+        Populated OutlookCategory instance.
+    """
+    return OutlookCategory(
+        id=data.get("id", ""),
+        display_name=data.get("displayName", ""),
+        color=data.get("color"),
+    )
+
+
+def parse_mail_tip(data: dict[str, Any]) -> MailTip:
+    """Parse an MS Graph mailTips JSON into a MailTip model.
+
+    Args:
+        data: Raw JSON response from the getMailTips endpoint.
+
+    Returns:
+        Populated MailTip instance.
+    """
+    email_addr = data.get("emailAddress", {})
+    return MailTip(
+        email_address=email_addr.get("address") if isinstance(email_addr, dict) else email_addr,
+        automatic_replies=data.get("automaticReplies"),
+        mailbox_full=data.get("mailboxFull", False),
+        max_message_size=data.get("maxMessageSize"),
+        is_moderated=data.get("isModerated", False),
+        delivery_restricted=data.get("deliveryRestricted", False),
+        external_member_count=data.get("externalMemberCount"),
+        total_member_count=data.get("totalMemberCount"),
     )

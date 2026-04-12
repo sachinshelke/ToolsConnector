@@ -520,3 +520,89 @@ class Datadog(BaseConnector):
             message=data.get("message"),
             active=data.get("active", True),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Monitor management (unmute, search)
+    # ------------------------------------------------------------------
+
+    @action("Unmute a Datadog monitor")
+    async def unmute_monitor(self, monitor_id: int) -> DatadogMonitor:
+        """Unmute a previously muted monitor so it resumes notifications.
+
+        Args:
+            monitor_id: The numeric monitor ID to unmute.
+
+        Returns:
+            The unmuted DatadogMonitor object.
+        """
+        resp = await self._request("POST", f"/v1/monitor/{monitor_id}/unmute")
+        return _parse_monitor(resp.json())
+
+    @action("Search Datadog monitors by query")
+    async def search_monitors(
+        self,
+        query: str,
+        limit: int = 50,
+    ) -> PaginatedList[DatadogMonitor]:
+        """Search monitors using a query string.
+
+        Args:
+            query: Search query (e.g. ``"tag:env:prod"`` or monitor name).
+            limit: Maximum number of monitors to return.
+
+        Returns:
+            Paginated list of matching DatadogMonitor objects.
+        """
+        params: dict[str, Any] = {
+            "query": query,
+            "page_size": min(limit, 1000),
+        }
+        resp = await self._request("GET", "/v1/monitor/search", params=params)
+        body = resp.json()
+        items = [_parse_monitor(m) for m in body.get("monitors", [])]
+        return PaginatedList(
+            items=items,
+            page_state=PageState(has_more=False),
+            total_count=body.get("metadata", {}).get("total_count"),
+        )
+
+    @action("List scheduled downtimes")
+    async def list_downtimes(self) -> PaginatedList[DatadogDowntime]:
+        """List all scheduled downtimes in the Datadog account.
+
+        Returns:
+            Paginated list of DatadogDowntime objects.
+        """
+        resp = await self._request("GET", "/v1/downtime")
+        body = resp.json()
+        items = [
+            DatadogDowntime(
+                id=d.get("id"),
+                scope=d.get("scope"),
+                start=d.get("start"),
+                end=d.get("end"),
+                message=d.get("message"),
+                active=d.get("active", True),
+            )
+            for d in (body if isinstance(body, list) else [])
+        ]
+        return PaginatedList(
+            items=items,
+            page_state=PageState(has_more=False),
+        )
+
+    @action("Cancel a scheduled downtime", dangerous=True)
+    async def cancel_downtime(self, downtime_id: int) -> bool:
+        """Cancel a scheduled downtime by its ID.
+
+        This is a destructive action -- the downtime will be removed
+        and suppressed alerts will resume immediately.
+
+        Args:
+            downtime_id: The numeric downtime ID to cancel.
+
+        Returns:
+            True if the downtime was cancelled.
+        """
+        resp = await self._request("DELETE", f"/v1/downtime/{downtime_id}")
+        return resp.status_code in (200, 204)

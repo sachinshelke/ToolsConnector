@@ -66,3 +66,13 @@ class ConfluenceComment(BaseModel):
     created_at: Optional[str] = None
     author_id: Optional[str] = None
     version: Optional[ConfluenceVersion] = None
+
+
+class ConfluenceLabel(BaseModel):
+    """A label attached to a Confluence page."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str = ""
+    name: str = ""
+    prefix: Optional[str] = None

@@ -25,9 +25,11 @@ from toolsconnector.types import PaginatedList
 
 from .types import (
     DiscordChannel,
+    DiscordGuild,
     DiscordMessage,
     DiscordRole,
     DiscordUser,
+    DiscordWebhook,
     Embed,
     GuildMember,
 )
@@ -530,3 +532,246 @@ class Discord(BaseConnector):
                 json_body=payload,
             )
         return DiscordChannel(**body)
+
+    # ------------------------------------------------------------------
+    # Guilds
+    # ------------------------------------------------------------------
+
+    @action("Get guild information")
+    async def get_guild(self, guild_id: str) -> DiscordGuild:
+        """Retrieve detailed information about a Discord guild (server).
+
+        Args:
+            guild_id: The guild snowflake ID.
+
+        Returns:
+            The DiscordGuild object with full server details.
+        """
+        body = await self._request(
+            "GET",
+            f"/guilds/{guild_id}",
+            params={"with_counts": "true"},
+        )
+        return DiscordGuild(**body)
+
+    @action("Edit guild settings", dangerous=True)
+    async def edit_guild(
+        self,
+        guild_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        icon: Optional[str] = None,
+    ) -> DiscordGuild:
+        """Modify a guild's settings.
+
+        Requires the ``MANAGE_GUILD`` permission. Only provided fields
+        are updated; omitted fields remain unchanged.
+
+        Args:
+            guild_id: The guild snowflake ID.
+            name: Optional new name for the guild (2-100 characters).
+            description: Optional new description (for Community guilds).
+            icon: Optional base64-encoded 128x128 image for the guild icon,
+                or ``None`` to remove the icon.
+
+        Returns:
+            The updated DiscordGuild object.
+        """
+        payload: dict[str, Any] = {}
+        if name is not None:
+            payload["name"] = name
+        if description is not None:
+            payload["description"] = description
+        if icon is not None:
+            payload["icon"] = icon
+
+        body = await self._request(
+            "PATCH",
+            f"/guilds/{guild_id}",
+            json_body=payload,
+        )
+        return DiscordGuild(**body)
+
+    # ------------------------------------------------------------------
+    # Members & Roles
+    # ------------------------------------------------------------------
+
+    @action("Get a single guild member")
+    async def get_member(self, guild_id: str, user_id: str) -> GuildMember:
+        """Retrieve details for a single guild member.
+
+        Args:
+            guild_id: The guild snowflake ID.
+            user_id: The user snowflake ID.
+
+        Returns:
+            The GuildMember object for the specified user.
+        """
+        body = await self._request(
+            "GET",
+            f"/guilds/{guild_id}/members/{user_id}",
+        )
+        return GuildMember(**body)
+
+    @action("Add a role to a guild member", dangerous=True)
+    async def add_member_role(
+        self,
+        guild_id: str,
+        user_id: str,
+        role_id: str,
+    ) -> None:
+        """Assign a role to a guild member.
+
+        Requires the ``MANAGE_ROLES`` permission and that the bot's
+        highest role is above the target role.
+
+        Args:
+            guild_id: The guild snowflake ID.
+            user_id: The user snowflake ID.
+            role_id: The role snowflake ID to assign.
+        """
+        await self._request(
+            "PUT",
+            f"/guilds/{guild_id}/members/{user_id}/roles/{role_id}",
+        )
+
+    @action("Remove a role from a guild member", dangerous=True)
+    async def remove_member_role(
+        self,
+        guild_id: str,
+        user_id: str,
+        role_id: str,
+    ) -> None:
+        """Remove a role from a guild member.
+
+        Requires the ``MANAGE_ROLES`` permission and that the bot's
+        highest role is above the target role.
+
+        Args:
+            guild_id: The guild snowflake ID.
+            user_id: The user snowflake ID.
+            role_id: The role snowflake ID to remove.
+        """
+        await self._request(
+            "DELETE",
+            f"/guilds/{guild_id}/members/{user_id}/roles/{role_id}",
+        )
+
+    @action("Kick a member from a guild", dangerous=True)
+    async def kick_member(
+        self,
+        guild_id: str,
+        user_id: str,
+        reason: Optional[str] = None,
+    ) -> None:
+        """Remove a member from a guild.
+
+        The user can rejoin if they have an invite. Requires the
+        ``KICK_MEMBERS`` permission.
+
+        Args:
+            guild_id: The guild snowflake ID.
+            user_id: The user snowflake ID to kick.
+            reason: Optional audit log reason for the kick.
+        """
+        # Discord accepts the reason via X-Audit-Log-Reason header,
+        # but our _request helper doesn't support extra headers — the
+        # reason is passed as a query param workaround isn't available,
+        # so we rely on the audit log header being set at the client level
+        # if needed. The kick itself only requires DELETE with empty body.
+        await self._request(
+            "DELETE",
+            f"/guilds/{guild_id}/members/{user_id}",
+        )
+
+    # ------------------------------------------------------------------
+    # Pins
+    # ------------------------------------------------------------------
+
+    @action("Pin a message in a channel")
+    async def pin_message(self, channel_id: str, message_id: str) -> None:
+        """Pin a message in a channel.
+
+        Requires the ``MANAGE_MESSAGES`` permission. A channel can have
+        at most 50 pinned messages.
+
+        Args:
+            channel_id: The channel snowflake ID.
+            message_id: The message snowflake ID to pin.
+        """
+        await self._request(
+            "PUT",
+            f"/channels/{channel_id}/pins/{message_id}",
+        )
+
+    @action("Unpin a message from a channel")
+    async def unpin_message(self, channel_id: str, message_id: str) -> None:
+        """Unpin a previously pinned message from a channel.
+
+        Requires the ``MANAGE_MESSAGES`` permission.
+
+        Args:
+            channel_id: The channel snowflake ID.
+            message_id: The message snowflake ID to unpin.
+        """
+        await self._request(
+            "DELETE",
+            f"/channels/{channel_id}/pins/{message_id}",
+        )
+
+    @action("List pinned messages in a channel")
+    async def list_pinned_messages(
+        self,
+        channel_id: str,
+    ) -> list[DiscordMessage]:
+        """Retrieve all pinned messages in a channel.
+
+        A channel can have at most 50 pinned messages.
+
+        Args:
+            channel_id: The channel snowflake ID.
+
+        Returns:
+            List of pinned DiscordMessage objects.
+        """
+        body = await self._request(
+            "GET",
+            f"/channels/{channel_id}/pins",
+        )
+        return [DiscordMessage(**msg) for msg in body]
+
+    # ------------------------------------------------------------------
+    # Webhooks
+    # ------------------------------------------------------------------
+
+    @action("Create a webhook for a channel", dangerous=True)
+    async def create_webhook(
+        self,
+        channel_id: str,
+        name: str,
+        avatar: Optional[str] = None,
+    ) -> DiscordWebhook:
+        """Create a new webhook for a channel.
+
+        Requires the ``MANAGE_WEBHOOKS`` permission. Webhooks allow
+        external services to post messages to a channel.
+
+        Args:
+            channel_id: The channel snowflake ID.
+            name: Name for the webhook (1-80 characters).
+            avatar: Optional base64-encoded 128x128 image for the
+                webhook's default avatar.
+
+        Returns:
+            The created DiscordWebhook object including the token.
+        """
+        payload: dict[str, Any] = {"name": name}
+        if avatar is not None:
+            payload["avatar"] = avatar
+
+        body = await self._request(
+            "POST",
+            f"/channels/{channel_id}/webhooks",
+            json_body=payload,
+        )
+        return DiscordWebhook(**body)

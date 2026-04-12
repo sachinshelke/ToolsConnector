@@ -18,16 +18,24 @@ from toolsconnector.types import PageState, PaginatedList
 
 from .types import (
     MailFolder,
+    MailRule,
+    MailTip,
+    OutlookAttachment,
     OutlookCalendarEvent,
+    OutlookCategory,
     OutlookContact,
     OutlookMessage,
     OutlookMessageId,
 )
 
 from ._helpers import (
+    parse_attachment as _parse_attachment,
     parse_calendar_event as _parse_calendar_event,
+    parse_category as _parse_category,
     parse_contact as _parse_contact,
     parse_folder as _parse_folder,
+    parse_mail_rule as _parse_mail_rule,
+    parse_mail_tip as _parse_mail_tip,
     parse_message as _parse_message,
 )
 
@@ -338,25 +346,30 @@ class Outlook(BaseConnector):
         return OutlookMessageId(id=data.get("id", ""))
 
     @action("Reply to an email message", dangerous=True)
-    async def reply_to_message(
+    async def reply_message(
         self,
         message_id: str,
         body: str,
+        reply_all: bool = False,
     ) -> None:
         """Reply to an email message.
 
-        Sends a reply to all original recipients of the specified message.
+        Sends a reply to the sender, or to all original recipients when
+        ``reply_all`` is ``True``.
 
         Args:
             message_id: The unique ID of the message to reply to.
             body: Reply body content (HTML supported).
+            reply_all: If ``True``, reply to all original recipients.
+                Defaults to ``False`` (reply to sender only).
         """
+        endpoint = "replyAll" if reply_all else "reply"
         payload: dict[str, Any] = {
             "comment": body,
         }
         await self._request(
             "POST",
-            f"/me/messages/{message_id}/reply",
+            f"/me/messages/{message_id}/{endpoint}",
             json_body=payload,
         )
 
@@ -595,3 +608,226 @@ class Outlook(BaseConnector):
 
         data = await self._request("POST", path, json_body=payload)
         return _parse_folder(data)
+
+    @action("Forward an email message", dangerous=True)
+    async def forward_message(
+        self,
+        message_id: str,
+        to: list[str],
+        comment: Optional[str] = None,
+    ) -> None:
+        """Forward an email message to one or more recipients.
+
+        Args:
+            message_id: The unique ID of the message to forward.
+            to: List of recipient email addresses to forward to.
+            comment: Optional comment to include with the forwarded message.
+        """
+        to_recipients = [
+            {"emailAddress": {"address": addr}} for addr in to
+        ]
+        payload: dict[str, Any] = {
+            "toRecipients": to_recipients,
+        }
+        if comment:
+            payload["comment"] = comment
+
+        await self._request(
+            "POST",
+            f"/me/messages/{message_id}/forward",
+            json_body=payload,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Attachments
+    # ------------------------------------------------------------------
+
+    @action("List attachments on an email message")
+    async def list_attachments(self, message_id: str) -> list[OutlookAttachment]:
+        """List all attachments on an email message.
+
+        Args:
+            message_id: The unique ID of the email message.
+
+        Returns:
+            List of OutlookAttachment objects.
+        """
+        data = await self._request(
+            "GET",
+            f"/me/messages/{message_id}/attachments",
+        )
+        return [_parse_attachment(a) for a in data.get("value", [])]
+
+    @action("Get a single attachment by ID")
+    async def get_attachment(
+        self,
+        message_id: str,
+        attachment_id: str,
+    ) -> OutlookAttachment:
+        """Retrieve a single attachment from an email message.
+
+        Args:
+            message_id: The unique ID of the email message.
+            attachment_id: The unique ID of the attachment.
+
+        Returns:
+            The requested OutlookAttachment (includes ``content_bytes``
+            for file attachments).
+        """
+        data = await self._request(
+            "GET",
+            f"/me/messages/{message_id}/attachments/{attachment_id}",
+        )
+        return _parse_attachment(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Message update
+    # ------------------------------------------------------------------
+
+    @action("Update properties of an email message")
+    async def update_message(
+        self,
+        message_id: str,
+        is_read: Optional[bool] = None,
+        categories: Optional[list[str]] = None,
+        importance: Optional[str] = None,
+    ) -> OutlookMessage:
+        """Update mutable properties of an email message.
+
+        Supports marking messages as read/unread, assigning categories,
+        and changing importance.
+
+        Args:
+            message_id: The unique ID of the message to update.
+            is_read: Mark the message as read (``True``) or unread (``False``).
+            categories: List of category names to assign to the message.
+            importance: Message importance (``"low"``, ``"normal"``, or ``"high"``).
+
+        Returns:
+            The updated OutlookMessage.
+        """
+        payload: dict[str, Any] = {}
+        if is_read is not None:
+            payload["isRead"] = is_read
+        if categories is not None:
+            payload["categories"] = categories
+        if importance is not None:
+            payload["importance"] = importance
+
+        data = await self._request(
+            "PATCH",
+            f"/me/messages/{message_id}",
+            json_body=payload,
+        )
+        return _parse_message(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Mail rules
+    # ------------------------------------------------------------------
+
+    @action("List inbox message rules")
+    async def list_mail_rules(self) -> list[MailRule]:
+        """List all message rules defined on the user's Inbox folder.
+
+        Returns:
+            List of MailRule objects.
+        """
+        data = await self._request(
+            "GET",
+            "/me/mailFolders/inbox/messageRules",
+        )
+        return [_parse_mail_rule(r) for r in data.get("value", [])]
+
+    @action("Create a new inbox message rule", dangerous=True)
+    async def create_mail_rule(
+        self,
+        display_name: str,
+        conditions: dict[str, Any],
+        actions: dict[str, Any],
+    ) -> MailRule:
+        """Create a new message rule on the user's Inbox folder.
+
+        The ``conditions`` and ``actions`` dicts follow the MS Graph
+        ``messageRulePredicates`` and ``messageRuleActions`` schemas.
+
+        Example conditions::
+
+            {"senderContains": ["noreply@example.com"]}
+
+        Example actions::
+
+            {"moveToFolder": "AAMk...", "markAsRead": True}
+
+        Args:
+            display_name: Human-readable name for the rule.
+            conditions: Rule conditions that trigger the rule.
+            actions: Actions to take when conditions are met.
+
+        Returns:
+            The created MailRule.
+        """
+        payload: dict[str, Any] = {
+            "displayName": display_name,
+            "sequence": 0,
+            "isEnabled": True,
+            "conditions": conditions,
+            "actions": actions,
+        }
+        data = await self._request(
+            "POST",
+            "/me/mailFolders/inbox/messageRules",
+            json_body=payload,
+        )
+        return _parse_mail_rule(data)
+
+    # ------------------------------------------------------------------
+    # Actions -- Categories
+    # ------------------------------------------------------------------
+
+    @action("List master categories")
+    async def list_categories(self) -> list[OutlookCategory]:
+        """List all master categories defined in the user's mailbox.
+
+        Returns:
+            List of OutlookCategory objects.
+        """
+        data = await self._request(
+            "GET",
+            "/me/outlook/masterCategories",
+        )
+        return [_parse_category(c) for c in data.get("value", [])]
+
+    # ------------------------------------------------------------------
+    # Actions -- Mail tips
+    # ------------------------------------------------------------------
+
+    @action("Get mail tips for email addresses")
+    async def get_mail_tips(
+        self,
+        email_addresses: list[str],
+    ) -> list[MailTip]:
+        """Get mail tips for one or more email addresses.
+
+        Returns delivery status information such as automatic replies,
+        mailbox-full status, delivery restrictions, and distribution
+        list membership counts.
+
+        Args:
+            email_addresses: List of email addresses to retrieve tips for.
+
+        Returns:
+            List of MailTip objects, one per requested address.
+        """
+        payload: dict[str, Any] = {
+            "emailAddresses": email_addresses,
+            "mailTipsOptions": "automaticReplies,mailboxFullStatus,"
+            "maxMessageSize,deliveryRestriction,"
+            "moderationStatus,recipientScope,"
+            "totalMemberCount,externalMemberCount",
+        }
+        data = await self._request(
+            "POST",
+            "/me/getMailTips",
+            json_body=payload,
+        )
+        return [_parse_mail_tip(t) for t in data.get("value", [])]

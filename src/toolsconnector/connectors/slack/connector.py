@@ -29,7 +29,9 @@ from .types import (
     ScheduledMessage,
     SearchResult,
     SlackFile,
+    SlackTeam,
     SlackUser,
+    SlackUserGroup,
     UserPresence,
     UserProfile,
 )
@@ -1341,3 +1343,217 @@ class Slack(BaseConnector):
             "user_id": body.get("user_id", ""),
             "bot_id": body.get("bot_id", ""),
         }
+
+    @action("Get workspace team information")
+    async def get_team_info(self) -> SlackTeam:
+        """Retrieve information about the Slack workspace (team).
+
+        Returns basic metadata including the team name, domain,
+        email domain, and enterprise info if applicable.
+
+        Returns:
+            SlackTeam object with workspace details.
+        """
+        body = await self._request("GET", "team.info")
+        t = body.get("team", {})
+        return SlackTeam(
+            id=t.get("id", ""),
+            name=t.get("name", ""),
+            domain=t.get("domain", ""),
+            email_domain=t.get("email_domain", ""),
+            icon=t.get("icon"),
+            enterprise_id=t.get("enterprise_id"),
+            enterprise_name=t.get("enterprise_name"),
+        )
+
+    # ======================================================================
+    # USER PROFILE
+    # ======================================================================
+
+    @action("Set the authenticated user's status", dangerous=True)
+    async def set_status(
+        self,
+        status_text: str,
+        status_emoji: Optional[str] = None,
+        expiration: Optional[int] = None,
+    ) -> None:
+        """Set the status text and emoji on the authenticated user's profile.
+
+        Requires the ``users.profile:write`` scope.
+
+        Args:
+            status_text: Status text to display (max 100 characters).
+            status_emoji: Optional emoji code (e.g. ``:house_with_garden:``).
+                Pass an empty string to clear the emoji.
+            expiration: Optional Unix timestamp for when the status should
+                expire. Pass ``0`` to keep the status indefinitely.
+        """
+        profile: dict[str, Any] = {"status_text": status_text}
+        if status_emoji is not None:
+            profile["status_emoji"] = status_emoji
+        if expiration is not None:
+            profile["status_expiration"] = expiration
+
+        await self._request(
+            "POST",
+            "users.profile.set",
+            json_body={"profile": profile},
+        )
+
+    # ======================================================================
+    # USER GROUPS
+    # ======================================================================
+
+    @action("Create a user group", dangerous=True)
+    async def create_usergroup(
+        self,
+        name: str,
+        handle: str,
+        description: Optional[str] = None,
+        channels: Optional[str] = None,
+    ) -> SlackUserGroup:
+        """Create a new user group (handle) in the workspace.
+
+        Requires the ``usergroups:write`` scope.
+
+        Args:
+            name: Display name for the user group.
+            handle: Short mention handle (e.g. ``engineering`` for
+                ``@engineering``). Must be unique in the workspace.
+            description: Optional purpose/description for the group.
+            channels: Optional comma-separated channel IDs to associate
+                with the group as default channels.
+
+        Returns:
+            The created SlackUserGroup object.
+        """
+        payload: dict[str, Any] = {"name": name, "handle": handle}
+        if description is not None:
+            payload["description"] = description
+        if channels is not None:
+            payload["channels"] = channels
+
+        body = await self._request(
+            "POST", "usergroups.create", json_body=payload,
+        )
+        ug = body.get("usergroup", {})
+        return SlackUserGroup(
+            id=ug.get("id", ""),
+            team_id=ug.get("team_id", ""),
+            name=ug.get("name", name),
+            handle=ug.get("handle", handle),
+            description=ug.get("description", ""),
+            is_external=ug.get("is_external", False),
+            is_usergroup=ug.get("is_usergroup", True),
+            auto_type=ug.get("auto_type"),
+            date_create=ug.get("date_create", 0),
+            date_update=ug.get("date_update", 0),
+            date_delete=ug.get("date_delete", 0),
+            created_by=ug.get("created_by", ""),
+            updated_by=ug.get("updated_by", ""),
+            user_count=ug.get("user_count", 0),
+            users=ug.get("users", []),
+            channels=ug.get("prefs", {}).get("channels", []),
+        )
+
+    @action("List user groups in the workspace")
+    async def list_usergroups(
+        self,
+        include_users: bool = False,
+        include_disabled: bool = False,
+    ) -> list[SlackUserGroup]:
+        """List all user groups in the workspace.
+
+        Requires the ``usergroups:read`` scope.
+
+        Args:
+            include_users: If ``True``, include the list of user IDs
+                for each user group.
+            include_disabled: If ``True``, include disabled user groups.
+
+        Returns:
+            List of SlackUserGroup objects.
+        """
+        params: dict[str, Any] = {
+            "include_users": str(include_users).lower(),
+            "include_disabled": str(include_disabled).lower(),
+        }
+        body = await self._request("GET", "usergroups.list", params=params)
+        return [
+            SlackUserGroup(
+                id=ug.get("id", ""),
+                team_id=ug.get("team_id", ""),
+                name=ug.get("name", ""),
+                handle=ug.get("handle", ""),
+                description=ug.get("description", ""),
+                is_external=ug.get("is_external", False),
+                is_usergroup=ug.get("is_usergroup", True),
+                auto_type=ug.get("auto_type"),
+                date_create=ug.get("date_create", 0),
+                date_update=ug.get("date_update", 0),
+                date_delete=ug.get("date_delete", 0),
+                created_by=ug.get("created_by", ""),
+                updated_by=ug.get("updated_by", ""),
+                user_count=ug.get("user_count", 0),
+                users=ug.get("users", []),
+                channels=ug.get("prefs", {}).get("channels", []),
+            )
+            for ug in body.get("usergroups", [])
+        ]
+
+    @action("Update an existing user group", dangerous=True)
+    async def update_usergroup(
+        self,
+        usergroup_id: str,
+        name: Optional[str] = None,
+        handle: Optional[str] = None,
+        description: Optional[str] = None,
+        channels: Optional[str] = None,
+    ) -> SlackUserGroup:
+        """Update an existing user group's properties.
+
+        Requires the ``usergroups:write`` scope.
+
+        Args:
+            usergroup_id: The user group ID (e.g. ``S01234ABCDE``).
+            name: Optional new display name.
+            handle: Optional new mention handle.
+            description: Optional new description.
+            channels: Optional comma-separated channel IDs to set as
+                default channels.
+
+        Returns:
+            The updated SlackUserGroup object.
+        """
+        payload: dict[str, Any] = {"usergroup": usergroup_id}
+        if name is not None:
+            payload["name"] = name
+        if handle is not None:
+            payload["handle"] = handle
+        if description is not None:
+            payload["description"] = description
+        if channels is not None:
+            payload["channels"] = channels
+
+        body = await self._request(
+            "POST", "usergroups.update", json_body=payload,
+        )
+        ug = body.get("usergroup", {})
+        return SlackUserGroup(
+            id=ug.get("id", ""),
+            team_id=ug.get("team_id", ""),
+            name=ug.get("name", ""),
+            handle=ug.get("handle", ""),
+            description=ug.get("description", ""),
+            is_external=ug.get("is_external", False),
+            is_usergroup=ug.get("is_usergroup", True),
+            auto_type=ug.get("auto_type"),
+            date_create=ug.get("date_create", 0),
+            date_update=ug.get("date_update", 0),
+            date_delete=ug.get("date_delete", 0),
+            created_by=ug.get("created_by", ""),
+            updated_by=ug.get("updated_by", ""),
+            user_count=ug.get("user_count", 0),
+            users=ug.get("users", []),
+            channels=ug.get("prefs", {}).get("channels", []),
+        )

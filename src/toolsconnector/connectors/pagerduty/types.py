@@ -82,3 +82,37 @@ class PDOncall(BaseModel):
     escalation_level: Optional[int] = None
     start: Optional[str] = None
     end: Optional[str] = None
+
+
+class PDEscalationPolicy(BaseModel):
+    """A PagerDuty escalation policy."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: Optional[str] = None
+    type: str = "escalation_policy"
+    name: Optional[str] = None
+    description: Optional[str] = None
+    html_url: Optional[str] = None
+    summary: Optional[str] = None
+    num_loops: int = 0
+    on_call_handoff_notifications: Optional[str] = None
+    escalation_rules: list[dict[str, Any]] = Field(default_factory=list)
+    services: list[dict[str, Any]] = Field(default_factory=list)
+    teams: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PDSchedule(BaseModel):
+    """A PagerDuty schedule."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: Optional[str] = None
+    type: str = "schedule"
+    name: Optional[str] = None
+    description: Optional[str] = None
+    html_url: Optional[str] = None
+    summary: Optional[str] = None
+    time_zone: Optional[str] = None
+    escalation_policies: list[dict[str, Any]] = Field(default_factory=list)
+    users: list[dict[str, Any]] = Field(default_factory=list)

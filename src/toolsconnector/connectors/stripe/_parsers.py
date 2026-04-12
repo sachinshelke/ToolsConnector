@@ -14,12 +14,16 @@ from .types import (
     StripeCharge,
     StripeCheckoutSession,
     StripeCustomer,
+    StripeDispute,
+    StripeEvent,
     StripeInvoice,
     StripePaymentMethod,
+    StripePayout,
     StripePrice,
     StripeProduct,
     StripeRecurring,
     StripeRefund,
+    StripeSetupIntent,
     StripeSubscription,
 )
 
@@ -320,6 +324,110 @@ def parse_payment_method(data: dict[str, Any]) -> StripePaymentMethod:
         customer=data.get("customer"),
         billing_details=data.get("billing_details"),
         card=data.get("card"),
+        livemode=data.get("livemode", False),
+        metadata=data.get("metadata") or {},
+        created=data.get("created"),
+    )
+
+
+def parse_dispute(data: dict[str, Any]) -> StripeDispute:
+    """Parse a StripeDispute from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Stripe API.
+
+    Returns:
+        A StripeDispute instance.
+    """
+    evidence = data.get("evidence_details") or {}
+    return StripeDispute(
+        id=data["id"],
+        object=data.get("object", "dispute"),
+        amount=data.get("amount", 0),
+        currency=data.get("currency"),
+        charge=data.get("charge"),
+        payment_intent=data.get("payment_intent"),
+        reason=data.get("reason"),
+        status=data.get("status"),
+        is_charge_refundable=data.get("is_charge_refundable", False),
+        has_evidence=evidence.get("has_evidence", False),
+        evidence_due_by=evidence.get("due_by"),
+        livemode=data.get("livemode", False),
+        metadata=data.get("metadata") or {},
+        created=data.get("created"),
+    )
+
+
+def parse_payout(data: dict[str, Any]) -> StripePayout:
+    """Parse a StripePayout from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Stripe API.
+
+    Returns:
+        A StripePayout instance.
+    """
+    return StripePayout(
+        id=data["id"],
+        object=data.get("object", "payout"),
+        amount=data.get("amount", 0),
+        currency=data.get("currency"),
+        status=data.get("status"),
+        type=data.get("type"),
+        method=data.get("method"),
+        description=data.get("description"),
+        destination=data.get("destination"),
+        arrival_date=data.get("arrival_date"),
+        failure_code=data.get("failure_code"),
+        failure_message=data.get("failure_message"),
+        livemode=data.get("livemode", False),
+        metadata=data.get("metadata") or {},
+        created=data.get("created"),
+    )
+
+
+def parse_event(data: dict[str, Any]) -> StripeEvent:
+    """Parse a StripeEvent from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Stripe API.
+
+    Returns:
+        A StripeEvent instance.
+    """
+    return StripeEvent(
+        id=data["id"],
+        object=data.get("object", "event"),
+        type=data.get("type"),
+        api_version=data.get("api_version"),
+        data=data.get("data"),
+        request=data.get("request"),
+        pending_webhooks=data.get("pending_webhooks", 0),
+        livemode=data.get("livemode", False),
+        created=data.get("created"),
+    )
+
+
+def parse_setup_intent(data: dict[str, Any]) -> StripeSetupIntent:
+    """Parse a StripeSetupIntent from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Stripe API.
+
+    Returns:
+        A StripeSetupIntent instance.
+    """
+    return StripeSetupIntent(
+        id=data["id"],
+        object=data.get("object", "setup_intent"),
+        status=data.get("status"),
+        client_secret=data.get("client_secret"),
+        customer=data.get("customer"),
+        description=data.get("description"),
+        payment_method=data.get("payment_method"),
+        payment_method_types=data.get("payment_method_types") or [],
+        usage=data.get("usage"),
+        latest_attempt=data.get("latest_attempt"),
         livemode=data.get("livemode", False),
         metadata=data.get("metadata") or {},
         created=data.get("created"),

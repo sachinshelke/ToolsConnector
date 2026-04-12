@@ -5,9 +5,11 @@ from __future__ import annotations
 from .connector import Discord
 from .types import (
     DiscordChannel,
+    DiscordGuild,
     DiscordMessage,
     DiscordRole,
     DiscordUser,
+    DiscordWebhook,
     Embed,
     GuildMember,
 )
@@ -15,9 +17,11 @@ from .types import (
 __all__ = [
     "Discord",
     "DiscordChannel",
+    "DiscordGuild",
     "DiscordMessage",
     "DiscordRole",
     "DiscordUser",
+    "DiscordWebhook",
     "Embed",
     "GuildMember",
 ]

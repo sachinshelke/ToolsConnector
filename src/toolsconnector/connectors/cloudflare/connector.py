@@ -546,3 +546,71 @@ class Cloudflare(BaseConnector):
             "DELETE", f"/zones/{zone_id}",
         )
         return body.get("success", False)
+
+    # ------------------------------------------------------------------
+    # Actions -- Firewall & Zone settings
+    # ------------------------------------------------------------------
+
+    @action("List firewall rules for a zone")
+    async def list_firewall_rules(
+        self, zone_id: str,
+    ) -> list[dict[str, Any]]:
+        """List all firewall rules configured for a zone.
+
+        Args:
+            zone_id: The Cloudflare zone ID.
+
+        Returns:
+            List of firewall rule dicts.
+        """
+        body = await self._request(
+            "GET", f"/zones/{zone_id}/firewall/rules",
+        )
+        return body.get("result", [])
+
+    @action("Get zone settings")
+    async def get_zone_settings(
+        self, zone_id: str,
+    ) -> list[dict[str, Any]]:
+        """Retrieve all settings for a Cloudflare zone.
+
+        Returns the full list of zone settings including SSL mode,
+        security level, caching behaviour, and more.
+
+        Args:
+            zone_id: The Cloudflare zone ID.
+
+        Returns:
+            List of setting dicts with id, value, and metadata.
+        """
+        body = await self._request(
+            "GET", f"/zones/{zone_id}/settings",
+        )
+        return body.get("result", [])
+
+    @action("Toggle development mode for a zone", dangerous=True)
+    async def toggle_development_mode(
+        self,
+        zone_id: str,
+        enable: bool,
+    ) -> dict[str, Any]:
+        """Enable or disable development mode for a zone.
+
+        Development mode temporarily bypasses the Cloudflare cache,
+        allowing changes to be visible immediately. It automatically
+        expires after 3 hours.
+
+        Args:
+            zone_id: The Cloudflare zone ID.
+            enable: True to enable development mode, False to disable.
+
+        Returns:
+            Dict with the updated setting value.
+        """
+        value = "on" if enable else "off"
+        body = await self._request(
+            "PATCH",
+            f"/zones/{zone_id}/settings/development_mode",
+            json={"value": value},
+        )
+        return body.get("result", {})

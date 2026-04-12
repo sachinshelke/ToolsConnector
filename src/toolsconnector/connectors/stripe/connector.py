@@ -19,19 +19,24 @@ from toolsconnector.spec.connector import (
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.types import PageState, PaginatedList
+from toolsconnector.types import PaginatedList
 
+from ._helpers import build_paginated_result
 from ._parsers import (
     flatten_metadata,
     parse_charge,
     parse_checkout_session,
     parse_customer,
+    parse_dispute,
+    parse_event,
     parse_invoice,
     parse_payment_intent,
     parse_payment_method,
+    parse_payout,
     parse_price,
     parse_product,
     parse_refund,
+    parse_setup_intent,
     parse_subscription,
 )
 from .types import (
@@ -42,11 +47,15 @@ from .types import (
     StripeCharge,
     StripeCheckoutSession,
     StripeCustomer,
+    StripeDispute,
+    StripeEvent,
     StripeInvoice,
     StripePaymentMethod,
+    StripePayout,
     StripePrice,
     StripeProduct,
     StripeRefund,
+    StripeSetupIntent,
     StripeSubscription,
 )
 
@@ -138,20 +147,6 @@ class Stripe(BaseConnector):
         resp.raise_for_status()
         return resp
 
-    def _build_page_state(self, data: dict[str, Any]) -> PageState:
-        """Build a PageState from Stripe list response.
-
-        Args:
-            data: Parsed JSON response body from a Stripe list endpoint.
-
-        Returns:
-            PageState with cursor set to the last item ID if more exist.
-        """
-        has_more = data.get("has_more", False)
-        items = data.get("data", [])
-        cursor = items[-1]["id"] if has_more and items else None
-        return PageState(has_more=has_more, cursor=cursor)
-
     # ------------------------------------------------------------------
     # Actions — Customers
     # ------------------------------------------------------------------
@@ -179,19 +174,12 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_customer(c) for c in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_customers(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_customers(
                 limit=limit, starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     @action("Retrieve a single Stripe customer by ID")
     async def get_customer(self, customer_id: str) -> StripeCustomer:
@@ -269,19 +257,12 @@ class Stripe(BaseConnector):
         body = resp.json()
 
         items = [parse_charge(c) for c in body.get("data", [])]
-        page_state = self._build_page_state(body)
-
-        result = PaginatedList(
-            items=items, page_state=page_state,
-            total_count=body.get("total_count"),
-        )
-        result._fetch_next = (
-            (lambda cursor=page_state.cursor: self.alist_charges(
+        return build_paginated_result(
+            items, body,
+            lambda cursor: self.alist_charges(
                 customer=customer, limit=limit, starting_after=cursor,
-            ))
-            if page_state.has_more else None
+            ),
         )
-        return result
 
     @action("Retrieve a single Stripe charge by ID")
     async def get_charge(self, charge_id: str) -> StripeCharge:
@@ -962,3 +943,409 @@ class Stripe(BaseConnector):
         """
         resp = await self._request("POST", f"/invoices/{invoice_id}/void")
         return parse_invoice(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions — Payment Intents (lifecycle)
+    # ------------------------------------------------------------------
+
+    @action("Retrieve a single Stripe PaymentIntent by ID")
+    async def get_payment_intent(
+        self, payment_intent_id: str,
+    ) -> PaymentIntent:
+        """Retrieve a single PaymentIntent.
+
+        Args:
+            payment_intent_id: The Stripe PaymentIntent ID
+                (e.g. ``pi_...``).
+
+        Returns:
+            PaymentIntent object.
+        """
+        resp = await self._request(
+            "GET", f"/payment_intents/{payment_intent_id}",
+        )
+        return parse_payment_intent(resp.json())
+
+    @action("List PaymentIntents from your Stripe account")
+    async def list_payment_intents(
+        self,
+        customer: Optional[str] = None,
+        limit: int = 10,
+        starting_after: Optional[str] = None,
+    ) -> PaginatedList[PaymentIntent]:
+        """List PaymentIntents with optional customer filter and cursor pagination.
+
+        Args:
+            customer: Filter by customer ID.
+            limit: Maximum number of PaymentIntents to return (1-100).
+            starting_after: PaymentIntent ID to paginate after (cursor).
+
+        Returns:
+            Paginated list of PaymentIntent objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        if customer:
+            params["customer"] = customer
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        resp = await self._request("GET", "/payment_intents", params=params)
+        body = resp.json()
+
+        items = [parse_payment_intent(pi) for pi in body.get("data", [])]
+        page_state = self._build_page_state(body)
+
+        result = PaginatedList(
+            items=items, page_state=page_state,
+            total_count=body.get("total_count"),
+        )
+        result._fetch_next = (
+            (lambda cursor=page_state.cursor: self.alist_payment_intents(
+                customer=customer, limit=limit, starting_after=cursor,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    @action("Confirm a Stripe PaymentIntent", dangerous=True)
+    async def confirm_payment_intent(
+        self,
+        payment_intent_id: str,
+        payment_method: Optional[str] = None,
+    ) -> PaymentIntent:
+        """Confirm a PaymentIntent to initiate the payment flow.
+
+        Args:
+            payment_intent_id: The PaymentIntent ID to confirm.
+            payment_method: Optional payment method ID to attach before
+                confirming (e.g. ``pm_...``).
+
+        Returns:
+            The confirmed PaymentIntent object.
+
+        Warning:
+            Confirming a PaymentIntent may immediately charge the
+            customer's payment method.
+        """
+        form_data: dict[str, Any] = {}
+        if payment_method is not None:
+            form_data["payment_method"] = payment_method
+
+        resp = await self._request(
+            "POST",
+            f"/payment_intents/{payment_intent_id}/confirm",
+            data=form_data,
+        )
+        return parse_payment_intent(resp.json())
+
+    @action("Cancel a Stripe PaymentIntent")
+    async def cancel_payment_intent(
+        self, payment_intent_id: str,
+    ) -> PaymentIntent:
+        """Cancel a PaymentIntent that has not been captured.
+
+        Args:
+            payment_intent_id: The PaymentIntent ID to cancel.
+
+        Returns:
+            The cancelled PaymentIntent object.
+        """
+        resp = await self._request(
+            "POST", f"/payment_intents/{payment_intent_id}/cancel",
+        )
+        return parse_payment_intent(resp.json())
+
+    @action("Capture a Stripe PaymentIntent", dangerous=True)
+    async def capture_payment_intent(
+        self,
+        payment_intent_id: str,
+        amount_to_capture: Optional[int] = None,
+    ) -> PaymentIntent:
+        """Capture a PaymentIntent that was previously confirmed with manual capture.
+
+        Args:
+            payment_intent_id: The PaymentIntent ID to capture.
+            amount_to_capture: Amount to capture in the smallest currency
+                unit. Omit to capture the full authorized amount.
+
+        Returns:
+            The captured PaymentIntent object.
+
+        Warning:
+            Capturing finalises the charge and moves funds from the
+            customer's payment method.
+        """
+        form_data: dict[str, Any] = {}
+        if amount_to_capture is not None:
+            form_data["amount_to_capture"] = str(amount_to_capture)
+
+        resp = await self._request(
+            "POST",
+            f"/payment_intents/{payment_intent_id}/capture",
+            data=form_data,
+        )
+        return parse_payment_intent(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions — Disputes
+    # ------------------------------------------------------------------
+
+    @action("List disputes from your Stripe account")
+    async def list_disputes(
+        self,
+        limit: int = 10,
+        starting_after: Optional[str] = None,
+    ) -> PaginatedList[StripeDispute]:
+        """List disputes (chargebacks) with cursor-based pagination.
+
+        Args:
+            limit: Maximum number of disputes to return (1-100).
+            starting_after: Dispute ID to paginate after (cursor).
+
+        Returns:
+            Paginated list of StripeDispute objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        resp = await self._request("GET", "/disputes", params=params)
+        body = resp.json()
+
+        items = [parse_dispute(d) for d in body.get("data", [])]
+        page_state = self._build_page_state(body)
+
+        result = PaginatedList(
+            items=items, page_state=page_state,
+            total_count=body.get("total_count"),
+        )
+        result._fetch_next = (
+            (lambda cursor=page_state.cursor: self.alist_disputes(
+                limit=limit, starting_after=cursor,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    @action("Retrieve a single Stripe dispute by ID")
+    async def get_dispute(self, dispute_id: str) -> StripeDispute:
+        """Retrieve a single dispute.
+
+        Args:
+            dispute_id: The Stripe dispute ID (e.g. ``dp_...``).
+
+        Returns:
+            StripeDispute object.
+        """
+        resp = await self._request("GET", f"/disputes/{dispute_id}")
+        return parse_dispute(resp.json())
+
+    @action("Close a Stripe dispute", dangerous=True)
+    async def close_dispute(self, dispute_id: str) -> StripeDispute:
+        """Close a dispute, accepting the chargeback.
+
+        Args:
+            dispute_id: The Stripe dispute ID to close.
+
+        Returns:
+            The closed StripeDispute object.
+
+        Warning:
+            Closing a dispute accepts the chargeback. The disputed
+            amount will not be returned to your account.
+        """
+        resp = await self._request(
+            "POST", f"/disputes/{dispute_id}/close",
+        )
+        return parse_dispute(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions — Payouts
+    # ------------------------------------------------------------------
+
+    @action("List payouts from your Stripe account")
+    async def list_payouts(
+        self,
+        limit: int = 10,
+        starting_after: Optional[str] = None,
+    ) -> PaginatedList[StripePayout]:
+        """List payouts with cursor-based pagination.
+
+        Args:
+            limit: Maximum number of payouts to return (1-100).
+            starting_after: Payout ID to paginate after (cursor).
+
+        Returns:
+            Paginated list of StripePayout objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        resp = await self._request("GET", "/payouts", params=params)
+        body = resp.json()
+
+        items = [parse_payout(p) for p in body.get("data", [])]
+        page_state = self._build_page_state(body)
+
+        result = PaginatedList(
+            items=items, page_state=page_state,
+            total_count=body.get("total_count"),
+        )
+        result._fetch_next = (
+            (lambda cursor=page_state.cursor: self.alist_payouts(
+                limit=limit, starting_after=cursor,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    @action("Create a payout to your bank account", dangerous=True)
+    async def create_payout(
+        self,
+        amount: int,
+        currency: str,
+    ) -> StripePayout:
+        """Create a payout to send funds to your bank account.
+
+        Args:
+            amount: Amount to pay out in the smallest currency unit
+                (e.g. cents).
+            currency: Three-letter ISO currency code (e.g. ``usd``).
+
+        Returns:
+            The created StripePayout object.
+
+        Warning:
+            This initiates a real transfer of funds from your Stripe
+            balance to your bank account.
+        """
+        form_data: dict[str, Any] = {
+            "amount": str(amount),
+            "currency": currency,
+        }
+
+        resp = await self._request("POST", "/payouts", data=form_data)
+        return parse_payout(resp.json())
+
+    @action("Retrieve a single Stripe payout by ID")
+    async def get_payout(self, payout_id: str) -> StripePayout:
+        """Retrieve a single payout.
+
+        Args:
+            payout_id: The Stripe payout ID (e.g. ``po_...``).
+
+        Returns:
+            StripePayout object.
+        """
+        resp = await self._request("GET", f"/payouts/{payout_id}")
+        return parse_payout(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions — Events
+    # ------------------------------------------------------------------
+
+    @action("List events from your Stripe account")
+    async def list_events(
+        self,
+        type: Optional[str] = None,
+        limit: int = 10,
+        starting_after: Optional[str] = None,
+    ) -> PaginatedList[StripeEvent]:
+        """List events (webhook events) with optional type filter and cursor pagination.
+
+        Args:
+            type: Filter by event type (e.g. ``charge.succeeded``,
+                ``invoice.payment_failed``).
+            limit: Maximum number of events to return (1-100).
+            starting_after: Event ID to paginate after (cursor).
+
+        Returns:
+            Paginated list of StripeEvent objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+        if type:
+            params["type"] = type
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        resp = await self._request("GET", "/events", params=params)
+        body = resp.json()
+
+        items = [parse_event(e) for e in body.get("data", [])]
+        page_state = self._build_page_state(body)
+
+        result = PaginatedList(
+            items=items, page_state=page_state,
+            total_count=body.get("total_count"),
+        )
+        result._fetch_next = (
+            (lambda cursor=page_state.cursor: self.alist_events(
+                type=type, limit=limit, starting_after=cursor,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    @action("Retrieve a single Stripe event by ID")
+    async def get_event(self, event_id: str) -> StripeEvent:
+        """Retrieve a single event.
+
+        Args:
+            event_id: The Stripe event ID (e.g. ``evt_...``).
+
+        Returns:
+            StripeEvent object.
+        """
+        resp = await self._request("GET", f"/events/{event_id}")
+        return parse_event(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions — Setup Intents
+    # ------------------------------------------------------------------
+
+    @action("Create a Stripe SetupIntent", dangerous=False)
+    async def create_setup_intent(
+        self,
+        customer: Optional[str] = None,
+        payment_method_types: Optional[list[str]] = None,
+    ) -> StripeSetupIntent:
+        """Create a SetupIntent to collect payment method details for future use.
+
+        Args:
+            customer: Optional customer ID to attach the payment method to.
+            payment_method_types: List of payment method types to accept
+                (e.g. ``["card"]``). Defaults to Stripe's automatic
+                detection if omitted.
+
+        Returns:
+            The created StripeSetupIntent object with a ``client_secret``
+            for client-side confirmation.
+        """
+        form_data: dict[str, Any] = {}
+        if customer is not None:
+            form_data["customer"] = customer
+        if payment_method_types:
+            for idx, pmt in enumerate(payment_method_types):
+                form_data[f"payment_method_types[{idx}]"] = pmt
+
+        resp = await self._request("POST", "/setup_intents", data=form_data)
+        return parse_setup_intent(resp.json())
+
+    @action("Retrieve a single Stripe SetupIntent by ID")
+    async def get_setup_intent(
+        self, setup_intent_id: str,
+    ) -> StripeSetupIntent:
+        """Retrieve a single SetupIntent.
+
+        Args:
+            setup_intent_id: The Stripe SetupIntent ID
+                (e.g. ``seti_...``).
+
+        Returns:
+            StripeSetupIntent object.
+        """
+        resp = await self._request(
+            "GET", f"/setup_intents/{setup_intent_id}",
+        )
+        return parse_setup_intent(resp.json())

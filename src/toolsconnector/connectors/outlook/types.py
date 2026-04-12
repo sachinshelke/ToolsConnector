@@ -5,7 +5,7 @@ All response models use ``frozen=True`` to enforce immutability.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -97,6 +97,62 @@ class OutlookContact(BaseModel):
 # ---------------------------------------------------------------------------
 # Calendar models
 # ---------------------------------------------------------------------------
+
+
+class OutlookAttachment(BaseModel):
+    """An attachment on an Outlook email message."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: Optional[str] = None
+    content_type: Optional[str] = None
+    size: int = 0
+    is_inline: bool = False
+    last_modified_datetime: Optional[str] = None
+    content_id: Optional[str] = None
+    content_bytes: Optional[str] = None
+
+
+class MailRule(BaseModel):
+    """An Inbox message rule from the MS Graph mailFolders messageRules API."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    display_name: Optional[str] = None
+    sequence: int = 0
+    is_enabled: bool = True
+    conditions: Optional[dict[str, Any]] = None
+    actions: Optional[dict[str, Any]] = None
+    exceptions: Optional[dict[str, Any]] = None
+    has_error: bool = False
+    is_read_only: bool = False
+
+
+class OutlookCategory(BaseModel):
+    """A master category defined in the user's Outlook mailbox."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    display_name: str
+    color: Optional[str] = None
+
+
+class MailTip(BaseModel):
+    """Mail tips for a recipient email address."""
+
+    model_config = ConfigDict(frozen=True)
+
+    email_address: Optional[str] = None
+    automatic_replies: Optional[dict[str, Any]] = None
+    mailbox_full: bool = False
+    max_message_size: Optional[int] = None
+    is_moderated: bool = False
+    delivery_restricted: bool = False
+    external_member_count: Optional[int] = None
+    total_member_count: Optional[int] = None
 
 
 class OutlookCalendarEvent(BaseModel):

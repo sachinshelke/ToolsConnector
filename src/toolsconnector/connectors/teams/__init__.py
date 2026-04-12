@@ -3,12 +3,25 @@
 from __future__ import annotations
 
 from .connector import Teams
-from .types import Team, TeamsChannel, TeamsMember, TeamsMessage
+from .types import (
+    Team,
+    TeamsChannel,
+    TeamsChat,
+    TeamsMember,
+    TeamsMessage,
+    TeamsMessageBody,
+    TeamsMessageFrom,
+    TeamsPresence,
+)
 
 __all__ = [
     "Teams",
     "Team",
     "TeamsChannel",
-    "TeamsMessage",
+    "TeamsChat",
     "TeamsMember",
+    "TeamsMessage",
+    "TeamsMessageBody",
+    "TeamsMessageFrom",
+    "TeamsPresence",
 ]

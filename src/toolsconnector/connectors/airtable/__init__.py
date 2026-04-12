@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .connector import Airtable
-from .types import AirtableBase, AirtableField, AirtableRecord, AirtableTable
+from .types import AirtableBase, AirtableField, AirtableRecord, AirtableTable, AirtableWebhook
 
 __all__ = [
     "Airtable",
@@ -11,4 +11,5 @@ __all__ = [
     "AirtableField",
     "AirtableRecord",
     "AirtableTable",
+    "AirtableWebhook",
 ]
