@@ -714,3 +714,131 @@ class Calendly(BaseConnector):
             "DELETE", f"/webhook_subscriptions/{webhook_id}",
         )
         return True
+
+    # ------------------------------------------------------------------
+    # Actions — Availability & Scheduling
+    # ------------------------------------------------------------------
+
+    @action("List user availability schedules")
+    async def list_availability_schedules(
+        self,
+        user_uri: str,
+    ) -> list[dict[str, Any]]:
+        """List availability schedules for a user.
+
+        Args:
+            user_uri: The user's URI (e.g., from get_current_user).
+
+        Returns:
+            List of availability schedule dicts.
+        """
+        data = await self._request(
+            "GET", "/user_availability_schedules",
+            params={"user": user_uri},
+        )
+        return data.get("collection", [])
+
+    @action("Get user busy times")
+    async def get_user_busy_times(
+        self,
+        user_uri: str,
+        start_time: str,
+        end_time: str,
+    ) -> list[dict[str, Any]]:
+        """Get busy time slots for a user within a date range.
+
+        Useful for finding when a user is unavailable for scheduling.
+
+        Args:
+            user_uri: The user's URI.
+            start_time: Start of range (ISO 8601 format).
+            end_time: End of range (ISO 8601 format).
+
+        Returns:
+            List of busy time dicts with start_time and end_time.
+        """
+        data = await self._request(
+            "GET", "/user_busy_times",
+            params={
+                "user": user_uri,
+                "start_time": start_time,
+                "end_time": end_time,
+            },
+        )
+        return data.get("collection", [])
+
+    @action("Schedule a meeting (create invitee)", dangerous=True)
+    async def create_invitee(
+        self,
+        event_uuid: str,
+        email: str,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+        timezone: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Schedule a meeting by creating an invitee for an event.
+
+        This is the Scheduling API endpoint that programmatically
+        books a meeting slot.
+
+        Args:
+            event_uuid: The event UUID to schedule for.
+            email: Invitee's email address.
+            first_name: Invitee's first name.
+            last_name: Invitee's last name.
+            timezone: Invitee's timezone (IANA format).
+
+        Returns:
+            Created invitee dict with URI and scheduling details.
+        """
+        payload: dict[str, Any] = {"email": email}
+        if first_name:
+            payload["first_name"] = first_name
+        if last_name:
+            payload["last_name"] = last_name
+        if timezone:
+            payload["timezone"] = timezone
+        data = await self._request(
+            "POST", f"/scheduled_events/{event_uuid}/invitees",
+            json=payload,
+        )
+        return data.get("resource", data)
+
+    @action("List activity log events")
+    async def list_activity_log(
+        self,
+        organization_uri: str,
+        limit: int = 20,
+        cursor: Optional[str] = None,
+    ) -> PaginatedList[dict[str, Any]]:
+        """List activity log events for the organization.
+
+        Provides an audit trail of actions taken in the organization.
+
+        Args:
+            organization_uri: The organization URI.
+            limit: Maximum entries to return.
+            cursor: Pagination cursor.
+
+        Returns:
+            Paginated list of activity log dicts.
+        """
+        params: dict[str, Any] = {
+            "organization": organization_uri,
+            "count": limit,
+        }
+        if cursor:
+            params["page_token"] = cursor
+        data = await self._request(
+            "GET", "/activity_log_entries", params=params,
+        )
+        entries = data.get("collection", [])
+        pagination = data.get("pagination", {})
+        next_token = pagination.get("next_page_token")
+        return PaginatedList(
+            items=entries,
+            page_state=PageState(
+                cursor=next_token,
+                has_more=next_token is not None,
+            ),
+        )
