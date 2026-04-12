@@ -604,5 +604,139 @@ class Datadog(BaseConnector):
         Returns:
             True if the downtime was cancelled.
         """
-        resp = await self._request("DELETE", f"/v1/downtime/{downtime_id}")
-        return resp.status_code in (200, 204)
+        await self._request("DELETE", f"/v1/downtime/{downtime_id}")
+
+    # ------------------------------------------------------------------
+    # Actions — Logs
+    # ------------------------------------------------------------------
+
+    @action("Search logs")
+    async def search_logs(
+        self,
+        query: str,
+        time_from: str,
+        time_to: str,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """Search and filter log events.
+
+        Args:
+            query: Log search query (Datadog log search syntax).
+            time_from: Start time (ISO 8601 or relative like 'now-1h').
+            time_to: End time (ISO 8601 or 'now').
+            limit: Maximum log entries to return.
+
+        Returns:
+            List of log event dicts.
+        """
+        data = await self._request(
+            "POST", "/v2/logs/events/search",
+            json={
+                "filter": {"query": query, "from": time_from, "to": time_to},
+                "page": {"limit": limit},
+            },
+        )
+        return data.get("data", [])
+
+    # ------------------------------------------------------------------
+    # Actions — Incidents
+    # ------------------------------------------------------------------
+
+    @action("List incidents")
+    async def list_incidents(
+        self,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """List recent incidents.
+
+        Args:
+            limit: Maximum incidents to return.
+
+        Returns:
+            List of incident dicts.
+        """
+        data = await self._request(
+            "GET", "/v2/incidents",
+            params={"page[size]": limit},
+        )
+        return data.get("data", [])
+
+    @action("Create an incident", dangerous=True)
+    async def create_incident(
+        self,
+        title: str,
+        severity: str = "SEV-3",
+        customer_impact_scope: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Create a new incident.
+
+        Args:
+            title: Incident title.
+            severity: Severity level (SEV-1 through SEV-5).
+            customer_impact_scope: Description of customer impact.
+
+        Returns:
+            Created incident dict.
+        """
+        attrs: dict[str, Any] = {
+            "title": title,
+            "fields": {"severity": {"value": severity}},
+        }
+        if customer_impact_scope:
+            attrs["customer_impact_scope"] = customer_impact_scope
+        data = await self._request(
+            "POST", "/v2/incidents",
+            json={"data": {"type": "incidents", "attributes": attrs}},
+        )
+        return data.get("data", {})
+
+    # ------------------------------------------------------------------
+    # Actions — Dashboards (expanded)
+    # ------------------------------------------------------------------
+
+    @action("Get a dashboard by ID")
+    async def get_dashboard(self, dashboard_id: str) -> dict[str, Any]:
+        """Retrieve a single dashboard by ID.
+
+        Args:
+            dashboard_id: The dashboard ID.
+
+        Returns:
+            Dashboard dict with title, widgets, layout_type.
+        """
+        data = await self._request("GET", f"/v1/dashboard/{dashboard_id}")
+        return data
+
+    @action("Delete a dashboard", dangerous=True)
+    async def delete_dashboard(self, dashboard_id: str) -> None:
+        """Delete a dashboard.
+
+        Args:
+            dashboard_id: The dashboard ID to delete.
+        """
+        await self._request("DELETE", f"/v1/dashboard/{dashboard_id}")
+
+    # ------------------------------------------------------------------
+    # Actions — SLOs
+    # ------------------------------------------------------------------
+
+    @action("List SLOs")
+    async def list_slos(
+        self,
+        query: Optional[str] = None,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """List Service Level Objectives.
+
+        Args:
+            query: Search query to filter SLOs.
+            limit: Maximum SLOs to return.
+
+        Returns:
+            List of SLO dicts.
+        """
+        params: dict[str, Any] = {"limit": limit}
+        if query:
+            params["query"] = query
+        data = await self._request("GET", "/v1/slo", params=params)
+        return data.get("data", [])
