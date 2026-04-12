@@ -9,6 +9,8 @@ from .types import (
     NotionDatabase,
     NotionPage,
     NotionProperty,
+    NotionRichText,
+    NotionUser,
 )
 
 __all__ = [
@@ -18,4 +20,6 @@ __all__ = [
     "NotionDatabase",
     "NotionPage",
     "NotionProperty",
+    "NotionRichText",
+    "NotionUser",
 ]

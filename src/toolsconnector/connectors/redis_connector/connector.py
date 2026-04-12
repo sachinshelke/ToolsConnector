@@ -317,3 +317,82 @@ class Redis(BaseConnector):
         """
         resp = await self._request(["TYPE", key])
         return RedisResult(result=self._parse_result(resp))
+
+    # ------------------------------------------------------------------
+    # Actions -- Multi-key & utility operations
+    # ------------------------------------------------------------------
+
+    @action("Get the values of multiple Redis keys")
+    async def mget(self, keys: list[str]) -> list[RedisResult]:
+        """Get the values of multiple keys in a single request.
+
+        Args:
+            keys: List of Redis key names.
+
+        Returns:
+            List of RedisResult objects, one per key (None for missing keys).
+        """
+        resp = await self._request(["MGET", *keys])
+        values = self._parse_result(resp)
+        if isinstance(values, list):
+            return [RedisResult(result=v) for v in values]
+        return [RedisResult(result=values)]
+
+    @action("Set multiple Redis keys at once")
+    async def mset(
+        self, key_values: dict[str, str],
+    ) -> RedisResult:
+        """Set multiple key-value pairs atomically.
+
+        Args:
+            key_values: Dict mapping key names to string values.
+
+        Returns:
+            RedisResult (typically ``"OK"``).
+        """
+        cmd: list[Any] = ["MSET"]
+        for k, v in key_values.items():
+            cmd.extend([k, v])
+
+        resp = await self._request(cmd)
+        return RedisResult(result=self._parse_result(resp))
+
+    @action("Set a key only if it does not exist")
+    async def setnx(self, key: str, value: str) -> RedisResult:
+        """Set a key to a value only if the key does not already exist.
+
+        Args:
+            key: Redis key name.
+            value: Value to store.
+
+        Returns:
+            RedisResult with 1 if the key was set, 0 if it already existed.
+        """
+        resp = await self._request(["SETNX", key, value])
+        return RedisResult(result=self._parse_result(resp))
+
+    @action("Append a value to a Redis string key")
+    async def append(self, key: str, value: str) -> RedisResult:
+        """Append a value to the end of a string stored at a key.
+
+        If the key does not exist, it is created with the given value.
+
+        Args:
+            key: Redis key name.
+            value: String to append.
+
+        Returns:
+            RedisResult with the new length of the string after append.
+        """
+        resp = await self._request(["APPEND", key, value])
+        return RedisResult(result=self._parse_result(resp))
+
+    @action("Get the number of keys in the Redis database")
+    async def dbsize(self) -> RedisResult:
+        """Return the total number of keys in the current database.
+
+        Returns:
+            RedisResult with the number of keys as an integer.
+        """
+        resp = await self._request(["DBSIZE"])
+        return RedisResult(result=self._parse_result(resp))
