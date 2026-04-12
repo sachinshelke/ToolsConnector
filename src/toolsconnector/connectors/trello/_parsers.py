@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import Any
 
 from .types import (
+    TrelloAction,
+    TrelloAttachment,
     TrelloBoard,
     TrelloCard,
     TrelloComment,
@@ -117,6 +119,46 @@ def parse_card(data: dict[str, Any]) -> TrelloCard:
         labels=[parse_label(lb) for lb in labels_raw],
         id_members=data.get("idMembers") or [],
         date_last_activity=data.get("dateLastActivity"),
+    )
+
+
+def parse_attachment(data: dict[str, Any]) -> TrelloAttachment:
+    """Parse a TrelloAttachment from API JSON.
+
+    Args:
+        data: Raw JSON dict for an attachment.
+
+    Returns:
+        A TrelloAttachment instance.
+    """
+    return TrelloAttachment(
+        id=data["id"],
+        name=data.get("name"),
+        url=data.get("url"),
+        bytes=data.get("bytes"),
+        date=data.get("date"),
+        mime_type=data.get("mimeType"),
+        is_upload=data.get("isUpload", False),
+    )
+
+
+def parse_action(data: dict[str, Any]) -> TrelloAction:
+    """Parse a TrelloAction from API JSON.
+
+    Args:
+        data: Raw JSON dict for a card action.
+
+    Returns:
+        A TrelloAction instance.
+    """
+    member_raw = data.get("memberCreator")
+    return TrelloAction(
+        id=data["id"],
+        type=data.get("type"),
+        date=data.get("date"),
+        id_member_creator=data.get("idMemberCreator"),
+        data=data.get("data"),
+        member_creator=parse_member(member_raw) if member_raw else None,
     )
 
 

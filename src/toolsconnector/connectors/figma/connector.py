@@ -390,6 +390,97 @@ class Figma(BaseConnector):
     # Actions -- Team projects
     # ------------------------------------------------------------------
 
+    # ------------------------------------------------------------------
+    # Actions -- Component details
+    # ------------------------------------------------------------------
+
+    @action("Get a specific component from a Figma file")
+    async def get_component(
+        self,
+        file_key: str,
+        component_id: str,
+    ) -> FigmaComponent:
+        """Retrieve a single component by its node ID from a file.
+
+        Args:
+            file_key: The file key from the Figma URL.
+            component_id: The node ID of the component.
+
+        Returns:
+            FigmaComponent object.
+        """
+        resp = await self._request(
+            "GET", f"/files/{file_key}/nodes",
+            params={"ids": component_id},
+        )
+        body = resp.json()
+        nodes = body.get("nodes", {})
+        node_data = nodes.get(component_id, {})
+        doc = node_data.get("document", {})
+        return FigmaComponent(
+            key=doc.get("id", component_id),
+            name=doc.get("name", ""),
+            description=doc.get("description"),
+            node_id=component_id,
+            file_key=file_key,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Styles
+    # ------------------------------------------------------------------
+
+    @action("List styles in a Figma file")
+    async def list_file_styles(
+        self, file_key: str,
+    ) -> list[dict[str, Any]]:
+        """List all published styles (colors, text, effects) in a file.
+
+        Args:
+            file_key: The file key from the Figma URL.
+
+        Returns:
+            List of style dicts with key, name, style_type, etc.
+        """
+        resp = await self._request(
+            "GET", f"/files/{file_key}/styles",
+        )
+        body = resp.json()
+        meta = body.get("meta", {})
+        return meta.get("styles", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- File pages
+    # ------------------------------------------------------------------
+
+    @action("Get pages in a Figma file")
+    async def get_file_pages(
+        self, file_key: str,
+    ) -> list[dict[str, Any]]:
+        """Get the page structure (top-level canvases) of a Figma file.
+
+        Args:
+            file_key: The file key from the Figma URL.
+
+        Returns:
+            List of page dicts with id, name, and child count.
+        """
+        resp = await self._request(
+            "GET", f"/files/{file_key}",
+            params={"depth": "1"},
+        )
+        body = resp.json()
+        document = body.get("document", {})
+        children = document.get("children", [])
+        return [
+            {
+                "id": page.get("id"),
+                "name": page.get("name"),
+                "type": page.get("type"),
+                "child_count": len(page.get("children", [])),
+            }
+            for page in children
+        ]
+
     @action("List projects in a team")
     async def list_team_projects(
         self,

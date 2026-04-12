@@ -5,7 +5,7 @@ All response models use ``frozen=True`` to enforce immutability.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -89,6 +89,33 @@ class TrelloCard(BaseModel):
     labels: list[TrelloLabel] = Field(default_factory=list)
     id_members: list[str] = Field(default_factory=list)
     date_last_activity: Optional[str] = None
+
+
+class TrelloAttachment(BaseModel):
+    """An attachment on a Trello card."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: Optional[str] = None
+    url: Optional[str] = None
+    bytes: Optional[int] = None
+    date: Optional[str] = None
+    mime_type: Optional[str] = None
+    is_upload: bool = False
+
+
+class TrelloAction(BaseModel):
+    """An action (activity log entry) on a Trello card."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    type: Optional[str] = None
+    date: Optional[str] = None
+    id_member_creator: Optional[str] = None
+    data: Optional[dict[str, Any]] = None
+    member_creator: Optional[TrelloMember] = None
 
 
 class TrelloComment(BaseModel):

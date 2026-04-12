@@ -461,6 +461,79 @@ class Webhook(BaseConnector):
 
         return last_result  # type: ignore[return-value]
 
+    @action("Send a webhook with HTTP Basic authentication", dangerous=True)
+    async def send_with_basic_auth(
+        self,
+        url: str,
+        payload: dict[str, Any],
+        username: str,
+        password: str,
+    ) -> WebhookResponse:
+        """Send a webhook using HTTP Basic authentication.
+
+        Args:
+            url: The target URL.
+            payload: JSON-serialisable payload dict.
+            username: Basic auth username.
+            password: Basic auth password.
+
+        Returns:
+            A WebhookResponse with delivery status.
+        """
+        import base64 as b64
+
+        auth_str = b64.b64encode(
+            f"{username}:{password}".encode()
+        ).decode()
+        headers: dict[str, str] = {
+            "Authorization": f"Basic {auth_str}",
+            "Content-Type": "application/json",
+        }
+        start = time.monotonic()
+        try:
+            response = await self._client.post(
+                url, json=payload, headers=headers,
+            )
+            elapsed = (time.monotonic() - start) * 1000
+            return self._build_response(url, "POST", response, elapsed)
+        except Exception as exc:
+            return self._error_response(url, "POST", str(exc))
+
+    @action("Send a webhook with API key authentication", dangerous=True)
+    async def send_with_api_key(
+        self,
+        url: str,
+        payload: dict[str, Any],
+        api_key: str,
+        header_name: Optional[str] = None,
+    ) -> WebhookResponse:
+        """Send a webhook with an API key in a custom header.
+
+        Args:
+            url: The target URL.
+            payload: JSON-serialisable payload dict.
+            api_key: The API key value.
+            header_name: Header name for the API key
+                (default ``X-API-Key``).
+
+        Returns:
+            A WebhookResponse with delivery status.
+        """
+        key_header = header_name or "X-API-Key"
+        headers: dict[str, str] = {
+            key_header: api_key,
+            "Content-Type": "application/json",
+        }
+        start = time.monotonic()
+        try:
+            response = await self._client.post(
+                url, json=payload, headers=headers,
+            )
+            elapsed = (time.monotonic() - start) * 1000
+            return self._build_response(url, "POST", response, elapsed)
+        except Exception as exc:
+            return self._error_response(url, "POST", str(exc))
+
     @action("Send a multipart form-data request", dangerous=True)
     async def send_multipart(
         self,

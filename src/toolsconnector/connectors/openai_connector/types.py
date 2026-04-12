@@ -192,3 +192,75 @@ class ModerationResult(BaseModel):
     flagged: bool = False
     categories: dict[str, bool] = Field(default_factory=dict)
     category_scores: dict[str, float] = Field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# Threads / Assistants v2 models
+# ---------------------------------------------------------------------------
+
+
+class Thread(BaseModel):
+    """An OpenAI Assistants thread."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    object: str = "thread"
+    created_at: int = 0
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ThreadMessageContent(BaseModel):
+    """Content within a thread message."""
+
+    model_config = ConfigDict(frozen=True)
+
+    type: str = "text"
+    text: Optional[dict[str, Any]] = None
+
+
+class ThreadMessage(BaseModel):
+    """A message within an OpenAI Assistants thread."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    object: str = "thread.message"
+    created_at: int = 0
+    thread_id: str = ""
+    role: str = "user"
+    content: list[ThreadMessageContent] = Field(default_factory=list)
+    assistant_id: Optional[str] = None
+    run_id: Optional[str] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ThreadRunUsage(BaseModel):
+    """Token usage statistics for a thread run."""
+
+    model_config = ConfigDict(frozen=True)
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+class ThreadRun(BaseModel):
+    """A run execution within an OpenAI Assistants thread."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    object: str = "thread.run"
+    created_at: int = 0
+    thread_id: str = ""
+    assistant_id: str = ""
+    status: str = "queued"
+    model: str = ""
+    instructions: Optional[str] = None
+    tools: list[ToolDefinition] = Field(default_factory=list)
+    usage: Optional[ThreadRunUsage] = None
+    started_at: Optional[int] = None
+    completed_at: Optional[int] = None
+    failed_at: Optional[int] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)

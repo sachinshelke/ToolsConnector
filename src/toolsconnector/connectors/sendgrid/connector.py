@@ -622,3 +622,144 @@ class SendGrid(BaseConnector):
             "GET", "/suppression/unsubscribes",
         )
         return resp.json() if isinstance(resp.json(), list) else []
+
+    @action("Get global suppressions with limit")
+    async def get_global_suppressions(
+        self,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> list[SendGridSuppression]:
+        """Retrieve globally suppressed email addresses with pagination.
+
+        Global suppressions are email addresses that have unsubscribed
+        from all of your emails.
+
+        Args:
+            limit: Maximum number of suppression records to return.
+            offset: Starting index for pagination.
+
+        Returns:
+            List of SendGridSuppression objects.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
+        resp = await self._request(
+            "GET", "/suppression/unsubscribes",
+            params=params or None,
+        )
+        data = resp.json()
+        items = data if isinstance(data, list) else []
+        return [
+            SendGridSuppression(
+                email=s.get("email", ""),
+                created=s.get("created"),
+            )
+            for s in items
+        ]
+
+    @action("Add emails to global suppression group", dangerous=True)
+    async def add_to_suppression(
+        self,
+        emails: list[str],
+    ) -> bool:
+        """Add recipient email addresses to the global suppression group.
+
+        Globally suppressed addresses will not receive any of your
+        emails. This is a bulk operation that accepts multiple addresses.
+
+        Args:
+            emails: List of email addresses to globally suppress.
+
+        Returns:
+            True if the emails were added to the global suppression group.
+        """
+        payload: dict[str, Any] = {
+            "recipient_emails": emails,
+        }
+        resp = await self._request(
+            "POST", "/asm/suppressions/global", json=payload,
+        )
+        return resp.status_code in (200, 201, 202)
+
+    @action("Remove an email from global suppression group", dangerous=True)
+    async def remove_from_suppression(
+        self,
+        email: str,
+    ) -> bool:
+        """Remove a specific email address from the global suppression group.
+
+        After removal, the address will be eligible to receive emails
+        again unless it exists in a group-level suppression.
+
+        Args:
+            email: The email address to remove from global suppression.
+
+        Returns:
+            True if the email was removed from global suppression.
+        """
+        resp = await self._request(
+            "DELETE", f"/asm/suppressions/global/{email}",
+        )
+        return resp.status_code in (200, 204)
+
+    # ------------------------------------------------------------------
+    # Actions -- Sender identities
+    # ------------------------------------------------------------------
+
+    @action("List verified sender identities")
+    async def list_sender_identities(self) -> list[dict[str, Any]]:
+        """List all verified sender identities associated with the account.
+
+        Returns both verified and unverified senders with their
+        details including name, email, and verification status.
+
+        Returns:
+            List of sender identity dicts with id, nickname,
+            from_email, from_name, reply_to, address, city,
+            country, and verified status.
+        """
+        resp = await self._request("GET", "/verified_senders")
+        body = resp.json()
+        return body.get("results", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- Email activity
+    # ------------------------------------------------------------------
+
+    @action("Query email activity feed")
+    async def get_email_activity(
+        self,
+        query: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> list[dict[str, Any]]:
+        """Query the email activity feed for recent message events.
+
+        Requires Email Activity Feed access enabled on the API key.
+        Returns recent email events including delivery, open, click,
+        bounce, and other statuses.
+
+        Args:
+            query: SGQL-style filter query string (e.g.
+                ``"status=delivered AND to_email=user@example.com"``).
+                If omitted, returns the most recent messages.
+            limit: Maximum number of messages to return (default 10).
+
+        Returns:
+            List of message activity dicts with from_email, to_email,
+            subject, status, last_event_time, clicks_count,
+            opens_count, etc.
+        """
+        params: dict[str, Any] = {}
+        if query is not None:
+            params["query"] = query
+        if limit is not None:
+            params["limit"] = limit
+
+        resp = await self._request(
+            "GET", "/messages", params=params or None,
+        )
+        body = resp.json()
+        return body.get("messages", [])

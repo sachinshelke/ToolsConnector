@@ -102,6 +102,45 @@ class AsanaComment(BaseModel):
     type: Optional[str] = None
 
 
+class AsanaSection(BaseModel):
+    """A section within an Asana project."""
+
+    model_config = ConfigDict(frozen=True)
+
+    gid: str
+    name: str = ""
+    resource_type: str = "section"
+    created_at: Optional[str] = None
+    project: Optional[dict[str, Any]] = None
+
+
+class AsanaTeam(BaseModel):
+    """An Asana team within a workspace."""
+
+    model_config = ConfigDict(frozen=True)
+
+    gid: str
+    name: str = ""
+    resource_type: str = "team"
+    description: Optional[str] = None
+    organization: Optional[dict[str, Any]] = None
+
+
+class AsanaStory(BaseModel):
+    """A story (activity entry) on an Asana task."""
+
+    model_config = ConfigDict(frozen=True)
+
+    gid: str
+    resource_type: str = "story"
+    text: str = ""
+    html_text: Optional[str] = None
+    type: Optional[str] = None
+    created_at: Optional[str] = None
+    created_by: Optional[AsanaUser] = None
+    resource_subtype: Optional[str] = None
+
+
 class AsanaTag(BaseModel):
     """An Asana tag."""
 

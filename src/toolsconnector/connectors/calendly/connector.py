@@ -528,6 +528,89 @@ class Calendly(BaseConnector):
         )
         return data.get("collection", [])
 
+    # ------------------------------------------------------------------
+    # Actions -- Event type details
+    # ------------------------------------------------------------------
+
+    @action("Get a single event type by UUID")
+    async def get_event_type(
+        self, event_type_uuid: str,
+    ) -> CalendlyEventType:
+        """Retrieve a single event type by its UUID.
+
+        Args:
+            event_type_uuid: The UUID of the event type.
+
+        Returns:
+            The requested CalendlyEventType.
+        """
+        data = await self._request(
+            "GET", f"/event_types/{event_type_uuid}",
+        )
+        resource = data.get("resource", data)
+        return self._parse_event_type(resource)
+
+    # ------------------------------------------------------------------
+    # Actions -- Availability
+    # ------------------------------------------------------------------
+
+    @action("List available times for an event type")
+    async def list_available_times(
+        self,
+        event_type_uuid: str,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """List available time slots for scheduling an event type.
+
+        Args:
+            event_type_uuid: The UUID of the event type.
+            start: ISO 8601 start of availability window.
+            end: ISO 8601 end of availability window.
+
+        Returns:
+            List of available time slot dicts with start_time and
+            invitees_remaining.
+        """
+        params: dict[str, Any] = {
+            "event_type": f"https://api.calendly.com/event_types/{event_type_uuid}",
+        }
+        if start:
+            params["start_time"] = start
+        if end:
+            params["end_time"] = end
+
+        data = await self._request(
+            "GET", "/event_type_available_times", params=params,
+        )
+        return data.get("collection", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- Invitee details
+    # ------------------------------------------------------------------
+
+    @action("Get a single invitee for a scheduled event")
+    async def get_invitee(
+        self,
+        event_uuid: str,
+        invitee_uuid: str,
+    ) -> CalendlyInvitee:
+        """Retrieve a single invitee of a scheduled event.
+
+        Args:
+            event_uuid: The UUID of the scheduled event.
+            invitee_uuid: The UUID of the invitee.
+
+        Returns:
+            The requested CalendlyInvitee.
+        """
+        data = await self._request(
+            "GET",
+            f"/scheduled_events/{event_uuid}/invitees/{invitee_uuid}",
+        )
+        resource = data.get("resource", data)
+        return self._parse_invitee(resource)
+
     @action("Delete a webhook subscription", dangerous=True)
     async def delete_webhook(
         self, webhook_id: str,

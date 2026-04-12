@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .connector import Pinecone
 from .types import (
+    PineconeCollection,
     PineconeIndex,
     PineconeMatch,
     PineconeQueryResult,
@@ -13,6 +14,7 @@ from .types import (
 
 __all__ = [
     "Pinecone",
+    "PineconeCollection",
     "PineconeIndex",
     "PineconeMatch",
     "PineconeQueryResult",

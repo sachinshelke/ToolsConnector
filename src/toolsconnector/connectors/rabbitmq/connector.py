@@ -543,3 +543,148 @@ class RabbitMQ(BaseConnector):
         """
         data = await self._request("GET", "/nodes")
         return data if isinstance(data, list) else []
+
+    # ------------------------------------------------------------------
+    # Actions -- Queue bindings
+    # ------------------------------------------------------------------
+
+    @action("Get bindings for a specific queue")
+    async def get_queue_bindings(
+        self,
+        vhost: str,
+        queue_name: str,
+    ) -> list[dict[str, Any]]:
+        """List all bindings on a specific queue.
+
+        Returns binding details including the source exchange, routing
+        key, and arguments for each binding on the queue.
+
+        Args:
+            vhost: Virtual host containing the queue.
+            queue_name: Name of the queue.
+
+        Returns:
+            List of binding dicts with source, destination, routing_key,
+            properties_key, and arguments.
+        """
+        encoded_vhost = self._encode_vhost(vhost)
+        encoded_queue = urllib.parse.quote(queue_name, safe="")
+        path = f"/queues/{encoded_vhost}/{encoded_queue}/bindings"
+        data = await self._request("GET", path)
+        return data if isinstance(data, list) else []
+
+    @action("Create a binding between an exchange and a queue", dangerous=True)
+    async def create_binding(
+        self,
+        vhost: str,
+        exchange: str,
+        queue: str,
+        routing_key: Optional[str] = None,
+        arguments: Optional[dict[str, Any]] = None,
+    ) -> bool:
+        """Create a binding from an exchange to a queue.
+
+        Binds the specified queue to the exchange with an optional
+        routing key and arguments for header-based routing.
+
+        Args:
+            vhost: Virtual host containing the exchange and queue.
+            exchange: Source exchange name.
+            queue: Destination queue name.
+            routing_key: Routing key for the binding. Defaults to ``""``.
+            arguments: Optional arguments for header exchange bindings.
+
+        Returns:
+            True if the binding was created.
+        """
+        encoded_vhost = self._encode_vhost(vhost)
+        encoded_exchange = urllib.parse.quote(exchange, safe="")
+        encoded_queue = urllib.parse.quote(queue, safe="")
+        path = (
+            f"/bindings/{encoded_vhost}"
+            f"/e/{encoded_exchange}/q/{encoded_queue}"
+        )
+
+        body: dict[str, Any] = {}
+        if routing_key is not None:
+            body["routing_key"] = routing_key
+        if arguments is not None:
+            body["arguments"] = arguments
+
+        await self._request("POST", path, json_body=body)
+        return True
+
+    # ------------------------------------------------------------------
+    # Actions -- Consumers
+    # ------------------------------------------------------------------
+
+    @action("List consumers")
+    async def list_consumers(
+        self,
+        vhost: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """List all consumers, optionally filtered by virtual host.
+
+        Returns consumer details including the queue name, channel,
+        consumer tag, acknowledgement mode, and prefetch count.
+
+        Args:
+            vhost: Filter consumers by virtual host. If omitted, lists
+                consumers across all virtual hosts.
+
+        Returns:
+            List of consumer dicts with queue, channel_details,
+            consumer_tag, ack_required, prefetch_count, etc.
+        """
+        if vhost:
+            path = f"/consumers/{self._encode_vhost(vhost)}"
+        else:
+            path = "/consumers"
+
+        data = await self._request("GET", path)
+        return data if isinstance(data, list) else []
+
+    # ------------------------------------------------------------------
+    # Actions -- Virtual hosts
+    # ------------------------------------------------------------------
+
+    @action("List virtual hosts")
+    async def list_vhosts(self) -> list[dict[str, Any]]:
+        """List all virtual hosts in the RabbitMQ cluster.
+
+        Returns vhost details including name, tracing status, message
+        statistics, and metadata.
+
+        Returns:
+            List of vhost dicts with name, tracing, cluster_state,
+            message counts, etc.
+        """
+        data = await self._request("GET", "/vhosts")
+        return data if isinstance(data, list) else []
+
+    # ------------------------------------------------------------------
+    # Actions -- Health checks
+    # ------------------------------------------------------------------
+
+    @action("Check broker health")
+    async def health_check(self) -> dict[str, Any]:
+        """Check the health of the RabbitMQ cluster via alarm status.
+
+        Queries ``/health/checks/alarms`` which returns 200 OK if there
+        are no alarms in effect, or 503 Service Unavailable if alarms
+        are active. This method catches 503 responses and returns them
+        as part of the result instead of raising.
+
+        Returns:
+            Dict with ``status`` (``"ok"`` or ``"failed"``) and
+            optional ``reason`` with alarm details.
+        """
+        try:
+            data = await self._request("GET", "/health/checks/alarms")
+            return {"status": "ok", **(data if isinstance(data, dict) else {})}
+        except APIError as exc:
+            return {
+                "status": "failed",
+                "reason": str(exc),
+                "details": getattr(exc, "details", {}),
+            }

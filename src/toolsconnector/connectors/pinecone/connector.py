@@ -24,6 +24,7 @@ from toolsconnector.types import PageState, PaginatedList
 from .types import (
     DeleteResult,
     NamespaceStats,
+    PineconeCollection,
     PineconeFetchResult,
     PineconeIndex,
     PineconeMatch,
@@ -440,6 +441,29 @@ class Pinecone(BaseConnector):
     # Actions -- Index management (extended)
     # ------------------------------------------------------------------
 
+    @action("Describe a Pinecone index", idempotent=True)
+    async def describe_index(self, index_name: str) -> PineconeIndex:
+        """Get detailed information about a specific Pinecone index.
+
+        Uses the control plane API at https://api.pinecone.io.
+
+        Args:
+            index_name: Name of the index to describe.
+
+        Returns:
+            PineconeIndex with full index metadata, status, and spec.
+        """
+        data = await self._control_request("GET", f"/indexes/{index_name}")
+
+        return PineconeIndex(
+            name=data.get("name", ""),
+            dimension=data.get("dimension", 0),
+            metric=data.get("metric", "cosine"),
+            host=data.get("host", ""),
+            status=data.get("status"),
+            spec=data.get("spec"),
+        )
+
     @action("Create a new Pinecone index", dangerous=True)
     async def create_index(
         self,
@@ -448,6 +472,8 @@ class Pinecone(BaseConnector):
         metric: Optional[str] = None,
     ) -> PineconeIndex:
         """Create a new Pinecone index.
+
+        Creates a serverless index on AWS us-east-1 by default.
 
         Args:
             name: Name of the index.
@@ -463,10 +489,7 @@ class Pinecone(BaseConnector):
             "metric": metric or "cosine",
             "spec": {"serverless": {"cloud": "aws", "region": "us-east-1"}},
         }
-        resp = await self._control_request(
-            "POST", "/indexes", json_body=payload,
-        )
-        data = resp.json()
+        data = await self._control_request("POST", "/indexes", json=payload)
         return PineconeIndex(
             name=data.get("name", ""),
             dimension=data.get("dimension", dimension),
@@ -478,7 +501,7 @@ class Pinecone(BaseConnector):
 
     @action("Delete a Pinecone index", dangerous=True)
     async def delete_index(self, name: str) -> bool:
-        """Delete a Pinecone index.
+        """Delete a Pinecone index permanently.
 
         Args:
             name: Name of the index to delete.
@@ -486,10 +509,8 @@ class Pinecone(BaseConnector):
         Returns:
             True if the index was deleted.
         """
-        resp = await self._control_request(
-            "DELETE", f"/indexes/{name}",
-        )
-        return resp.status_code in (200, 202, 204)
+        await self._control_request("DELETE", f"/indexes/{name}")
+        return True
 
     @action("Configure an existing Pinecone index")
     async def configure_index(
@@ -514,10 +535,9 @@ class Pinecone(BaseConnector):
         if pod_type is not None:
             spec["pod_type"] = pod_type
         payload: dict[str, Any] = {"spec": {"pod": spec}}
-        resp = await self._control_request(
-            "PATCH", f"/indexes/{name}", json_body=payload,
+        data = await self._control_request(
+            "PATCH", f"/indexes/{name}", json=payload,
         )
-        data = resp.json()
         return PineconeIndex(
             name=data.get("name", ""),
             dimension=data.get("dimension", 0),
@@ -526,3 +546,79 @@ class Pinecone(BaseConnector):
             status=data.get("status"),
             spec=data.get("spec"),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Collections
+    # ------------------------------------------------------------------
+
+    @action("List all collections", idempotent=True)
+    async def list_collections(self) -> list[PineconeCollection]:
+        """List all collections in the current project.
+
+        Collections are static snapshots of an index. Note that
+        serverless indexes do not support collections.
+
+        Uses the control plane API at https://api.pinecone.io.
+
+        Returns:
+            List of PineconeCollection objects with collection metadata.
+        """
+        data = await self._control_request("GET", "/collections")
+
+        return [
+            PineconeCollection(
+                name=c.get("name", ""),
+                size=c.get("size"),
+                status=c.get("status"),
+                dimension=c.get("dimension"),
+                vector_count=c.get("vector_count"),
+                environment=c.get("environment"),
+            )
+            for c in data.get("collections", [])
+        ]
+
+    @action("Create a collection from an index", dangerous=True)
+    async def create_collection(
+        self,
+        name: str,
+        source_index: str,
+    ) -> PineconeCollection:
+        """Create a collection from an existing index.
+
+        A collection is a static snapshot of an index that can be used
+        to create new indexes. Serverless indexes do not support
+        collections.
+
+        Args:
+            name: Name for the new collection.
+            source_index: Name of the source index to snapshot.
+
+        Returns:
+            The created PineconeCollection.
+        """
+        payload: dict[str, Any] = {
+            "name": name,
+            "source": source_index,
+        }
+        data = await self._control_request("POST", "/collections", json=payload)
+        return PineconeCollection(
+            name=data.get("name", ""),
+            size=data.get("size"),
+            status=data.get("status"),
+            dimension=data.get("dimension"),
+            vector_count=data.get("vector_count"),
+            environment=data.get("environment"),
+        )
+
+    @action("Delete a collection", dangerous=True)
+    async def delete_collection(self, name: str) -> bool:
+        """Permanently delete a collection.
+
+        Args:
+            name: Name of the collection to delete.
+
+        Returns:
+            True if the collection was deleted.
+        """
+        await self._control_request("DELETE", f"/collections/{name}")
+        return True

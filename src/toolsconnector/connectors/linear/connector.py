@@ -14,9 +14,17 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from ._queries import COMMENT_FIELDS, ISSUE_FIELDS, PROJECT_FIELDS, TEAM_FIELDS
+from ._queries import (
+    COMMENT_FIELDS,
+    CYCLE_FIELDS,
+    ISSUE_FIELDS,
+    PROJECT_FIELDS,
+    TEAM_FIELDS,
+    USER_FIELDS,
+)
 from .types import (
     LinearComment,
+    LinearCycle,
     LinearIssue,
     LinearLabel,
     LinearProject,
@@ -177,6 +185,24 @@ class Linear(BaseConnector):
             target_date=data.get("targetDate"),
             progress=data.get("progress", 0.0),
             lead=cls._parse_user(data.get("lead")),
+        )
+
+    @staticmethod
+    def _parse_cycle(data: dict[str, Any]) -> LinearCycle:
+        """Parse a raw Linear cycle node into a LinearCycle model."""
+        team_data = data.get("team")
+        return LinearCycle(
+            id=data["id"],
+            number=data.get("number"),
+            name=data.get("name"),
+            description=data.get("description"),
+            starts_at=data.get("startsAt"),
+            ends_at=data.get("endsAt"),
+            completed_at=data.get("completedAt"),
+            progress=data.get("progress", 0.0),
+            scope_count=data.get("scopeCount"),
+            completed_scope_count=data.get("completedScopeCount"),
+            team_id=team_data["id"] if team_data else None,
         )
 
     @classmethod
@@ -592,3 +618,223 @@ class Linear(BaseConnector):
             )
             for s in data.get("workflowStates", {}).get("nodes", [])
         ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Cycles
+    # ------------------------------------------------------------------
+
+    @action("List cycles, optionally filtered by team")
+    async def list_cycles(
+        self,
+        team_id: Optional[str] = None,
+        limit: int = 50,
+        cursor: Optional[str] = None,
+    ) -> PaginatedList[LinearCycle]:
+        """List cycles (sprints) in the Linear workspace.
+
+        Args:
+            team_id: Optional team UUID to filter cycles by.
+            limit: Maximum results per page (max 250).
+            cursor: Pagination cursor from a previous response.
+
+        Returns:
+            Paginated list of LinearCycle objects.
+        """
+        filter_arg = ""
+        if team_id:
+            filter_arg = (
+                f'filter: {{ team: {{ id: {{ eq: "{team_id}" }} }} }},'
+            )
+        after_arg = f', after: "{cursor}"' if cursor else ""
+
+        query = f"""
+        query {{ cycles(first: {min(limit, 250)},
+            {filter_arg} orderBy: updatedAt {after_arg}) {{
+            nodes {{ {CYCLE_FIELDS} }}
+            pageInfo {{ hasNextPage endCursor }}
+        }} }}
+        """
+        data = await self._graphql(query)
+        cycles_data = data.get("cycles", {})
+        page_info = cycles_data.get("pageInfo", {})
+
+        return PaginatedList(
+            items=[
+                self._parse_cycle(n)
+                for n in cycles_data.get("nodes", [])
+            ],
+            page_state=PageState(
+                cursor=page_info.get("endCursor"),
+                has_more=page_info.get("hasNextPage", False),
+            ),
+        )
+
+    @action("Get a single cycle by ID")
+    async def get_cycle(self, cycle_id: str) -> LinearCycle:
+        """Retrieve a Linear cycle by its UUID.
+
+        Args:
+            cycle_id: The UUID of the cycle.
+
+        Returns:
+            The requested LinearCycle.
+        """
+        query = f"""
+        query($id: String!) {{ cycle(id: $id) {{ {CYCLE_FIELDS} }} }}
+        """
+        data = await self._graphql(query, variables={"id": cycle_id})
+        return self._parse_cycle(data["cycle"])
+
+    # ------------------------------------------------------------------
+    # Actions -- Issue comments
+    # ------------------------------------------------------------------
+
+    @action("List comments on an issue")
+    async def list_issue_comments(
+        self, issue_id: str,
+    ) -> list[LinearComment]:
+        """List all comments on a Linear issue.
+
+        Args:
+            issue_id: UUID of the issue.
+
+        Returns:
+            List of LinearComment objects.
+        """
+        query = f"""
+        query($id: String!) {{ issue(id: $id) {{
+            comments {{ nodes {{ {COMMENT_FIELDS} }} }}
+        }} }}
+        """
+        data = await self._graphql(query, variables={"id": issue_id})
+        comments_data = (
+            data.get("issue", {})
+            .get("comments", {})
+            .get("nodes", [])
+        )
+        return [self._parse_comment(c) for c in comments_data]
+
+    # ------------------------------------------------------------------
+    # Actions -- Project management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Update an existing project", dangerous=True)
+    async def update_project(
+        self,
+        project_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        state: Optional[str] = None,
+    ) -> LinearProject:
+        """Update fields on an existing Linear project.
+
+        Args:
+            project_id: UUID of the project to update.
+            name: New name (if changing).
+            description: New description (if changing).
+            state: New state (e.g. ``"planned"``, ``"started"``,
+                ``"paused"``, ``"completed"``, ``"canceled"``).
+
+        Returns:
+            The updated LinearProject.
+        """
+        inp: list[str] = []
+        if name is not None:
+            inp.append(f'name: "{name}"')
+        if description is not None:
+            esc = description.replace("\\", "\\\\").replace('"', '\\"')
+            cleaned = esc.replace("\n", "\\n")
+            inp.append(f'description: "{cleaned}"')
+        if state is not None:
+            inp.append(f'state: "{state}"')
+        if not inp:
+            raise ValueError("At least one field must be provided")
+
+        query = f"""
+        mutation {{ projectUpdate(id: "{project_id}",
+            input: {{ {", ".join(inp)} }}) {{
+            success project {{ {PROJECT_FIELDS} }}
+        }} }}
+        """
+        data = await self._graphql(query)
+        result = data.get("projectUpdate", {})
+        if not result.get("success"):
+            raise ValueError("Linear project update failed")
+        return self._parse_project(result["project"])
+
+    @action("Delete a project by ID", dangerous=True)
+    async def delete_project(self, project_id: str) -> bool:
+        """Permanently delete a Linear project.
+
+        Args:
+            project_id: UUID of the project to delete.
+
+        Returns:
+            True if the project was deleted successfully.
+        """
+        query = f"""
+        mutation {{ projectDelete(id: "{project_id}") {{ success }} }}
+        """
+        data = await self._graphql(query)
+        return data.get("projectDelete", {}).get("success", False)
+
+    # ------------------------------------------------------------------
+    # Actions -- Users
+    # ------------------------------------------------------------------
+
+    @action("List all users in the workspace")
+    async def list_users(
+        self,
+        limit: int = 50,
+        cursor: Optional[str] = None,
+    ) -> PaginatedList[LinearUser]:
+        """List all users in the Linear workspace.
+
+        Args:
+            limit: Maximum results per page (max 250).
+            cursor: Pagination cursor from a previous response.
+
+        Returns:
+            Paginated list of LinearUser objects.
+        """
+        after_arg = f', after: "{cursor}"' if cursor else ""
+        query = f"""
+        query {{ users(first: {min(limit, 250)} {after_arg}) {{
+            nodes {{ {USER_FIELDS} }}
+            pageInfo {{ hasNextPage endCursor }}
+        }} }}
+        """
+        data = await self._graphql(query)
+        users_data = data.get("users", {})
+        page_info = users_data.get("pageInfo", {})
+
+        return PaginatedList(
+            items=[
+                self._parse_user(n)
+                for n in users_data.get("nodes", [])
+                if n is not None
+            ],
+            page_state=PageState(
+                cursor=page_info.get("endCursor"),
+                has_more=page_info.get("hasNextPage", False),
+            ),
+        )
+
+    @action("Get a single user by ID")
+    async def get_user(self, user_id: str) -> LinearUser:
+        """Retrieve a Linear user by their UUID.
+
+        Args:
+            user_id: The UUID of the user.
+
+        Returns:
+            The requested LinearUser.
+        """
+        query = f"""
+        query($id: String!) {{ user(id: $id) {{ {USER_FIELDS} }} }}
+        """
+        data = await self._graphql(query, variables={"id": user_id})
+        user = self._parse_user(data["user"])
+        if user is None:
+            raise ValueError(f"User {user_id} not found")
+        return user

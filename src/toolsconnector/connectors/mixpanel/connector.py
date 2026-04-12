@@ -550,3 +550,107 @@ class Mixpanel(BaseConnector):
             "GET", "/segmentation", params=params,
         )
         return resp.json()
+
+    # ------------------------------------------------------------------
+    # Actions -- Property values
+    # ------------------------------------------------------------------
+
+    @action("Get property values for an event", idempotent=True)
+    async def get_property_values(
+        self,
+        event: str,
+        property: str,
+        limit: Optional[int] = None,
+    ) -> list[Any]:
+        """Get the top values for a specific property on an event.
+
+        Args:
+            event: The event name.
+            property: The property name to get values for.
+            limit: Maximum number of values to return.
+
+        Returns:
+            List of property values (strings, numbers, etc.).
+        """
+        params: dict[str, Any] = {
+            "event": event,
+            "name": property,
+            "type": "general",
+        }
+        if limit is not None:
+            params["limit"] = limit
+
+        data = await self._query_request(
+            "GET",
+            f"{_QUERY_URL}/2.0/events/properties/values",
+            params=params,
+        )
+        return data if isinstance(data, list) else []
+
+    # ------------------------------------------------------------------
+    # Actions -- Event counts
+    # ------------------------------------------------------------------
+
+    @action("Get event count for a date range", idempotent=True)
+    async def get_event_count(
+        self,
+        event: str,
+        from_date: str,
+        to_date: str,
+    ) -> dict[str, Any]:
+        """Get total event counts for a specific event in a date range.
+
+        Args:
+            event: The event name to count.
+            from_date: Start date in YYYY-MM-DD format.
+            to_date: End date in YYYY-MM-DD format.
+
+        Returns:
+            Dict with event count data keyed by date.
+        """
+        params: dict[str, Any] = {
+            "event": json.dumps([event]),
+            "from_date": from_date,
+            "to_date": to_date,
+            "type": "general",
+            "unit": "day",
+        }
+
+        data = await self._query_request(
+            "GET",
+            f"{_QUERY_URL}/2.0/events",
+            params=params,
+        )
+        return data
+
+    # ------------------------------------------------------------------
+    # Actions -- Annotations
+    # ------------------------------------------------------------------
+
+    @action("Create an annotation in Mixpanel", dangerous=True)
+    async def create_annotation(
+        self,
+        date: str,
+        description: str,
+    ) -> dict[str, Any]:
+        """Create a time-stamped annotation (e.g. deploy marker).
+
+        Annotations appear on Mixpanel charts to mark significant
+        events like deployments, launches, or incidents.
+
+        Args:
+            date: Annotation date in YYYY-MM-DD format.
+            description: Description text for the annotation.
+
+        Returns:
+            Dict with the created annotation details.
+        """
+        data = await self._query_request(
+            "POST",
+            f"{_QUERY_URL}/2.0/annotations",
+            params={
+                "date": date,
+                "description": description,
+            },
+        )
+        return data if isinstance(data, dict) else {}

@@ -147,3 +147,12 @@ class SendGridSpamReport(BaseModel):
     email: str = ""
     created: Optional[int] = None
     ip: Optional[str] = None
+
+
+class SendGridSuppression(BaseModel):
+    """A SendGrid global suppression (unsubscribe) record."""
+
+    model_config = ConfigDict(frozen=True)
+
+    email: str = ""
+    created: Optional[int] = None
