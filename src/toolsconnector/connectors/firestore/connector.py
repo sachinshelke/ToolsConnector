@@ -871,3 +871,75 @@ class Firestore(BaseConnector):
         if isinstance(current, dict):
             return _decode_value(current)
         return current
+
+    # ------------------------------------------------------------------
+    # Actions — Batch read
+    # ------------------------------------------------------------------
+
+    @action("Batch get multiple documents")
+    async def batch_get(
+        self,
+        project: str,
+        collection: str,
+        document_ids: list[str],
+        database: str = "(default)",
+    ) -> list[FirestoreDocument]:
+        """Retrieve multiple documents in a single request.
+
+        More efficient than individual get_document calls.
+
+        Args:
+            project: Google Cloud project ID.
+            collection: Collection name.
+            document_ids: List of document IDs to retrieve.
+            database: Database ID (default: '(default)').
+
+        Returns:
+            List of FirestoreDocument objects.
+        """
+        parent = f"projects/{project}/databases/{database}/documents"
+        doc_names = [f"{parent}/{collection}/{doc_id}" for doc_id in document_ids]
+        data = await self._request(
+            "POST",
+            f"projects/{project}/databases/{database}/documents:batchGet",
+            json={"documents": doc_names},
+        )
+        results = []
+        for item in (data if isinstance(data, list) else [data]):
+            found = item.get("found")
+            if found:
+                fields = found.get("fields", {})
+                name = found.get("name", "")
+                doc_id = name.rsplit("/", 1)[-1] if "/" in name else name
+                decoded = {k: _decode_value(v) for k, v in fields.items()}
+                results.append(FirestoreDocument(
+                    name=name,
+                    document_id=doc_id,
+                    fields=decoded,
+                    create_time=found.get("createTime"),
+                    update_time=found.get("updateTime"),
+                ))
+        return results
+
+    # ------------------------------------------------------------------
+    # Actions — Index management
+    # ------------------------------------------------------------------
+
+    @action("Delete a composite index", dangerous=True)
+    async def delete_index(
+        self,
+        project: str,
+        database: str,
+        index_id: str,
+    ) -> None:
+        """Delete a composite index.
+
+        Args:
+            project: Google Cloud project ID.
+            database: Database ID (usually '(default)').
+            index_id: The index ID to delete.
+        """
+        await self._request(
+            "DELETE",
+            f"projects/{project}/databases/{database}/collectionGroups/-/indexes/{index_id}",
+        )
