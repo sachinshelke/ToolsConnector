@@ -1,4 +1,4 @@
-"""Twilio connector — SMS, voice calls, phone numbers, and account info."""
+"""Twilio connector — SMS, voice calls, Verify, Lookup, and Conversations."""
 
 from __future__ import annotations
 
@@ -7,7 +7,12 @@ from .types import (
     PhoneNumber,
     TwilioAccount,
     TwilioCall,
+    TwilioConversation,
+    TwilioLookupResult,
     TwilioMessage,
+    TwilioVerification,
+    TwilioVerificationCheck,
+    TwilioVerifyService,
 )
 
 __all__ = [
@@ -15,5 +20,10 @@ __all__ = [
     "PhoneNumber",
     "TwilioAccount",
     "TwilioCall",
+    "TwilioConversation",
+    "TwilioLookupResult",
     "TwilioMessage",
+    "TwilioVerification",
+    "TwilioVerificationCheck",
+    "TwilioVerifyService",
 ]

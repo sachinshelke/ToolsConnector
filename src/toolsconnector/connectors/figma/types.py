@@ -119,6 +119,50 @@ class FigmaComponent(BaseModel):
     user: Optional[FigmaUser] = None
 
 
+class FigmaStyle(BaseModel):
+    """A published style in a Figma file or team library."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    style_type: Optional[str] = None
+    file_key: Optional[str] = None
+    node_id: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    sort_position: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    user: Optional[FigmaUser] = None
+
+
+class FigmaPage(BaseModel):
+    """A page (canvas) within a Figma file."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: Optional[str] = None
+    type: str = "CANVAS"
+
+
+class FigmaComponentSet(BaseModel):
+    """A component set (variant group) in a Figma file."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    file_key: Optional[str] = None
+    node_id: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    user: Optional[FigmaUser] = None
+
+
 class FigmaImage(BaseModel):
     """An exported image reference from Figma."""
 

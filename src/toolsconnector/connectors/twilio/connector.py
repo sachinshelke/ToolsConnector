@@ -27,9 +27,14 @@ from .types import (
     PhoneNumber,
     TwilioAccount,
     TwilioCall,
+    TwilioConversation,
+    TwilioLookupResult,
     TwilioMessage,
     TwilioRecording,
     TwilioUsageRecord,
+    TwilioVerification,
+    TwilioVerificationCheck,
+    TwilioVerifyService,
 )
 
 logger = logging.getLogger("toolsconnector.twilio")
@@ -58,7 +63,12 @@ class Twilio(BaseConnector):
     # ------------------------------------------------------------------
 
     async def _setup(self) -> None:
-        """Initialise the httpx async client with Basic auth."""
+        """Initialise httpx async clients with Basic auth.
+
+        Creates separate clients for the main REST API, the Verify v2 API,
+        the Lookup v2 API, and the Conversations v1 API since they use
+        different base URLs.
+        """
         creds = self._credentials or ":"
         parts = creds.split(":", 1)
         self._account_sid = parts[0]
@@ -68,20 +78,43 @@ class Twilio(BaseConnector):
             f"{self._account_sid}:{auth_token}".encode()
         ).decode()
 
-        headers: dict[str, str] = {
+        form_headers: dict[str, str] = {
             "Authorization": f"Basic {token}",
             "Content-Type": "application/x-www-form-urlencoded",
         }
+        json_headers: dict[str, str] = {
+            "Authorization": f"Basic {token}",
+            "Content-Type": "application/json",
+        }
+
         self._client = httpx.AsyncClient(
             base_url=self._base_url or self.__class__.base_url,
-            headers=headers,
+            headers=form_headers,
+            timeout=self._timeout,
+        )
+        self._verify_client = httpx.AsyncClient(
+            base_url="https://verify.twilio.com/v2",
+            headers=form_headers,
+            timeout=self._timeout,
+        )
+        self._lookup_client = httpx.AsyncClient(
+            base_url="https://lookups.twilio.com/v2",
+            headers=json_headers,
+            timeout=self._timeout,
+        )
+        self._conversations_client = httpx.AsyncClient(
+            base_url="https://conversations.twilio.com/v1",
+            headers=json_headers,
             timeout=self._timeout,
         )
 
     async def _teardown(self) -> None:
-        """Close the httpx client."""
-        if hasattr(self, "_client"):
-            await self._client.aclose()
+        """Close all httpx clients."""
+        for attr in ("_client", "_verify_client", "_lookup_client",
+                     "_conversations_client"):
+            client = getattr(self, attr, None)
+            if client is not None:
+                await client.aclose()
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -486,3 +519,265 @@ class Twilio(BaseConnector):
             "POST", self._acct("Messages.json"), data=form_data,
         )
         return parse_message(resp.json())
+
+    @action("Update or redact a Twilio message")
+    async def update_message(
+        self,
+        message_sid: str,
+        body: Optional[str] = None,
+    ) -> TwilioMessage:
+        """Update or redact the content of an existing message.
+
+        To redact a message, set *body* to an empty string ``""``.
+
+        Args:
+            message_sid: The Twilio message SID (e.g. ``SM...``).
+            body: New message body text (set to ``""`` to redact).
+
+        Returns:
+            The updated TwilioMessage object.
+        """
+        form_data: dict[str, Any] = {}
+        if body is not None:
+            form_data["Body"] = body
+
+        path = self._acct(f"Messages/{message_sid}.json")
+        resp = await self._request("POST", path, data=form_data)
+        return parse_message(resp.json())
+
+    @action("Delete a message from your Twilio account", dangerous=True)
+    async def delete_message(self, message_sid: str) -> bool:
+        """Delete a message permanently from your account.
+
+        Args:
+            message_sid: The Twilio message SID (e.g. ``SM...``).
+
+        Returns:
+            True if the message was deleted successfully.
+        """
+        path = self._acct(f"Messages/{message_sid}.json")
+        resp = await self._request("DELETE", path)
+        return resp.status_code == 204
+
+    # ------------------------------------------------------------------
+    # Actions — Verify API (v2)
+    # ------------------------------------------------------------------
+
+    @action("Create a Twilio Verify service", dangerous=True)
+    async def create_verify_service(
+        self, friendly_name: str,
+    ) -> TwilioVerifyService:
+        """Create a new Verify service for sending verification tokens.
+
+        A single service can be reused for multiple verifications.
+
+        Args:
+            friendly_name: Human-readable name for the service
+                (up to 32 characters).
+
+        Returns:
+            The created TwilioVerifyService object.
+        """
+        resp = await self._verify_client.post(
+            "/Services", data={"FriendlyName": friendly_name},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return TwilioVerifyService(
+            sid=data["sid"],
+            account_sid=data.get("account_sid"),
+            friendly_name=data.get("friendly_name"),
+            code_length=data.get("code_length"),
+            lookup_enabled=data.get("lookup_enabled"),
+            date_created=data.get("date_created"),
+            date_updated=data.get("date_updated"),
+            url=data.get("url"),
+        )
+
+    @action("Send a verification token via Twilio Verify", dangerous=True)
+    async def send_verification(
+        self,
+        service_sid: str,
+        to: str,
+        channel: str = "sms",
+    ) -> TwilioVerification:
+        """Send a verification token to an end user.
+
+        Args:
+            service_sid: The Verify service SID (e.g. ``VA...``).
+            to: Recipient phone number (E.164) or email address.
+            channel: Delivery channel (``sms``, ``call``, ``email``,
+                or ``whatsapp``).
+
+        Returns:
+            The created TwilioVerification with status ``pending``.
+        """
+        resp = await self._verify_client.post(
+            f"/Services/{service_sid}/Verifications",
+            data={"To": to, "Channel": channel},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return TwilioVerification(
+            sid=data["sid"],
+            service_sid=data.get("service_sid"),
+            account_sid=data.get("account_sid"),
+            to=data.get("to"),
+            channel=data.get("channel"),
+            status=data.get("status"),
+            valid=data.get("valid"),
+            date_created=data.get("date_created"),
+            date_updated=data.get("date_updated"),
+            url=data.get("url"),
+        )
+
+    @action("Check a verification code via Twilio Verify")
+    async def check_verification(
+        self,
+        service_sid: str,
+        to: str,
+        code: str,
+    ) -> TwilioVerificationCheck:
+        """Check whether a user-provided verification code is correct.
+
+        Args:
+            service_sid: The Verify service SID (e.g. ``VA...``).
+            to: The phone number or email that was verified.
+            code: The 4-10 character verification code to check.
+
+        Returns:
+            TwilioVerificationCheck with ``valid`` indicating success.
+        """
+        resp = await self._verify_client.post(
+            f"/Services/{service_sid}/VerificationCheck",
+            data={"To": to, "Code": code},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return TwilioVerificationCheck(
+            sid=data["sid"],
+            service_sid=data.get("service_sid"),
+            account_sid=data.get("account_sid"),
+            to=data.get("to"),
+            channel=data.get("channel"),
+            status=data.get("status"),
+            valid=data.get("valid"),
+            date_created=data.get("date_created"),
+            date_updated=data.get("date_updated"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Lookup API (v2)
+    # ------------------------------------------------------------------
+
+    @action("Look up information about a phone number")
+    async def lookup_phone(
+        self,
+        phone_number: str,
+        fields: Optional[str] = None,
+    ) -> TwilioLookupResult:
+        """Look up formatting, validation, and carrier info for a number.
+
+        The basic lookup (no *fields*) is free and returns E.164
+        formatting plus validation. Pass *fields* for paid data
+        packages.
+
+        Args:
+            phone_number: Phone number in E.164 or national format.
+            fields: Comma-separated data packages to include
+                (e.g. ``"line_type_intelligence,caller_name"``).
+
+        Returns:
+            TwilioLookupResult with the requested data.
+        """
+        params: dict[str, Any] = {}
+        if fields:
+            params["Fields"] = fields
+
+        resp = await self._lookup_client.get(
+            f"/PhoneNumbers/{phone_number}",
+            params=params or None,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return TwilioLookupResult(
+            phone_number=data.get("phone_number"),
+            national_format=data.get("national_format"),
+            country_code=data.get("country_code"),
+            calling_country_code=data.get("calling_country_code"),
+            valid=data.get("valid"),
+            validation_errors=data.get("validation_errors"),
+            caller_name=data.get("caller_name"),
+            line_type_intelligence=data.get("line_type_intelligence"),
+            url=data.get("url"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Conversations API (v1)
+    # ------------------------------------------------------------------
+
+    @action("List conversations from your Twilio account")
+    async def list_conversations(
+        self, limit: int = 20,
+    ) -> list[TwilioConversation]:
+        """List conversations in the default Conversations service.
+
+        Args:
+            limit: Maximum number of conversations to return.
+
+        Returns:
+            List of TwilioConversation objects.
+        """
+        params: dict[str, Any] = {"PageSize": min(limit, 1000)}
+        resp = await self._conversations_client.get(
+            "/Conversations", params=params,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        return [
+            TwilioConversation(
+                sid=c["sid"],
+                account_sid=c.get("account_sid"),
+                chat_service_sid=c.get("chat_service_sid"),
+                friendly_name=c.get("friendly_name"),
+                unique_name=c.get("unique_name"),
+                state=c.get("state"),
+                attributes=c.get("attributes"),
+                date_created=c.get("date_created"),
+                date_updated=c.get("date_updated"),
+                url=c.get("url"),
+            )
+            for c in body.get("conversations", [])
+        ]
+
+    @action("Create a new Twilio conversation", dangerous=True)
+    async def create_conversation(
+        self, friendly_name: str,
+    ) -> TwilioConversation:
+        """Create a new conversation in the default Conversations service.
+
+        Args:
+            friendly_name: Human-readable name for the conversation
+                (max 256 characters).
+
+        Returns:
+            The created TwilioConversation object.
+        """
+        resp = await self._conversations_client.post(
+            "/Conversations",
+            json={"friendly_name": friendly_name},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return TwilioConversation(
+            sid=data["sid"],
+            account_sid=data.get("account_sid"),
+            chat_service_sid=data.get("chat_service_sid"),
+            friendly_name=data.get("friendly_name"),
+            unique_name=data.get("unique_name"),
+            state=data.get("state"),
+            attributes=data.get("attributes"),
+            date_created=data.get("date_created"),
+            date_updated=data.get("date_updated"),
+            url=data.get("url"),
+        )

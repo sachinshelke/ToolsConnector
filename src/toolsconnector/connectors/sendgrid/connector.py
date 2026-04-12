@@ -28,6 +28,7 @@ from .types import (
     SendGridResponse,
     SendGridSpamReport,
     SendGridStat,
+    SendGridSuppression,
     SendGridTemplate,
     SendGridTemplateVersion,
 )

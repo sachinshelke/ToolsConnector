@@ -23,6 +23,7 @@ from toolsconnector.types import PaginatedList, PageState
 
 from .types import (
     TelegramChat,
+    TelegramChatMember,
     TelegramMessage,
     TelegramUpdate,
     TelegramUser,

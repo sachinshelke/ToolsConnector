@@ -12,10 +12,13 @@ from .types import (
     FigmaClientMeta,
     FigmaComment,
     FigmaComponent,
+    FigmaComponentSet,
     FigmaFile,
     FigmaImage,
+    FigmaPage,
     FigmaProject,
     FigmaProjectFile,
+    FigmaStyle,
     FigmaUser,
     FigmaVersion,
 )
@@ -162,6 +165,68 @@ def parse_component(data: dict[str, Any]) -> FigmaComponent:
         A FigmaComponent instance.
     """
     return FigmaComponent(
+        key=data["key"],
+        name=data.get("name"),
+        description=data.get("description"),
+        file_key=data.get("file_key"),
+        node_id=data.get("node_id"),
+        thumbnail_url=data.get("thumbnail_url"),
+        created_at=data.get("created_at"),
+        updated_at=data.get("updated_at"),
+        user=_parse_user(data.get("user")),
+    )
+
+
+def parse_style(data: dict[str, Any]) -> FigmaStyle:
+    """Parse a FigmaStyle from API JSON.
+
+    Args:
+        data: Raw JSON dict for a style.
+
+    Returns:
+        A FigmaStyle instance.
+    """
+    return FigmaStyle(
+        key=data["key"],
+        name=data.get("name"),
+        description=data.get("description"),
+        style_type=data.get("style_type"),
+        file_key=data.get("file_key"),
+        node_id=data.get("node_id"),
+        thumbnail_url=data.get("thumbnail_url"),
+        sort_position=data.get("sort_position"),
+        created_at=data.get("created_at"),
+        updated_at=data.get("updated_at"),
+        user=_parse_user(data.get("user")),
+    )
+
+
+def parse_page(data: dict[str, Any]) -> FigmaPage:
+    """Parse a FigmaPage from a Figma document canvas node.
+
+    Args:
+        data: Raw JSON dict for a document child (canvas/page).
+
+    Returns:
+        A FigmaPage instance.
+    """
+    return FigmaPage(
+        id=data["id"],
+        name=data.get("name"),
+        type=data.get("type", "CANVAS"),
+    )
+
+
+def parse_component_set(data: dict[str, Any]) -> FigmaComponentSet:
+    """Parse a FigmaComponentSet from API JSON.
+
+    Args:
+        data: Raw JSON dict for a component set.
+
+    Returns:
+        A FigmaComponentSet instance.
+    """
+    return FigmaComponentSet(
         key=data["key"],
         name=data.get("name"),
         description=data.get("description"),
