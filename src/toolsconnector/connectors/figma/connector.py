@@ -620,3 +620,92 @@ class Figma(BaseConnector):
         meta = body.get("meta", {})
         sets_raw = meta.get("component_sets", [])
         return [parse_component_set(cs) for cs in sets_raw]
+
+    # ------------------------------------------------------------------
+    # Actions — Webhooks
+    # ------------------------------------------------------------------
+
+    @action("List webhooks")
+    async def list_webhooks(self, team_id: str) -> list[dict[str, Any]]:
+        """List all webhooks for a team.
+
+        Args:
+            team_id: The team ID.
+
+        Returns:
+            List of webhook dicts.
+        """
+        resp = await self._request("GET", f"/v2/webhooks?team_id={team_id}")
+        data = resp.json() if hasattr(resp, "json") else resp
+        return data.get("webhooks", data if isinstance(data, list) else [])
+
+    @action("Create a webhook", dangerous=True)
+    async def create_webhook(
+        self,
+        team_id: str,
+        event_type: str,
+        endpoint: str,
+        description: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Create a webhook to receive event notifications.
+
+        Args:
+            team_id: The team ID to attach the webhook to.
+            event_type: Event type (e.g., 'FILE_UPDATE', 'FILE_COMMENT',
+                'FILE_VERSION_UPDATE', 'LIBRARY_PUBLISH').
+            endpoint: URL to receive webhook notifications.
+            description: Optional description.
+
+        Returns:
+            Created webhook dict.
+        """
+        payload: dict[str, Any] = {
+            "event_type": event_type,
+            "team_id": team_id,
+            "endpoint": endpoint,
+        }
+        if description:
+            payload["description"] = description
+        resp = await self._request("POST", "/v2/webhooks", json=payload)
+        return resp.json() if hasattr(resp, "json") else resp
+
+    @action("Delete a webhook", dangerous=True)
+    async def delete_webhook(self, webhook_id: str) -> None:
+        """Delete a webhook.
+
+        Args:
+            webhook_id: The webhook ID to delete.
+        """
+        await self._request("DELETE", f"/v2/webhooks/{webhook_id}")
+
+    # ------------------------------------------------------------------
+    # Actions — Variables
+    # ------------------------------------------------------------------
+
+    @action("Get local variables in a file")
+    async def get_local_variables(self, file_key: str) -> dict[str, Any]:
+        """Get all local variables and variable collections in a file.
+
+        Args:
+            file_key: The Figma file key.
+
+        Returns:
+            Dict with variables and variableCollections.
+        """
+        resp = await self._request("GET", f"/v1/files/{file_key}/variables/local")
+        data = resp.json() if hasattr(resp, "json") else resp
+        return data.get("meta", data)
+
+    @action("Get published variables in a file")
+    async def get_published_variables(self, file_key: str) -> dict[str, Any]:
+        """Get all published variables in a file (library variables).
+
+        Args:
+            file_key: The Figma file key.
+
+        Returns:
+            Dict with published variables and collections.
+        """
+        resp = await self._request("GET", f"/v1/files/{file_key}/variables/published")
+        data = resp.json() if hasattr(resp, "json") else resp
+        return data.get("meta", data)
