@@ -13,10 +13,13 @@ from typing import Any, Optional
 from .types import (
     ShopifyAddress,
     ShopifyCustomer,
+    ShopifyDraftOrder,
     ShopifyLineItem,
+    ShopifyLocation,
     ShopifyOrder,
     ShopifyProduct,
     ShopifyVariant,
+    ShopifyWebhook,
 )
 
 _LINK_RE = re.compile(r'<([^>]+)>;\s*rel="(\w+)"')
@@ -211,6 +214,88 @@ def parse_customer(data: dict[str, Any]) -> ShopifyCustomer:
         tags=data.get("tags"),
         default_address=_parse_address(data.get("default_address")),
         note=data.get("note"),
+        created_at=data.get("created_at"),
+        updated_at=data.get("updated_at"),
+    )
+
+
+def parse_draft_order(data: dict[str, Any]) -> ShopifyDraftOrder:
+    """Parse a ShopifyDraftOrder from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Shopify API.
+
+    Returns:
+        A ShopifyDraftOrder instance.
+    """
+    line_items_raw = data.get("line_items") or []
+    customer = data.get("customer") or {}
+    return ShopifyDraftOrder(
+        id=data["id"],
+        order_id=data.get("order_id"),
+        name=data.get("name"),
+        email=data.get("email"),
+        status=data.get("status"),
+        note=data.get("note"),
+        total_price=data.get("total_price"),
+        subtotal_price=data.get("subtotal_price"),
+        total_tax=data.get("total_tax"),
+        currency=data.get("currency"),
+        line_items=[parse_line_item(li) for li in line_items_raw],
+        shipping_address=_parse_address(data.get("shipping_address")),
+        billing_address=_parse_address(data.get("billing_address")),
+        customer_id=customer.get("id"),
+        tags=data.get("tags"),
+        invoice_url=data.get("invoice_url"),
+        created_at=data.get("created_at"),
+        updated_at=data.get("updated_at"),
+        completed_at=data.get("completed_at"),
+    )
+
+
+def parse_webhook(data: dict[str, Any]) -> ShopifyWebhook:
+    """Parse a ShopifyWebhook from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Shopify API.
+
+    Returns:
+        A ShopifyWebhook instance.
+    """
+    return ShopifyWebhook(
+        id=data["id"],
+        topic=data.get("topic"),
+        address=data.get("address"),
+        format=data.get("format"),
+        fields=data.get("fields") or [],
+        created_at=data.get("created_at"),
+        updated_at=data.get("updated_at"),
+    )
+
+
+def parse_location(data: dict[str, Any]) -> ShopifyLocation:
+    """Parse a ShopifyLocation from API JSON.
+
+    Args:
+        data: Raw JSON dict from the Shopify API.
+
+    Returns:
+        A ShopifyLocation instance.
+    """
+    return ShopifyLocation(
+        id=data["id"],
+        name=data.get("name"),
+        address1=data.get("address1"),
+        address2=data.get("address2"),
+        city=data.get("city"),
+        province=data.get("province"),
+        province_code=data.get("province_code"),
+        country=data.get("country"),
+        country_code=data.get("country_code"),
+        zip=data.get("zip"),
+        phone=data.get("phone"),
+        active=data.get("active"),
+        legacy=data.get("legacy"),
         created_at=data.get("created_at"),
         updated_at=data.get("updated_at"),
     )

@@ -461,14 +461,17 @@ class Figma(BaseConnector):
     @action("Get pages in a Figma file")
     async def get_file_pages(
         self, file_key: str,
-    ) -> list[dict[str, Any]]:
+    ) -> list[FigmaPage]:
         """Get the page structure (top-level canvases) of a Figma file.
+
+        Fetches the file document at depth 1 and extracts the
+        top-level canvas nodes which represent pages.
 
         Args:
             file_key: The file key from the Figma URL.
 
         Returns:
-            List of page dicts with id, name, and child count.
+            List of FigmaPage objects.
         """
         resp = await self._request(
             "GET", f"/files/{file_key}",
@@ -477,15 +480,7 @@ class Figma(BaseConnector):
         body = resp.json()
         document = body.get("document", {})
         children = document.get("children", [])
-        return [
-            {
-                "id": page.get("id"),
-                "name": page.get("name"),
-                "type": page.get("type"),
-                "child_count": len(page.get("children", [])),
-            }
-            for page in children
-        ]
+        return [parse_page(p) for p in children]
 
     @action("List projects in a team")
     async def list_team_projects(
@@ -510,3 +505,118 @@ class Figma(BaseConnector):
         if limit is not None:
             projects = projects[:limit]
         return projects
+
+    # ------------------------------------------------------------------
+    # Actions -- Team components and styles
+    # ------------------------------------------------------------------
+
+    @action("List published components in a team library")
+    async def get_team_components(
+        self,
+        team_id: str,
+        page_size: int = 30,
+        cursor: Optional[str] = None,
+    ) -> PaginatedList[FigmaComponent]:
+        """List all published components in a team library.
+
+        Uses cursor-based pagination. The Figma API returns a
+        ``cursor`` field in the pagination object for the next page.
+
+        Args:
+            team_id: The Figma team ID.
+            page_size: Number of results per page (max 30).
+            cursor: Pagination cursor from a previous response.
+
+        Returns:
+            Paginated list of FigmaComponent objects.
+        """
+        params: dict[str, Any] = {
+            "page_size": min(page_size, 30),
+        }
+        if cursor:
+            params["after"] = cursor
+
+        resp = await self._request(
+            "GET", f"/teams/{team_id}/components", params=params,
+        )
+        body = resp.json()
+        meta = body.get("meta", {})
+        components_raw = meta.get("components", [])
+        items = [parse_component(c) for c in components_raw]
+
+        pagination = body.get("pagination", {})
+        next_cursor = pagination.get("next_page")
+        has_more = bool(next_cursor)
+
+        return PaginatedList(
+            items=items,
+            page_state=PageState(has_more=has_more, cursor=next_cursor),
+        )
+
+    @action("List published styles in a team library")
+    async def get_team_styles(
+        self,
+        team_id: str,
+        page_size: int = 30,
+        cursor: Optional[str] = None,
+    ) -> PaginatedList[FigmaStyle]:
+        """List all published styles in a team library.
+
+        Uses cursor-based pagination. The Figma API returns a
+        ``cursor`` field in the pagination object for the next page.
+
+        Args:
+            team_id: The Figma team ID.
+            page_size: Number of results per page (max 30).
+            cursor: Pagination cursor from a previous response.
+
+        Returns:
+            Paginated list of FigmaStyle objects.
+        """
+        params: dict[str, Any] = {
+            "page_size": min(page_size, 30),
+        }
+        if cursor:
+            params["after"] = cursor
+
+        resp = await self._request(
+            "GET", f"/teams/{team_id}/styles", params=params,
+        )
+        body = resp.json()
+        meta = body.get("meta", {})
+        styles_raw = meta.get("styles", [])
+        items = [parse_style(s) for s in styles_raw]
+
+        pagination = body.get("pagination", {})
+        next_cursor = pagination.get("next_page")
+        has_more = bool(next_cursor)
+
+        return PaginatedList(
+            items=items,
+            page_state=PageState(has_more=has_more, cursor=next_cursor),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Component sets
+    # ------------------------------------------------------------------
+
+    @action("Get component sets from a Figma file")
+    async def get_component_set(
+        self,
+        file_key: str,
+    ) -> list[FigmaComponentSet]:
+        """List all component sets (variant groups) in a Figma file.
+
+        Args:
+            file_key: The Figma file key.
+
+        Returns:
+            List of FigmaComponentSet objects.
+        """
+        resp = await self._request(
+            "GET", f"/files/{file_key}/component_sets",
+        )
+        body = resp.json()
+        meta = body.get("meta", {})
+        sets_raw = meta.get("component_sets", [])
+        return [parse_component_set(cs) for cs in sets_raw]
