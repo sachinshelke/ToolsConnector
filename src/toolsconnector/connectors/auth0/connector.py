@@ -632,3 +632,216 @@ class Auth0(BaseConnector):
         """
         data = await self._request("GET", f"/clients/{client_id}")
         return data if isinstance(data, dict) else {}
+
+    # ------------------------------------------------------------------
+    # Actions — Roles CRUD
+    # ------------------------------------------------------------------
+
+    @action("Get a role by ID")
+    async def get_role(self, role_id: str) -> Auth0Role:
+        """Retrieve a single role by ID.
+
+        Args:
+            role_id: The role ID.
+
+        Returns:
+            Auth0Role with id, name, description.
+        """
+        data = await self._request("GET", f"/roles/{role_id}")
+        return Auth0Role(
+            id=data.get("id", ""),
+            name=data.get("name", ""),
+            description=data.get("description"),
+        )
+
+    @action("Create a role", dangerous=True)
+    async def create_role(
+        self,
+        name: str,
+        description: Optional[str] = None,
+    ) -> Auth0Role:
+        """Create a new role.
+
+        Args:
+            name: Role name.
+            description: Role description.
+
+        Returns:
+            Created Auth0Role.
+        """
+        payload: dict[str, Any] = {"name": name}
+        if description:
+            payload["description"] = description
+        data = await self._request("POST", "/roles", json=payload)
+        return Auth0Role(
+            id=data.get("id", ""),
+            name=data.get("name", ""),
+            description=data.get("description"),
+        )
+
+    @action("Delete a role", dangerous=True)
+    async def delete_role(self, role_id: str) -> None:
+        """Delete a role.
+
+        Args:
+            role_id: The role ID to delete.
+        """
+        await self._request("DELETE", f"/roles/{role_id}")
+
+    @action("List users assigned to a role")
+    async def list_role_users(
+        self,
+        role_id: str,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """List users assigned to a specific role.
+
+        Args:
+            role_id: The role ID.
+            limit: Maximum users to return.
+
+        Returns:
+            List of user dicts assigned to this role.
+        """
+        data = await self._request(
+            "GET", f"/roles/{role_id}/users",
+            params={"per_page": limit},
+        )
+        return data if isinstance(data, list) else []
+
+    # ------------------------------------------------------------------
+    # Actions — Connections CRUD
+    # ------------------------------------------------------------------
+
+    @action("Get a connection by ID")
+    async def get_connection(self, connection_id: str) -> Auth0Connection:
+        """Retrieve a single connection by ID.
+
+        Args:
+            connection_id: The connection ID.
+
+        Returns:
+            Auth0Connection with id, name, strategy.
+        """
+        data = await self._request("GET", f"/connections/{connection_id}")
+        return Auth0Connection(
+            id=data.get("id", ""),
+            name=data.get("name", ""),
+            strategy=data.get("strategy", ""),
+        )
+
+    @action("Create a connection", dangerous=True)
+    async def create_connection(
+        self,
+        name: str,
+        strategy: str,
+        enabled_clients: Optional[list[str]] = None,
+    ) -> Auth0Connection:
+        """Create a new connection.
+
+        Args:
+            name: Connection name.
+            strategy: Connection strategy (e.g., 'auth0', 'google-oauth2').
+            enabled_clients: Client IDs allowed to use this connection.
+
+        Returns:
+            Created Auth0Connection.
+        """
+        payload: dict[str, Any] = {"name": name, "strategy": strategy}
+        if enabled_clients:
+            payload["enabled_clients"] = enabled_clients
+        data = await self._request("POST", "/connections", json=payload)
+        return Auth0Connection(
+            id=data.get("id", ""),
+            name=data.get("name", ""),
+            strategy=data.get("strategy", ""),
+        )
+
+    @action("Delete a connection", dangerous=True)
+    async def delete_connection(self, connection_id: str) -> None:
+        """Delete a connection.
+
+        Args:
+            connection_id: The connection ID to delete.
+        """
+        await self._request("DELETE", f"/connections/{connection_id}")
+
+    # ------------------------------------------------------------------
+    # Actions — Logs
+    # ------------------------------------------------------------------
+
+    @action("List log events")
+    async def list_logs(
+        self,
+        per_page: int = 50,
+        page: int = 0,
+        query: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """List log events from the tenant.
+
+        Args:
+            per_page: Number of log entries per page.
+            page: Page number (0-based).
+            query: Lucene query string to filter logs.
+
+        Returns:
+            List of log event dicts.
+        """
+        params: dict[str, Any] = {"per_page": per_page, "page": page}
+        if query:
+            params["q"] = query
+        data = await self._request("GET", "/logs", params=params)
+        return data if isinstance(data, list) else []
+
+    @action("Get a log event by ID")
+    async def get_log(self, log_id: str) -> dict[str, Any]:
+        """Retrieve a single log event.
+
+        Args:
+            log_id: The log event ID.
+
+        Returns:
+            Log event dict.
+        """
+        data = await self._request("GET", f"/logs/{log_id}")
+        return data if isinstance(data, dict) else {}
+
+    # ------------------------------------------------------------------
+    # Actions — Tenant
+    # ------------------------------------------------------------------
+
+    @action("Get tenant settings")
+    async def get_tenant_settings(self) -> dict[str, Any]:
+        """Get the current tenant's settings.
+
+        Returns:
+            Dict with tenant settings (friendly_name, support_email,
+            session_lifetime, idle_session_lifetime, etc.).
+        """
+        data = await self._request("GET", "/tenants/settings")
+        return data if isinstance(data, dict) else {}
+
+    # ------------------------------------------------------------------
+    # Actions — Stats
+    # ------------------------------------------------------------------
+
+    @action("Get daily stats")
+    async def get_daily_stats(
+        self,
+        from_date: str,
+        to_date: str,
+    ) -> list[dict[str, Any]]:
+        """Get daily active user stats for a date range.
+
+        Args:
+            from_date: Start date (YYYYMMDD format).
+            to_date: End date (YYYYMMDD format).
+
+        Returns:
+            List of daily stat dicts with date and logins.
+        """
+        data = await self._request(
+            "GET", "/stats/daily",
+            params={"from": from_date, "to": to_date},
+        )
+        return data if isinstance(data, list) else []
