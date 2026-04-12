@@ -776,3 +776,361 @@ class Asana(BaseConnector):
             resource_type=ws.get("resource_type", "workspace"),
             is_organization=ws.get("is_organization"),
         )
+
+    # ------------------------------------------------------------------
+    # Actions — Users
+    # ------------------------------------------------------------------
+
+    @action("Get the current user")
+    async def get_me(self) -> dict[str, Any]:
+        """Get the authenticated user's profile.
+
+        Returns:
+            User dict with gid, name, email, workspaces.
+        """
+        data = await self._request("GET", "/users/me")
+        return data.get("data", data)
+
+    @action("List users in a workspace")
+    async def list_users(
+        self,
+        workspace_gid: str,
+        limit: int = 50,
+        offset: Optional[str] = None,
+    ) -> PaginatedList[dict[str, Any]]:
+        """List users in a workspace.
+
+        Args:
+            workspace_gid: The workspace GID.
+            limit: Maximum users to return.
+            offset: Pagination offset token.
+
+        Returns:
+            Paginated list of user dicts.
+        """
+        params: dict[str, Any] = {"limit": limit}
+        if offset:
+            params["offset"] = offset
+        data = await self._request(
+            "GET", f"/workspaces/{workspace_gid}/users", params=params,
+        )
+        users = data.get("data", [])
+        next_page = data.get("next_page")
+        return PaginatedList(
+            items=users,
+            page_state=PageState(
+                cursor=next_page.get("offset") if next_page else None,
+                has_more=next_page is not None,
+            ),
+        )
+
+    @action("Get a user by ID")
+    async def get_user(self, user_gid: str) -> dict[str, Any]:
+        """Get a user's profile by GID.
+
+        Args:
+            user_gid: The user GID.
+
+        Returns:
+            User dict with gid, name, email, workspaces.
+        """
+        data = await self._request("GET", f"/users/{user_gid}")
+        return data.get("data", data)
+
+    # ------------------------------------------------------------------
+    # Actions — Search
+    # ------------------------------------------------------------------
+
+    @action("Search tasks in a workspace")
+    async def search_tasks(
+        self,
+        workspace_gid: str,
+        text: Optional[str] = None,
+        assignee: Optional[str] = None,
+        completed: Optional[bool] = None,
+        is_subtask: Optional[bool] = None,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Search tasks in a workspace using various filters.
+
+        Args:
+            workspace_gid: The workspace GID to search in.
+            text: Text to search in task names and descriptions.
+            assignee: Filter by assignee GID or 'me'.
+            completed: Filter by completion status.
+            is_subtask: Filter subtasks vs top-level tasks.
+            limit: Maximum results to return.
+
+        Returns:
+            List of matching task dicts.
+        """
+        params: dict[str, Any] = {"limit": limit}
+        if text:
+            params["text"] = text
+        if assignee:
+            params["assignee.any"] = assignee
+        if completed is not None:
+            params["completed"] = str(completed).lower()
+        if is_subtask is not None:
+            params["is_subtask"] = str(is_subtask).lower()
+        data = await self._request(
+            "GET", f"/workspaces/{workspace_gid}/tasks/search", params=params,
+        )
+        return data.get("data", [])
+
+    # ------------------------------------------------------------------
+    # Actions — Task operations
+    # ------------------------------------------------------------------
+
+    @action("Duplicate a task", dangerous=True)
+    async def duplicate_task(
+        self,
+        task_gid: str,
+        name: Optional[str] = None,
+        include: Optional[list[str]] = None,
+    ) -> dict[str, Any]:
+        """Duplicate a task.
+
+        Args:
+            task_gid: The task GID to duplicate.
+            name: Name for the new task. Defaults to 'Copy of {original}'.
+            include: What to include: 'notes', 'assignee', 'subtasks',
+                'attachments', 'tags', 'followers', 'projects', 'dates',
+                'dependencies', 'parent'.
+
+        Returns:
+            The new job dict (duplication runs async).
+        """
+        payload: dict[str, Any] = {}
+        if name:
+            payload["name"] = name
+        if include:
+            payload["include"] = ",".join(include)
+        data = await self._request(
+            "POST", f"/tasks/{task_gid}/duplicate",
+            json={"data": payload},
+        )
+        return data.get("data", data)
+
+    @action("Set parent for a task", dangerous=True)
+    async def set_parent(
+        self,
+        task_gid: str,
+        parent: str,
+    ) -> dict[str, Any]:
+        """Move a task under a new parent (make it a subtask).
+
+        Args:
+            task_gid: The task GID to move.
+            parent: Parent task GID, or empty string to make top-level.
+
+        Returns:
+            Updated task dict.
+        """
+        data = await self._request(
+            "POST", f"/tasks/{task_gid}/setParent",
+            json={"data": {"parent": parent or None}},
+        )
+        return data.get("data", data)
+
+    @action("Add followers to a task", dangerous=True)
+    async def add_followers(
+        self,
+        task_gid: str,
+        followers: list[str],
+    ) -> dict[str, Any]:
+        """Add followers (watchers) to a task.
+
+        Args:
+            task_gid: The task GID.
+            followers: List of user GIDs to add as followers.
+
+        Returns:
+            Updated task dict.
+        """
+        data = await self._request(
+            "POST", f"/tasks/{task_gid}/addFollowers",
+            json={"data": {"followers": followers}},
+        )
+        return data.get("data", data)
+
+    @action("Add task dependencies", dangerous=True)
+    async def add_dependencies(
+        self,
+        task_gid: str,
+        dependencies: list[str],
+    ) -> dict[str, Any]:
+        """Add dependencies to a task (tasks that must complete first).
+
+        Args:
+            task_gid: The task GID.
+            dependencies: List of dependency task GIDs.
+
+        Returns:
+            Empty dict on success.
+        """
+        data = await self._request(
+            "POST", f"/tasks/{task_gid}/addDependencies",
+            json={"data": {"dependencies": dependencies}},
+        )
+        return data.get("data", {})
+
+    # ------------------------------------------------------------------
+    # Actions — Project operations
+    # ------------------------------------------------------------------
+
+    @action("Delete a project", dangerous=True)
+    async def delete_project(self, project_gid: str) -> None:
+        """Permanently delete a project.
+
+        Args:
+            project_gid: The project GID to delete.
+        """
+        await self._request("DELETE", f"/projects/{project_gid}")
+
+    @action("Get task count for a project")
+    async def get_task_count(self, project_gid: str) -> dict[str, int]:
+        """Get the number of tasks in a project.
+
+        Args:
+            project_gid: The project GID.
+
+        Returns:
+            Dict with num_tasks, num_incomplete_tasks, num_completed_tasks.
+        """
+        data = await self._request(
+            "GET", f"/projects/{project_gid}/task_counts",
+        )
+        return data.get("data", data)
+
+    # ------------------------------------------------------------------
+    # Actions — Tags
+    # ------------------------------------------------------------------
+
+    @action("Create a tag", dangerous=True)
+    async def create_tag(
+        self,
+        workspace_gid: str,
+        name: str,
+        color: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Create a new tag in a workspace.
+
+        Args:
+            workspace_gid: The workspace GID.
+            name: Tag name.
+            color: Tag color (e.g., 'dark-pink', 'dark-green').
+
+        Returns:
+            Created tag dict.
+        """
+        payload: dict[str, Any] = {"workspace": workspace_gid, "name": name}
+        if color:
+            payload["color"] = color
+        data = await self._request("POST", "/tags", json={"data": payload})
+        return data.get("data", data)
+
+    @action("Delete a tag", dangerous=True)
+    async def delete_tag(self, tag_gid: str) -> None:
+        """Delete a tag.
+
+        Args:
+            tag_gid: The tag GID to delete.
+        """
+        await self._request("DELETE", f"/tags/{tag_gid}")
+
+    # ------------------------------------------------------------------
+    # Actions — Attachments
+    # ------------------------------------------------------------------
+
+    @action("List attachments on a task")
+    async def list_attachments(self, task_gid: str) -> list[dict[str, Any]]:
+        """List all attachments on a task.
+
+        Args:
+            task_gid: The task GID.
+
+        Returns:
+            List of attachment dicts with gid, name, resource_type.
+        """
+        data = await self._request(
+            "GET", "/attachments", params={"parent": task_gid},
+        )
+        return data.get("data", [])
+
+    # ------------------------------------------------------------------
+    # Actions — Webhooks
+    # ------------------------------------------------------------------
+
+    @action("List webhooks")
+    async def list_webhooks(
+        self,
+        workspace_gid: str,
+    ) -> list[dict[str, Any]]:
+        """List all webhooks in a workspace.
+
+        Args:
+            workspace_gid: The workspace GID.
+
+        Returns:
+            List of webhook dicts.
+        """
+        data = await self._request(
+            "GET", "/webhooks", params={"workspace": workspace_gid},
+        )
+        return data.get("data", [])
+
+    @action("Create a webhook", dangerous=True)
+    async def create_webhook(
+        self,
+        resource: str,
+        target: str,
+    ) -> dict[str, Any]:
+        """Create a webhook to receive notifications about changes.
+
+        Args:
+            resource: The GID of the resource to watch (task, project, etc.).
+            target: The URL to receive webhook notifications.
+
+        Returns:
+            Created webhook dict.
+        """
+        data = await self._request(
+            "POST", "/webhooks",
+            json={"data": {"resource": resource, "target": target}},
+        )
+        return data.get("data", data)
+
+    @action("Delete a webhook", dangerous=True)
+    async def delete_webhook(self, webhook_gid: str) -> None:
+        """Delete a webhook.
+
+        Args:
+            webhook_gid: The webhook GID to delete.
+        """
+        await self._request("DELETE", f"/webhooks/{webhook_gid}")
+
+    # ------------------------------------------------------------------
+    # Actions — Custom Fields
+    # ------------------------------------------------------------------
+
+    @action("List custom fields in a workspace")
+    async def list_custom_fields(
+        self,
+        workspace_gid: str,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """List custom fields available in a workspace.
+
+        Args:
+            workspace_gid: The workspace GID.
+            limit: Maximum fields to return.
+
+        Returns:
+            List of custom field dicts.
+        """
+        data = await self._request(
+            "GET", f"/workspaces/{workspace_gid}/custom_fields",
+            params={"limit": limit},
+        )
+        return data.get("data", [])
