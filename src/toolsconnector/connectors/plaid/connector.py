@@ -19,6 +19,7 @@ from .types import (
     PlaidBalance,
     PlaidHolding,
     PlaidInstitution,
+    PlaidInvestmentTransaction,
     PlaidLiability,
     PlaidLinkToken,
     PlaidProcessorToken,
@@ -649,6 +650,135 @@ class Plaid(BaseConnector):
         """
         data = await self._request(
             "/item/remove",
+            json={"access_token": access_token},
+        )
+        return data
+
+    # ------------------------------------------------------------------
+    # Actions -- Item webhook management
+    # ------------------------------------------------------------------
+
+    @action("Update the webhook URL for an Item")
+    async def item_webhook_update(
+        self,
+        access_token: str,
+        webhook: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Update or remove the webhook URL associated with an Item.
+
+        When set, Plaid sends real-time notifications (e.g.
+        ``TRANSACTIONS``, ``ITEM`` status changes) to the provided URL.
+        Pass ``None`` to remove the webhook.
+
+        Args:
+            access_token: A Plaid access token.
+            webhook: The new webhook URL, or ``None`` to remove.
+
+        Returns:
+            Dict containing the updated ``item`` object.
+        """
+        body: dict[str, Any] = {"access_token": access_token}
+        if webhook is not None:
+            body["webhook"] = webhook
+        else:
+            body["webhook"] = None
+
+        data = await self._request(
+            "/item/webhook/update",
+            json=body,
+        )
+        return data
+
+    # ------------------------------------------------------------------
+    # Actions -- Investment transactions
+    # ------------------------------------------------------------------
+
+    @action("Get investment transactions for a date range")
+    async def get_investment_transactions(
+        self,
+        access_token: str,
+        start_date: str,
+        end_date: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> PaginatedList[PlaidInvestmentTransaction]:
+        """Retrieve investment transactions for the specified date range.
+
+        Returns buy, sell, dividend, and other investment transactions
+        for up to 24 months of history.
+
+        Args:
+            access_token: A Plaid access token with the investments product.
+            start_date: Start date in ``YYYY-MM-DD`` format.
+            end_date: End date in ``YYYY-MM-DD`` format.
+            limit: Maximum number of transactions (max 500).
+            offset: Offset for pagination.
+
+        Returns:
+            Paginated list of PlaidInvestmentTransaction objects.
+        """
+        body: dict[str, Any] = {
+            "access_token": access_token,
+            "start_date": start_date,
+            "end_date": end_date,
+            "options": {
+                "count": min(limit, 500),
+                "offset": offset,
+            },
+        }
+        data = await self._request(
+            "/investments/transactions/get", json=body,
+        )
+
+        txns = [
+            PlaidInvestmentTransaction(
+                investment_transaction_id=t.get(
+                    "investment_transaction_id", "",
+                ),
+                account_id=t.get("account_id", ""),
+                security_id=t.get("security_id"),
+                date=t.get("date", ""),
+                name=t.get("name", ""),
+                quantity=t.get("quantity", 0.0),
+                amount=t.get("amount", 0.0),
+                price=t.get("price", 0.0),
+                type=t.get("type", ""),
+                subtype=t.get("subtype"),
+                iso_currency_code=t.get("iso_currency_code"),
+                unofficial_currency_code=t.get("unofficial_currency_code"),
+            )
+            for t in data.get("investment_transactions", [])
+        ]
+        total = data.get("total_investment_transactions", 0)
+        fetched = offset + len(txns)
+
+        return PaginatedList(
+            items=txns,
+            page_state=PageState(
+                offset=fetched,
+                has_more=fetched < total,
+            ),
+            total_count=total,
+        )
+
+    @action("Refresh investment data for an Item")
+    async def refresh_investments(
+        self,
+        access_token: str,
+    ) -> dict[str, Any]:
+        """Trigger a refresh of investment holdings and transactions.
+
+        The refresh is asynchronous -- Plaid will send a webhook when
+        the updated data is available.
+
+        Args:
+            access_token: A Plaid access token with the investments product.
+
+        Returns:
+            Dict confirming the refresh request with ``request_id``.
+        """
+        data = await self._request(
+            "/investments/refresh",
             json={"access_token": access_token},
         )
         return data

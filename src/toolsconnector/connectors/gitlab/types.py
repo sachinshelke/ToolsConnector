@@ -256,3 +256,31 @@ class GitLabTag(BaseModel):
     release_description: Optional[str] = None
     commit_id: Optional[str] = None
     commit_message: Optional[str] = None
+
+
+class GitLabMember(BaseModel):
+    """A member of a GitLab project or group."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    username: str
+    name: Optional[str] = None
+    state: str = "active"
+    avatar_url: Optional[str] = None
+    web_url: Optional[str] = None
+    access_level: int = 0
+    expires_at: Optional[str] = None
+    created_at: Optional[str] = None
+
+    @property
+    def access_level_label(self) -> str:
+        """Human-readable access level."""
+        mapping = {
+            10: "Guest",
+            20: "Reporter",
+            30: "Developer",
+            40: "Maintainer",
+            50: "Owner",
+        }
+        return mapping.get(self.access_level, f"Unknown({self.access_level})")

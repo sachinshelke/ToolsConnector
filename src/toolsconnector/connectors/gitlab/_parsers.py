@@ -12,6 +12,8 @@ from .types import (
     GitLabComment,
     GitLabIssue,
     GitLabJob,
+    GitLabLabel,
+    GitLabMember,
     GitLabMilestone,
     GitLabNamespace,
     GitLabTag,
@@ -237,4 +239,29 @@ def parse_tag(data: dict) -> GitLabTag:
         release_description=release.get("description"),
         commit_id=commit.get("id") if commit else None,
         commit_message=commit.get("message") if commit else None,
+    )
+
+
+def parse_label(data: dict) -> GitLabLabel:
+    """Parse a single GitLabLabel from API JSON."""
+    return GitLabLabel(
+        id=data["id"],
+        name=data["name"],
+        color=data.get("color", ""),
+        description=data.get("description"),
+    )
+
+
+def parse_member(data: dict) -> GitLabMember:
+    """Parse a single GitLabMember from API JSON."""
+    return GitLabMember(
+        id=data["id"],
+        username=data["username"],
+        name=data.get("name"),
+        state=data.get("state", "active"),
+        avatar_url=data.get("avatar_url"),
+        web_url=data.get("web_url"),
+        access_level=data.get("access_level", 0),
+        expires_at=data.get("expires_at"),
+        created_at=data.get("created_at"),
     )

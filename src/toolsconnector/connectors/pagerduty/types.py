@@ -116,3 +116,49 @@ class PDSchedule(BaseModel):
     time_zone: Optional[str] = None
     escalation_policies: list[dict[str, Any]] = Field(default_factory=list)
     users: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PDMaintenanceWindow(BaseModel):
+    """A PagerDuty maintenance window."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: Optional[str] = None
+    type: str = "maintenance_window"
+    summary: Optional[str] = None
+    description: Optional[str] = None
+    html_url: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    created_by: Optional[dict[str, Any]] = None
+    services: list[dict[str, Any]] = Field(default_factory=list)
+    teams: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PDTeam(BaseModel):
+    """A PagerDuty team."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: Optional[str] = None
+    type: str = "team"
+    name: Optional[str] = None
+    description: Optional[str] = None
+    html_url: Optional[str] = None
+    summary: Optional[str] = None
+    default_role: Optional[str] = None
+    parent: Optional[dict[str, Any]] = None
+
+
+class PDPriority(BaseModel):
+    """A PagerDuty incident priority level."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: Optional[str] = None
+    type: str = "priority"
+    name: Optional[str] = None
+    description: Optional[str] = None
+    order: Optional[int] = None
+    color: Optional[str] = None
+    schema_version: Optional[int] = None

@@ -25,7 +25,10 @@ from ._parsers import (
     parse_comment,
     parse_issue,
     parse_job,
+    parse_label,
+    parse_member,
     parse_merge_request,
+    parse_milestone,
     parse_pipeline,
     parse_project,
     parse_tag,
@@ -35,6 +38,9 @@ from .types import (
     GitLabComment,
     GitLabIssue,
     GitLabJob,
+    GitLabLabel,
+    GitLabMember,
+    GitLabMilestone,
     GitLabTag,
     MergeRequest,
     Pipeline,
@@ -655,3 +661,204 @@ class GitLab(BaseConnector):
             params=params,
         )
         return [parse_tag(t) for t in resp.json()]
+
+    # ------------------------------------------------------------------
+    # Actions -- Branch management
+    # ------------------------------------------------------------------
+
+    @action("Delete a branch from a project", dangerous=True)
+    async def delete_branch(
+        self,
+        project_id: str,
+        branch_name: str,
+    ) -> bool:
+        """Delete a branch from a project repository.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            branch_name: Name of the branch to delete.
+
+        Returns:
+            True if the branch was deleted successfully.
+        """
+        encoded = _encode_project_id(project_id)
+        branch_encoded = quote(branch_name, safe="")
+        await self._request(
+            "DELETE",
+            f"/projects/{encoded}/repository/branches/{branch_encoded}",
+        )
+        return True
+
+    # ------------------------------------------------------------------
+    # Actions -- Project Members
+    # ------------------------------------------------------------------
+
+    @action("List project members")
+    async def list_project_members(
+        self,
+        project_id: str,
+        query: Optional[str] = None,
+        limit: int = 20,
+        page: int = 1,
+    ) -> PaginatedList[GitLabMember]:
+        """List direct members of a project.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            query: Optional search query to filter members by name/username.
+            limit: Maximum members per page (max 100).
+            page: Page number (1-indexed).
+
+        Returns:
+            Paginated list of GitLabMember objects.
+        """
+        encoded = _encode_project_id(project_id)
+        params: dict[str, Any] = {"per_page": min(limit, 100), "page": page}
+        if query:
+            params["query"] = query
+
+        resp = await self._request(
+            "GET", f"/projects/{encoded}/members", params=params,
+        )
+        items = [parse_member(m) for m in resp.json()]
+        ps = self._build_page_state(resp, page)
+
+        result = PaginatedList(
+            items=items, page_state=ps, total_count=ps.total_count,
+        )
+        if ps.has_more and ps.page_number is not None:
+            np = ps.page_number
+            result._fetch_next = lambda pg=np: self.list_project_members(
+                project_id=project_id, query=query, limit=limit, page=pg,
+            )
+        return result
+
+    # ------------------------------------------------------------------
+    # Actions -- Labels
+    # ------------------------------------------------------------------
+
+    @action("List labels for a project")
+    async def list_labels(
+        self,
+        project_id: str,
+        search: Optional[str] = None,
+        limit: int = 20,
+        page: int = 1,
+    ) -> list[GitLabLabel]:
+        """List labels defined on a project.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            search: Optional search string to filter labels by name.
+            limit: Maximum labels per page (max 100).
+            page: Page number (1-indexed).
+
+        Returns:
+            List of GitLabLabel objects.
+        """
+        encoded = _encode_project_id(project_id)
+        params: dict[str, Any] = {"per_page": min(limit, 100), "page": page}
+        if search:
+            params["search"] = search
+
+        resp = await self._request(
+            "GET", f"/projects/{encoded}/labels", params=params,
+        )
+        return [parse_label(lb) for lb in resp.json()]
+
+    @action("Create a label in a project", dangerous=True)
+    async def create_label(
+        self,
+        project_id: str,
+        name: str,
+        color: str,
+        description: Optional[str] = None,
+    ) -> GitLabLabel:
+        """Create a new label on a project.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            name: Label name.
+            color: Label color in hex format (e.g. ``"#FF0000"``).
+            description: Optional label description.
+
+        Returns:
+            The created GitLabLabel object.
+        """
+        encoded = _encode_project_id(project_id)
+        payload: dict[str, Any] = {"name": name, "color": color}
+        if description is not None:
+            payload["description"] = description
+
+        resp = await self._request(
+            "POST", f"/projects/{encoded}/labels", json=payload,
+        )
+        return parse_label(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Milestones
+    # ------------------------------------------------------------------
+
+    @action("List milestones for a project")
+    async def list_milestones(
+        self,
+        project_id: str,
+        state: Optional[str] = None,
+        limit: int = 20,
+        page: int = 1,
+    ) -> list[GitLabMilestone]:
+        """List milestones for a project.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            state: Filter by state: ``active`` or ``closed``.
+            limit: Maximum milestones per page (max 100).
+            page: Page number (1-indexed).
+
+        Returns:
+            List of GitLabMilestone objects.
+        """
+        encoded = _encode_project_id(project_id)
+        params: dict[str, Any] = {"per_page": min(limit, 100), "page": page}
+        if state:
+            params["state"] = state
+
+        resp = await self._request(
+            "GET", f"/projects/{encoded}/milestones", params=params,
+        )
+        return [parse_milestone(m) for m in resp.json()]
+
+    @action("Create a milestone in a project", dangerous=True)
+    async def create_milestone(
+        self,
+        project_id: str,
+        title: str,
+        description: Optional[str] = None,
+        due_date: Optional[str] = None,
+        start_date: Optional[str] = None,
+    ) -> GitLabMilestone:
+        """Create a new milestone on a project.
+
+        Args:
+            project_id: Numeric project ID or ``namespace/project`` path.
+            title: Milestone title.
+            description: Optional milestone description.
+            due_date: Due date in ``YYYY-MM-DD`` format.
+            start_date: Start date in ``YYYY-MM-DD`` format.
+
+        Returns:
+            The created GitLabMilestone object.
+        """
+        encoded = _encode_project_id(project_id)
+        payload: dict[str, Any] = {"title": title}
+        if description is not None:
+            payload["description"] = description
+        if due_date is not None:
+            payload["due_date"] = due_date
+        if start_date is not None:
+            payload["start_date"] = start_date
+
+        resp = await self._request(
+            "POST", f"/projects/{encoded}/milestones", json=payload,
+        )
+        return parse_milestone(resp.json())

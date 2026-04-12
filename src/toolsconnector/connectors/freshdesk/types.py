@@ -111,3 +111,40 @@ class FreshdeskNote(BaseModel):
     incoming: bool = False
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+class FreshdeskCompany(BaseModel):
+    """A Freshdesk company (customer organization)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: Optional[str] = None
+    description: Optional[str] = None
+    domains: list[str] = Field(default_factory=list)
+    note: Optional[str] = None
+    health_score: Optional[str] = None
+    account_tier: Optional[str] = None
+    renewal_date: Optional[str] = None
+    industry: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class FreshdeskTicketField(BaseModel):
+    """A Freshdesk ticket field definition."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: str = ""
+    label: str = ""
+    type: str = ""
+    default: bool = False
+    required_for_closure: bool = False
+    required_for_agents: bool = False
+    required_for_customers: bool = False
+    position: int = 0
+    choices: list[Any] = Field(default_factory=list)
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None

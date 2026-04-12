@@ -88,3 +88,24 @@ class OktaApplication(BaseModel):
     features: list[str] = Field(default_factory=list)
     visibility: dict[str, Any] = Field(default_factory=dict)
     links: dict[str, Any] = Field(default_factory=dict, alias="_links")
+
+
+class OktaLogEvent(BaseModel):
+    """An Okta system log event."""
+
+    model_config = ConfigDict(frozen=True)
+
+    uuid: str = ""
+    published: Optional[str] = None
+    event_type: Optional[str] = Field(None, alias="eventType")
+    severity: Optional[str] = None
+    display_message: Optional[str] = Field(None, alias="displayMessage")
+    actor: Optional[dict[str, Any]] = None
+    client: Optional[dict[str, Any]] = None
+    outcome: Optional[dict[str, Any]] = None
+    target: list[dict[str, Any]] = Field(default_factory=list)
+    transaction: Optional[dict[str, Any]] = None
+    debug_context: Optional[dict[str, Any]] = Field(None, alias="debugContext")
+    authentication_context: Optional[dict[str, Any]] = Field(
+        None, alias="authenticationContext"
+    )

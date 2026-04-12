@@ -43,11 +43,15 @@ from ._helpers import (
 from ._signing import sign_v4
 from .types import (
     S3Bucket,
+    S3BucketLocation,
     S3BucketPolicy,
+    S3BucketVersioning,
     S3CopyResult,
+    S3MultipartUpload,
     S3Object,
     S3ObjectData,
     S3ObjectMetadata,
+    S3ObjectTagSet,
     S3ObjectVersion,
     S3PresignedUrl,
     S3PutResult,
@@ -627,4 +631,225 @@ class S3(BaseConnector):
                 "Content-Type": "application/xml",
                 "Content-MD5": md5_b64,
             },
+        )
+
+    @action("Get tags on an S3 object")
+    async def get_object_tags(
+        self,
+        bucket: str,
+        key: str,
+        version_id: Optional[str] = None,
+    ) -> S3ObjectTagSet:
+        """Retrieve the tag set for an S3 object.
+
+        Args:
+            bucket: Bucket name.
+            key: Object key.
+            version_id: Optional version ID to get tags for a specific
+                object version.
+
+        Returns:
+            S3ObjectTagSet with the key and tag dictionary.
+        """
+        enc_key = urllib.parse.quote(key, safe="/")
+        params: dict[str, Any] = {"tagging": ""}
+        if version_id:
+            params["versionId"] = version_id
+
+        resp = await self._s3_request(
+            "GET", f"/{enc_key}", host=self._bucket_host(bucket),
+            params=params,
+        )
+        root = ET.fromstring(resp.text)
+
+        tags: dict[str, str] = {}
+        for tag in root.iter(f"{{{_S3_NS}}}Tag"):
+            tag_key = _find_text(tag, "Key")
+            tag_val = _find_text(tag, "Value")
+            if tag_key is not None:
+                tags[tag_key] = tag_val or ""
+
+        return S3ObjectTagSet(
+            key=key,
+            tags=tags,
+            version_id=resp.headers.get("x-amz-version-id"),
+        )
+
+    @action("Delete all tags from an S3 object", dangerous=True)
+    async def delete_object_tags(
+        self,
+        bucket: str,
+        key: str,
+        version_id: Optional[str] = None,
+    ) -> None:
+        """Remove the entire tag set from an S3 object.
+
+        Args:
+            bucket: Bucket name.
+            key: Object key.
+            version_id: Optional version ID to delete tags for a
+                specific object version.
+        """
+        enc_key = urllib.parse.quote(key, safe="/")
+        params: dict[str, Any] = {"tagging": ""}
+        if version_id:
+            params["versionId"] = version_id
+
+        await self._s3_request(
+            "DELETE", f"/{enc_key}", host=self._bucket_host(bucket),
+            params=params,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Bucket location
+    # ------------------------------------------------------------------
+
+    @action("Get the region (location) of an S3 bucket")
+    async def get_bucket_location(self, bucket: str) -> S3BucketLocation:
+        """Retrieve the AWS region where a bucket is located.
+
+        Args:
+            bucket: Bucket name.
+
+        Returns:
+            S3BucketLocation with the region code. Note that buckets
+            in ``us-east-1`` may return ``None`` as the location.
+        """
+        resp = await self._s3_request(
+            "GET", "/", host=self._bucket_host(bucket),
+            params={"location": ""},
+        )
+        root = ET.fromstring(resp.text)
+        location = root.text  # May be None for us-east-1
+        return S3BucketLocation(
+            bucket=bucket,
+            location=location or "us-east-1",
+        )
+
+    # ------------------------------------------------------------------
+    # Actions — Multipart uploads
+    # ------------------------------------------------------------------
+
+    @action("List in-progress multipart uploads in a bucket")
+    async def list_multipart_uploads(
+        self,
+        bucket: str,
+        prefix: Optional[str] = None,
+        limit: int = 1000,
+        key_marker: Optional[str] = None,
+    ) -> PaginatedList[S3MultipartUpload]:
+        """List in-progress multipart uploads in a bucket.
+
+        Args:
+            bucket: Bucket name.
+            prefix: Filter uploads by key prefix.
+            limit: Maximum uploads per page (max 1000).
+            key_marker: Key marker from a previous response for pagination.
+
+        Returns:
+            Paginated list of S3MultipartUpload items.
+        """
+        params: dict[str, Any] = {
+            "uploads": "",
+            "max-uploads": str(min(limit, 1000)),
+        }
+        if prefix:
+            params["prefix"] = prefix
+        if key_marker:
+            params["key-marker"] = key_marker
+
+        bhost = self._bucket_host(bucket)
+        resp = await self._s3_request("GET", "/", host=bhost, params=params)
+        root = ET.fromstring(resp.text)
+
+        items: list[S3MultipartUpload] = []
+        for u in root.iter(f"{{{_S3_NS}}}Upload"):
+            initiator = u.find(f"{{{_S3_NS}}}Initiator")
+            owner = u.find(f"{{{_S3_NS}}}Owner")
+            items.append(S3MultipartUpload(
+                key=_find_text(u, "Key") or "",
+                upload_id=_find_text(u, "UploadId") or "",
+                initiated=_find_text(u, "Initiated"),
+                storage_class=_find_text(u, "StorageClass"),
+                owner_id=(
+                    _find_text(owner, "ID") if owner is not None else None
+                ),
+                initiator_id=(
+                    _find_text(initiator, "ID")
+                    if initiator is not None else None
+                ),
+            ))
+
+        is_truncated = _find_text(root, "IsTruncated") == "true"
+        next_key_marker = _find_text(root, "NextKeyMarker")
+        ps = PageState(has_more=is_truncated, cursor=next_key_marker)
+
+        result = PaginatedList(items=items, page_state=ps)
+        if is_truncated:
+            result._fetch_next = (
+                lambda km=next_key_marker: self.alist_multipart_uploads(
+                    bucket=bucket, prefix=prefix, limit=limit,
+                    key_marker=km,
+                )
+            )
+        return result
+
+    # ------------------------------------------------------------------
+    # Actions — Bucket versioning configuration
+    # ------------------------------------------------------------------
+
+    @action("Get bucket versioning configuration")
+    async def get_bucket_versioning(
+        self, bucket: str,
+    ) -> S3BucketVersioning:
+        """Retrieve the versioning state of an S3 bucket.
+
+        Args:
+            bucket: Bucket name.
+
+        Returns:
+            S3BucketVersioning with status (``Enabled``, ``Suspended``,
+            or ``None`` if never enabled) and MFA delete state.
+        """
+        resp = await self._s3_request(
+            "GET", "/", host=self._bucket_host(bucket),
+            params={"versioning": ""},
+        )
+        root = ET.fromstring(resp.text)
+        return S3BucketVersioning(
+            bucket=bucket,
+            status=_find_text(root, "Status"),
+            mfa_delete=_find_text(root, "MfaDelete"),
+        )
+
+    @action("Set bucket versioning configuration", dangerous=True)
+    async def put_bucket_versioning(
+        self,
+        bucket: str,
+        status: str,
+    ) -> None:
+        """Enable or suspend versioning on an S3 bucket.
+
+        Once versioning is enabled it cannot be removed, only
+        suspended. Objects already versioned retain their versions.
+
+        Args:
+            bucket: Bucket name.
+            status: Versioning status — ``"Enabled"`` or ``"Suspended"``.
+        """
+        if status not in ("Enabled", "Suspended"):
+            raise ValueError(
+                f"status must be 'Enabled' or 'Suspended', got {status!r}"
+            )
+        body = (
+            f'<VersioningConfiguration xmlns="{_S3_NS}">'
+            f"<Status>{status}</Status>"
+            f"</VersioningConfiguration>"
+        ).encode("utf-8")
+
+        await self._s3_request(
+            "PUT", "/", host=self._bucket_host(bucket),
+            params={"versioning": ""},
+            body=body,
+            extra_headers={"Content-Type": "application/xml"},
         )
