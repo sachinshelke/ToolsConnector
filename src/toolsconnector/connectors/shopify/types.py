@@ -148,3 +148,65 @@ class ShopifyCustomer(BaseModel):
     note: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+class ShopifyDraftOrder(BaseModel):
+    """A Shopify draft order."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    order_id: Optional[int] = None
+    name: Optional[str] = None
+    email: Optional[str] = None
+    status: Optional[str] = None
+    note: Optional[str] = None
+    total_price: Optional[str] = None
+    subtotal_price: Optional[str] = None
+    total_tax: Optional[str] = None
+    currency: Optional[str] = None
+    line_items: list[ShopifyLineItem] = Field(default_factory=list)
+    shipping_address: Optional[ShopifyAddress] = None
+    billing_address: Optional[ShopifyAddress] = None
+    customer_id: Optional[int] = None
+    tags: Optional[str] = None
+    invoice_url: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    completed_at: Optional[str] = None
+
+
+class ShopifyWebhook(BaseModel):
+    """A Shopify webhook subscription."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    topic: Optional[str] = None
+    address: Optional[str] = None
+    format: Optional[str] = None
+    fields: list[str] = Field(default_factory=list)
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class ShopifyLocation(BaseModel):
+    """A Shopify location."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: Optional[str] = None
+    address1: Optional[str] = None
+    address2: Optional[str] = None
+    city: Optional[str] = None
+    province: Optional[str] = None
+    province_code: Optional[str] = None
+    country: Optional[str] = None
+    country_code: Optional[str] = None
+    zip: Optional[str] = None
+    phone: Optional[str] = None
+    active: Optional[bool] = None
+    legacy: Optional[bool] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None

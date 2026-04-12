@@ -19,8 +19,25 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from ._parsers import parse_customer, parse_link_header, parse_order, parse_product
-from .types import ShopifyCustomer, ShopifyOrder, ShopifyProduct
+from ._parsers import (
+    parse_customer,
+    parse_draft_order,
+    parse_link_header,
+    parse_location,
+    parse_order,
+    parse_product,
+    parse_variant,
+    parse_webhook,
+)
+from .types import (
+    ShopifyCustomer,
+    ShopifyDraftOrder,
+    ShopifyLocation,
+    ShopifyOrder,
+    ShopifyProduct,
+    ShopifyVariant,
+    ShopifyWebhook,
+)
 
 logger = logging.getLogger("toolsconnector.shopify")
 
@@ -671,3 +688,286 @@ class Shopify(BaseConnector):
             "POST", "/inventory_levels/set.json", json_body=payload,
         )
         return resp.json().get("inventory_level", {})
+
+    # ------------------------------------------------------------------
+    # Actions -- Product deletion
+    # ------------------------------------------------------------------
+
+    @action("Delete a product from your Shopify store", dangerous=True)
+    async def delete_product(self, product_id: int) -> bool:
+        """Permanently delete a product.
+
+        Args:
+            product_id: The Shopify product ID.
+
+        Returns:
+            True if the product was deleted successfully.
+        """
+        resp = await self._request(
+            "DELETE", f"/products/{product_id}.json",
+        )
+        return resp.status_code == 200
+
+    # ------------------------------------------------------------------
+    # Actions -- Product variants
+    # ------------------------------------------------------------------
+
+    @action("List variants for a product")
+    async def list_product_variants(
+        self, product_id: int,
+    ) -> list[ShopifyVariant]:
+        """List all variants for a product.
+
+        Args:
+            product_id: The Shopify product ID.
+
+        Returns:
+            List of ShopifyVariant objects.
+        """
+        resp = await self._request(
+            "GET", f"/products/{product_id}/variants.json",
+        )
+        body = resp.json()
+        return [parse_variant(v) for v in body.get("variants", [])]
+
+    @action("Create a variant for a product", dangerous=True)
+    async def create_product_variant(
+        self,
+        product_id: int,
+        option1: str,
+        price: str,
+        sku: Optional[str] = None,
+    ) -> ShopifyVariant:
+        """Create a new variant for an existing product.
+
+        Args:
+            product_id: The Shopify product ID.
+            option1: Value for the first product option (e.g. size/colour).
+            price: Variant price as a decimal string (e.g. ``"29.99"``).
+            sku: Optional stock keeping unit identifier.
+
+        Returns:
+            The created ShopifyVariant object.
+        """
+        variant_data: dict[str, Any] = {
+            "option1": option1,
+            "price": price,
+        }
+        if sku is not None:
+            variant_data["sku"] = sku
+
+        resp = await self._request(
+            "POST", f"/products/{product_id}/variants.json",
+            json_body={"variant": variant_data},
+        )
+        return parse_variant(resp.json()["variant"])
+
+    # ------------------------------------------------------------------
+    # Actions -- Draft orders
+    # ------------------------------------------------------------------
+
+    @action("List draft orders from your Shopify store")
+    async def list_draft_orders(
+        self,
+        limit: int = 50,
+        since_id: Optional[int] = None,
+    ) -> PaginatedList[ShopifyDraftOrder]:
+        """List draft orders with Link header pagination.
+
+        Args:
+            limit: Maximum number of draft orders to return (1-250).
+            since_id: Only return draft orders after this ID.
+
+        Returns:
+            Paginated list of ShopifyDraftOrder objects.
+        """
+        params: dict[str, Any] = {"limit": min(limit, 250)}
+        if since_id is not None:
+            params["since_id"] = since_id
+
+        resp = await self._request(
+            "GET", "/draft_orders.json", params=params,
+        )
+        body = resp.json()
+        items = [
+            parse_draft_order(d)
+            for d in body.get("draft_orders", [])
+        ]
+        page_state = self._build_page_state(resp)
+
+        result = PaginatedList(items=items, page_state=page_state)
+        result._fetch_next = (
+            (lambda: self._list_draft_orders_cursor(
+                limit, page_state.cursor,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    async def _list_draft_orders_cursor(
+        self, limit: int, page_info: Optional[str],
+    ) -> PaginatedList[ShopifyDraftOrder]:
+        """Fetch next page of draft orders via cursor.
+
+        Args:
+            limit: Page size.
+            page_info: Cursor from previous Link header.
+
+        Returns:
+            Next paginated list of ShopifyDraftOrder objects.
+        """
+        params: dict[str, Any] = {
+            "limit": limit, "page_info": page_info,
+        }
+        resp = await self._request(
+            "GET", "/draft_orders.json", params=params,
+        )
+        body = resp.json()
+        items = [
+            parse_draft_order(d)
+            for d in body.get("draft_orders", [])
+        ]
+        ps = self._build_page_state(resp)
+
+        result = PaginatedList(items=items, page_state=ps)
+        result._fetch_next = (
+            (lambda: self._list_draft_orders_cursor(limit, ps.cursor))
+            if ps.has_more else None
+        )
+        return result
+
+    @action("Create a draft order", dangerous=True)
+    async def create_draft_order(
+        self,
+        line_items: list[dict[str, Any]],
+        customer: Optional[dict[str, Any]] = None,
+        note: Optional[str] = None,
+    ) -> ShopifyDraftOrder:
+        """Create a new draft order.
+
+        Draft orders allow merchants to create orders on behalf of
+        customers for sales made by phone, in person, or via chat.
+
+        Args:
+            line_items: List of line item dicts, each containing
+                ``variant_id`` and ``quantity`` (or ``title``, ``price``,
+                and ``quantity`` for custom items).
+            customer: Optional customer dict with an ``id`` key to
+                associate the draft order with an existing customer.
+            note: Optional note text for the draft order.
+
+        Returns:
+            The created ShopifyDraftOrder object.
+        """
+        draft_data: dict[str, Any] = {"line_items": line_items}
+        if customer is not None:
+            draft_data["customer"] = customer
+        if note is not None:
+            draft_data["note"] = note
+
+        resp = await self._request(
+            "POST", "/draft_orders.json",
+            json_body={"draft_order": draft_data},
+        )
+        return parse_draft_order(resp.json()["draft_order"])
+
+    @action("Complete a draft order", dangerous=True)
+    async def complete_draft_order(
+        self, draft_order_id: int,
+    ) -> ShopifyDraftOrder:
+        """Complete a draft order and convert it to a regular order.
+
+        Args:
+            draft_order_id: The Shopify draft order ID.
+
+        Returns:
+            The completed ShopifyDraftOrder object.
+        """
+        resp = await self._request(
+            "PUT", f"/draft_orders/{draft_order_id}/complete.json",
+        )
+        return parse_draft_order(resp.json()["draft_order"])
+
+    # ------------------------------------------------------------------
+    # Actions -- Webhooks
+    # ------------------------------------------------------------------
+
+    @action("List webhooks from your Shopify store")
+    async def list_webhooks(
+        self, limit: Optional[int] = None,
+    ) -> list[ShopifyWebhook]:
+        """List webhook subscriptions.
+
+        Args:
+            limit: Maximum number of webhooks to return (max 250).
+
+        Returns:
+            List of ShopifyWebhook objects.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["limit"] = min(limit, 250)
+
+        resp = await self._request(
+            "GET", "/webhooks.json", params=params or None,
+        )
+        body = resp.json()
+        return [parse_webhook(w) for w in body.get("webhooks", [])]
+
+    @action("Create a webhook subscription", dangerous=True)
+    async def create_webhook(
+        self,
+        topic: str,
+        address: str,
+        format_: str = "json",
+    ) -> ShopifyWebhook:
+        """Create a new webhook subscription.
+
+        Args:
+            topic: Event topic to subscribe to (e.g. ``"orders/create"``,
+                ``"products/update"``).
+            address: HTTPS URL that will receive webhook POST requests.
+            format_: Payload format (``"json"`` or ``"xml"``).
+
+        Returns:
+            The created ShopifyWebhook object.
+        """
+        webhook_data: dict[str, Any] = {
+            "topic": topic,
+            "address": address,
+            "format": format_,
+        }
+        resp = await self._request(
+            "POST", "/webhooks.json",
+            json_body={"webhook": webhook_data},
+        )
+        return parse_webhook(resp.json()["webhook"])
+
+    # ------------------------------------------------------------------
+    # Actions -- Product count
+    # ------------------------------------------------------------------
+
+    @action("Count products in your Shopify store")
+    async def count_products(self) -> int:
+        """Get the total number of products in the store.
+
+        Returns:
+            Integer count of products.
+        """
+        resp = await self._request("GET", "/products/count.json")
+        return int(resp.json().get("count", 0))
+
+    # ------------------------------------------------------------------
+    # Actions -- Locations
+    # ------------------------------------------------------------------
+
+    @action("List locations for your Shopify store")
+    async def list_locations(self) -> list[ShopifyLocation]:
+        """List all locations (stores, warehouses, etc.).
+
+        Returns:
+            List of ShopifyLocation objects.
+        """
+        resp = await self._request("GET", "/locations.json")
+        body = resp.json()
+        return [parse_location(loc) for loc in body.get("locations", [])]

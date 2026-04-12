@@ -6,10 +6,13 @@ from .connector import Figma
 from .types import (
     FigmaComment,
     FigmaComponent,
+    FigmaComponentSet,
     FigmaFile,
     FigmaImage,
+    FigmaPage,
     FigmaProject,
     FigmaProjectFile,
+    FigmaStyle,
     FigmaUser,
     FigmaVersion,
 )
@@ -18,10 +21,13 @@ __all__ = [
     "Figma",
     "FigmaComment",
     "FigmaComponent",
+    "FigmaComponentSet",
     "FigmaFile",
     "FigmaImage",
+    "FigmaPage",
     "FigmaProject",
     "FigmaProjectFile",
+    "FigmaStyle",
     "FigmaUser",
     "FigmaVersion",
 ]
