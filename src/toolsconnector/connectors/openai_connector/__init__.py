@@ -12,6 +12,9 @@ from .types import (
     ImageResult,
     OpenAIFile,
     OpenAIModel,
+    Thread,
+    ThreadMessage,
+    ThreadRun,
 )
 
 __all__ = [
@@ -24,4 +27,7 @@ __all__ = [
     "ImageResult",
     "OpenAIFile",
     "OpenAIModel",
+    "Thread",
+    "ThreadMessage",
+    "ThreadRun",
 ]

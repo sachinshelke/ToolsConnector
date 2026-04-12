@@ -560,6 +560,94 @@ class Shopify(BaseConnector):
         )
         return resp.json().get("inventory_levels", [])
 
+    # ------------------------------------------------------------------
+    # Actions -- Customer management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Create a new customer", dangerous=True)
+    async def create_customer(
+        self,
+        email: str,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+    ) -> ShopifyCustomer:
+        """Create a new customer in the Shopify store.
+
+        Args:
+            email: Customer email address (required).
+            first_name: Customer's first name.
+            last_name: Customer's last name.
+
+        Returns:
+            The created ShopifyCustomer object.
+        """
+        customer_data: dict[str, Any] = {"email": email}
+        if first_name is not None:
+            customer_data["first_name"] = first_name
+        if last_name is not None:
+            customer_data["last_name"] = last_name
+
+        resp = await self._request(
+            "POST", "/customers.json",
+            json_body={"customer": customer_data},
+        )
+        return parse_customer(resp.json()["customer"])
+
+    # ------------------------------------------------------------------
+    # Actions -- Fulfillments
+    # ------------------------------------------------------------------
+
+    @action("List fulfillments for an order")
+    async def list_fulfillments(
+        self, order_id: int,
+    ) -> list[dict[str, Any]]:
+        """List all fulfillments for a specific order.
+
+        Args:
+            order_id: The Shopify order ID.
+
+        Returns:
+            List of fulfillment dicts with tracking info and line items.
+        """
+        resp = await self._request(
+            "GET", f"/orders/{order_id}/fulfillments.json",
+        )
+        return resp.json().get("fulfillments", [])
+
+    @action("Fulfill an order", dangerous=True)
+    async def fulfill_order(
+        self,
+        order_id: int,
+        tracking_number: Optional[str] = None,
+        tracking_company: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Create a fulfillment for an order.
+
+        This marks the order (or part of it) as fulfilled and
+        optionally adds tracking information.
+
+        Args:
+            order_id: The Shopify order ID to fulfill.
+            tracking_number: Optional shipment tracking number.
+            tracking_company: Optional shipping carrier name.
+
+        Returns:
+            Dict with the created fulfillment details.
+        """
+        fulfillment_data: dict[str, Any] = {
+            "notify_customer": True,
+        }
+        if tracking_number is not None:
+            fulfillment_data["tracking_number"] = tracking_number
+        if tracking_company is not None:
+            fulfillment_data["tracking_company"] = tracking_company
+
+        resp = await self._request(
+            "POST", f"/orders/{order_id}/fulfillments.json",
+            json_body={"fulfillment": fulfillment_data},
+        )
+        return resp.json().get("fulfillment", {})
+
     @action("Update inventory quantity for an item")
     async def update_inventory(
         self,

@@ -10,6 +10,7 @@ from .types import (
     MailchimpList,
     MailchimpMember,
     MailchimpStats,
+    MailchimpTemplate,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "MailchimpList",
     "MailchimpMember",
     "MailchimpStats",
+    "MailchimpTemplate",
 ]

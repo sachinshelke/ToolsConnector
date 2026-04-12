@@ -20,8 +20,26 @@ from toolsconnector.spec.connector import (
 )
 from toolsconnector.types import PageState, PaginatedList
 
-from ._parsers import parse_board, parse_card, parse_comment, parse_list
-from .types import TrelloBoard, TrelloCard, TrelloComment, TrelloList, TrelloMember
+from ._parsers import (
+    parse_action,
+    parse_attachment,
+    parse_board,
+    parse_card,
+    parse_comment,
+    parse_label,
+    parse_list,
+    parse_member,
+)
+from .types import (
+    TrelloAction,
+    TrelloAttachment,
+    TrelloBoard,
+    TrelloCard,
+    TrelloComment,
+    TrelloLabel,
+    TrelloList,
+    TrelloMember,
+)
 
 logger = logging.getLogger("toolsconnector.trello")
 
@@ -372,3 +390,288 @@ class Trello(BaseConnector):
             params={"name": name, "idBoard": board_id},
         )
         return parse_list(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Labels
+    # ------------------------------------------------------------------
+
+    @action("List all labels on a Trello board")
+    async def list_labels(
+        self, board_id: str,
+    ) -> list[TrelloLabel]:
+        """List all labels defined on a board.
+
+        Args:
+            board_id: The Trello board ID.
+
+        Returns:
+            List of TrelloLabel objects.
+        """
+        resp = await self._request("GET", f"/boards/{board_id}/labels")
+        return [parse_label(lb) for lb in resp.json()]
+
+    @action("Create a label on a Trello board", dangerous=True)
+    async def create_label(
+        self,
+        board_id: str,
+        name: str,
+        color: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Create a new label on a board.
+
+        Args:
+            board_id: The Trello board ID.
+            name: Label name.
+            color: Label colour (e.g. ``"green"``, ``"red"``,
+                ``"blue"``). Pass ``None`` for no colour.
+
+        Returns:
+            Dict with the created label data including ``id``,
+            ``name``, and ``color``.
+        """
+        params: dict[str, Any] = {
+            "name": name,
+            "idBoard": board_id,
+        }
+        if color is not None:
+            params["color"] = color
+
+        resp = await self._request("POST", "/labels", params=params)
+        return resp.json()
+
+    # ------------------------------------------------------------------
+    # Actions -- Card movement
+    # ------------------------------------------------------------------
+
+    @action("Move a Trello card to a different list", dangerous=True)
+    async def move_card(
+        self,
+        card_id: str,
+        list_id: str,
+    ) -> TrelloCard:
+        """Move a card to a different list.
+
+        Args:
+            card_id: The Trello card ID to move.
+            list_id: The destination list ID.
+
+        Returns:
+            The updated TrelloCard object in its new list.
+        """
+        resp = await self._request(
+            "PUT", f"/cards/{card_id}",
+            params={"idList": list_id},
+        )
+        return parse_card(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Card attachments
+    # ------------------------------------------------------------------
+
+    @action("List attachments on a Trello card")
+    async def list_attachments(
+        self, card_id: str,
+    ) -> list[TrelloAttachment]:
+        """List all attachments on a card.
+
+        Args:
+            card_id: The Trello card ID.
+
+        Returns:
+            List of TrelloAttachment objects.
+        """
+        resp = await self._request(
+            "GET", f"/cards/{card_id}/attachments",
+        )
+        return [parse_attachment(a) for a in resp.json()]
+
+    @action("Add an attachment to a Trello card", dangerous=True)
+    async def add_attachment(
+        self,
+        card_id: str,
+        url: Optional[str] = None,
+        name: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Add a URL attachment to a card.
+
+        Args:
+            card_id: The Trello card ID.
+            url: URL to attach to the card.
+            name: Display name for the attachment.
+
+        Returns:
+            Dict with the created attachment data.
+        """
+        params: dict[str, Any] = {}
+        if url is not None:
+            params["url"] = url
+        if name is not None:
+            params["name"] = name
+
+        resp = await self._request(
+            "POST", f"/cards/{card_id}/attachments",
+            params=params,
+        )
+        return resp.json()
+
+    # ------------------------------------------------------------------
+    # Actions -- Board members (alias)
+    # ------------------------------------------------------------------
+
+    @action("List members of a Trello board")
+    async def list_board_members(
+        self, board_id: str,
+    ) -> list[TrelloMember]:
+        """List all members of a board.
+
+        This is an alias for ``list_members`` with a clearer name
+        when working alongside card-level member endpoints.
+
+        Args:
+            board_id: The Trello board ID.
+
+        Returns:
+            List of TrelloMember objects.
+        """
+        resp = await self._request(
+            "GET", f"/boards/{board_id}/members",
+        )
+        return [parse_member(m) for m in resp.json()]
+
+    # ------------------------------------------------------------------
+    # Actions -- List operations (extended)
+    # ------------------------------------------------------------------
+
+    @action("Get a single Trello list by ID")
+    async def get_list(self, list_id: str) -> TrelloList:
+        """Retrieve a single list by its ID.
+
+        Args:
+            list_id: The Trello list ID.
+
+        Returns:
+            TrelloList object.
+        """
+        resp = await self._request("GET", f"/lists/{list_id}")
+        return parse_list(resp.json())
+
+    @action("Archive a Trello list", dangerous=True)
+    async def archive_list(self, list_id: str) -> TrelloList:
+        """Archive (close) a Trello list.
+
+        Archived lists are hidden from the board but not deleted.
+
+        Args:
+            list_id: The Trello list ID to archive.
+
+        Returns:
+            The archived TrelloList object.
+        """
+        resp = await self._request(
+            "PUT", f"/lists/{list_id}/closed",
+            params={"value": "true"},
+        )
+        return parse_list(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Card actions (activity log)
+    # ------------------------------------------------------------------
+
+    @action("List actions (activity log) on a Trello card")
+    async def list_card_actions(
+        self, card_id: str,
+    ) -> list[TrelloAction]:
+        """List the action history (activity log) for a card.
+
+        Returns all actions including comments, moves, and updates.
+
+        Args:
+            card_id: The Trello card ID.
+
+        Returns:
+            List of TrelloAction objects.
+        """
+        resp = await self._request(
+            "GET", f"/cards/{card_id}/actions",
+        )
+        return [parse_action(a) for a in resp.json()]
+
+    # ------------------------------------------------------------------
+    # Actions -- Card archiving
+    # ------------------------------------------------------------------
+
+    @action("Archive a Trello card", dangerous=True)
+    async def archive_card(self, card_id: str) -> TrelloCard:
+        """Archive (close) a Trello card.
+
+        Archived cards are hidden from the board but not deleted.
+
+        Args:
+            card_id: The Trello card ID to archive.
+
+        Returns:
+            The archived TrelloCard object.
+        """
+        resp = await self._request(
+            "PUT", f"/cards/{card_id}",
+            params={"closed": "true"},
+        )
+        return parse_card(resp.json())
+
+    @action("Unarchive a Trello card")
+    async def unarchive_card(self, card_id: str) -> TrelloCard:
+        """Unarchive (reopen) a previously archived Trello card.
+
+        Args:
+            card_id: The Trello card ID to unarchive.
+
+        Returns:
+            The unarchived TrelloCard object.
+        """
+        resp = await self._request(
+            "PUT", f"/cards/{card_id}",
+            params={"closed": "false"},
+        )
+        return parse_card(resp.json())
+
+    # ------------------------------------------------------------------
+    # Actions -- Checklists
+    # ------------------------------------------------------------------
+
+    @action("List checklists on a Trello card")
+    async def list_checklists(
+        self, card_id: str,
+    ) -> list[dict[str, Any]]:
+        """List all checklists on a card.
+
+        Args:
+            card_id: The Trello card ID.
+
+        Returns:
+            List of checklist dicts with id, name, checkItems, etc.
+        """
+        resp = await self._request(
+            "GET", f"/cards/{card_id}/checklists",
+        )
+        return resp.json() if isinstance(resp.json(), list) else []
+
+    @action("Create a checklist on a Trello card", dangerous=True)
+    async def create_checklist(
+        self,
+        card_id: str,
+        name: str,
+    ) -> dict[str, Any]:
+        """Create a new checklist on a card.
+
+        Args:
+            card_id: The Trello card ID.
+            name: Name for the new checklist.
+
+        Returns:
+            Dict with the created checklist details.
+        """
+        resp = await self._request(
+            "POST", "/checklists",
+            params={"idCard": card_id, "name": name},
+        )
+        return resp.json()

@@ -599,3 +599,66 @@ class SQS(BaseConnector):
             "VisibilityTimeout": timeout,
         })
         return True
+
+    # ------------------------------------------------------------------
+    # Actions -- Permissions
+    # ------------------------------------------------------------------
+
+    @action("Add permission to a queue", dangerous=True)
+    async def add_permission(
+        self,
+        queue_url: str,
+        label: str,
+        aws_account_ids: list[str],
+        actions: list[str],
+    ) -> bool:
+        """Add a permission to the queue policy granting access to other AWS accounts.
+
+        Adds a permission with the specified label to the queue for the
+        specified AWS account IDs and actions. Up to 7 actions can be
+        specified per statement.
+
+        Args:
+            queue_url: The URL of the SQS queue.
+            label: Unique identifier for the permission being set (max 80
+                chars, alphanumeric, hyphens, and underscores).
+            aws_account_ids: List of AWS account IDs to grant permission to.
+            actions: List of SQS actions to allow (e.g. ``SendMessage``,
+                ``ReceiveMessage``, ``DeleteMessage``,
+                ``ChangeMessageVisibility``, ``GetQueueAttributes``,
+                ``GetQueueUrl``, or ``*``).
+
+        Returns:
+            True if the permission was added.
+        """
+        await self._sqs_request("AddPermission", {
+            "QueueUrl": queue_url,
+            "Label": label,
+            "AWSAccountIds": aws_account_ids,
+            "Actions": actions,
+        })
+        return True
+
+    @action("Remove permission from a queue", dangerous=True)
+    async def remove_permission(
+        self,
+        queue_url: str,
+        label: str,
+    ) -> bool:
+        """Remove a permission statement from the queue policy.
+
+        Revokes a previously granted permission identified by its label.
+
+        Args:
+            queue_url: The URL of the SQS queue.
+            label: The identifier of the permission to remove (the label
+                used when calling ``add_permission``).
+
+        Returns:
+            True if the permission was removed.
+        """
+        await self._sqs_request("RemovePermission", {
+            "QueueUrl": queue_url,
+            "Label": label,
+        })
+        return True

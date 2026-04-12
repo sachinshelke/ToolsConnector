@@ -106,3 +106,19 @@ COMMENT_FIELDS = f"""
         id
     }}
 """
+
+CYCLE_FIELDS = """
+    id
+    number
+    name
+    description
+    startsAt
+    endsAt
+    completedAt
+    progress
+    scopeCount
+    completedScopeCount
+    team {
+        id
+    }
+"""

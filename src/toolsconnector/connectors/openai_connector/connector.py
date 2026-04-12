@@ -33,6 +33,11 @@ from .types import (
     ModerationResult,
     OpenAIFile,
     OpenAIModel,
+    Thread,
+    ThreadMessage,
+    ThreadMessageContent,
+    ThreadRun,
+    ThreadRunUsage,
     ToolDefinition,
     Usage,
 )
@@ -473,6 +478,44 @@ class OpenAI(BaseConnector):
         ]
 
     # ------------------------------------------------------------------
+    # Actions -- Models (extended)
+    # ------------------------------------------------------------------
+
+    @action("Get a model by ID", idempotent=True)
+    async def get_model(self, model_id: str) -> OpenAIModel:
+        """Retrieve details about a specific model.
+
+        Args:
+            model_id: The model identifier (e.g., ``'gpt-4o'``).
+
+        Returns:
+            OpenAIModel with model metadata.
+        """
+        data = await self._request("GET", f"/models/{model_id}")
+
+        return OpenAIModel(
+            id=data.get("id", ""),
+            object=data.get("object", "model"),
+            created=data.get("created", 0),
+            owned_by=data.get("owned_by", ""),
+        )
+
+    @action("Delete a fine-tuned model", dangerous=True)
+    async def delete_model(self, model_id: str) -> bool:
+        """Delete a fine-tuned model.
+
+        Only the owner of a fine-tuned model can delete it.
+
+        Args:
+            model_id: The model ID to delete (must be a fine-tuned model).
+
+        Returns:
+            True if the model was successfully deleted.
+        """
+        data = await self._request("DELETE", f"/models/{model_id}")
+        return data.get("deleted", False)
+
+    # ------------------------------------------------------------------
     # Actions -- Fine-tuning
     # ------------------------------------------------------------------
 
@@ -495,8 +538,7 @@ class OpenAI(BaseConnector):
             "model": model,
             "training_file": training_file,
         }
-        resp = await self._request("POST", "/v1/fine_tuning/jobs", json_body=payload)
-        data = resp.json()
+        data = await self._request("POST", "/fine_tuning/jobs", json=payload)
         return FineTuningJob(
             id=data.get("id", ""),
             object=data.get("object", "fine_tuning.job"),
@@ -509,9 +551,10 @@ class OpenAI(BaseConnector):
             error=data.get("error"),
         )
 
-    @action("List fine-tuning jobs")
+    @action("List fine-tuning jobs", idempotent=True)
     async def list_fine_tuning_jobs(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[FineTuningJob]:
         """List fine-tuning jobs.
 
@@ -524,10 +567,10 @@ class OpenAI(BaseConnector):
         params: dict[str, Any] = {}
         if limit is not None:
             params["limit"] = limit
-        resp = await self._request(
-            "GET", "/v1/fine_tuning/jobs", params=params or None,
+
+        data = await self._request(
+            "GET", "/fine_tuning/jobs", params=params or None,
         )
-        data = resp.json()
         return [
             FineTuningJob(
                 id=j.get("id", ""),
@@ -547,6 +590,86 @@ class OpenAI(BaseConnector):
     # Actions -- File management (extended)
     # ------------------------------------------------------------------
 
+    @action("Upload a file to OpenAI")
+    async def upload_file(
+        self,
+        file_content: bytes,
+        purpose: str,
+        filename: Optional[str] = None,
+    ) -> OpenAIFile:
+        """Upload a file to the OpenAI platform.
+
+        Args:
+            file_content: Raw file bytes to upload.
+            purpose: Intended purpose (``'assistants'``, ``'fine-tune'``,
+                ``'batch'``, ``'vision'``).
+            filename: Name for the uploaded file (default: ``"upload.jsonl"``).
+
+        Returns:
+            The created OpenAIFile with file metadata.
+        """
+        upload_name = filename or "upload.jsonl"
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                f"{self._base_url}/files",
+                headers={"Authorization": f"Bearer {self._credentials}"},
+                files={"file": (upload_name, file_content)},
+                data={"purpose": purpose},
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        return OpenAIFile(
+            id=data.get("id", ""),
+            object=data.get("object", "file"),
+            bytes=data.get("bytes", 0),
+            created_at=data.get("created_at", 0),
+            filename=data.get("filename", ""),
+            purpose=data.get("purpose", ""),
+            status=data.get("status"),
+        )
+
+    @action("Get file metadata by ID", idempotent=True)
+    async def get_file(self, file_id: str) -> OpenAIFile:
+        """Retrieve metadata for an uploaded file.
+
+        Args:
+            file_id: The file ID to retrieve.
+
+        Returns:
+            OpenAIFile with file metadata.
+        """
+        data = await self._request("GET", f"/files/{file_id}")
+
+        return OpenAIFile(
+            id=data.get("id", ""),
+            object=data.get("object", "file"),
+            bytes=data.get("bytes", 0),
+            created_at=data.get("created_at", 0),
+            filename=data.get("filename", ""),
+            purpose=data.get("purpose", ""),
+            status=data.get("status"),
+        )
+
+    @action("Get file content by ID", idempotent=True)
+    async def get_file_content(self, file_id: str) -> str:
+        """Retrieve the content of an uploaded file.
+
+        Args:
+            file_id: The file ID whose content to retrieve.
+
+        Returns:
+            The file content as a string.
+        """
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.get(
+                f"{self._base_url}/files/{file_id}/content",
+                headers=self._get_headers(),
+            )
+            response.raise_for_status()
+            return response.text
+
     @action("Delete an uploaded file", dangerous=True)
     async def delete_file(self, file_id: str) -> bool:
         """Delete a file from OpenAI.
@@ -557,8 +680,7 @@ class OpenAI(BaseConnector):
         Returns:
             True if the file was deleted.
         """
-        resp = await self._request("DELETE", f"/v1/files/{file_id}")
-        data = resp.json()
+        data = await self._request("DELETE", f"/files/{file_id}")
         return data.get("deleted", False)
 
     # ------------------------------------------------------------------
@@ -566,9 +688,7 @@ class OpenAI(BaseConnector):
     # ------------------------------------------------------------------
 
     @action("Run content moderation on text")
-    async def create_moderation(
-        self, input: str,
-    ) -> ModerationResult:
+    async def create_moderation(self, input: str) -> ModerationResult:
         """Check if text violates OpenAI content policy.
 
         Args:
@@ -577,11 +697,10 @@ class OpenAI(BaseConnector):
         Returns:
             ModerationResult with categories and scores.
         """
-        resp = await self._request(
-            "POST", "/v1/moderations",
-            json_body={"input": input},
+        data = await self._request(
+            "POST", "/moderations",
+            json={"input": input},
         )
-        data = resp.json()
         results = data.get("results", [{}])
         r = results[0] if results else {}
         return ModerationResult(
@@ -591,3 +710,429 @@ class OpenAI(BaseConnector):
             categories=r.get("categories", {}),
             category_scores=r.get("category_scores", {}),
         )
+
+    # ------------------------------------------------------------------
+    # Actions -- Assistants (extended)
+    # ------------------------------------------------------------------
+
+    @action("Get an assistant by ID", idempotent=True)
+    async def get_assistant(self, assistant_id: str) -> Assistant:
+        """Retrieve an assistant by its ID.
+
+        Args:
+            assistant_id: The assistant ID to retrieve.
+
+        Returns:
+            The Assistant object with full configuration.
+        """
+        headers = self._get_headers()
+        headers["OpenAI-Beta"] = "assistants=v2"
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.get(
+                f"{self._base_url}/assistants/{assistant_id}",
+                headers=headers,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        return Assistant(
+            id=data.get("id", ""),
+            object=data.get("object", "assistant"),
+            created_at=data.get("created_at", 0),
+            name=data.get("name"),
+            description=data.get("description"),
+            model=data.get("model", ""),
+            instructions=data.get("instructions"),
+            tools=[
+                ToolDefinition(type=t.get("type", ""))
+                for t in data.get("tools", [])
+            ],
+            metadata=data.get("metadata", {}),
+        )
+
+    @action("Update an assistant")
+    async def update_assistant(
+        self,
+        assistant_id: str,
+        name: Optional[str] = None,
+        instructions: Optional[str] = None,
+        model: Optional[str] = None,
+    ) -> Assistant:
+        """Modify an existing assistant's configuration.
+
+        Args:
+            assistant_id: The assistant ID to update.
+            name: New name for the assistant.
+            instructions: New system instructions.
+            model: New model ID for the assistant.
+
+        Returns:
+            The updated Assistant object.
+        """
+        payload: dict[str, Any] = {}
+        if name is not None:
+            payload["name"] = name
+        if instructions is not None:
+            payload["instructions"] = instructions
+        if model is not None:
+            payload["model"] = model
+
+        headers = self._get_headers()
+        headers["OpenAI-Beta"] = "assistants=v2"
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                f"{self._base_url}/assistants/{assistant_id}",
+                headers=headers,
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        return Assistant(
+            id=data.get("id", ""),
+            object=data.get("object", "assistant"),
+            created_at=data.get("created_at", 0),
+            name=data.get("name"),
+            description=data.get("description"),
+            model=data.get("model", ""),
+            instructions=data.get("instructions"),
+            tools=[
+                ToolDefinition(type=t.get("type", ""))
+                for t in data.get("tools", [])
+            ],
+            metadata=data.get("metadata", {}),
+        )
+
+    @action("Delete an assistant", dangerous=True)
+    async def delete_assistant(self, assistant_id: str) -> bool:
+        """Permanently delete an assistant.
+
+        Args:
+            assistant_id: The assistant ID to delete.
+
+        Returns:
+            True if the assistant was successfully deleted.
+        """
+        headers = self._get_headers()
+        headers["OpenAI-Beta"] = "assistants=v2"
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.delete(
+                f"{self._base_url}/assistants/{assistant_id}",
+                headers=headers,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        return data.get("deleted", False)
+
+    # ------------------------------------------------------------------
+    # Actions -- Threads
+    # ------------------------------------------------------------------
+
+    @action("Create a thread")
+    async def create_thread(self) -> Thread:
+        """Create a new conversation thread for use with assistants.
+
+        Returns:
+            The created Thread object.
+        """
+        headers = self._get_headers()
+        headers["OpenAI-Beta"] = "assistants=v2"
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                f"{self._base_url}/threads",
+                headers=headers,
+                json={},
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        return Thread(
+            id=data.get("id", ""),
+            object=data.get("object", "thread"),
+            created_at=data.get("created_at", 0),
+            metadata=data.get("metadata", {}),
+        )
+
+    @action("Create a message in a thread")
+    async def create_thread_message(
+        self,
+        thread_id: str,
+        content: str,
+        role: Optional[str] = None,
+    ) -> ThreadMessage:
+        """Add a message to an existing thread.
+
+        Args:
+            thread_id: The thread ID to add the message to.
+            content: The text content of the message.
+            role: The role of the message author (``'user'`` or ``'assistant'``).
+                Defaults to ``'user'``.
+
+        Returns:
+            The created ThreadMessage.
+        """
+        payload: dict[str, Any] = {
+            "role": role or "user",
+            "content": content,
+        }
+
+        headers = self._get_headers()
+        headers["OpenAI-Beta"] = "assistants=v2"
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                f"{self._base_url}/threads/{thread_id}/messages",
+                headers=headers,
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        content_blocks = [
+            ThreadMessageContent(
+                type=c.get("type", "text"),
+                text=c.get("text"),
+            )
+            for c in data.get("content", [])
+        ]
+
+        return ThreadMessage(
+            id=data.get("id", ""),
+            object=data.get("object", "thread.message"),
+            created_at=data.get("created_at", 0),
+            thread_id=data.get("thread_id", ""),
+            role=data.get("role", "user"),
+            content=content_blocks,
+            assistant_id=data.get("assistant_id"),
+            run_id=data.get("run_id"),
+            metadata=data.get("metadata", {}),
+        )
+
+    @action("Run a thread with an assistant")
+    async def run_thread(
+        self,
+        thread_id: str,
+        assistant_id: str,
+    ) -> ThreadRun:
+        """Create a run to execute an assistant on a thread.
+
+        Args:
+            thread_id: The thread ID to run.
+            assistant_id: The assistant ID to execute.
+
+        Returns:
+            The created ThreadRun with initial status.
+        """
+        payload: dict[str, Any] = {
+            "assistant_id": assistant_id,
+        }
+
+        headers = self._get_headers()
+        headers["OpenAI-Beta"] = "assistants=v2"
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                f"{self._base_url}/threads/{thread_id}/runs",
+                headers=headers,
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        usage_data = data.get("usage")
+        usage = (
+            ThreadRunUsage(
+                prompt_tokens=usage_data.get("prompt_tokens", 0),
+                completion_tokens=usage_data.get("completion_tokens", 0),
+                total_tokens=usage_data.get("total_tokens", 0),
+            )
+            if usage_data
+            else None
+        )
+
+        return ThreadRun(
+            id=data.get("id", ""),
+            object=data.get("object", "thread.run"),
+            created_at=data.get("created_at", 0),
+            thread_id=data.get("thread_id", ""),
+            assistant_id=data.get("assistant_id", ""),
+            status=data.get("status", "queued"),
+            model=data.get("model", ""),
+            instructions=data.get("instructions"),
+            tools=[
+                ToolDefinition(type=t.get("type", ""))
+                for t in data.get("tools", [])
+            ],
+            usage=usage,
+            started_at=data.get("started_at"),
+            completed_at=data.get("completed_at"),
+            failed_at=data.get("failed_at"),
+            metadata=data.get("metadata", {}),
+        )
+
+    @action("Get a thread run by ID", idempotent=True)
+    async def get_thread_run(
+        self,
+        thread_id: str,
+        run_id: str,
+    ) -> ThreadRun:
+        """Retrieve a run to check its status and results.
+
+        Can be used to poll for run completion.
+
+        Args:
+            thread_id: The thread ID the run belongs to.
+            run_id: The run ID to retrieve.
+
+        Returns:
+            ThreadRun with current status and usage stats.
+        """
+        headers = self._get_headers()
+        headers["OpenAI-Beta"] = "assistants=v2"
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.get(
+                f"{self._base_url}/threads/{thread_id}/runs/{run_id}",
+                headers=headers,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        usage_data = data.get("usage")
+        usage = (
+            ThreadRunUsage(
+                prompt_tokens=usage_data.get("prompt_tokens", 0),
+                completion_tokens=usage_data.get("completion_tokens", 0),
+                total_tokens=usage_data.get("total_tokens", 0),
+            )
+            if usage_data
+            else None
+        )
+
+        return ThreadRun(
+            id=data.get("id", ""),
+            object=data.get("object", "thread.run"),
+            created_at=data.get("created_at", 0),
+            thread_id=data.get("thread_id", ""),
+            assistant_id=data.get("assistant_id", ""),
+            status=data.get("status", "queued"),
+            model=data.get("model", ""),
+            instructions=data.get("instructions"),
+            tools=[
+                ToolDefinition(type=t.get("type", ""))
+                for t in data.get("tools", [])
+            ],
+            usage=usage,
+            started_at=data.get("started_at"),
+            completed_at=data.get("completed_at"),
+            failed_at=data.get("failed_at"),
+            metadata=data.get("metadata", {}),
+        )
+
+    @action("List messages in a thread", idempotent=True)
+    async def list_thread_messages(
+        self,
+        thread_id: str,
+        limit: Optional[int] = None,
+    ) -> list[ThreadMessage]:
+        """List all messages in a thread.
+
+        Args:
+            thread_id: The thread ID to list messages from.
+            limit: Maximum number of messages to return (1-100).
+
+        Returns:
+            List of ThreadMessage objects in the thread.
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["limit"] = limit
+
+        headers = self._get_headers()
+        headers["OpenAI-Beta"] = "assistants=v2"
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.get(
+                f"{self._base_url}/threads/{thread_id}/messages",
+                headers=headers,
+                params=params,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        messages: list[ThreadMessage] = []
+        for m in data.get("data", []):
+            content_blocks = [
+                ThreadMessageContent(
+                    type=c.get("type", "text"),
+                    text=c.get("text"),
+                )
+                for c in m.get("content", [])
+            ]
+            messages.append(
+                ThreadMessage(
+                    id=m.get("id", ""),
+                    object=m.get("object", "thread.message"),
+                    created_at=m.get("created_at", 0),
+                    thread_id=m.get("thread_id", ""),
+                    role=m.get("role", "user"),
+                    content=content_blocks,
+                    assistant_id=m.get("assistant_id"),
+                    run_id=m.get("run_id"),
+                    metadata=m.get("metadata", {}),
+                )
+            )
+        return messages
+
+    # ------------------------------------------------------------------
+    # Actions -- Audio (extended)
+    # ------------------------------------------------------------------
+
+    @action("Generate speech audio from text")
+    async def create_speech(
+        self,
+        input: str,
+        voice: str,
+        model: Optional[str] = None,
+        response_format: Optional[str] = None,
+        speed: Optional[float] = None,
+    ) -> bytes:
+        """Generate speech audio from text using a TTS model.
+
+        Args:
+            input: The text to synthesize into speech (max 4096 chars).
+            voice: Voice to use (``'alloy'``, ``'ash'``, ``'coral'``,
+                ``'echo'``, ``'fable'``, ``'onyx'``, ``'nova'``,
+                ``'sage'``, ``'shimmer'``).
+            model: TTS model (``'tts-1'``, ``'tts-1-hd'``,
+                ``'gpt-4o-mini-tts'``). Defaults to ``'tts-1'``.
+            response_format: Audio format (``'mp3'``, ``'opus'``,
+                ``'aac'``, ``'flac'``, ``'wav'``, ``'pcm'``).
+            speed: Playback speed from 0.25 to 4.0 (default 1.0).
+
+        Returns:
+            Raw audio bytes in the specified format.
+        """
+        payload: dict[str, Any] = {
+            "model": model or "tts-1",
+            "input": input,
+            "voice": voice,
+        }
+        if response_format is not None:
+            payload["response_format"] = response_format
+        if speed is not None:
+            payload["speed"] = speed
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                f"{self._base_url}/audio/speech",
+                headers=self._get_headers(),
+                json=payload,
+            )
+            response.raise_for_status()
+            return response.content

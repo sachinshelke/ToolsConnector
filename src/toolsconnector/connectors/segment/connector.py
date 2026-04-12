@@ -513,3 +513,94 @@ class Segment(BaseConnector):
         resp = await self._config_request("GET", "/warehouses")
         data = resp.json()
         return data.get("data", {}).get("warehouses", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- Destination details
+    # ------------------------------------------------------------------
+
+    @action("Get a specific destination for a source", idempotent=True)
+    async def get_destination(
+        self,
+        source_id: str,
+        destination_id: str,
+    ) -> SegmentDestination:
+        """Get details for a specific destination connected to a source.
+
+        Requires a Config API token in the credentials.
+
+        Args:
+            source_id: The source ID.
+            destination_id: The destination ID.
+
+        Returns:
+            SegmentDestination with full details.
+        """
+        data = await self._config_request(
+            "GET",
+            f"/sources/{source_id}/destinations/{destination_id}",
+        )
+        d = data.get("data", {}).get("destination", data)
+        return SegmentDestination(
+            id=d.get("id", ""),
+            name=d.get("name", ""),
+            enabled=d.get("enabled", True),
+            source_id=d.get("sourceId", source_id),
+            connection_mode=d.get("connectionMode", ""),
+            metadata=d.get("metadata"),
+            settings=d.get("settings"),
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Batch tracking
+    # ------------------------------------------------------------------
+
+    @action("Send a batch of track events", dangerous=True)
+    async def batch_track(
+        self,
+        events: list[dict[str, Any]],
+    ) -> SegmentTrackResult:
+        """Send multiple track events in a single batch request.
+
+        Each event dict should contain ``userId``, ``event``, and
+        optionally ``properties`` and ``timestamp``.
+
+        Args:
+            events: List of event dicts to track.
+
+        Returns:
+            SegmentTrackResult indicating batch success.
+        """
+        payload: dict[str, Any] = {"batch": events}
+        data = await self._tracking_request("/batch", payload)
+        return SegmentTrackResult(
+            success=data.get("success", True),
+            message=data.get("message"),
+        )
+
+    @action("Send a batch of identify calls", dangerous=True)
+    async def batch_identify(
+        self,
+        users: list[dict[str, Any]],
+    ) -> SegmentTrackResult:
+        """Send multiple identify calls in a single batch request.
+
+        Each user dict should contain ``userId`` and optionally
+        ``traits`` and ``timestamp``. The ``type`` field is
+        automatically set to ``identify``.
+
+        Args:
+            users: List of user dicts to identify.
+
+        Returns:
+            SegmentTrackResult indicating batch success.
+        """
+        batch = [
+            {**u, "type": "identify"}
+            for u in users
+        ]
+        payload: dict[str, Any] = {"batch": batch}
+        data = await self._tracking_request("/batch", payload)
+        return SegmentTrackResult(
+            success=data.get("success", True),
+            message=data.get("message"),
+        )

@@ -127,3 +127,16 @@ class DeleteResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     deleted: bool = True
+
+
+class PineconeCollection(BaseModel):
+    """A Pinecone collection created from an index snapshot."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    size: Optional[int] = None
+    status: Optional[str] = None
+    dimension: Optional[int] = None
+    vector_count: Optional[int] = None
+    environment: Optional[str] = None

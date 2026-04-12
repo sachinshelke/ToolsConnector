@@ -114,6 +114,24 @@ class LinearProject(BaseModel):
     lead: Optional[LinearUser] = None
 
 
+class LinearCycle(BaseModel):
+    """A cycle (sprint) in Linear."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    number: Optional[int] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    starts_at: Optional[str] = None
+    ends_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    progress: float = 0.0
+    scope_count: Optional[int] = None
+    completed_scope_count: Optional[int] = None
+    team_id: Optional[str] = None
+
+
 class LinearComment(BaseModel):
     """A comment on a Linear issue."""
 

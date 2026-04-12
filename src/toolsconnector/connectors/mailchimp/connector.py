@@ -29,6 +29,7 @@ from .types import (
     MailchimpList,
     MailchimpMember,
     MailchimpSegment,
+    MailchimpTemplate,
 )
 
 logger = logging.getLogger("toolsconnector.mailchimp")
@@ -647,3 +648,227 @@ class Mailchimp(BaseConnector):
         )
         body = resp.json()
         return body.get("history", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- Member tagging
+    # ------------------------------------------------------------------
+
+    @action("Add or remove tags on a member", dangerous=True)
+    async def tag_member(
+        self,
+        list_id: str,
+        email: str,
+        tags: list[dict[str, str]],
+    ) -> bool:
+        """Add or remove tags on a list member.
+
+        Each tag dict must contain ``name`` (the tag name) and
+        ``status`` (``"active"`` to add, ``"inactive"`` to remove).
+
+        Args:
+            list_id: The Mailchimp list/audience ID.
+            email: The member's email address.
+            tags: List of tag dicts, e.g.
+                ``[{"name": "VIP", "status": "active"}]``.
+
+        Returns:
+            True if the tags were updated.
+        """
+        subscriber_hash = self._subscriber_hash(email)
+        resp = await self._request(
+            "POST",
+            f"/lists/{list_id}/members/{subscriber_hash}/tags",
+            json_body={"tags": tags},
+        )
+        return resp.status_code in (200, 204)
+
+    @action("List tags for an audience list")
+    async def list_tags(
+        self,
+        list_id: str,
+    ) -> list[dict[str, Any]]:
+        """Search and list all tags defined on an audience list.
+
+        Uses the ``/lists/{id}/tag-search`` endpoint which returns
+        all tags when called without a search term.
+
+        Args:
+            list_id: The Mailchimp list/audience ID.
+
+        Returns:
+            List of tag dicts with ``id`` and ``name``.
+        """
+        resp = await self._request(
+            "GET", f"/lists/{list_id}/tag-search",
+        )
+        body = resp.json()
+        return body.get("tags", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- Campaign content and creation
+    # ------------------------------------------------------------------
+
+    @action("Get campaign content")
+    async def get_campaign_content(
+        self,
+        campaign_id: str,
+    ) -> dict[str, Any]:
+        """Get the HTML, plain-text, and template content of a campaign.
+
+        Args:
+            campaign_id: The Mailchimp campaign ID.
+
+        Returns:
+            Dict with ``plain_text``, ``html``, ``archive_html``,
+            and template content fields.
+        """
+        resp = await self._request(
+            "GET", f"/campaigns/{campaign_id}/content",
+        )
+        return resp.json()
+
+    @action("Create a new campaign", dangerous=True)
+    async def create_campaign(
+        self,
+        list_id: str,
+        subject: str,
+        from_name: str,
+        reply_to: str,
+        type: str = "regular",
+    ) -> MailchimpCampaign:
+        """Create a new email campaign.
+
+        Creates a campaign with the specified settings. After creation,
+        use ``get_campaign_content`` and the Mailchimp API to set the
+        content before sending or scheduling.
+
+        Args:
+            list_id: The Mailchimp list/audience ID for recipients.
+            subject: Email subject line.
+            from_name: The ``From`` name displayed to recipients.
+            reply_to: The reply-to email address.
+            type: Campaign type. One of ``regular``, ``plaintext``,
+                ``absplit``, or ``rss``. Defaults to ``regular``.
+
+        Returns:
+            The created MailchimpCampaign object.
+        """
+        payload: dict[str, Any] = {
+            "type": type,
+            "recipients": {"list_id": list_id},
+            "settings": {
+                "subject_line": subject,
+                "from_name": from_name,
+                "reply_to": reply_to,
+            },
+        }
+        resp = await self._request(
+            "POST", "/campaigns", json_body=payload,
+        )
+        return parse_campaign(resp.json())
+
+    @action("Schedule a campaign for sending", dangerous=True)
+    async def schedule_campaign(
+        self,
+        campaign_id: str,
+        schedule_time: str,
+    ) -> bool:
+        """Schedule a campaign for sending at a specific time.
+
+        The campaign must be in a ``ready`` state with content set.
+        Once scheduled, it can be unscheduled via the Mailchimp API
+        before the send time.
+
+        Args:
+            campaign_id: The Mailchimp campaign ID to schedule.
+            schedule_time: UTC datetime string in ISO 8601 format
+                (e.g. ``"2024-12-25T09:00:00+00:00"``).
+
+        Returns:
+            True if the campaign was scheduled.
+        """
+        resp = await self._request(
+            "POST",
+            f"/campaigns/{campaign_id}/actions/schedule",
+            json_body={"schedule_time": schedule_time},
+        )
+        return resp.status_code in (200, 204)
+
+    # ------------------------------------------------------------------
+    # Actions -- Templates
+    # ------------------------------------------------------------------
+
+    @action("List email templates")
+    async def list_templates(
+        self,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> PaginatedList[MailchimpTemplate]:
+        """List available email templates with pagination.
+
+        Args:
+            limit: Maximum number of templates to return (1-1000).
+            offset: Offset for pagination.
+
+        Returns:
+            Paginated list of MailchimpTemplate objects.
+        """
+        params: dict[str, Any] = {
+            "count": min(limit, 1000),
+            "offset": offset,
+        }
+        resp = await self._request("GET", "/templates", params=params)
+        body = resp.json()
+
+        items = [
+            MailchimpTemplate(
+                id=t.get("id", 0),
+                name=t.get("name", ""),
+                type=t.get("type"),
+                category=t.get("category"),
+                date_created=t.get("date_created"),
+                date_edited=t.get("date_edited"),
+                active=t.get("active", False),
+                folder_id=t.get("folder_id"),
+                thumbnail=t.get("thumbnail"),
+            )
+            for t in body.get("templates", [])
+        ]
+        page_state = self._build_offset_page_state(body, offset, limit)
+
+        result = PaginatedList(
+            items=items,
+            page_state=page_state,
+            total_count=body.get("total_items"),
+        )
+        result._fetch_next = (
+            (lambda next_off=offset + limit: self.list_templates(
+                limit=limit, offset=next_off,
+            ))
+            if page_state.has_more else None
+        )
+        return result
+
+    @action("Get a single email template by ID")
+    async def get_template(self, template_id: int) -> MailchimpTemplate:
+        """Retrieve a single email template by its numeric ID.
+
+        Args:
+            template_id: The Mailchimp template ID (integer).
+
+        Returns:
+            MailchimpTemplate object.
+        """
+        resp = await self._request("GET", f"/templates/{template_id}")
+        data = resp.json()
+        return MailchimpTemplate(
+            id=data.get("id", 0),
+            name=data.get("name", ""),
+            type=data.get("type"),
+            category=data.get("category"),
+            date_created=data.get("date_created"),
+            date_edited=data.get("date_edited"),
+            active=data.get("active", False),
+            folder_id=data.get("folder_id"),
+            thumbnail=data.get("thumbnail"),
+        )

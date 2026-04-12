@@ -145,3 +145,19 @@ class MailchimpCampaignReport(BaseModel):
     unsubscribed: int = 0
     bounces: Optional[dict[str, Any]] = None
     send_time: Optional[str] = None
+
+
+class MailchimpTemplate(BaseModel):
+    """A Mailchimp email template."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    name: str = ""
+    type: Optional[str] = None
+    category: Optional[str] = None
+    date_created: Optional[str] = None
+    date_edited: Optional[str] = None
+    active: bool = False
+    folder_id: Optional[str] = None
+    thumbnail: Optional[str] = None

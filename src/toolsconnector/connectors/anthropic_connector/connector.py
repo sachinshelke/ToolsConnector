@@ -224,15 +224,38 @@ class Anthropic(BaseConnector):
             for m in data.get("data", [])
         ]
 
+    @action("Get a model by ID", idempotent=True)
+    async def get_model(self, model_id: str) -> AnthropicModel:
+        """Retrieve details about a specific Anthropic model.
+
+        Args:
+            model_id: The model identifier (e.g., ``'claude-sonnet-4-20250514'``).
+
+        Returns:
+            AnthropicModel with model metadata and capabilities.
+        """
+        data = await self._request("GET", f"/models/{model_id}")
+
+        return AnthropicModel(
+            id=data.get("id", ""),
+            display_name=data.get("display_name", ""),
+            type=data.get("type", "model"),
+            created_at=data.get("created_at"),
+        )
+
     # ------------------------------------------------------------------
     # Actions -- Batches
     # ------------------------------------------------------------------
 
     @action("Create a message batch", dangerous=True)
     async def create_batch(
-        self, requests: list[dict[str, Any]],
+        self,
+        requests: list[dict[str, Any]],
     ) -> AnthropicBatch:
         """Create a Message Batch for async processing.
+
+        Sends up to 100,000 message requests for background processing
+        at 50% reduced cost.
 
         Args:
             requests: List of batch request dicts, each with
@@ -241,11 +264,10 @@ class Anthropic(BaseConnector):
         Returns:
             The created AnthropicBatch.
         """
-        resp = await self._request(
-            "POST", "/v1/messages/batches",
-            json_body={"requests": requests},
+        data = await self._request(
+            "POST", "/messages/batches",
+            json={"requests": requests},
         )
-        data = resp.json()
         return AnthropicBatch(
             id=data.get("id", ""),
             type=data.get("type", "message_batch"),
@@ -256,9 +278,11 @@ class Anthropic(BaseConnector):
             expires_at=data.get("expires_at"),
         )
 
-    @action("Get a message batch by ID")
+    @action("Get a message batch by ID", idempotent=True)
     async def get_batch(self, batch_id: str) -> AnthropicBatch:
         """Retrieve a Message Batch by ID.
+
+        Can be used to poll for batch completion status.
 
         Args:
             batch_id: The batch ID.
@@ -266,10 +290,7 @@ class Anthropic(BaseConnector):
         Returns:
             AnthropicBatch with current status.
         """
-        resp = await self._request(
-            "GET", f"/v1/messages/batches/{batch_id}",
-        )
-        data = resp.json()
+        data = await self._request("GET", f"/messages/batches/{batch_id}")
         return AnthropicBatch(
             id=data.get("id", ""),
             type=data.get("type", "message_batch"),
@@ -280,9 +301,10 @@ class Anthropic(BaseConnector):
             expires_at=data.get("expires_at"),
         )
 
-    @action("List message batches")
+    @action("List message batches", idempotent=True)
     async def list_batches(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[AnthropicBatch]:
         """List Message Batches.
 
@@ -295,10 +317,10 @@ class Anthropic(BaseConnector):
         params: dict[str, Any] = {}
         if limit is not None:
             params["limit"] = limit
-        resp = await self._request(
-            "GET", "/v1/messages/batches", params=params or None,
+
+        data = await self._request(
+            "GET", "/messages/batches", params=params or None,
         )
-        data = resp.json()
         return [
             AnthropicBatch(
                 id=b.get("id", ""),
@@ -311,3 +333,71 @@ class Anthropic(BaseConnector):
             )
             for b in data.get("data", [])
         ]
+
+    @action("Cancel a message batch")
+    async def cancel_batch(self, batch_id: str) -> AnthropicBatch:
+        """Cancel a Message Batch that is currently in progress.
+
+        Initiates best-effort cancellation. Already-completed requests
+        within the batch will not be undone.
+
+        Args:
+            batch_id: The batch ID to cancel.
+
+        Returns:
+            AnthropicBatch with updated status reflecting cancellation.
+        """
+        data = await self._request(
+            "POST", f"/messages/batches/{batch_id}/cancel",
+        )
+        return AnthropicBatch(
+            id=data.get("id", ""),
+            type=data.get("type", "message_batch"),
+            processing_status=data.get("processing_status"),
+            request_counts=data.get("request_counts"),
+            ended_at=data.get("ended_at"),
+            created_at=data.get("created_at"),
+            expires_at=data.get("expires_at"),
+        )
+
+    @action("Get message batch results", idempotent=True)
+    async def get_batch_results(self, batch_id: str) -> list[dict[str, Any]]:
+        """Retrieve the results of a completed Message Batch.
+
+        Returns the JSONL results as a list of dicts. Each result
+        contains a ``custom_id`` matching the original request and
+        a ``result`` with the message response or error.
+
+        Args:
+            batch_id: The batch ID whose results to retrieve.
+
+        Returns:
+            List of result dicts with ``custom_id`` and ``result`` keys.
+        """
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.get(
+                f"{self._base_url}/messages/batches/{batch_id}/results",
+                headers=self._get_headers(),
+            )
+            response.raise_for_status()
+            # Results are returned as JSONL (one JSON object per line)
+            import json
+
+            results: list[dict[str, Any]] = []
+            for line in response.text.strip().splitlines():
+                line = line.strip()
+                if line:
+                    results.append(json.loads(line))
+            return results
+
+    @action("Delete a message batch", dangerous=True)
+    async def delete_message_batch(self, batch_id: str) -> None:
+        """Permanently delete a Message Batch and its results.
+
+        This action is irreversible. The batch must have finished
+        processing (``ended``) before it can be deleted.
+
+        Args:
+            batch_id: The batch ID to delete.
+        """
+        await self._request("DELETE", f"/messages/batches/{batch_id}")

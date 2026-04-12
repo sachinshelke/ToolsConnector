@@ -17,8 +17,11 @@ from toolsconnector.types import PageState, PaginatedList
 from .types import (
     AsanaComment,
     AsanaProject,
+    AsanaSection,
+    AsanaStory,
     AsanaTag,
     AsanaTask,
+    AsanaTeam,
     AsanaUser,
     AsanaWorkspace,
 )
@@ -534,3 +537,242 @@ class Asana(BaseConnector):
             )
             for t in data.get("data", [])
         ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Sections
+    # ------------------------------------------------------------------
+
+    @action("List sections in a project")
+    async def list_sections(
+        self, project_gid: str,
+    ) -> list[AsanaSection]:
+        """List all sections in an Asana project.
+
+        Args:
+            project_gid: The project GID.
+
+        Returns:
+            List of AsanaSection objects.
+        """
+        params: dict[str, Any] = {
+            "opt_fields": "name,created_at,project,project.name",
+        }
+        data = await self._request(
+            "GET", f"/projects/{project_gid}/sections", params=params,
+        )
+        return [
+            AsanaSection(
+                gid=s.get("gid", ""),
+                name=s.get("name", ""),
+                resource_type=s.get("resource_type", "section"),
+                created_at=s.get("created_at"),
+                project=s.get("project"),
+            )
+            for s in data.get("data", [])
+        ]
+
+    @action("Create a section in a project", dangerous=True)
+    async def create_section(
+        self,
+        project_gid: str,
+        name: str,
+    ) -> dict[str, Any]:
+        """Create a new section in an Asana project.
+
+        Args:
+            project_gid: The project GID to add the section to.
+            name: Name of the new section.
+
+        Returns:
+            Dict with the created section data including ``gid``
+            and ``name``.
+        """
+        body: dict[str, Any] = {"data": {"name": name}}
+        data = await self._request(
+            "POST", f"/projects/{project_gid}/sections", json=body,
+        )
+        return data.get("data", {})
+
+    @action("Add a task to a section", dangerous=True)
+    async def add_task_to_section(
+        self,
+        section_gid: str,
+        task_gid: str,
+    ) -> None:
+        """Move a task into a specific section within a project.
+
+        Args:
+            section_gid: The section GID to add the task to.
+            task_gid: The task GID to move.
+        """
+        body: dict[str, Any] = {"data": {"task": task_gid}}
+        await self._request(
+            "POST", f"/sections/{section_gid}/addTask", json=body,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Stories (activity / comments)
+    # ------------------------------------------------------------------
+
+    @action("List stories (activity) on a task")
+    async def list_stories(
+        self, task_gid: str,
+    ) -> list[AsanaStory]:
+        """List all stories (activity entries and comments) on a task.
+
+        Args:
+            task_gid: The task GID.
+
+        Returns:
+            List of AsanaStory objects.
+        """
+        params: dict[str, Any] = {
+            "opt_fields": (
+                "text,html_text,type,resource_subtype,created_at,"
+                "created_by,created_by.name,created_by.email"
+            ),
+        }
+        data = await self._request(
+            "GET", f"/tasks/{task_gid}/stories", params=params,
+        )
+        return [
+            AsanaStory(
+                gid=s.get("gid", ""),
+                resource_type=s.get("resource_type", "story"),
+                text=s.get("text", ""),
+                html_text=s.get("html_text"),
+                type=s.get("type"),
+                created_at=s.get("created_at"),
+                created_by=self._parse_user(s.get("created_by")),
+                resource_subtype=s.get("resource_subtype"),
+            )
+            for s in data.get("data", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Project management (extended)
+    # ------------------------------------------------------------------
+
+    @action("Update a project", dangerous=True)
+    async def update_project(
+        self,
+        project_gid: str,
+        name: Optional[str] = None,
+        notes: Optional[str] = None,
+        color: Optional[str] = None,
+    ) -> AsanaProject:
+        """Update fields on an existing Asana project.
+
+        Args:
+            project_gid: The project GID to update.
+            name: New name for the project.
+            notes: New description/notes for the project.
+            color: New colour tag (e.g. ``"dark-green"``).
+
+        Returns:
+            The updated AsanaProject.
+        """
+        project_data: dict[str, Any] = {}
+        if name is not None:
+            project_data["name"] = name
+        if notes is not None:
+            project_data["notes"] = notes
+        if color is not None:
+            project_data["color"] = color
+
+        body: dict[str, Any] = {"data": project_data}
+        data = await self._request(
+            "PUT", f"/projects/{project_gid}", json=body,
+        )
+        return self._parse_project(data.get("data", {}))
+
+    @action("Create a new project", dangerous=True)
+    async def create_project(
+        self,
+        workspace_gid: str,
+        name: str,
+        notes: Optional[str] = None,
+    ) -> AsanaProject:
+        """Create a new project in an Asana workspace.
+
+        Args:
+            workspace_gid: The workspace GID to create the project in.
+            name: Name of the new project.
+            notes: Optional description/notes for the project.
+
+        Returns:
+            The newly created AsanaProject.
+        """
+        project_data: dict[str, Any] = {
+            "workspace": workspace_gid,
+            "name": name,
+        }
+        if notes is not None:
+            project_data["notes"] = notes
+
+        body: dict[str, Any] = {"data": project_data}
+        data = await self._request("POST", "/projects", json=body)
+        return self._parse_project(data.get("data", {}))
+
+    # ------------------------------------------------------------------
+    # Actions -- Teams
+    # ------------------------------------------------------------------
+
+    @action("List teams in a workspace")
+    async def list_teams(
+        self, workspace_gid: str,
+    ) -> list[AsanaTeam]:
+        """List all teams in an Asana workspace/organization.
+
+        Args:
+            workspace_gid: The workspace or organization GID.
+
+        Returns:
+            List of AsanaTeam objects.
+        """
+        params: dict[str, Any] = {
+            "opt_fields": "name,description,organization,organization.name",
+        }
+        data = await self._request(
+            "GET", f"/organizations/{workspace_gid}/teams", params=params,
+        )
+        return [
+            AsanaTeam(
+                gid=t.get("gid", ""),
+                name=t.get("name", ""),
+                resource_type=t.get("resource_type", "team"),
+                description=t.get("description"),
+                organization=t.get("organization"),
+            )
+            for t in data.get("data", [])
+        ]
+
+    # ------------------------------------------------------------------
+    # Actions -- Workspace details
+    # ------------------------------------------------------------------
+
+    @action("Get a workspace by GID")
+    async def get_workspace(
+        self, workspace_gid: str,
+    ) -> AsanaWorkspace:
+        """Retrieve a single Asana workspace by its GID.
+
+        Args:
+            workspace_gid: The workspace GID.
+
+        Returns:
+            The requested AsanaWorkspace.
+        """
+        params: dict[str, Any] = {
+            "opt_fields": "name,is_organization",
+        }
+        data = await self._request(
+            "GET", f"/workspaces/{workspace_gid}", params=params,
+        )
+        ws = data.get("data", {})
+        return AsanaWorkspace(
+            gid=ws.get("gid", ""),
+            name=ws.get("name", ""),
+            resource_type=ws.get("resource_type", "workspace"),
+            is_organization=ws.get("is_organization"),
+        )

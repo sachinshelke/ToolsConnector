@@ -5,8 +5,11 @@ from __future__ import annotations
 from .connector import Linear
 from .types import (
     LinearComment,
+    LinearCycle,
     LinearIssue,
+    LinearLabel,
     LinearProject,
+    LinearState,
     LinearTeam,
     LinearUser,
 )
@@ -14,8 +17,11 @@ from .types import (
 __all__ = [
     "Linear",
     "LinearComment",
+    "LinearCycle",
     "LinearIssue",
+    "LinearLabel",
     "LinearProject",
+    "LinearState",
     "LinearTeam",
     "LinearUser",
 ]

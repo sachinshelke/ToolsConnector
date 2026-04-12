@@ -5,6 +5,8 @@ from __future__ import annotations
 from .connector import Zendesk
 from .types import (
     ZendeskComment,
+    ZendeskGroup,
+    ZendeskOrganization,
     ZendeskSearchResult,
     ZendeskTicket,
     ZendeskUser,
@@ -13,6 +15,8 @@ from .types import (
 __all__ = [
     "Zendesk",
     "ZendeskComment",
+    "ZendeskGroup",
+    "ZendeskOrganization",
     "ZendeskSearchResult",
     "ZendeskTicket",
     "ZendeskUser",
