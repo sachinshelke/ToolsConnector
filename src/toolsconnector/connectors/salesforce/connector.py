@@ -561,3 +561,67 @@ class Salesforce(BaseConnector):
             f"LIMIT {capped_limit}"
         )
         return await self.query(soql)
+
+    # ------------------------------------------------------------------
+    # Actions -- Events
+    # ------------------------------------------------------------------
+
+    @action("Create a new Event", dangerous=True)
+    async def create_event(
+        self,
+        subject: str,
+        start: str,
+        end: str,
+        who_id: Optional[str] = None,
+    ) -> SalesforceRecordId:
+        """Create a new Event (calendar meeting) record.
+
+        Args:
+            subject: Event subject line.
+            start: Start datetime in ISO 8601 format.
+            end: End datetime in ISO 8601 format.
+            who_id: Optional Contact or Lead ID to associate.
+
+        Returns:
+            A SalesforceRecordId with the new Event's ID.
+        """
+        fields: dict[str, Any] = {
+            "Subject": subject,
+            "StartDateTime": start,
+            "EndDateTime": end,
+        }
+        if who_id is not None:
+            fields["WhoId"] = who_id
+
+        return await self.create_record("Event", fields)
+
+    # ------------------------------------------------------------------
+    # Actions -- Reports
+    # ------------------------------------------------------------------
+
+    @action("List available reports")
+    async def list_reports(self) -> list[dict[str, Any]]:
+        """List reports available in the Salesforce org.
+
+        Returns:
+            List of report summary dicts with Id, Name, and metadata.
+        """
+        data = await self._request(
+            "GET", "/analytics/reports",
+        )
+        return data if isinstance(data, list) else []
+
+    @action("Run a Salesforce report")
+    async def run_report(self, report_id: str) -> dict[str, Any]:
+        """Execute a Salesforce report and return the results.
+
+        Args:
+            report_id: The 15/18-character report ID.
+
+        Returns:
+            Dict containing report metadata and tabular results.
+        """
+        data = await self._request(
+            "POST", f"/analytics/reports/{report_id}",
+        )
+        return data
