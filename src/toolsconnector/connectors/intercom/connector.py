@@ -502,6 +502,107 @@ class Intercom(BaseConnector):
         await self._request("POST", "/tags", json=payload)
         return True
 
+    # ------------------------------------------------------------------
+    # Actions -- Notes
+    # ------------------------------------------------------------------
+
+    @action("Create a note on a contact", dangerous=True)
+    async def create_note(
+        self,
+        contact_id: str,
+        body: str,
+    ) -> dict[str, Any]:
+        """Create a note on an Intercom contact.
+
+        Args:
+            contact_id: The Intercom contact ID.
+            body: Note body text (HTML allowed).
+
+        Returns:
+            Dict with the created note details.
+        """
+        payload: dict[str, Any] = {"body": body}
+        data = await self._request(
+            "POST", f"/contacts/{contact_id}/notes", json=payload,
+        )
+        return data
+
+    @action("List notes on a contact")
+    async def list_notes(
+        self,
+        contact_id: str,
+    ) -> list[dict[str, Any]]:
+        """List all notes on an Intercom contact.
+
+        Args:
+            contact_id: The Intercom contact ID.
+
+        Returns:
+            List of note dicts with id, body, author, etc.
+        """
+        data = await self._request(
+            "GET", f"/contacts/{contact_id}/notes",
+        )
+        return data.get("data", [])
+
+    # ------------------------------------------------------------------
+    # Actions -- Admin details
+    # ------------------------------------------------------------------
+
+    @action("Get a single admin by ID")
+    async def get_admin(self, admin_id: str) -> IntercomAdmin:
+        """Retrieve a single admin by their ID.
+
+        Args:
+            admin_id: The Intercom admin ID.
+
+        Returns:
+            The requested IntercomAdmin.
+        """
+        data = await self._request("GET", f"/admins/{admin_id}")
+        return IntercomAdmin(
+            id=data.get("id", ""),
+            type=data.get("type", "admin"),
+            name=data.get("name"),
+            email=data.get("email"),
+            job_title=data.get("job_title"),
+            has_inbox_seat=data.get("has_inbox_seat", False),
+            avatar=data.get("avatar", {}).get("image_url")
+            if isinstance(data.get("avatar"), dict) else None,
+        )
+
+    # ------------------------------------------------------------------
+    # Actions -- Contact updates
+    # ------------------------------------------------------------------
+
+    @action("Update an existing contact")
+    async def update_contact(
+        self,
+        contact_id: str,
+        name: Optional[str] = None,
+        email: Optional[str] = None,
+    ) -> IntercomContact:
+        """Update an existing contact's attributes.
+
+        Args:
+            contact_id: The Intercom contact ID.
+            name: New full name.
+            email: New email address.
+
+        Returns:
+            The updated IntercomContact.
+        """
+        body: dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        if email is not None:
+            body["email"] = email
+
+        data = await self._request(
+            "PUT", f"/contacts/{contact_id}", json=body,
+        )
+        return self._parse_contact(data)
+
     @action("List all tags in the workspace")
     async def list_tags(self) -> list[IntercomTag]:
         """List all tags defined in the workspace.
