@@ -94,22 +94,323 @@ def _r(title: str, content: str) -> str:
 @app.route("/")
 def home():
     s = _stats()
-    cats = "".join(f'<a href="/connectors?cat={c}" class="group block p-5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 hover:shadow-lg transition-all bg-white dark:bg-slate-900"><div class="text-2xl font-bold text-b-600 dark:text-b-400">{n}</div><div class="text-sm font-medium text-slate-700 dark:text-slate-300 mt-1">{_cat(c)}</div></a>' for c, n in s["by_category"].items())
-    stat = lambda v, c, l: f'<div class="text-center p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm"><div class="text-3xl font-bold text-{c}">{v}</div><div class="text-xs font-medium text-slate-500 uppercase tracking-wider mt-1">{l}</div></div>'
-    link = lambda href, color, icon, t, d: f'<a href="{href}" class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-{color}-400 bg-white dark:bg-slate-900 transition-all hover:shadow-md"><div class="w-10 h-10 rounded-lg bg-{color}-100 dark:bg-{color}-900/30 flex items-center justify-center text-{color}-600 dark:text-{color}-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{icon}"/></svg></div><div><div class="font-medium">{t}</div><div class="text-xs text-slate-500">{d}</div></div></a>'
+    n_connectors = s["connectors"]
+    n_actions = s["actions"]
+    n_categories = s["categories"]
+    remaining_connectors = max(0, n_connectors - 20)
+
+    # Category grid for section 8
+    cats_html = "".join(
+        f'<a href="/connectors?cat={c}" class="group block p-5 rounded-xl border border-slate-200'
+        f' dark:border-slate-800 hover:border-b-400 hover:shadow-lg transition-all'
+        f' bg-white dark:bg-slate-900">'
+        f'<div class="text-2xl font-bold text-b-600 dark:text-b-400">{n}</div>'
+        f'<div class="text-sm font-medium text-slate-700 dark:text-slate-300 mt-1">{_cat(c)}</div></a>'
+        for c, n in s["by_category"].items()
+    )
+
+    # Tool logos for the logo cloud
+    tool_logos = [
+        ("gmail", "Gmail"), ("slack", "Slack"), ("github", "GitHub"),
+        ("stripe", "Stripe"), ("openai", "OpenAI"), ("anthropic", "Anthropic"),
+        ("notion", "Notion"), ("jira", "Jira"), ("discord", "Discord"),
+        ("amazons3", "AWS S3"), ("salesforce", "Salesforce"), ("hubspot", "HubSpot"),
+        ("twilio", "Twilio"), ("shopify", "Shopify"), ("dropbox", "Dropbox"),
+        ("figma", "Figma"), ("linear", "Linear"), ("asana", "Asana"),
+        ("googlecalendar", "Calendar"), ("microsoftteams", "Teams"),
+    ]
+    logos_html = "".join(
+        f'<div class="flex flex-col items-center gap-2 p-4">'
+        f'<img src="https://cdn.simpleicons.org/{si}" alt="{label}" class="w-10 h-10 dark:invert dark:brightness-200 dark:contrast-75"'
+        f' onerror="this.parentElement.style.display=\'none\'">'
+        f'<span class="text-xs text-slate-500 dark:text-slate-400 font-medium">{label}</span></div>'
+        for si, label in tool_logos
+    )
+
     return _r("Home", f"""
-<div class="text-center mb-12">
-<h1 class="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-b-600 to-purple-600 bg-clip-text text-transparent mb-4">ToolsConnector Playground</h1>
-<p class="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">The universal tool-connection primitive. Browse connectors, explore schemas, and test integrations.</p></div>
-<div class="grid grid-cols-3 gap-4 max-w-xl mx-auto mb-12">{stat(s['connectors'],'b-600 dark:text-b-400','Connectors')}{stat(s['actions'],'purple-600 dark:text-purple-400','Actions')}{stat(s['categories'],'emerald-600 dark:text-emerald-400','Categories')}</div>
-<div class="max-w-xl mx-auto mb-12"><div class="relative"><svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-<input type="text" placeholder="Search connectors... (e.g. gmail, slack, stripe)" class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-b-500 focus:border-b-500 outline-none" onkeyup="if(event.key==='Enter')location.href='/connectors?q='+this.value"></div></div>
-<h2 class="text-xl font-semibold mb-4">Categories</h2>
-<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-12">{cats}</div>
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-{link('/connectors','b','M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6z','Browse All','Explore all 50 connectors')}
-{link('/playground','purple','M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5','Schema Playground','Generate AI-ready schemas')}
-{link('/assistant','emerald','M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z','AI Assistant','Ask anything about the project')}</div>""")
+<!-- Section 1: Hero -->
+<section class="text-center pt-12 pb-16 sm:pt-20 sm:pb-24">
+  <h1 class="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
+    <span class="bg-gradient-to-r from-b-600 via-purple-600 to-b-600 bg-clip-text text-transparent">One library, every tool.</span>
+  </h1>
+  <p class="text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed mb-10">
+    Connect AI agents and Python apps to {n_connectors}+ APIs through a single, standardized interface.
+    Open source. Self-hosted. Works everywhere.
+  </p>
+  <div class="flex flex-wrap justify-center gap-8 sm:gap-12 mb-10">
+    <div class="text-center">
+      <div class="text-3xl sm:text-4xl font-bold text-b-600 dark:text-b-400">{n_connectors}</div>
+      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider mt-1">Connectors</div>
+    </div>
+    <div class="text-center">
+      <div class="text-3xl sm:text-4xl font-bold text-purple-600 dark:text-purple-400">{n_actions:,}</div>
+      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider mt-1">Actions</div>
+    </div>
+    <div class="text-center">
+      <div class="text-3xl sm:text-4xl font-bold text-emerald-600 dark:text-emerald-400">{n_categories}</div>
+      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider mt-1">Categories</div>
+    </div>
+  </div>
+  <div class="flex flex-col sm:flex-row justify-center gap-3">
+    <a href="/docs/quickstart" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-b-700 hover:bg-b-800 text-white font-semibold transition-colors shadow-lg shadow-b-700/25">
+      Get Started
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+    </a>
+    <a href="/connectors" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl border border-slate-300 dark:border-slate-700 hover:border-b-400 dark:hover:border-b-400 font-semibold transition-colors bg-white dark:bg-slate-900">
+      Browse Connectors
+    </a>
+  </div>
+</section>
+
+<!-- Section 2: The Problem -->
+<section class="py-16 sm:py-20">
+  <div class="text-center mb-12">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">Why this exists</h2>
+    <p class="text-slate-500 dark:text-slate-400">Three problems every developer building with APIs hits.</p>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+    <div class="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <div class="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold mb-2">Fragmented SDKs</h3>
+      <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Every tool has a different SDK, auth pattern, and error format. Managing 10 SDKs in one project is painful.</p>
+    </div>
+    <div class="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <div class="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold mb-2">AI agents need tools</h3>
+      <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">LLMs can't call APIs directly. You need schemas, execution, retries, and rate limiting for every tool.</p>
+    </div>
+    <div class="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold mb-2">Build vs. Buy</h3>
+      <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Hosted platforms lock you in. Raw APIs take weeks. There's no open-source middle ground.</p>
+    </div>
+  </div>
+  <div class="text-center mt-10">
+    <svg class="w-6 h-6 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3"/></svg>
+    <p class="text-sm font-semibold text-b-600 dark:text-b-400">ToolsConnector solves all three.</p>
+  </div>
+</section>
+
+<!-- Section 3: How It Works -->
+<section class="py-16 sm:py-20">
+  <div class="text-center mb-12">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">How it works</h2>
+    <p class="text-slate-500 dark:text-slate-400">Three steps. From install to production.</p>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+    <!-- Step 1 -->
+    <div>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-8 h-8 rounded-full bg-b-600 text-white flex items-center justify-center text-sm font-bold">1</div>
+        <h3 class="text-lg font-semibold">Install</h3>
+      </div>
+      <pre class="bg-slate-900 text-slate-100 rounded-xl p-5 text-sm overflow-x-auto"><code><span class="text-emerald-400">$</span> pip install toolsconnector[gmail,slack]</code></pre>
+    </div>
+    <!-- Step 2 -->
+    <div>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-8 h-8 rounded-full bg-b-600 text-white flex items-center justify-center text-sm font-bold">2</div>
+        <h3 class="text-lg font-semibold">Connect</h3>
+      </div>
+      <pre class="bg-slate-900 text-slate-100 rounded-xl p-5 text-sm overflow-x-auto"><code><span class="text-purple-400">from</span> <span class="text-emerald-400">toolsconnector.serve</span> <span class="text-purple-400">import</span> ToolKit
+
+kit = ToolKit([<span class="text-amber-300">"gmail"</span>, <span class="text-amber-300">"slack"</span>])</code></pre>
+    </div>
+    <!-- Step 3 -->
+    <div>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-8 h-8 rounded-full bg-b-600 text-white flex items-center justify-center text-sm font-bold">3</div>
+        <h3 class="text-lg font-semibold">Use anywhere</h3>
+      </div>
+      <pre class="bg-slate-900 text-slate-100 rounded-xl p-5 text-sm overflow-x-auto leading-relaxed"><code><span class="text-slate-500"># Direct Python</span>
+result = kit.execute(
+    <span class="text-amber-300">"gmail_list_emails"</span>,
+    {{"query": <span class="text-amber-300">"is:unread"</span>}}
+)
+
+<span class="text-slate-500"># MCP Server (Claude Desktop)</span>
+kit.serve_mcp()
+
+<span class="text-slate-500"># OpenAI Function Calling</span>
+tools = kit.to_openai_tools()</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- Section 4: Tool Logos -->
+<section class="py-16 sm:py-20 border-t border-slate-200 dark:border-slate-800">
+  <div class="text-center mb-10">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">Supported tools</h2>
+    <p class="text-slate-500 dark:text-slate-400">{n_connectors} connectors and growing. All standardized.</p>
+  </div>
+  <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-10 gap-2 max-w-5xl mx-auto mb-8">
+    {logos_html}
+  </div>
+  <div class="text-center">
+    <a href="/connectors" class="text-sm font-semibold text-b-600 dark:text-b-400 hover:underline">+{remaining_connectors} more connectors &rarr;</a>
+  </div>
+</section>
+
+<!-- Section 5: Framework Compatibility -->
+<section class="py-16 sm:py-20 border-t border-slate-200 dark:border-slate-800">
+  <div class="text-center mb-12">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">Works with every framework</h2>
+    <p class="text-slate-500 dark:text-slate-400">One interface. Every AI platform.</p>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+    <div class="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <div class="flex items-center gap-3 mb-3">
+        <img src="https://cdn.simpleicons.org/openai" alt="OpenAI" class="w-6 h-6 dark:invert" onerror="this.style.display='none'">
+        <h3 class="font-semibold">OpenAI</h3>
+      </div>
+      <code class="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">kit.to_openai_tools()</code>
+      <p class="text-xs text-slate-500 mt-2">Function calling</p>
+    </div>
+    <div class="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <div class="flex items-center gap-3 mb-3">
+        <img src="https://cdn.simpleicons.org/anthropic" alt="Anthropic" class="w-6 h-6 dark:invert" onerror="this.style.display='none'">
+        <h3 class="font-semibold">Anthropic</h3>
+      </div>
+      <code class="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">kit.to_anthropic_tools()</code>
+      <p class="text-xs text-slate-500 mt-2">Tool use with Claude</p>
+    </div>
+    <div class="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <div class="flex items-center gap-3 mb-3">
+        <svg class="w-6 h-6 text-b-600 dark:text-b-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7"/></svg>
+        <h3 class="font-semibold">MCP</h3>
+      </div>
+      <code class="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">kit.serve_mcp()</code>
+      <p class="text-xs text-slate-500 mt-2">Claude Desktop, Cursor</p>
+    </div>
+    <div class="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <div class="flex items-center gap-3 mb-3">
+        <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+        <h3 class="font-semibold">LangChain</h3>
+      </div>
+      <code class="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">kit.to_langchain_tools()</code>
+      <p class="text-xs text-slate-500 mt-2">Agent frameworks</p>
+    </div>
+  </div>
+</section>
+
+<!-- Section 6: Built for Production -->
+<section class="py-16 sm:py-20 border-t border-slate-200 dark:border-slate-800">
+  <div class="text-center mb-12">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">Built for production</h2>
+    <p class="text-slate-500 dark:text-slate-400">Not a toy. Battle-tested reliability patterns.</p>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+    <div class="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold mb-2">Circuit Breaker</h3>
+      <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Automatic failure isolation. One connector down doesn't take everything with it.</p>
+    </div>
+    <div class="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <div class="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M21.015 4.356v4.992"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold mb-2">Smart Retries</h3>
+      <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Exponential backoff with jitter. Respects rate limits and retry-after headers.</p>
+    </div>
+    <div class="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <div class="w-12 h-12 rounded-xl bg-b-50 dark:bg-b-900/20 flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-b-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.125 2.25h-4.5c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125v-9M10.125 2.25h.375a9 9 0 019 9v.375M10.125 2.25A3.375 3.375 0 0113.5 5.625v1.5c0 .621.504 1.125 1.125 1.125h1.5a3.375 3.375 0 013.375 3.375M9 15l2.25 2.25L15 12"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold mb-2">Pre-validation</h3>
+      <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Arguments checked against JSON Schema before hitting the API. Catches mistakes early.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Section 7: Open Source -->
+<section class="py-16 sm:py-20 border-t border-slate-200 dark:border-slate-800">
+  <div class="text-center max-w-2xl mx-auto">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-4">Open source</h2>
+    <p class="text-slate-600 dark:text-slate-400 mb-8">Apache 2.0 licensed. Self-hosted. No vendor lock-in.</p>
+    <div class="flex flex-col sm:flex-row justify-center gap-3 mb-8">
+      <a href="https://github.com/toolsconnector/toolsconnector" target="_blank" rel="noopener"
+         class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 font-semibold transition-colors bg-white dark:bg-slate-900">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        Star on GitHub
+      </a>
+    </div>
+    <pre class="bg-slate-900 text-slate-100 rounded-xl p-5 text-sm inline-block"><code><span class="text-emerald-400">$</span> pip install toolsconnector</code></pre>
+  </div>
+</section>
+
+<!-- Section 8: Categories -->
+<section class="py-16 sm:py-20 border-t border-slate-200 dark:border-slate-800">
+  <div class="text-center mb-8">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">Browse by category</h2>
+  </div>
+  <div class="max-w-xl mx-auto mb-8">
+    <div class="relative">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+      <input type="text" placeholder="Search connectors... (e.g. gmail, slack, stripe)"
+        class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-b-500 focus:border-b-500 outline-none"
+        onkeyup="if(event.key==='Enter')location.href='/connectors?q='+this.value">
+    </div>
+  </div>
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
+    {cats_html}
+  </div>
+</section>
+
+<!-- Section 9: Quick Links -->
+<section class="py-12 border-t border-slate-200 dark:border-slate-800">
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <a href="/connectors" class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 bg-white dark:bg-slate-900 transition-all hover:shadow-md">
+      <div class="w-9 h-9 rounded-lg bg-b-100 dark:bg-b-900/30 flex items-center justify-center text-b-600 dark:text-b-400">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6z"/></svg>
+      </div>
+      <div class="font-medium text-sm">Browse All</div>
+    </a>
+    <a href="/playground" class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-purple-400 bg-white dark:bg-slate-900 transition-all hover:shadow-md">
+      <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>
+      </div>
+      <div class="font-medium text-sm">Playground</div>
+    </a>
+    <a href="/assistant" class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-400 bg-white dark:bg-slate-900 transition-all hover:shadow-md">
+      <div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/></svg>
+      </div>
+      <div class="font-medium text-sm">AI Assistant</div>
+    </a>
+    <a href="/docs" class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-amber-400 bg-white dark:bg-slate-900 transition-all hover:shadow-md">
+      <div class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.331 0 4.233 1.236 5.426 2.18.76.603 1.574.82 1.574.82s.814-.217 1.574-.82C15.767 19.236 17.669 18 20 18a8.987 8.987 0 013-.512V4.262A8.967 8.967 0 0020 3.75a8.967 8.967 0 00-6 2.292z"/></svg>
+      </div>
+      <div class="font-medium text-sm">Docs</div>
+    </a>
+    <a href="/health" class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-rose-400 bg-white dark:bg-slate-900 transition-all hover:shadow-md">
+      <div class="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center text-rose-600 dark:text-rose-400">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></svg>
+      </div>
+      <div class="font-medium text-sm">Health</div>
+    </a>
+  </div>
+</section>""")
 
 
 @app.route("/connectors")
