@@ -1,6 +1,6 @@
 # Finance & Payments
 
-Connectors for payment processing and financial data services. 2 connectors, 16 actions.
+Connectors for payment processing and financial data services. 2 connectors, 57 actions.
 
 ---
 

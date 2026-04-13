@@ -16,10 +16,10 @@ from toolsconnector.errors import ConnectorNotConfiguredError
 class TestListConnectors:
     """Tests for the list_connectors registry function."""
 
-    def test_list_connectors_returns_50(self) -> None:
-        """Verify the registry contains exactly 50 connectors."""
+    def test_list_connectors_returns_53(self) -> None:
+        """Verify the registry contains exactly 53 connectors."""
         connectors = list_connectors()
-        assert len(connectors) >= 50
+        assert len(connectors) >= 53
 
     def test_list_connectors_sorted(self) -> None:
         """Verify the list is returned in alphabetical order."""

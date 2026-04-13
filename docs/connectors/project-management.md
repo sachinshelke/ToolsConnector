@@ -1,6 +1,6 @@
 # Project Management
 
-Connectors for issue tracking and project management platforms. 4 connectors, 32 actions.
+Connectors for issue tracking and project management platforms. 4 connectors, 110 actions.
 
 ---
 

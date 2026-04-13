@@ -6,7 +6,7 @@ Thank you for your interest in contributing to ToolsConnector. This guide covers
 
 ```bash
 # Clone and setup
-git clone https://github.com/your-org/toolsconnector.git
+git clone https://github.com/sachinshelke/ToolsConnector.git
 cd toolsconnector
 python -m venv .venv
 source .venv/bin/activate

@@ -76,7 +76,7 @@ After installation, verify that the CLI is available and connectors are register
 tc list
 ```
 
-This prints a table of all 50 connectors with their category, action count, and whether they require extras.
+This prints a table of all 53 connectors with their category, action count, and whether they require extras.
 
 You can also verify from Python:
 

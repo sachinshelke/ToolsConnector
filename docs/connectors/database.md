@@ -1,6 +1,6 @@
 # Database
 
-Connectors for database and data platform services. 5 connectors, 39 actions.
+Connectors for database and data platform services. 5 connectors, 93 actions.
 
 ---
 

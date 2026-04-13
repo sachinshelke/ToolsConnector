@@ -1,6 +1,6 @@
 # Storage
 
-Connectors for cloud file storage services. 2 connectors, 16 actions.
+Connectors for cloud file storage services. 2 connectors, 42 actions.
 
 ---
 
