@@ -184,57 +184,121 @@ def _best_first_action(actions: dict) -> str:
     return sorted(actions.keys())[0] if actions else "action"
 
 
-def _action_detail_html(params: list, connector_name: str, action_name: str) -> str:
-    """Render compact parameter list + usage snippet for the expanded action detail row."""
-    param_args = ", ".join(f'"{p["name"]}": ...' for p in params[:3]) if params else ""
-    if len(params) > 3:
-        param_args += ", ..."
-    usage_code = f'kit.execute("{connector_name}_{action_name}", {{{param_args}}})'
-
-    params_html = ""
-    if params:
-        lines = ""
-        for p in params:
-            ptype = p.get("type", "any")
-            req = ", required" if p.get("required") else ", optional"
-            default = f", default: {p['default']}" if p.get("default") is not None else ""
-            desc = f' <span class="text-xs text-slate-500">&mdash; {p["description"]}</span>' if p.get("description") else ""
-            lines += f'<div class="py-1"><code class="text-xs font-semibold text-slate-700 dark:text-slate-300">{p["name"]}</code> <span class="text-xs text-slate-400">({ptype}{req}{default})</span>{desc}</div>'
-        params_html = f'<div class="mb-4"><div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Parameters</div>{lines}</div>'
-
-    return f'''<td colspan="3" class="px-5 py-4 bg-slate-50/50 dark:bg-slate-800/20">
-{params_html}
-<div class="flex items-center gap-3 bg-slate-900 rounded-lg px-4 py-2.5 overflow-x-auto">
-<code class="text-xs text-slate-100 font-mono flex-1 whitespace-nowrap">{usage_code}</code>
-<button onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-400 hover:text-white cursor-pointer flex-shrink-0">Copy</button>
-</div></td>'''
+def _example_value(p: dict) -> str:
+    """Generate a realistic example value for a parameter."""
+    ptype = p.get("type", "string")
+    if p.get("default") is not None:
+        v = p["default"]
+        if isinstance(v, str):
+            return f'"{v}"'
+        if isinstance(v, bool):
+            return "True" if v else "False"
+        return str(v)
+    if ptype == "boolean":
+        return "True"
+    if ptype in ("integer", "number"):
+        return "10"
+    # string or fallback
+    name = p.get("name", "value")
+    return f'"your-{name}"'
 
 
-def _action_table_row(aname: str, act: dict, connector_name: str) -> str:
-    """Render a table row for an action + a hidden detail row that toggles on click."""
+def _action_section_html(aname: str, act: dict, connector_name: str) -> str:
+    """Render one action as a full visible section (no click-to-expand)."""
+    import html as _html
     params = act.get("parameters", [])
     scope = _action_scope(aname, act)
     is_dangerous = act.get("dangerous", False)
+    desc = act.get("description", "")
+    returns = act.get("returns", {})
+    return_type = returns.get("type", "dict") if isinstance(returns, dict) else str(returns) if returns else "dict"
 
-    # Scope badge color
-    scope_colors = {
-        "read": "text-emerald-600 dark:text-emerald-400",
-        "write": "text-blue-600 dark:text-blue-400",
-        "modify": "text-amber-600 dark:text-amber-400",
-        "delete": "text-red-600 dark:text-red-400",
-        "destructive": "text-red-600 dark:text-red-400",
+    # Scope badge
+    scope_bg = {
+        "read": "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400",
+        "write": "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
+        "modify": "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400",
+        "delete": "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400",
+        "destructive": "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400",
     }
-    scope_cls = scope_colors.get(scope, "text-slate-500")
-    warn_icon = ' <span class="text-amber-500" title="Destructive action">&#9888;</span>' if is_dangerous else ""
+    badge_cls = scope_bg.get(scope, "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400")
+    scope_badge = f'<span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full {badge_cls}">{scope}</span>'
+    warn_html = ' <span class="text-amber-500 text-sm" title="Destructive action">&#9888;</span>' if is_dangerous else ""
 
-    detail_html = _action_detail_html(params, connector_name, aname)
+    # Parameters block
+    params_html = ""
+    if params:
+        rows = ""
+        for p in params:
+            ptype = p.get("type", "any")
+            req_label = '<span class="text-red-400 font-medium">required</span>' if p.get("required") else '<span class="text-slate-300 dark:text-slate-500">optional</span>'
+            pdesc = _html.escape(p.get("description", "")) if p.get("description") else '<span class="text-slate-300">&mdash;</span>'
+            rows += f'''<div class="flex items-start gap-3 text-xs">
+<code class="font-semibold text-slate-700 dark:text-slate-300 w-28 flex-shrink-0">{p["name"]}</code>
+<span class="text-purple-500 dark:text-purple-400 w-16 flex-shrink-0">{ptype}</span>
+<span class="w-14 flex-shrink-0">{req_label}</span>
+<span class="text-slate-500 dark:text-slate-400">{pdesc}</span>
+</div>'''
+        params_html = f'''<div class="mb-3">
+<div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Parameters</div>
+<div class="bg-slate-50 dark:bg-slate-800/30 rounded-lg p-3 space-y-1.5">{rows}</div>
+</div>'''
 
-    return f'''<tr class="action-row border-b border-slate-100 dark:border-slate-800/50 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors" data-action="{aname}" onclick="var d=this.nextElementSibling;d.classList.toggle('hidden')">
-<td class="py-3 pr-4 pl-1"><code class="text-sm font-semibold text-slate-800 dark:text-slate-200">{aname}</code>{warn_icon}</td>
-<td class="py-3 pr-4 text-sm text-slate-500 dark:text-slate-400">{act.get("description","")}</td>
-<td class="py-3 text-right"><span class="text-xs font-medium {scope_cls}">{scope}</span></td>
-</tr>
-<tr class="hidden">{detail_html}</tr>'''
+    # Returns block
+    returns_html = f'''<div class="mb-3 text-xs">
+<span class="text-slate-400">Returns:</span>
+<code class="font-mono text-b-600 dark:text-b-400 ml-1">{_html.escape(str(return_type))}</code>
+</div>'''
+
+    # Example code with real values
+    required_params = [p for p in params if p.get("required")]
+    optional_params = [p for p in params if not p.get("required")]
+    example_params = required_params + optional_params[:2]
+    if example_params:
+        args_str = ", ".join(f'"{p["name"]}": {_example_value(p)}' for p in example_params)
+        example_code = f'result = kit.execute("{connector_name}_{aname}", {{{args_str}}})'
+    else:
+        example_code = f'result = kit.execute("{connector_name}_{aname}", {{}})'
+    escaped_code = _html.escape(example_code)
+
+    return f'''<section id="action-{aname}" class="scroll-mt-20 py-6 border-b border-slate-100 dark:border-slate-800/50 px-5">
+<div class="flex items-center gap-2 mb-1.5">
+<h3 class="text-sm font-bold font-mono text-slate-800 dark:text-slate-200">{aname}</h3>
+{scope_badge}{warn_html}
+</div>
+<p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{_html.escape(desc)}</p>
+{params_html}
+{returns_html}
+<div class="relative">
+<pre class="text-[11px] bg-slate-900 text-slate-100 rounded-lg p-3 overflow-x-auto"><code class="language-python">{escaped_code}</code></pre>
+<button onclick="navigator.clipboard.writeText(this.previousElementSibling.querySelector('code').textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-400 hover:text-white cursor-pointer">Copy</button>
+</div>
+</section>'''
+
+
+def _sidebar_html(actions: dict, name: str) -> str:
+    """Render a sticky left sidebar with section links and action links."""
+    action_count = len(actions)
+    action_links = ""
+    for aname in sorted(actions.keys()):
+        action_links += f'<a href="#action-{aname}" class="sidebar-link action-link block px-3 py-1 text-xs font-mono text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded truncate" data-section="action-{aname}" title="{aname}">{aname}</a>\n'
+
+    return f'''<nav class="hidden lg:block w-52 flex-shrink-0">
+<div class="sticky top-20 space-y-0.5 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 text-sm">
+<a href="#overview" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="overview">Overview</a>
+<a href="#install" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="install">Install</a>
+<a href="#quickstart" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="quickstart">Quick Start</a>
+<a href="#actions" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="actions">Actions</a>
+<div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+<span class="px-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Actions ({action_count})</span>
+<div class="mt-1 space-y-0">
+{action_links}</div>
+</div>
+<div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+<a href="#auth" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="auth">Authentication</a>
+</div>
+</div>
+</nav>'''
 
 
 @app.route("/connector/<name>")
@@ -272,55 +336,41 @@ def connector_detail(name: str):
     rate_str = meta.get("rate_limit", "")
     pricing_str = meta.get("pricing", "")
 
-    # Actions table rows
-    action_rows = "".join(_action_table_row(aname, act, name) for aname, act in sorted(actions.items()))
+    # Auth method badges
+    auth_methods = meta.get("auth_methods", []) or ["Bearer Token"]
+    auth_badges = " ".join(
+        f'<span class="text-xs px-2.5 py-1 rounded-full bg-b-50 dark:bg-b-900/20 text-b-700 dark:text-b-400 font-medium">{m}</span>'
+        for m in auth_methods
+    )
 
-    # Quick Start code blocks
-    qs_py = _html.escape(f'''from toolsconnector.serve import ToolKit
+    # Credentials link
+    cred_link_html = ""
+    if meta.get("get_credentials_url"):
+        cred_link_html = f'<a href="{meta["get_credentials_url"]}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-sm text-b-600 dark:text-b-400 hover:underline mt-3"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>Get credentials</a>'
+
+    # All action sections
+    action_sections = "".join(_action_section_html(aname, act, name) for aname, act in sorted(actions.items()))
+
+    # Sidebar
+    sidebar = _sidebar_html(actions, name)
+
+    # Quick Start code
+    qs_code = _html.escape(f'''from toolsconnector.serve import ToolKit
 
 kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})
 result = kit.execute("{name}_{first_action}", {{}})
 print(result)''')
 
-    qs_mcp = _html.escape(f'''from toolsconnector.serve import ToolKit
-
-kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})
-kit.serve_mcp()  # Connects to Claude Desktop / Cursor''')
-
-    qs_oai = _html.escape(f'''from toolsconnector.serve import ToolKit
-
-kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})
-tools = kit.to_openai_tools()
-# Pass to: openai.chat.completions.create(tools=tools, ...)
-result = kit.execute("{name}_{first_action}", {{"...": "..."}})''')
-
-    # Install section: env var note
-    env_note = f'<div class="mt-3 text-xs text-slate-400"><span class="font-medium text-slate-500">Env:</span> <code class="text-xs font-mono">export TC_{name.upper()}_CREDENTIALS=your-token</code></div>'
+    # Overview paragraph (merged into hero)
+    overview_p = ""
+    if meta.get("overview"):
+        overview_p = f'<p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mt-4">{_html.escape(meta["overview"])}</p>'
 
     # Prerequisites (compact)
     prereqs_html = ""
     if meta.get("prerequisites"):
         ps = " &middot; ".join(meta["prerequisites"])
-        cred_link = ""
-        if meta.get("get_credentials_url"):
-            cred_link = f' &mdash; <a href="{meta["get_credentials_url"]}" target="_blank" rel="noopener" class="text-b-600 dark:text-b-400 hover:underline">Get credentials</a>'
-        prereqs_html = f'<div class="mt-2 text-xs text-slate-400"><span class="font-medium text-slate-500">Prerequisites:</span> {ps}{cred_link}</div>'
-
-    # About section (overview + use cases, moved below actions)
-    about_html = ""
-    has_about = meta.get("overview") or meta.get("use_cases")
-    if has_about:
-        overview_p = f'<p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{meta["overview"]}</p>' if meta.get("overview") else ""
-        cases_html = ""
-        if meta.get("use_cases"):
-            cases = "".join(f'<li>{c}</li>' for c in meta["use_cases"])
-            cases_html = f'<ul class="mt-4 space-y-1.5 list-disc list-inside text-sm text-slate-600 dark:text-slate-400">{cases}</ul>'
-        about_html = f'''
-<div class="mt-16">
-<h2 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-4">About {sp["display_name"]}</h2>
-{overview_p}
-{cases_html}
-</div>'''
+        prereqs_html = f'<div class="text-xs text-slate-400 mt-2"><span class="font-medium text-slate-500">Prerequisites:</span> {ps}</div>'
 
     # Related connectors
     specs = _all_specs()
@@ -343,19 +393,25 @@ result = kit.execute("{name}_{first_action}", {{"...": "..."}})''')
 <div class="text-xs text-slate-400">{rcount} actions</div>
 </div></a>'''
         related_html = f'''
-<div class="mt-16">
+<section id="related" class="scroll-mt-20 mb-8">
 <h2 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-4">Related Connectors</h2>
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">{related_cards}</div>
-</div>'''
-
-    # Tab switch JS (shared between install and quickstart)
-    tab_js = """function switchTab(group,id){document.querySelectorAll('.'+group+'-tab').forEach(t=>t.classList.add('hidden'));document.querySelectorAll('.'+group+'-btn').forEach(b=>{b.classList.remove('text-b-600','border-b-2','border-b-600');b.classList.add('text-slate-400')});document.getElementById(id).classList.remove('hidden');event.currentTarget.classList.add('text-b-600','border-b-2','border-b-600');event.currentTarget.classList.remove('text-slate-400')}"""
+</section>'''
 
     return _r(sp["display_name"], f"""
-<a href="/connectors" class="text-sm text-b-600 dark:text-b-400 hover:underline mb-8 inline-block">&larr; All Connectors</a>
+<a href="/connectors" class="text-sm text-b-600 dark:text-b-400 hover:underline mb-6 inline-block">&larr; All Connectors</a>
 
-<!-- Section 1: Hero -->
-<div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden mb-10" style="border-top:4px solid {meta['color']}">
+<div class="flex gap-8">
+
+<!-- Sidebar -->
+{sidebar}
+
+<!-- Content -->
+<div class="flex-1 min-w-0">
+
+<!-- Section: Overview -->
+<section id="overview" class="scroll-mt-20 mb-8">
+<div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden" style="border-top:4px solid {meta['color']}">
 <div class="p-6 sm:p-8">
 <div class="flex items-start gap-5">
 {logo_html}
@@ -373,6 +429,7 @@ result = kit.execute("{name}_{first_action}", {{"...": "..."}})''')
 <div class="flex items-center gap-4 flex-wrap mt-4">{ext_links_html}</div>
 </div>
 </div>
+{overview_p}
 </div>
 <div class="border-t border-slate-200 dark:border-slate-800 px-6 sm:px-8 py-3 bg-slate-50/50 dark:bg-slate-800/20 flex items-center gap-6 flex-wrap text-sm">
 <div><span class="text-slate-400">Auth:</span> <span class="text-slate-700 dark:text-slate-300">{auth_str}</span></div>
@@ -380,81 +437,111 @@ result = kit.execute("{name}_{first_action}", {{"...": "..."}})''')
 {f'<div><span class="text-slate-400">Pricing:</span> <span class="text-slate-700 dark:text-slate-300">{pricing_str}</span></div>' if pricing_str else ""}
 </div>
 </div>
+</section>
 
-<!-- Section 2: Install -->
-<div class="mb-10">
+<!-- Section: Install -->
+<section id="install" class="scroll-mt-20 mb-8">
 <h2 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Install</h2>
-<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-<div class="flex items-center border-b border-slate-200 dark:border-slate-800">
-<button onclick="switchTab('lang','lang-py')" class="lang-btn px-4 py-2.5 text-sm font-medium text-b-600 border-b-2 border-b-600">Python</button>
-<button onclick="switchTab('lang','lang-ts')" class="lang-btn px-4 py-2.5 text-sm font-medium text-slate-400">TypeScript</button>
-<button onclick="switchTab('lang','lang-go')" class="lang-btn px-4 py-2.5 text-sm font-medium text-slate-400">Go</button>
-<button onclick="switchTab('lang','lang-java')" class="lang-btn px-4 py-2.5 text-sm font-medium text-slate-400">Java</button>
-</div>
-<div id="lang-py" class="lang-tab p-5">
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
 <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-3">
 <code class="text-sm font-mono text-slate-700 dark:text-slate-300 flex-1">{install_cmd}</code>
 <button onclick="navigator.clipboard.writeText('{install_cmd}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1200)" class="text-xs px-2.5 py-1 rounded bg-b-600 text-white hover:bg-b-700 cursor-pointer font-medium">Copy</button>
 </div>
-{env_note}
+<div class="text-xs text-slate-400 mt-3"><code class="font-mono">export TC_{name.upper()}_CREDENTIALS=your-token</code></div>
 {prereqs_html}
+{cred_link_html}
+<div class="text-xs text-slate-400 mt-3">TypeScript, Go, Java SDKs coming soon.</div>
 </div>
-<div id="lang-ts" class="lang-tab hidden p-5">
-<p class="text-sm text-slate-500">Coming soon. <a href="https://github.com/toolsconnector/toolsconnector" target="_blank" rel="noopener" class="text-b-600 dark:text-b-400 hover:underline">Star the repo</a> to get notified.</p>
-</div>
-<div id="lang-go" class="lang-tab hidden p-5">
-<p class="text-sm text-slate-500">Coming soon. <a href="https://github.com/toolsconnector/toolsconnector" target="_blank" rel="noopener" class="text-b-600 dark:text-b-400 hover:underline">Star the repo</a> to get notified.</p>
-</div>
-<div id="lang-java" class="lang-tab hidden p-5">
-<p class="text-sm text-slate-500">Coming soon. <a href="https://github.com/toolsconnector/toolsconnector" target="_blank" rel="noopener" class="text-b-600 dark:text-b-400 hover:underline">Star the repo</a> to get notified.</p>
-</div>
-</div>
-</div>
+</section>
 
-<!-- Section 3: Quick Start -->
-<div class="mb-10">
+<!-- Section: Quick Start -->
+<section id="quickstart" class="scroll-mt-20 mb-8">
 <h2 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Quick Start</h2>
-<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-<div class="flex items-center border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-<button onclick="switchTab('qs','qs-py')" class="qs-btn px-4 py-2.5 text-sm font-medium text-b-600 border-b-2 border-b-600">Python</button>
-<button onclick="switchTab('qs','qs-mcp')" class="qs-btn px-4 py-2.5 text-sm font-medium text-slate-400">MCP Server</button>
-<button onclick="switchTab('qs','qs-oai')" class="qs-btn px-4 py-2.5 text-sm font-medium text-slate-400">OpenAI</button>
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden relative">
+<pre class="text-xs bg-slate-900 text-slate-100 p-5 overflow-x-auto"><code class="language-python">{qs_code}</code></pre>
+<button onclick="navigator.clipboard.writeText(this.previousElementSibling.querySelector('code').textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="absolute top-3 right-3 text-[10px] px-2.5 py-1 rounded bg-slate-700 text-slate-400 hover:text-white cursor-pointer">Copy</button>
 </div>
-<div id="qs-py" class="qs-tab"><pre class="text-xs bg-slate-900 text-slate-100 p-5 overflow-x-auto"><code class="language-python">{qs_py}</code></pre></div>
-<div id="qs-mcp" class="qs-tab hidden"><pre class="text-xs bg-slate-900 text-slate-100 p-5 overflow-x-auto"><code class="language-python">{qs_mcp}</code></pre></div>
-<div id="qs-oai" class="qs-tab hidden"><pre class="text-xs bg-slate-900 text-slate-100 p-5 overflow-x-auto"><code class="language-python">{qs_oai}</code></pre></div>
-</div>
-</div>
+<p class="text-xs text-slate-400 mt-2">
+Also works with <a href="/docs/mcp-server" class="text-b-600 dark:text-b-400 hover:underline">MCP Server</a>,
+<a href="/docs/ai-frameworks" class="text-b-600 dark:text-b-400 hover:underline">OpenAI, Anthropic, Gemini</a>.
+</p>
+</section>
 
-<!-- Section 4: Actions -->
-<div class="mb-4">
-<div class="flex items-center justify-between flex-wrap gap-3 mb-4">
-<h2 class="text-lg font-semibold text-slate-800 dark:text-slate-200">Actions <span class="text-sm font-normal text-slate-400">({len(actions)})</span></h2>
+<!-- Section: Actions -->
+<section id="actions" class="scroll-mt-20 mb-8">
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-lg font-semibold text-slate-800 dark:text-slate-200">Actions <span class="text-slate-400 text-base font-normal">({len(actions)})</span></h2>
 <div class="relative"><svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-<input type="text" placeholder="Filter actions..." class="pl-9 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-b-500 outline-none w-56" oninput="var v=this.value.toLowerCase();document.querySelectorAll('.action-row').forEach(function(r){{var d=r.nextElementSibling;var show=r.dataset.action.includes(v);r.style.display=show?'':'none';d.style.display='none';if(!show)d.classList.add('hidden')}})"></div>
+<input type="text" placeholder="Filter actions..." class="pl-9 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-b-500 outline-none w-56" oninput="filterActions(this.value)"></div>
 </div>
-<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden overflow-x-auto">
-<table class="w-full">
-<thead><tr class="text-left text-xs text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-<th class="pb-3 pt-3 pr-4 pl-5 font-semibold">Action</th>
-<th class="pb-3 pt-3 pr-4 font-semibold">Description</th>
-<th class="pb-3 pt-3 pr-5 font-semibold text-right">Scope</th>
-</tr></thead>
-<tbody>{action_rows}</tbody>
-</table>
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+{action_sections}
 </div>
-</div>
+</section>
 
-<!-- Section 5: About -->
-{about_html}
+<!-- Section: Authentication -->
+<section id="auth" class="scroll-mt-20 mb-8">
+<h2 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Authentication</h2>
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+<div class="mb-3">
+<span class="text-sm text-slate-500 mr-2">Supported:</span>
+{auth_badges}
+</div>
+<div class="bg-slate-50 dark:bg-slate-800/30 rounded-lg px-4 py-3 mt-3">
+<code class="text-xs font-mono text-slate-700 dark:text-slate-300">export TC_{name.upper()}_CREDENTIALS=your-token</code>
+</div>
+{cred_link_html}
+</div>
+</section>
 
-<!-- Section 6: Related -->
+<!-- Related -->
 {related_html}
 
-<script>{tab_js}</script>
+</div>
+</div>
+
+<!-- Scroll-spy + filter JS -->
+<script>
+(function(){{
+  var links = document.querySelectorAll('.sidebar-link');
+  var observer = new IntersectionObserver(function(entries) {{
+    entries.forEach(function(entry) {{
+      if(entry.isIntersecting){{
+        var id = entry.target.id;
+        links.forEach(function(l) {{
+          l.classList.remove('bg-b-50','dark:bg-b-900/20','text-b-700','dark:text-b-400','font-medium');
+          if(!l.classList.contains('action-link')) l.classList.add('text-slate-500');
+          else l.classList.add('text-slate-400');
+        }});
+        var active = document.querySelector('.sidebar-link[data-section="'+id+'"]');
+        if(active){{
+          active.classList.add('bg-b-50','dark:bg-b-900/20','text-b-700','dark:text-b-400');
+          if(!active.classList.contains('action-link')) active.classList.add('font-medium');
+          active.classList.remove('text-slate-500','text-slate-400');
+          if(active.classList.contains('action-link'))
+            active.scrollIntoView({{block:'nearest',behavior:'smooth'}});
+        }}
+      }}
+    }});
+  }}, {{rootMargin:'-80px 0px -70% 0px'}});
+  document.querySelectorAll('section[id]').forEach(function(s) {{ observer.observe(s); }});
+}})();
+
+function filterActions(q){{
+  q = q.toLowerCase();
+  document.querySelectorAll('section[id^="action-"]').forEach(function(s) {{
+    var n = s.id.replace('action-','');
+    s.style.display = n.includes(q) ? '' : 'none';
+  }});
+  document.querySelectorAll('.action-link').forEach(function(l) {{
+    var n = l.dataset.section.replace('action-','');
+    l.style.display = n.includes(q) ? '' : 'none';
+  }});
+}}
+</script>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
-<script>document.querySelectorAll('pre code').forEach(b=>hljs.highlightElement(b));</script>""")
+<script>document.querySelectorAll('pre code').forEach(function(b){{ hljs.highlightElement(b); }});</script>""")
 
 
 @app.route("/playground")
