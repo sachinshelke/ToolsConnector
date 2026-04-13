@@ -1,6 +1,6 @@
 # Code Platforms
 
-Connectors for source code hosting and collaboration platforms. 2 connectors, 18 actions.
+Connectors for source code hosting and collaboration platforms. 2 connectors, 58 actions.
 
 ---
 

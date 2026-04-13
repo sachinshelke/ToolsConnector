@@ -1,0 +1,80 @@
+name: Build & Deploy Site
+
+# Triggers on any change to source files that affect the site output.
+# Also runnable manually from the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/index.html'
+      - 'site/logo.svg'
+      - 'webapp/tool_metadata.py'
+      - 'scripts/build_site.py'
+      - 'docs/**'
+      - 'src/toolsconnector/connectors/**/README.md'
+  workflow_dispatch:
+
+# Only one deploy at a time — cancel any in-flight run when a newer
+# push arrives so the live site always reflects the latest commit.
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    name: Build site → push to ToolsConnector.github.io
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout source repo ────────────────────────────────────────
+      - name: Checkout ToolsConnector
+        uses: actions/checkout@v4
+
+      # ── 2. Python setup ────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install pydantic docstring-parser eval_type_backport httpx
+          pip install -e .
+
+      # ── 3. Build — regenerate data.json from connector specs ───────────
+      - name: Build site/data.json
+        run: python scripts/build_site.py
+
+      # ── 4. Push site/ contents to ToolsConnector.github.io ────────────
+      # PAGES_DEPLOY_TOKEN must be a Fine-grained PAT (or classic PAT with
+      # `repo` scope) stored as a secret in the ToolsConnector repo.
+      # It needs Contents: Read & Write access on ToolsConnector.github.io.
+      - name: Deploy to ToolsConnector.github.io
+        env:
+          DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          # Configure git identity for the bot commit
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name  "github-actions[bot]"
+
+          # Clone the deploy repo (shallow — we only need HEAD)
+          git clone --depth 1 \
+            https://x-access-token:${DEPLOY_TOKEN}@github.com/ToolsConnector/ToolsConnector.github.io.git \
+            _deploy
+
+          # Wipe everything except .git so stale files don't accumulate
+          find _deploy -mindepth 1 -not -path '_deploy/.git*' -delete
+
+          # Copy the freshly built site
+          cp -r site/. _deploy/
+
+          # Commit and push — skip if nothing changed
+          cd _deploy
+          git add -A
+          git diff --staged --quiet && echo "No changes to deploy." && exit 0
+
+          SHORT_SHA="${SOURCE_SHA:0:7}"
+          git commit -m "deploy: ToolsConnector@${SHORT_SHA}"
+          git push

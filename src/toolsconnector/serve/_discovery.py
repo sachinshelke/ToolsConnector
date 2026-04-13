@@ -1,7 +1,7 @@
 """Connector registry with lazy loading.
 
 Maps connector names to their module paths. Imports happen lazily
-to avoid loading all 50 connectors (and their dependencies) at startup.
+to avoid loading all 53 connectors (and their dependencies) at startup.
 """
 
 from __future__ import annotations

@@ -113,4 +113,4 @@ except AuthError as e:
 
 ---
 
-*This connector is part of [ToolsConnector](https://github.com/toolsconnector/toolsconnector) — the universal tool-connection primitive for Python and AI agents.*
+*This connector is part of [ToolsConnector](https://github.com/sachinshelke/ToolsConnector) — the universal tool-connection primitive for Python and AI agents.*

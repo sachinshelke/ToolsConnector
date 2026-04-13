@@ -28,6 +28,12 @@ dependencies = [
     "eval_type_backport>=0.2.0; python_version < '3.10'",
 ]
 
+[project.urls]
+Homepage = "https://github.com/sachinshelke/ToolsConnector"
+Repository = "https://github.com/sachinshelke/ToolsConnector"
+Issues = "https://github.com/sachinshelke/ToolsConnector/issues"
+Changelog = "https://github.com/sachinshelke/ToolsConnector/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
 # --- Connectors: Communication ---
 gmail = ["google-api-python-client>=2.0", "google-auth>=2.0", "google-auth-oauthlib>=1.0"]

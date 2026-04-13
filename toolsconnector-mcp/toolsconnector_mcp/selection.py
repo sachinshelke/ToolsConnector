@@ -1,11 +1,11 @@
 """Smart tool selection for large connector deployments.
 
-When 50 connectors with 395 tools are loaded, sending all of them
+When 53 connectors with 1,137 tools are loaded, sending all of them
 to the LLM wastes context tokens. SmartToolSelector filters tools
 based on a natural language query using keyword matching.
 
 For deployments with <20 tools, filtering is unnecessary.
-For 50+ tools, this saves significant tokens.
+For 53+ tools, this saves significant tokens.
 """
 
 from __future__ import annotations

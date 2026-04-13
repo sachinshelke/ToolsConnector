@@ -1,6 +1,6 @@
 # CRM & Support
 
-Connectors for customer relationship management and support platforms. 5 connectors, 40 actions.
+Connectors for customer relationship management and support platforms. 5 connectors, 95 actions.
 
 ---
 

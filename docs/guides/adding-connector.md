@@ -1,6 +1,6 @@
 # Adding a Connector
 
-Step-by-step guide for implementing a new ToolsConnector connector. Follow this pattern exactly to ensure consistency across all 50+ connectors.
+Step-by-step guide for implementing a new ToolsConnector connector. Follow this pattern exactly to ensure consistency across all 53+ connectors.
 
 ## Directory Structure
 

@@ -23,9 +23,6 @@ from toolsconnector.codegen import extract_spec, extract_all_specs
 from tool_metadata import get_tool_meta
 
 app = Flask(__name__)
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = "qwen/qwen3.6-plus:free"
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # -- Data helpers ----------------------------------------------------------
 _spec_cache: dict[str, dict] = {}
@@ -99,15 +96,49 @@ def home():
     n_categories = s["categories"]
     remaining_connectors = max(0, n_connectors - 20)
 
+    # Category icons (SVG paths) keyed by category slug
+    _CAT_ICONS = {
+        "communication": '<path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/>',
+        "crm": '<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/>',
+        "project_management": '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/>',
+        "code_platform": '<path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/>',
+        "devops": '<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7"/>',
+        "database": '<path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75"/>',
+        "productivity": '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>',
+        "ai_ml": '<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"/>',
+        "finance": '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/>',
+        "marketing": '<path stroke-linecap="round" stroke-linejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46"/>',
+        "storage": '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/>',
+        "message_queue": '<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>',
+        "analytics": '<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>',
+        "security": '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>',
+        "knowledge": '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>',
+        "ecommerce": '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/>',
+        "custom": '<path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.648 3.165a.75.75 0 01-1.022-.868l1.023-5.958-4.326-4.234a.75.75 0 01.418-1.276l5.974-.87L10.59 0a.75.75 0 011.32 0l2.748 5.13 5.974.87a.75.75 0 01.418 1.276l-4.326 4.234 1.023 5.958a.75.75 0 01-1.022.868l-5.648-3.165z"/>',
+    }
+    _CAT_COLORS = {
+        "communication": "#3B82F6", "crm": "#F59E0B", "project_management": "#8B5CF6",
+        "code_platform": "#1E293B", "devops": "#06B6D4", "database": "#10B981",
+        "productivity": "#F97316", "ai_ml": "#7C3AED", "finance": "#6366F1",
+        "marketing": "#EC4899", "storage": "#14B8A6", "message_queue": "#EF4444",
+        "analytics": "#8B5CF6", "security": "#059669", "knowledge": "#0EA5E9",
+        "ecommerce": "#84CC16", "custom": "#6366F1",
+    }
+
     # Category grid for section 8
-    cats_html = "".join(
-        f'<a href="/connectors?cat={c}" class="group block p-5 rounded-xl border border-slate-200'
-        f' dark:border-slate-800 hover:border-b-400 hover:shadow-lg transition-all'
-        f' bg-white dark:bg-slate-900">'
-        f'<div class="text-2xl font-bold text-b-600 dark:text-b-400">{n}</div>'
-        f'<div class="text-sm font-medium text-slate-700 dark:text-slate-300 mt-1">{_cat(c)}</div></a>'
-        for c, n in s["by_category"].items()
-    )
+    cats_html = ""
+    for c, n in s["by_category"].items():
+        icon_path = _CAT_ICONS.get(c, _CAT_ICONS["custom"])
+        icon_color = _CAT_COLORS.get(c, "#6366F1")
+        cats_html += (
+            f'<a href="/connectors?cat={c}" class="group flex items-center gap-4 p-4 rounded-xl border border-slate-200'
+            f' dark:border-slate-800 hover:border-b-400 hover:shadow-lg transition-all'
+            f' bg-white dark:bg-slate-900">'
+            f'<div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background:{icon_color}15">'
+            f'<svg class="w-5 h-5" fill="none" stroke="{icon_color}" stroke-width="1.5" viewBox="0 0 24 24">{icon_path}</svg></div>'
+            f'<div><div class="text-sm font-semibold text-slate-700 dark:text-slate-300">{_cat(c)}</div>'
+            f'<div class="text-xs text-slate-400">{n} connectors</div></div></a>'
+        )
 
     # Tool logos for the logo cloud
     tool_logos = [
@@ -209,44 +240,93 @@ def home():
     <h2 class="text-2xl sm:text-3xl font-bold mb-3">How it works</h2>
     <p class="text-slate-500 dark:text-slate-400">Three steps. From install to production.</p>
   </div>
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 items-stretch">
     <!-- Step 1 -->
-    <div>
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-8 h-8 rounded-full bg-b-600 text-white flex items-center justify-center text-sm font-bold">1</div>
-        <h3 class="text-lg font-semibold">Install</h3>
+    <div class="flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+      <div class="flex items-center gap-3 px-4 pt-4 pb-2">
+        <div class="w-8 h-8 rounded-full bg-b-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">1</div>
+        <div>
+          <h3 class="text-lg font-semibold">Install</h3>
+          <p class="text-xs text-slate-400">Pick the connectors you need</p>
+        </div>
       </div>
-      <pre class="bg-slate-900 text-slate-100 rounded-xl p-5 text-sm overflow-x-auto"><code><span class="text-emerald-400">$</span> pip install toolsconnector[gmail,slack]</code></pre>
+      <div class="flex-1 px-4 pb-4">
+        <pre class="bg-slate-900 text-slate-100 rounded-xl p-4 text-xs overflow-hidden h-full flex items-start leading-relaxed"><code><span class="text-emerald-400">$</span> pip install toolsconnector[gmail]
+
+<span class="text-slate-500"># Or multiple connectors</span>
+<span class="text-emerald-400">$</span> pip install toolsconnector[gmail,slack]
+
+<span class="text-slate-500"># Or install everything</span>
+<span class="text-emerald-400">$</span> pip install toolsconnector[all]</code></pre>
+      </div>
     </div>
     <!-- Step 2 -->
-    <div>
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-8 h-8 rounded-full bg-b-600 text-white flex items-center justify-center text-sm font-bold">2</div>
-        <h3 class="text-lg font-semibold">Connect</h3>
+    <div class="flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+      <div class="flex items-center gap-3 px-4 pt-4 pb-2">
+        <div class="w-8 h-8 rounded-full bg-b-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">2</div>
+        <div>
+          <h3 class="text-lg font-semibold">Connect</h3>
+          <p class="text-xs text-slate-400">One object, any number of tools</p>
+        </div>
       </div>
-      <pre class="bg-slate-900 text-slate-100 rounded-xl p-5 text-sm overflow-x-auto"><code><span class="text-purple-400">from</span> <span class="text-emerald-400">toolsconnector.serve</span> <span class="text-purple-400">import</span> ToolKit
+      <div class="flex-1 px-4 pb-4">
+        <pre class="bg-slate-900 text-slate-100 rounded-xl p-4 text-xs overflow-hidden h-full flex items-start leading-relaxed"><code><span class="text-purple-400">from</span> <span class="text-emerald-400">toolsconnector.serve</span> <span class="text-purple-400">import</span> ToolKit
 
-kit = ToolKit([<span class="text-amber-300">"gmail"</span>, <span class="text-amber-300">"slack"</span>])</code></pre>
+kit = ToolKit(
+  [<span class="text-amber-300">"gmail"</span>, <span class="text-amber-300">"slack"</span>],
+  credentials={{
+    <span class="text-amber-300">"gmail"</span>: os.environ[<span class="text-amber-300">"GMAIL_TOKEN"</span>],
+  }}
+)</code></pre>
+      </div>
     </div>
     <!-- Step 3 -->
-    <div>
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-8 h-8 rounded-full bg-b-600 text-white flex items-center justify-center text-sm font-bold">3</div>
-        <h3 class="text-lg font-semibold">Use anywhere</h3>
+    <div class="flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+      <div class="flex items-center gap-3 px-4 pt-4 pb-2">
+        <div class="w-8 h-8 rounded-full bg-b-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
+        <div>
+          <h3 class="text-lg font-semibold">Use anywhere</h3>
+          <p class="text-xs text-slate-400">Python, MCP, or any AI framework</p>
+        </div>
       </div>
-      <pre class="bg-slate-900 text-slate-100 rounded-xl p-5 text-sm overflow-x-auto leading-relaxed"><code><span class="text-slate-500"># Direct Python</span>
-result = kit.execute(
-    <span class="text-amber-300">"gmail_list_emails"</span>,
-    {{"query": <span class="text-amber-300">"is:unread"</span>}}
-)
+      <div class="flex-1 px-4 pb-4">
+        <pre class="bg-slate-900 text-slate-100 rounded-xl p-4 text-xs overflow-hidden h-full flex items-start leading-relaxed"><code><span class="text-slate-500"># Execute directly</span>
+kit.execute(<span class="text-amber-300">"gmail_list_emails"</span>, {{}})
 
 <span class="text-slate-500"># MCP Server (Claude Desktop)</span>
 kit.serve_mcp()
 
-<span class="text-slate-500"># OpenAI Function Calling</span>
+<span class="text-slate-500"># OpenAI / Anthropic schemas</span>
 tools = kit.to_openai_tools()</code></pre>
+      </div>
     </div>
   </div>
+  <!-- Output formats row -->
+  <div class="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs">
+    <span class="text-slate-400 font-medium">Output formats:</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-600 dark:text-slate-300">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>
+      Python SDK</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-600 dark:text-slate-300">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7"/></svg>
+      MCP Server</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-600 dark:text-slate-300">
+      <img src="https://cdn.simpleicons.org/openai" alt="" class="w-3.5 h-3.5 dark:invert" onerror="this.style.display='none'">
+      OpenAI Tools</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-600 dark:text-slate-300">
+      <img src="https://cdn.simpleicons.org/anthropic" alt="" class="w-3.5 h-3.5 dark:invert" onerror="this.style.display='none'">
+      Anthropic Tools</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-600 dark:text-slate-300">
+      <img src="https://cdn.simpleicons.org/google" alt="" class="w-3.5 h-3.5" onerror="this.style.display='none'">
+      Gemini Tools</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-600 dark:text-slate-300">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+      LangChain</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-600 dark:text-slate-300">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      REST API</span>
+  </div>
+  <div class="text-center mt-4 text-xs text-slate-400">TypeScript, Go, and Java SDKs coming soon.</div>
 </section>
 
 <!-- Section 4: Tool Logos -->
@@ -348,7 +428,7 @@ tools = kit.to_openai_tools()</code></pre>
     <h2 class="text-2xl sm:text-3xl font-bold mb-4">Open source</h2>
     <p class="text-slate-600 dark:text-slate-400 mb-8">Apache 2.0 licensed. Self-hosted. No vendor lock-in.</p>
     <div class="flex flex-col sm:flex-row justify-center gap-3 mb-8">
-      <a href="https://github.com/toolsconnector/toolsconnector" target="_blank" rel="noopener"
+      <a href="https://github.com/sachinshelke/ToolsConnector" target="_blank" rel="noopener"
          class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 font-semibold transition-colors bg-white dark:bg-slate-900">
         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
         Star on GitHub
@@ -578,14 +658,17 @@ def _action_section_html(aname: str, act: dict, connector_name: str) -> str:
 
 
 def _sidebar_html(actions: dict, name: str) -> str:
-    """Render a sticky left sidebar with section links and action links."""
+    """Render a sticky left sidebar with section links and action links.
+
+    Desktop: visible as a sidebar.  Mobile: hidden by default, toggled via a
+    floating dropdown button.
+    """
     action_count = len(actions)
     action_links = ""
     for aname in sorted(actions.keys()):
         action_links += f'<a href="#action-{aname}" class="sidebar-link action-link block px-3 py-1 text-xs font-mono text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded truncate" data-section="action-{aname}" title="{aname}">{aname}</a>\n'
 
-    return f'''<nav class="hidden lg:block w-52 flex-shrink-0">
-<div class="sticky top-20 space-y-0.5 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 text-sm">
+    sidebar_inner = f'''<a href="/connectors" class="block px-3 py-1.5 rounded text-sm text-slate-400 hover:text-slate-600 mb-2">&larr; All Connectors</a>
 <a href="#overview" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="overview">Overview</a>
 <a href="#install" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="install">Install</a>
 <a href="#quickstart" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="quickstart">Quick Start</a>
@@ -597,7 +680,28 @@ def _sidebar_html(actions: dict, name: str) -> str:
 </div>
 <div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
 <a href="#auth" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="auth">Authentication</a>
+</div>'''
+
+    return f'''<!-- Mobile sidebar toggle -->
+<div class="lg:hidden fixed bottom-4 right-4 z-40">
+<button onclick="document.getElementById('mobile-sidebar').classList.toggle('hidden')" class="w-12 h-12 rounded-full bg-b-600 text-white shadow-lg flex items-center justify-center hover:bg-b-700 transition-colors">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+</button>
 </div>
+<div id="mobile-sidebar" class="hidden lg:hidden fixed inset-0 z-30">
+<div class="absolute inset-0 bg-black/30" onclick="document.getElementById('mobile-sidebar').classList.add('hidden')"></div>
+<div class="absolute right-0 top-0 bottom-0 w-64 bg-white dark:bg-slate-900 shadow-xl overflow-y-auto p-4 space-y-0.5">
+<div class="flex justify-between items-center mb-3">
+<span class="font-semibold text-sm text-slate-700 dark:text-slate-300">Navigation</span>
+<button onclick="document.getElementById('mobile-sidebar').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">&times;</button>
+</div>
+{sidebar_inner}
+</div>
+</div>
+<!-- Desktop sidebar -->
+<nav class="hidden lg:block w-52 flex-shrink-0">
+<div class="sticky top-20 space-y-0.5 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 text-sm">
+{sidebar_inner}
 </div>
 </nav>'''
 
@@ -615,8 +719,8 @@ def connector_detail(name: str):
 
     # --- Try README.md rendering first ---
     readme_path = Path(__file__).parent.parent / "src" / "toolsconnector" / "connectors" / name / "README.md"
-    # Also check common alternate names
-    for alt_name in [name, name.replace("_connector", "")]:
+    # Also check common alternate names (e.g. openai -> openai_connector)
+    for alt_name in [name, name.replace("_connector", ""), f"{name}_connector"]:
         alt_path = Path(__file__).parent.parent / "src" / "toolsconnector" / "connectors" / alt_name / "README.md"
         if alt_path.exists():
             readme_path = alt_path
@@ -977,8 +1081,6 @@ print(result)''')
 </section>'''
 
     return _r(sp["display_name"], f"""
-<a href="/connectors" class="text-sm text-b-600 dark:text-b-400 hover:underline mb-6 inline-block">&larr; All Connectors</a>
-
 <div class="flex gap-8">
 
 <!-- Sidebar -->
@@ -1020,14 +1122,7 @@ print(result)''')
 <!-- Section: Install -->
 <section id="install" class="scroll-mt-20 mb-8">
 <h2 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Install</h2>
-<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-<div class="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-<button onclick="document.querySelectorAll('.install-tab').forEach(t=>t.classList.add('hidden'));document.getElementById('install-python').classList.remove('hidden');document.querySelectorAll('.install-btn').forEach(b=>{{b.classList.remove('text-b-600','border-b-600','border-b-2');b.classList.add('text-slate-400','border-transparent')}});this.classList.add('text-b-600','border-b-600','border-b-2');this.classList.remove('text-slate-400','border-transparent')" class="install-btn px-4 py-2.5 text-sm font-medium border-b-2 border-b-600 text-b-600">Python</button>
-<button onclick="document.querySelectorAll('.install-tab').forEach(t=>t.classList.add('hidden'));document.getElementById('install-ts').classList.remove('hidden');document.querySelectorAll('.install-btn').forEach(b=>{{b.classList.remove('text-b-600','border-b-600','border-b-2');b.classList.add('text-slate-400','border-transparent')}});this.classList.add('text-b-600','border-b-600','border-b-2');this.classList.remove('text-slate-400','border-transparent')" class="install-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-400">TypeScript</button>
-<button onclick="document.querySelectorAll('.install-tab').forEach(t=>t.classList.add('hidden'));document.getElementById('install-go').classList.remove('hidden');document.querySelectorAll('.install-btn').forEach(b=>{{b.classList.remove('text-b-600','border-b-600','border-b-2');b.classList.add('text-slate-400','border-transparent')}});this.classList.add('text-b-600','border-b-600','border-b-2');this.classList.remove('text-slate-400','border-transparent')" class="install-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-400">Go</button>
-<button onclick="document.querySelectorAll('.install-tab').forEach(t=>t.classList.add('hidden'));document.getElementById('install-java').classList.remove('hidden');document.querySelectorAll('.install-btn').forEach(b=>{{b.classList.remove('text-b-600','border-b-600','border-b-2');b.classList.add('text-slate-400','border-transparent')}});this.classList.add('text-b-600','border-b-600','border-b-2');this.classList.remove('text-slate-400','border-transparent')" class="install-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-400">Java</button>
-</div>
-<div id="install-python" class="install-tab p-5">
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
 <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-3">
 <code class="text-sm font-mono text-slate-700 dark:text-slate-300 flex-1">{install_cmd}</code>
 <button onclick="navigator.clipboard.writeText('{install_cmd}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1200)" class="text-xs px-2.5 py-1 rounded bg-b-600 text-white hover:bg-b-700 cursor-pointer font-medium">Copy</button>
@@ -1035,28 +1130,7 @@ print(result)''')
 <div class="text-xs text-slate-400 mt-3"><code class="font-mono">export TC_{name.upper()}_CREDENTIALS=your-token</code></div>
 {prereqs_html}
 {cred_link_html}
-</div>
-<div id="install-ts" class="install-tab hidden p-5">
-<div class="text-center py-6">
-<div class="text-sm font-medium text-slate-500 mb-1">TypeScript SDK coming soon</div>
-<div class="text-xs text-slate-400">Star the <a href="https://github.com/toolsconnector/toolsconnector" class="text-b-600 hover:underline">GitHub repo</a> to get notified when it launches.</div>
-<pre class="text-xs bg-slate-100 dark:bg-slate-800 rounded-lg p-3 mt-3 inline-block text-slate-500"><code>npm install toolsconnector  # coming soon</code></pre>
-</div>
-</div>
-<div id="install-go" class="install-tab hidden p-5">
-<div class="text-center py-6">
-<div class="text-sm font-medium text-slate-500 mb-1">Go SDK coming soon</div>
-<div class="text-xs text-slate-400">Star the <a href="https://github.com/toolsconnector/toolsconnector" class="text-b-600 hover:underline">GitHub repo</a> to get notified when it launches.</div>
-<pre class="text-xs bg-slate-100 dark:bg-slate-800 rounded-lg p-3 mt-3 inline-block text-slate-500"><code>go get github.com/toolsconnector/toolsconnector  # coming soon</code></pre>
-</div>
-</div>
-<div id="install-java" class="install-tab hidden p-5">
-<div class="text-center py-6">
-<div class="text-sm font-medium text-slate-500 mb-1">Java SDK coming soon</div>
-<div class="text-xs text-slate-400">Star the <a href="https://github.com/toolsconnector/toolsconnector" class="text-b-600 hover:underline">GitHub repo</a> to get notified when it launches.</div>
-<pre class="text-xs bg-slate-100 dark:bg-slate-800 rounded-lg p-3 mt-3 inline-block text-slate-500"><code>&lt;!-- Maven dependency coming soon --&gt;</code></pre>
-</div>
-</div>
+<div class="text-xs text-slate-400 mt-3">TypeScript, Go, and Java SDKs coming soon.</div>
 </div>
 </section>
 
@@ -1204,149 +1278,250 @@ def api_schema():
 
 @app.route("/assistant")
 def assistant():
-    return _r("AI Assistant", """
+    # Build system prompt server-side (contains live project data)
+    names = list_connectors()
+    specs = _all_specs()
+    cl = ", ".join(f"{specs[n]['display_name']} ({n})" for n in names)
+    cats = set(specs[n]["category"] for n in names)
+    total_actions = sum(len(s.get("actions", {})) for s in specs.values())
+    cat_list = ", ".join(_cat(c) for c in sorted(cats))
+    sys_prompt = (
+        "You are the ToolsConnector AI assistant helping developers.\n\n"
+        "## What is ToolsConnector?\n"
+        f"A universal tool-connection primitive for Python. Standardized way to connect AI agents and apps to {len(names)} third-party tools across {len(cats)} categories. A primitive, not a platform.\n\n"
+        f"## Connectors ({len(names)})\n{cl}\n\n"
+        f"## Categories: {cat_list}\n\n"
+        "## How ToolKit Works\n"
+        "```python\n"
+        "from toolsconnector.serve import ToolKit\n"
+        'kit = ToolKit(["gmail", "slack"], credentials={"gmail": "tok", "slack": "tok"})\n'
+        "tools = kit.to_openai_tools()      # OpenAI\n"
+        "tools = kit.to_anthropic_tools()   # Anthropic\n"
+        "tools = kit.to_gemini_tools()      # Gemini\n"
+        'result = await kit.aexecute("gmail_list_emails", {"query": "is:unread"})\n'
+        "kit.serve_mcp()  # MCP server\n"
+        "```\n\n"
+        "## Install: `pip install toolsconnector` or `pip install toolsconnector[gmail,slack]`\n\n"
+        "## Key Features\n"
+        f"{len(names)} connectors, {total_actions} actions, {len(cats)} categories. "
+        "OpenAI/Anthropic/Gemini schemas. MCP server. Circuit breakers, retries, timeouts. "
+        "Async-first + sync wrappers. JSON Schema validation. Dangerous action filtering. "
+        "Multi-tenant. BYOK auth.\n\n"
+        "Be concise, technical, include code examples."
+    )
+    escaped_sys = json.dumps(sys_prompt)
+
+    return _r("AI Assistant", f"""
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
 <style>
-.md-body{line-height:1.7;font-size:0.875rem}
-.md-body p{margin:0.5em 0}
-.md-body h1,.md-body h2,.md-body h3{font-weight:700;margin:0.8em 0 0.4em}
-.md-body h1{font-size:1.25rem}.md-body h2{font-size:1.1rem}.md-body h3{font-size:1rem}
-.md-body ul,.md-body ol{margin:0.4em 0;padding-left:1.5em}
-.md-body li{margin:0.2em 0}
-.md-body code:not(pre code){background:rgba(100,116,139,0.15);padding:0.15em 0.4em;border-radius:4px;font-size:0.82em}
-.md-body pre{background:#1e293b;color:#e2e8f0;border-radius:8px;padding:1em;overflow-x:auto;margin:0.6em 0;position:relative}
-.md-body pre code{background:none;padding:0;font-size:0.82em}
-.md-body blockquote{border-left:3px solid #6366f1;padding-left:0.8em;margin:0.5em 0;color:#64748b}
-.md-body table{border-collapse:collapse;width:100%;margin:0.5em 0;font-size:0.82em}
-.md-body th,.md-body td{border:1px solid #e2e8f0;padding:0.4em 0.8em;text-align:left}
-.dark .md-body th,.dark .md-body td{border-color:#334155}
-.md-body th{background:#f1f5f9;font-weight:600}.dark .md-body th{background:#1e293b}
-.md-body a{color:#4c6ef5;text-decoration:underline}
-.md-body img{max-width:100%;border-radius:8px;margin:0.5em 0}
-.md-body hr{border:none;border-top:1px solid #e2e8f0;margin:1em 0}
-.dark .md-body hr{border-color:#334155}
-.md-body strong{font-weight:700}
-.copy-btn{position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.1);border:none;color:#94a3b8;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px}
-.copy-btn:hover{background:rgba(255,255,255,0.2);color:#fff}
+.md-body{{line-height:1.7;font-size:0.875rem}}
+.md-body p{{margin:0.5em 0}}
+.md-body h1,.md-body h2,.md-body h3{{font-weight:700;margin:0.8em 0 0.4em}}
+.md-body h1{{font-size:1.25rem}}.md-body h2{{font-size:1.1rem}}.md-body h3{{font-size:1rem}}
+.md-body ul,.md-body ol{{margin:0.4em 0;padding-left:1.5em}}
+.md-body li{{margin:0.2em 0}}
+.md-body code:not(pre code){{background:rgba(100,116,139,0.15);padding:0.15em 0.4em;border-radius:4px;font-size:0.82em}}
+.md-body pre{{background:#1e293b;color:#e2e8f0;border-radius:8px;padding:1em;overflow-x:auto;margin:0.6em 0;position:relative}}
+.md-body pre code{{background:none;padding:0;font-size:0.82em}}
+.md-body blockquote{{border-left:3px solid #6366f1;padding-left:0.8em;margin:0.5em 0;color:#64748b}}
+.md-body table{{border-collapse:collapse;width:100%;margin:0.5em 0;font-size:0.82em}}
+.md-body th,.md-body td{{border:1px solid #e2e8f0;padding:0.4em 0.8em;text-align:left}}
+.dark .md-body th,.dark .md-body td{{border-color:#334155}}
+.md-body th{{background:#f1f5f9;font-weight:600}}.dark .md-body th{{background:#1e293b}}
+.md-body a{{color:#4c6ef5;text-decoration:underline}}
+.md-body img{{max-width:100%;border-radius:8px;margin:0.5em 0}}
+.md-body hr{{border:none;border-top:1px solid #e2e8f0;margin:1em 0}}
+.dark .md-body hr{{border-color:#334155}}
+.md-body strong{{font-weight:700}}
+.copy-btn{{position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.1);border:none;color:#94a3b8;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px}}
+.copy-btn:hover{{background:rgba(255,255,255,0.2);color:#fff}}
 </style>
+
 <h1 class="text-2xl font-bold mb-6">AI Assistant</h1>
 <div class="max-w-3xl mx-auto">
+
+<!-- API Key Banner -->
+<div id="key-banner" class="hidden mb-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+  <div class="flex items-start gap-3">
+    <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>
+    <div class="flex-1">
+      <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-200">OpenRouter API key required</h3>
+      <p class="text-xs text-amber-600 dark:text-amber-400 mt-1 mb-3">Your key is stored only in your browser (localStorage). It never leaves your device — all API calls go directly from your browser to OpenRouter.</p>
+      <div class="flex gap-2 items-center">
+        <input id="key-input" type="password" placeholder="sk-or-v1-..." class="flex-1 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-b-500 outline-none" autocomplete="off" spellcheck="false">
+        <button onclick="saveKey()" class="px-4 py-2 rounded-lg bg-b-600 hover:bg-b-700 text-white text-sm font-medium flex-shrink-0">Save</button>
+      </div>
+      <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-b-600 dark:text-b-400 hover:underline mt-2">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+        Get a free API key at openrouter.ai/keys</a>
+    </div>
+  </div>
+</div>
+
+<!-- Key status bar (shown when key is saved) -->
+<div id="key-status" class="hidden mb-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2.5 flex items-center justify-between">
+  <div class="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <span>API key saved <span class="text-emerald-500 dark:text-emerald-500 font-mono text-xs" id="key-preview"></span></span>
+  </div>
+  <button onclick="clearKey()" class="text-xs text-slate-400 hover:text-red-500 transition-colors">Remove key</button>
+</div>
+
+<!-- Chat -->
 <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col" style="height:70vh">
 <div id="cm" class="flex-1 overflow-y-auto p-4 space-y-4">
 <div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-b-100 dark:bg-b-900/30 flex items-center justify-center text-b-600 dark:text-b-400 flex-shrink-0 text-xs font-bold">TC</div>
 <div class="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]"><div class="text-sm md-body"><p>Welcome! Ask me about ToolsConnector — connectors, ToolKit setup, schema generation, or anything else.</p></div></div></div></div>
 <div class="border-t border-slate-200 dark:border-slate-800 p-4"><div class="flex gap-2">
-<input id="ci" type="text" placeholder="Ask about ToolsConnector..." class="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 text-sm focus:ring-2 focus:ring-b-500 outline-none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}">
+<input id="ci" type="text" placeholder="Ask about ToolsConnector..." class="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 text-sm focus:ring-2 focus:ring-b-500 outline-none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){{event.preventDefault();sendMsg()}}">
 <button onclick="sendMsg()" id="sb" class="px-5 py-2.5 rounded-xl bg-b-600 hover:bg-b-700 text-white text-sm font-medium flex-shrink-0">Send</button></div>
-<p class="text-xs text-slate-400 mt-2 text-center">Powered by OpenRouter. Responses may not always be accurate.</p></div></div></div>
+<p class="text-xs text-slate-400 mt-2 text-center">Powered by <a href="https://openrouter.ai" target="_blank" class="hover:underline">OpenRouter</a>. Your key stays in your browser. Responses may not always be accurate.</p></div></div></div>
+
 <script>
-marked.setOptions({breaks:true,gfm:true,highlight:function(code,lang){if(lang&&hljs.getLanguage(lang)){try{return hljs.highlight(code,{language:lang}).value}catch(e){}}return hljs.highlightAuto(code).value}});
-let busy=false;
-function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
-function renderMd(raw,el){
-  let html=marked.parse(raw);
-  html=html.replace(/<pre><code/g,'<pre><button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector(\\x27code\\x27).textContent);this.textContent=\\x27Copied!\\x27;setTimeout(()=>this.textContent=\\x27Copy\\x27,1500)">Copy</button><code');
-  el.innerHTML=html;
-  el.querySelectorAll('pre code').forEach(b=>{try{hljs.highlightElement(b)}catch(e){}});
-}
-async function sendMsg(){
-if(busy)return;const inp=document.getElementById('ci'),msg=inp.value.trim();if(!msg)return;
-inp.value='';busy=true;document.getElementById('sb').disabled=true;
-const c=document.getElementById('cm');
-c.innerHTML+='<div class="flex gap-3 justify-end"><div class="bg-b-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%]"><div class="text-sm md-body"><p>'+esc(msg)+'</p></div></div><div class="w-8 h-8 rounded-full bg-b-600 flex items-center justify-center text-white flex-shrink-0 text-xs font-bold">You</div></div>';
-const aid='a'+Date.now();
-c.innerHTML+='<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-b-100 dark:bg-b-900/30 flex items-center justify-center text-b-600 dark:text-b-400 flex-shrink-0 text-xs font-bold">TC</div><div class="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%] w-full"><div class="text-sm md-body" id="'+aid+'"><span class="text-slate-400 animate-pulse">Thinking...</span></div></div></div>';
-c.scrollTop=c.scrollHeight;
-let raw='';
-try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
-const rd=r.body.getReader(),dc=new TextDecoder(),el=document.getElementById(aid);let buf='';
-while(true){const{done,value}=await rd.read();if(done)break;buf+=dc.decode(value,{stream:true});
-const ls=buf.split(String.fromCharCode(10));buf=ls.pop()||'';for(const l of ls){const lt=l.trim();if(lt.startsWith('data: ')){const d=lt.slice(6);if(d==='[DONE]')break;
-try{const p=JSON.parse(d),delta=p.choices&&p.choices[0]&&p.choices[0].delta;if(delta&&delta.content){raw+=delta.content;renderMd(raw,el)}}catch(e){}}}c.scrollTop=c.scrollHeight}
-if(!raw){el.innerHTML='<p class="text-slate-400">No response received. Try again.</p>'}
-}catch(e){const el=document.getElementById(aid);if(el)el.innerHTML='<p class="text-red-500">Error: '+esc(e.message)+'</p>'}
-busy=false;document.getElementById('sb').disabled=false}
+// ── Key management ──────────────────────────────────────────────────
+const KEY_STORAGE = 'tc_openrouter_key';
+
+function getKey() {{ return localStorage.getItem(KEY_STORAGE) || ''; }}
+
+function saveKey() {{
+  const inp = document.getElementById('key-input');
+  const k = inp.value.trim();
+  if (!k) return;
+  localStorage.setItem(KEY_STORAGE, k);
+  inp.value = '';
+  refreshKeyUI();
+}}
+
+function clearKey() {{
+  localStorage.removeItem(KEY_STORAGE);
+  refreshKeyUI();
+}}
+
+function refreshKeyUI() {{
+  const k = getKey();
+  const banner = document.getElementById('key-banner');
+  const status = document.getElementById('key-status');
+  if (k) {{
+    banner.classList.add('hidden');
+    status.classList.remove('hidden');
+    // Show masked preview: first 10 chars + ···
+    document.getElementById('key-preview').textContent = '(' + k.slice(0, 10) + '···)';
+  }} else {{
+    banner.classList.remove('hidden');
+    status.classList.add('hidden');
+  }}
+}}
+
+// Initialize on page load
+refreshKeyUI();
+
+// ── System prompt (generated server-side with live project data) ────
+const SYS_PROMPT = {escaped_sys};
+const OR_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OR_MODEL = 'qwen/qwen3.6-plus:free';
+
+// ── Markdown rendering ──────────────────────────────────────────────
+marked.setOptions({{breaks:true,gfm:true,highlight:function(code,lang){{if(lang&&hljs.getLanguage(lang)){{try{{return hljs.highlight(code,{{language:lang}}).value}}catch(e){{}}}}return hljs.highlightAuto(code).value}}}});
+
+let busy = false;
+function esc(s){{ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }}
+function renderMd(raw,el){{
+  let html = marked.parse(raw);
+  html = html.replace(/<pre><code/g, '<pre><button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector(\\x27code\\x27).textContent);this.textContent=\\x27Copied!\\x27;setTimeout(()=>this.textContent=\\x27Copy\\x27,1500)">Copy</button><code');
+  el.innerHTML = html;
+  el.querySelectorAll('pre code').forEach(b=>{{ try{{ hljs.highlightElement(b) }}catch(e){{}} }});
+}}
+
+// ── Chat (direct browser → OpenRouter, key never leaves the device) ─
+async function sendMsg() {{
+  if (busy) return;
+  const apiKey = getKey();
+  if (!apiKey) {{
+    document.getElementById('key-banner').classList.remove('hidden');
+    document.getElementById('key-input').focus();
+    return;
+  }}
+
+  const inp = document.getElementById('ci'), msg = inp.value.trim();
+  if (!msg) return;
+  inp.value = ''; busy = true; document.getElementById('sb').disabled = true;
+
+  const c = document.getElementById('cm');
+  c.innerHTML += '<div class="flex gap-3 justify-end"><div class="bg-b-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%]"><div class="text-sm md-body"><p>' + esc(msg) + '</p></div></div><div class="w-8 h-8 rounded-full bg-b-600 flex items-center justify-center text-white flex-shrink-0 text-xs font-bold">You</div></div>';
+  const aid = 'a' + Date.now();
+  c.innerHTML += '<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-b-100 dark:bg-b-900/30 flex items-center justify-center text-b-600 dark:text-b-400 flex-shrink-0 text-xs font-bold">TC</div><div class="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%] w-full"><div class="text-sm md-body" id="' + aid + '"><span class="text-slate-400 animate-pulse">Thinking...</span></div></div></div>';
+  c.scrollTop = c.scrollHeight;
+
+  let raw = '';
+  try {{
+    const r = await fetch(OR_URL, {{
+      method: 'POST',
+      headers: {{
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': location.origin,
+        'X-Title': 'ToolsConnector',
+      }},
+      body: JSON.stringify({{
+        model: OR_MODEL,
+        messages: [
+          {{ role: 'system', content: SYS_PROMPT }},
+          {{ role: 'user', content: msg }},
+        ],
+        stream: true,
+      }}),
+    }});
+
+    if (!r.ok) {{
+      const errBody = await r.text();
+      const el = document.getElementById(aid);
+      if (r.status === 401 || r.status === 403) {{
+        el.innerHTML = '<p class="text-red-500">Invalid API key. Please check your OpenRouter key and try again.</p>';
+        clearKey();
+      }} else {{
+        el.innerHTML = '<p class="text-red-500">API error (' + r.status + '): ' + esc(errBody.slice(0, 200)) + '</p>';
+      }}
+      busy = false; document.getElementById('sb').disabled = false;
+      return;
+    }}
+
+    const rd = r.body.getReader(), dc = new TextDecoder(), el = document.getElementById(aid);
+    let buf = '';
+    while (true) {{
+      const {{ done, value }} = await rd.read();
+      if (done) break;
+      buf += dc.decode(value, {{ stream: true }});
+      const ls = buf.split(String.fromCharCode(10));
+      buf = ls.pop() || '';
+      for (const l of ls) {{
+        const lt = l.trim();
+        if (lt.startsWith('data: ')) {{
+          const d = lt.slice(6);
+          if (d === '[DONE]') break;
+          try {{
+            const p = JSON.parse(d);
+            const delta = p.choices && p.choices[0] && p.choices[0].delta;
+            if (delta && delta.content) {{ raw += delta.content; renderMd(raw, el); }}
+          }} catch(e) {{}}
+        }}
+      }}
+      c.scrollTop = c.scrollHeight;
+    }}
+    if (!raw) {{ el.innerHTML = '<p class="text-slate-400">No response received. Try again.</p>'; }}
+  }} catch(e) {{
+    const el = document.getElementById(aid);
+    if (el) el.innerHTML = '<p class="text-red-500">Error: ' + esc(e.message) + '</p>';
+  }}
+  busy = false; document.getElementById('sb').disabled = false;
+}}
 </script>""")
 
 
-@app.route("/api/chat", methods=["POST"])
-def api_chat():
-    d = request.get_json(force=True)
-    msg = d.get("message", "")
-    if not msg:
-        return jsonify({"error": "No message"}), 400
-    names = list_connectors()
-    specs = _all_specs()
-    cl = ", ".join(f"{specs[n]['display_name']} ({n})" for n in names)
-    cats = set(specs[n]["category"] for n in names)
-    sp = f"""You are the ToolsConnector AI assistant helping developers.
-
-## What is ToolsConnector?
-A universal tool-connection primitive for Python. Standardized way to connect AI agents and apps to 50 third-party tools across {len(cats)} categories. A primitive, not a platform.
-
-## Connectors ({len(names)})
-{cl}
-
-## Categories: {', '.join(_cat(c) for c in sorted(cats))}
-
-## How ToolKit Works
-```python
-from toolsconnector.serve import ToolKit
-kit = ToolKit(["gmail", "slack"], credentials={{"gmail": "tok", "slack": "tok"}})
-tools = kit.to_openai_tools()      # OpenAI
-tools = kit.to_anthropic_tools()   # Anthropic
-tools = kit.to_gemini_tools()      # Gemini
-result = await kit.aexecute("gmail_list_emails", {{"query": "is:unread"}})
-kit.serve_mcp()  # MCP server
-```
-
-## Install: `pip install toolsconnector` or `pip install toolsconnector[gmail,slack]`
-
-## Key Features
-50 connectors, 395 actions, 17 categories. OpenAI/Anthropic/Gemini schemas. MCP server. Circuit breakers, retries, timeouts. Async-first + sync wrappers. JSON Schema validation. Dangerous action filtering. Multi-tenant. BYOK auth.
-
-Be concise, technical, include code examples."""
-
-    if not OPENROUTER_API_KEY:
-        def no_key():
-            yield "data: " + json.dumps({"choices": [{"delta": {"content": "OPENROUTER_API_KEY not set. Export it to enable the AI assistant."}}]}) + "\n\n"
-            yield "data: [DONE]\n\n"
-        return Response(no_key(), mimetype="text/event-stream")
-
-    def stream():
-        try:
-            with httpx.Client(timeout=60.0) as client:
-                with client.stream("POST", OPENROUTER_URL,
-                    headers={
-                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": "https://github.com/toolsconnector",
-                        "X-OpenRouter-Title": "ToolsConnector",
-                    },
-                    json={
-                        "model": OPENROUTER_MODEL,
-                        "messages": [
-                            {"role": "system", "content": sp},
-                            {"role": "user", "content": msg},
-                        ],
-                        "stream": True,
-                    },
-                ) as resp:
-                    if resp.status_code != 200:
-                        body = resp.read().decode()
-                        yield f"data: {json.dumps({'choices': [{'delta': {'content': f'API error {resp.status_code}: {body[:200]}'}}]})}\n\n"
-                        yield "data: [DONE]\n\n"
-                        return
-                    for line in resp.iter_lines():
-                        if line:
-                            yield line + "\n\n"
-                yield "data: [DONE]\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'choices': [{'delta': {'content': f'Error: {e}'}}]})}\n\n"
-            yield "data: [DONE]\n\n"
-    return Response(stream(), mimetype="text/event-stream")
+# /api/chat removed — AI assistant now calls OpenRouter directly from the
+# browser using the user's own key stored in localStorage.  The key never
+# touches this server.
 
 
 @app.route("/health")

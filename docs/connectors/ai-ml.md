@@ -1,6 +1,6 @@
 # AI/ML
 
-Connectors for AI model providers and vector databases. 3 connectors, 19 actions.
+Connectors for AI model providers and vector databases. 3 connectors, 55 actions.
 
 ---
 

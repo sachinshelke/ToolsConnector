@@ -1,6 +1,6 @@
 # ToolsConnector
 
-**One interface, every tool. Connect 50+ APIs to your Python app or AI agent in minutes.**
+**One interface, every tool. Connect 53+ APIs to your Python app or AI agent in minutes.**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -12,7 +12,19 @@
 
 Every SaaS API has its own SDK, its own auth dance, its own pagination scheme, and its own error format. If you're building an AI agent, you also need to generate JSON Schema for function calling -- differently for OpenAI, Anthropic, and Gemini. You end up writing glue code instead of product code.
 
-ToolsConnector gives you a single, typed Python interface to 50 connectors and 395 actions. It works identically whether you're building a Django app, an OpenAI agent, or an MCP server for Claude Desktop.
+ToolsConnector gives you a single, typed Python interface to 53 connectors and 1,137 actions. It works identically whether you're building a Django app, an OpenAI agent, or an MCP server for Claude Desktop.
+
+## Run the Documentation Site
+
+To browse the full connector reference, playground, and guides locally:
+
+```bash
+python3 -m http.server 5001 --directory site
+```
+
+Then open **http://localhost:5001** in your browser.
+
+---
 
 ## Install
 
@@ -55,7 +67,7 @@ That's it. Same `ToolKit`, same `.execute()`, every connector.
 
 ## Key Features
 
-- **50 connectors, 395 actions** across 17 categories -- communication, databases, DevOps, CRM, AI/ML, and more
+- **53 connectors, 1,137 actions** across 17 categories -- communication, databases, DevOps, CRM, AI/ML, and more
 - **Dual-use design** -- works for traditional Python apps (Django, Flask, FastAPI) and AI agents (function calling, tool use) with zero code changes
 - **One-line MCP server** -- expose any combination of connectors to Claude Desktop, Cursor, or any MCP client
 - **Schema generation** -- produces OpenAI, Anthropic, and Gemini function-calling schemas from the same source of truth
@@ -202,142 +214,145 @@ app = kit.create_rest_app(prefix="/api/v1")
 
 ## Supported Connectors
 
-50 connectors across 17 categories.
+53 connectors, 1,137 actions across 17 categories.
 
 ### Communication (7)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Gmail | `gmail` | 8 |
-| Slack | `slack` | 8 |
-| Discord | `discord` | 8 |
-| Microsoft Outlook | `outlook` | 8 |
-| Microsoft Teams | `teams` | 8 |
-| Twilio | `twilio` | 8 |
-| Telegram | `telegram` | 8 |
+| Gmail | `gmail` | 38 |
+| Slack | `slack` | 51 |
+| Discord | `discord` | 25 |
+| Microsoft Outlook | `outlook` | 23 |
+| Microsoft Teams | `teams` | 17 |
+| Twilio | `twilio` | 20 |
+| Telegram | `telegram` | 26 |
 
 ### Project Management (4)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Jira | `jira` | 8 |
-| Asana | `asana` | 8 |
-| Linear | `linear` | 8 |
-| Trello | `trello` | 8 |
+| Jira | `jira` | 28 |
+| Asana | `asana` | 38 |
+| Linear | `linear` | 19 |
+| Trello | `trello` | 25 |
 
-### CRM and Support (5)
+### CRM & Support (5)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| HubSpot | `hubspot` | 8 |
-| Salesforce | `salesforce` | 8 |
-| Zendesk | `zendesk` | 8 |
-| Freshdesk | `freshdesk` | 8 |
-| Intercom | `intercom` | 8 |
+| HubSpot | `hubspot` | 19 |
+| Salesforce | `salesforce` | 21 |
+| Zendesk | `zendesk` | 16 |
+| Freshdesk | `freshdesk` | 23 |
+| Intercom | `intercom` | 16 |
 
 ### Code Platforms (2)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| GitHub | `github` | 10 |
-| GitLab | `gitlab` | 8 |
+| GitHub | `github` | 37 |
+| GitLab | `gitlab` | 21 |
 
 ### Knowledge (2)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Notion | `notion` | 8 |
-| Confluence | `confluence` | 8 |
+| Notion | `notion` | 20 |
+| Confluence | `confluence` | 25 |
 
 ### Storage (2)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Google Drive | `gdrive` | 8 |
-| AWS S3 | `s3` | 8 |
+| Google Drive | `gdrive` | 22 |
+| AWS S3 | `s3` | 20 |
 
 ### Database (5)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Supabase | `supabase` | 8 |
-| MongoDB Atlas | `mongodb` | 8 |
-| Airtable | `airtable` | 8 |
-| Firebase Firestore | `firestore` | 8 |
-| Redis (Upstash) | `redis` | 8 |
+| Airtable | `airtable` | 26 |
+| Firebase Firestore | `firestore` | 17 |
+| MongoDB Atlas | `mongodb` | 16 |
+| Redis (Upstash) | `redis` | 18 |
+| Supabase | `supabase` | 16 |
 
 ### DevOps (5)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Datadog | `datadog` | 8 |
-| PagerDuty | `pagerduty` | 8 |
-| Vercel | `vercel` | 8 |
-| Cloudflare | `cloudflare` | 8 |
-| Docker Hub | `dockerhub` | 8 |
+| Cloudflare | `cloudflare` | 23 |
+| Datadog | `datadog` | 22 |
+| Docker Hub | `dockerhub` | 14 |
+| PagerDuty | `pagerduty` | 16 |
+| Vercel | `vercel` | 16 |
 
 ### Finance (2)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Stripe | `stripe` | 8 |
-| Plaid | `plaid` | 8 |
+| Stripe | `stripe` | 40 |
+| Plaid | `plaid` | 17 |
 
 ### Marketing (2)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| SendGrid | `sendgrid` | 8 |
-| Mailchimp | `mailchimp` | 8 |
+| Mailchimp | `mailchimp` | 23 |
+| SendGrid | `sendgrid` | 20 |
 
-### AI and ML (3)
+### AI / ML (3)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| OpenAI | `openai` | 8 |
-| Anthropic | `anthropic` | 3 |
-| Pinecone | `pinecone` | 8 |
+| OpenAI | `openai` | 26 |
+| Anthropic | `anthropic` | 14 |
+| Pinecone | `pinecone` | 15 |
 
 ### Analytics (2)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Mixpanel | `mixpanel` | 8 |
-| Segment | `segment` | 8 |
+| Mixpanel | `mixpanel` | 14 |
+| Segment | `segment` | 14 |
 
 ### Message Queue (2)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| AWS SQS | `sqs` | 8 |
-| RabbitMQ | `rabbitmq` | 8 |
+| AWS SQS | `sqs` | 16 |
+| RabbitMQ | `rabbitmq` | 21 |
 
 ### Security (2)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Okta | `okta` | 8 |
-| Auth0 | `auth0` | 8 |
+| Okta | `okta` | 21 |
+| Auth0 | `auth0` | 27 |
 
-### Productivity (3)
-
-| Connector | Install Extra | Actions |
-|-----------|---------------|---------|
-| Google Calendar | `gcalendar` | 6 |
-| Calendly | `calendly` | 8 |
-| Figma | `figma` | 8 |
-
-### E-commerce (1)
+### Productivity (6)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Shopify | `shopify` | 8 |
+| Google Calendar | `gcalendar` | 20 |
+| Google Docs | `gdocs` | 5 |
+| Google Sheets | `gsheets` | 16 |
+| Google Tasks | `gtasks` | 13 |
+| Calendly | `calendly` | 20 |
+| Figma | `figma` | 22 |
+
+### E-Commerce (1)
+
+| Connector | Install Extra | Actions |
+|-----------|---------------|---------|
+| Shopify | `shopify` | 27 |
 
 ### Custom (1)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Webhook | `webhook` | 8 |
+| Webhook | `webhook` | 12 |
 
 ---
 
@@ -351,7 +366,7 @@ ToolsConnector is structured as four layers, each with a single responsibility:
 +------------------------------------------------------------------+
 |  Runtime Engine    BaseConnector, @action, Middleware, Auth       |
 +------------------------------------------------------------------+
-|  Connectors        Gmail, Slack, GitHub, Stripe, ... (50)        |
+|  Connectors        Gmail, Slack, GitHub, Stripe, ... (53)        |
 +------------------------------------------------------------------+
 |  Spec Types        Pydantic V2 models, JSON Schema, Contracts    |
 +------------------------------------------------------------------+
@@ -361,7 +376,7 @@ ToolsConnector is structured as four layers, each with a single responsibility:
 
 **Runtime** -- The execution engine. `BaseConnector` is the abstract base class. The `@action` decorator parses type hints and docstrings to generate JSON Schema automatically. Middleware handles retry, rate limiting, auth refresh, and structured logging.
 
-**Connectors** -- 50 implementations, each following the same pattern: subclass `BaseConnector`, set metadata, implement `@action` methods. Most use raw `httpx` for direct HTTP calls. Google and AWS connectors use official SDKs where protocol complexity justifies it.
+**Connectors** -- 53 implementations, each following the same pattern: subclass `BaseConnector`, set metadata, implement `@action` methods. Most use raw `httpx` for direct HTTP calls. Google and AWS connectors use official SDKs where protocol complexity justifies it.
 
 **Serve** -- The `ToolKit` ties everything together. Configure once with a list of connectors and credentials, then serve as MCP, generate OpenAI/Anthropic/Gemini schemas, expose as REST, or call directly from Python.
 

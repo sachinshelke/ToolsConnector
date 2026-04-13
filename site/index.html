@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ToolsConnector - Universal Tool Integration for Python and AI Agents</title>
-<meta name="description" content="50 connectors, 395 actions. One consistent interface for traditional Python apps and AI agents alike.">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<meta name="description" content="53 connectors, 1,137 actions. One consistent interface for traditional Python apps and AI agents alike.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -15,7 +16,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+<!-- Mermaid for diagrams (```mermaid blocks) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js"></script>
+<!-- KaTeX for math equations ($..$ and $$..$$) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 <script>
 tailwind.config = {
   darkMode: 'class',
@@ -42,24 +51,107 @@ tailwind.config = {
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
   .dark ::-webkit-scrollbar-thumb { background: #475569; }
-  .prose-content h1 { font-size: 1.875rem; font-weight: 700; margin: 2rem 0 1rem; }
-  .prose-content h2 { font-size: 1.5rem; font-weight: 600; margin: 1.75rem 0 0.75rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
-  .dark .prose-content h2 { border-color: #374151; }
-  .prose-content h3 { font-size: 1.25rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
-  .prose-content p { margin: 0.75rem 0; line-height: 1.7; }
-  .prose-content ul { list-style: disc; margin-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
-  .prose-content ol { list-style: decimal; margin-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
-  .prose-content li { margin: 0.25rem 0; line-height: 1.6; }
-  .prose-content code { background: #f1f5f9; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-size: 0.875em; }
-  .dark .prose-content code { background: #1e293b; }
-  .prose-content pre { margin: 1rem 0; border-radius: 0.5rem; overflow-x: auto; }
-  .prose-content pre code { background: none; padding: 0; }
-  .prose-content a { color: #3b82f6; text-decoration: underline; }
-  .prose-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
-  .prose-content th, .prose-content td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; text-align: left; }
-  .dark .prose-content th, .dark .prose-content td { border-color: #374151; }
-  .prose-content th { background: #f8fafc; font-weight: 600; }
-  .dark .prose-content th { background: #1e293b; }
+  /* ── Prose content: polished markdown rendering ─────────────────── */
+  .prose-content { line-height: 1.75; color: #334155; font-size: 0.9375rem; }
+  .dark .prose-content { color: #cbd5e1; }
+
+  /* Headings */
+  .prose-content h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.4em; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5em; }
+  .dark .prose-content h1 { color: #f1f5f9; border-color: #334155; }
+  .prose-content h2 { font-size: 1.35rem; font-weight: 700; margin: 2.5em 0 0.6em; padding-bottom: 0.35em; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+  .dark .prose-content h2 { color: #e2e8f0; border-color: #334155; }
+  .prose-content h3 { font-size: 1.05rem; font-weight: 600; margin: 1.8em 0 0.4em; color: #334155; font-family: 'JetBrains Mono', monospace; }
+  .dark .prose-content h3 { color: #e2e8f0; }
+
+  /* Paragraphs & text */
+  .prose-content p { margin: 0.6em 0 1em; }
+  .prose-content strong { font-weight: 700; color: #1e293b; }
+  .dark .prose-content strong { color: #f1f5f9; }
+
+  /* Lists */
+  .prose-content ul, .prose-content ol { padding-left: 1.5em; margin: 0.5em 0 1.2em; }
+  .prose-content li { margin: 0.35em 0; line-height: 1.65; }
+  .prose-content li::marker { color: #94a3b8; }
+
+  /* Inline code */
+  .prose-content code:not(pre code) { background: rgba(99,102,241,0.08); padding: 0.15em 0.45em; border-radius: 5px; font-size: 0.85em; font-family: 'JetBrains Mono', monospace; color: #4f46e5; }
+  .dark .prose-content code:not(pre code) { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+
+  /* Code blocks */
+  .prose-content pre { background: #f8fafc; border-radius: 12px; padding: 1.25em 1.5em; overflow-x: auto; margin: 1em 0 1.4em; position: relative; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+  .dark .prose-content pre { background: #0f172a; border-color: #1e293b; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
+  .prose-content pre code { background: none !important; padding: 0 !important; font-size: 0.82em; line-height: 1.7; border-radius: 0; }
+  .prose-content pre code.hljs { padding: 0 !important; background: transparent !important; }
+
+  /* Links */
+  .prose-content a { color: #4f46e5; text-decoration: none; font-weight: 500; }
+  .prose-content a:hover { text-decoration: underline; }
+  .dark .prose-content a { color: #818cf8; }
+
+  /* Blockquotes (tagline) */
+  .prose-content blockquote { border-left: 4px solid #6366f1; padding: 0.6em 1em; margin: 0 0 1.2em; background: #f8fafc; border-radius: 0 8px 8px 0; color: #64748b; font-size: 1.05em; }
+  .dark .prose-content blockquote { background: #1e293b; color: #94a3b8; border-color: #818cf8; }
+
+  /* Tables */
+  .prose-content table { border-collapse: collapse; width: 100%; margin: 1em 0 1.4em; font-size: 0.875em; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; }
+  .dark .prose-content table { border-color: #334155; }
+  .prose-content th { background: #f1f5f9; font-weight: 600; text-align: left; padding: 0.6em 1em; font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; }
+  .dark .prose-content th { background: #1e293b; color: #94a3b8; }
+  .prose-content td { padding: 0.55em 1em; border-top: 1px solid #e2e8f0; vertical-align: top; }
+  .dark .prose-content td { border-color: #334155; }
+  .prose-content tr:hover td { background: #f8fafc; }
+  .dark .prose-content tr:hover td { background: rgba(30,41,59,0.5); }
+
+  /* Horizontal rule */
+  .prose-content hr { border: none; border-top: 1px solid #e2e8f0; margin: 2em 0; }
+  .dark .prose-content hr { border-color: #334155; }
+
+  /* Images (badges) — inline, wrap naturally */
+  .prose-content img { display: inline-block; vertical-align: middle; max-width: 100%; margin: 0.15em 0.1em; }
+  .prose-content p > img:first-child { margin-right: 0.3em; }
+
+  /* First image before h1 = connector logo */
+  .prose-content > img:first-child { display: block; margin-bottom: 0.75em; border-radius: 12px; }
+
+  /* Badge paragraph — the paragraph that only contains img badges */
+  .prose-content p:has(> img[src*="shields.io"]) { display: flex; flex-wrap: wrap; gap: 0.35em; align-items: center; margin: 0.5em 0 1.2em; }
+  .prose-content img[src*="shields.io"] { height: 22px; border-radius: 4px; }
+
+  /* Info table (first table after blockquote — the metadata table) */
+  .prose-content blockquote + p + table,
+  .prose-content blockquote + table { border-radius: 10px; }
+  .prose-content blockquote + p + table td:first-child,
+  .prose-content blockquote + table td:first-child { font-weight: 600; width: 140px; color: #64748b; white-space: nowrap; }
+  .dark .prose-content blockquote + p + table td:first-child,
+  .dark .prose-content blockquote + table td:first-child { color: #94a3b8; }
+
+  /* Figures and image captions */
+  .prose-content figure { margin: 1.5em 0; text-align: center; }
+  .prose-content figure img { max-width: 100%; border-radius: 10px; border: 1px solid #e2e8f0; }
+  .dark .prose-content figure img { border-color: #334155; }
+  .prose-content figcaption { font-size: 0.82em; color: #94a3b8; margin-top: 0.5em; font-style: italic; }
+
+  /* Task lists */
+  .prose-content .task-list-item { list-style: none; margin-left: -1.3em; }
+  .prose-content .task-list-item input[type="checkbox"] { margin-right: 0.5em; accent-color: #6366f1; transform: scale(1.1); vertical-align: middle; }
+
+  /* Mermaid diagrams */
+  .mermaid-block { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5em; margin: 1.2em 0; text-align: center; overflow-x: auto; }
+  .dark .mermaid-block { background: #1e293b; border-color: #334155; }
+  .mermaid-block svg { max-width: 100%; height: auto; }
+
+  /* Admonitions (Note, Warning, Tip, etc.) */
+  .admonition { margin: 1.2em 0; }
+  .admonition p:last-child { margin-bottom: 0; }
+
+  /* KaTeX math */
+  .prose-content .katex-display { margin: 1em 0; overflow-x: auto; }
+  .prose-content .katex { font-size: 1.05em; }
+  /* Global search */
+  .search-results { position: absolute; top: 100%; left: 0; right: 0; max-height: 320px; overflow-y: auto; z-index: 100; }
+  .search-results a:hover { background: #f1f5f9; }
+  .dark .search-results a:hover { background: #1e293b; }
+
   .chat-msg { max-width: 85%; }
   .typing-indicator span { animation: blink 1.4s infinite both; }
   .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
@@ -74,7 +166,7 @@ tailwind.config = {
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-16">
       <a href="#/" class="flex items-center gap-2 font-bold text-lg">
-        <svg class="w-7 h-7 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+        <img src="logo.svg" alt="ToolsConnector" class="w-8 h-8">
         <span>ToolsConnector</span>
       </a>
       <div class="hidden md:flex items-center gap-1">
@@ -85,12 +177,18 @@ tailwind.config = {
         <a href="#/docs" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Docs</a>
         <a href="#/health" class="nav-link px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Health</a>
       </div>
+      <!-- Global search -->
+      <div class="hidden md:block relative" id="global-search-wrap">
+        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input id="global-search" type="text" placeholder="Search tools..." class="w-44 pl-8 pr-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm focus:ring-2 focus:ring-brand-500 focus:w-64 transition-all outline-none" autocomplete="off">
+        <div id="global-search-results" class="search-results hidden absolute mt-1 w-72 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl overflow-hidden"></div>
+      </div>
       <div class="flex items-center gap-2">
         <button id="theme-toggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Toggle dark mode">
           <svg id="icon-sun" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
           <svg id="icon-moon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
         </button>
-        <a href="https://github.com/SachinVard662/ToolsConnector" target="_blank" rel="noopener" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="GitHub">
+        <a href="https://github.com/sachinshelke/ToolsConnector" target="_blank" rel="noopener" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="GitHub">
           <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a>
         <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -118,11 +216,11 @@ tailwind.config = {
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
       <div class="flex items-center gap-2">
-        <svg class="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+        <img src="logo.svg" alt="ToolsConnector" class="w-5 h-5">
         <span>ToolsConnector</span>
       </div>
       <div class="flex items-center gap-6">
-        <a href="https://github.com/SachinVard662/ToolsConnector" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">GitHub</a>
+        <a href="https://github.com/sachinshelke/ToolsConnector" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">GitHub</a>
         <a href="https://pypi.org/project/toolsconnector/" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">PyPI</a>
         <span>MIT License</span>
       </div>
@@ -133,9 +231,12 @@ tailwind.config = {
 <script>
 // ─── Globals ────────────────────────────────────────────────────────────────
 let DATA = {};
+let DOCS_CONTENT = {};
+let META = {};
 let STATS = { connectors: 0, actions: 0, categories: 0, dangerous: 0 };
 let CATEGORIES = {};
 let chatHistory = [];
+let SYS_PROMPT = '';
 
 const CATEGORY_LABELS = {
   communication: 'Communication', database: 'Database', devops: 'DevOps', crm: 'CRM',
@@ -173,18 +274,69 @@ const CATEGORY_COLORS = {
   ecommerce: 'fuchsia', custom: 'gray'
 };
 
-const DOCS_PAGES = [
-  { id: 'quickstart', title: 'Quickstart', path: 'guides/quickstart.md' },
-  { id: 'installation', title: 'Installation', path: 'guides/installation.md' },
-  { id: 'mcp-server', title: 'MCP Server', path: 'guides/mcp-server.md' },
-  { id: 'ai-frameworks', title: 'AI Frameworks', path: 'guides/ai-frameworks.md' },
-  { id: 'credentials', title: 'Credentials', path: 'guides/credentials.md' },
-  { id: 'resilience', title: 'Resilience', path: 'guides/resilience.md' },
-  { id: 'cli', title: 'CLI', path: 'guides/cli.md' },
-  { id: 'api', title: 'API Reference', path: 'API.md' }
+const DOCS_SIDEBAR = [
+  { heading: 'Getting Started', items: [
+    { id: 'introduction', title: 'Introduction' },
+    { id: 'quickstart', title: 'Quick Start' },
+    { id: 'installation', title: 'Installation' },
+    { id: 'credentials', title: 'Credentials & Auth' },
+  ]},
+  { heading: 'Using ToolsConnector', items: [
+    { id: 'mcp-server', title: 'MCP Server' },
+    { id: 'ai-frameworks', title: 'AI Frameworks' },
+    { id: 'resilience', title: 'Resilience' },
+    { id: 'cli', title: 'CLI Reference' },
+  ]},
+  { heading: 'Connectors', items: [
+    { id: 'connectors-overview', title: 'All Connectors' },
+    { id: 'connectors-communication', title: 'Communication' },
+    { id: 'connectors-code-platforms', title: 'Code Platforms' },
+    { id: 'connectors-project-management', title: 'Project Management' },
+    { id: 'connectors-crm', title: 'CRM & Support' },
+    { id: 'connectors-database', title: 'Database' },
+    { id: 'connectors-devops', title: 'DevOps & Cloud' },
+    { id: 'connectors-ai-ml', title: 'AI/ML' },
+    { id: 'connectors-finance', title: 'Finance' },
+    { id: 'connectors-storage', title: 'Storage' },
+  ]},
+  { heading: 'Reference', items: [
+    { id: 'api', title: 'API Reference' },
+    { id: 'architecture-faq', title: 'Architecture FAQ' },
+    { id: 'adding-connector', title: 'Adding a Connector' },
+  ]},
 ];
 
-const GITHUB_RAW = 'https://raw.githubusercontent.com/SachinVardhan662/ToolsConnector/main/docs/';
+// Flatten for lookups
+const DOCS_ALL = DOCS_SIDEBAR.flatMap(s => s.items);
+
+// ─── AI Providers ────────────────────────────────────────────────────────────
+const AI_PROVIDERS = {
+  openrouter: {
+    name: 'OpenRouter',
+    url: 'https://openrouter.ai/api/v1/chat/completions',
+    keyUrl: 'https://openrouter.ai/keys',
+    models: [
+      { id: 'qwen/qwen3-30b-a3b:free', label: 'Qwen3 30B', free: true },
+      { id: 'deepseek/deepseek-chat-v3-0324:free', label: 'DeepSeek V3', free: true },
+      { id: 'google/gemma-3-27b-it:free', label: 'Gemma 3 27B', free: true },
+      { id: 'meta-llama/llama-4-maverick:free', label: 'Llama 4 Maverick', free: true },
+      { id: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4', free: false },
+      { id: 'openai/gpt-4o', label: 'GPT-4o', free: false },
+      { id: 'google/gemini-2.5-pro-preview-05-06', label: 'Gemini 2.5 Pro', free: false },
+    ]
+  },
+  huggingface: {
+    name: 'HuggingFace',
+    url: 'https://router.huggingface.co/v1/chat/completions',
+    keyUrl: 'https://huggingface.co/settings/tokens',
+    models: [
+      { id: 'Qwen/Qwen2.5-72B-Instruct', label: 'Qwen 2.5 72B', free: true },
+      { id: 'meta-llama/Llama-3.3-70B-Instruct', label: 'Llama 3.3 70B', free: true },
+      { id: 'mistralai/Mistral-Small-24B-Instruct-2501', label: 'Mistral Small 24B', free: true },
+      { id: 'microsoft/Phi-3-mini-4k-instruct', label: 'Phi-3 Mini', free: true },
+    ]
+  }
+};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -197,6 +349,45 @@ function catIcon(cat) {
 }
 function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return document.querySelectorAll(sel); }
+
+// ── Logo cache ────────────────────────────────────────────────────────────────
+// Brandfetch is hit at most once per unique domain per SPA session.
+// Each response is stored as a blob URL in _logoCache and applied to every
+// <img data-logo="url"> element that references the same URL.
+// On subsequent renders (e.g. navigating back to /connectors) logos render
+// instantly from the blob URL — zero additional network requests.
+const _logoCache = new Map(); // url → blobUrl | 'err'
+
+function _fetchAndCache(url) {
+  if (_logoCache.has(url)) return;
+  _logoCache.set(url, 'loading');
+  fetch(url, { cache: 'force-cache' })
+    .then(function(r) { if (!r.ok) throw r.status; return r.blob(); })
+    .then(function(blob) {
+      var blobUrl = URL.createObjectURL(blob);
+      _logoCache.set(url, blobUrl);
+      // Upgrade every already-rendered img that's waiting for this URL
+      document.querySelectorAll('img[data-logo]').forEach(function(img) {
+        if (img.getAttribute('data-logo') === url) img.src = blobUrl;
+      });
+    })
+    .catch(function() { _logoCache.set(url, 'err'); });
+}
+
+// Call after any innerHTML update that contains <img data-logo="..."> elements.
+function applyLogos(root) {
+  (root || document).querySelectorAll('img[data-logo]').forEach(function(img) {
+    var url = img.getAttribute('data-logo');
+    if (!url) return;
+    var cached = _logoCache.get(url);
+    if (cached && cached !== 'loading' && cached !== 'err') {
+      img.src = cached; // instant from memory
+    } else {
+      img.src = url;    // browser HTTP-cache may serve it immediately
+      _fetchAndCache(url); // async upgrade to blob URL
+    }
+  });
+}
 
 function computeStats() {
   CATEGORIES = {};
@@ -213,15 +404,188 @@ function computeStats() {
   STATS.categories = Object.keys(CATEGORIES).length;
 }
 
+// Mermaid init (lazy, once)
+let mermaidReady = false;
+function initMermaid() {
+  if (mermaidReady) return;
+  mermaid.initialize({ startOnLoad: false, theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default', securityLevel: 'loose' });
+  mermaidReady = true;
+}
+
+// Rewrite relative .md links to SPA hash routes
+function resolveDocLink(href) {
+  // Strip anchor fragment first, restore later
+  var fragment = '';
+  var hashIdx = href.indexOf('#');
+  if (hashIdx !== -1) { fragment = href.slice(hashIdx); href = href.slice(0, hashIdx); }
+  if (!href) return fragment || '#';
+
+  // Normalize: strip leading ../ and ./
+  var norm = href.replace(/^(\.\.\/)+/, '').replace(/^\.\//, '');
+
+  // connectors/README.md → #/connectors
+  if (norm === 'connectors/README.md' || norm === 'connectors/README') return '#/connectors' + fragment;
+
+  // Strip .md extension
+  norm = norm.replace(/\.md$/, '');
+
+  // guides/{name} → #/docs/{name}
+  if (norm.startsWith('guides/')) return '#/docs/' + norm.slice(7) + fragment;
+
+  // Connector category pages → #/docs/connectors-{name}
+  var connCats = ['communication','code-platforms','project-management','crm','database','devops','ai-ml','finance','storage'];
+  if (connCats.indexOf(norm) !== -1) return '#/docs/connectors-' + norm + fragment;
+
+  // API.md → #/docs/api
+  if (norm === 'API') return '#/docs/api' + fragment;
+
+  // adding-connector.md → #/docs/adding-connector
+  if (norm === 'adding-connector') return '#/docs/adding-connector' + fragment;
+
+  // Fallback: #/docs/{name}
+  return '#/docs/' + norm + fragment;
+}
+
 function renderMarkdown(md) {
-  marked.setOptions({
-    highlight: function(code, lang) {
-      if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, { language: lang }).value;
-      return hljs.highlightAuto(code).value;
-    },
-    breaks: false, gfm: true
+  const renderer = new marked.Renderer();
+
+  // ── Code blocks: hljs highlighting + mermaid diagrams ──
+  renderer.code = function(codeOrObj, langArg) {
+    let text, lang;
+    if (typeof codeOrObj === 'object' && codeOrObj !== null) {
+      text = codeOrObj.text || codeOrObj.code || '';
+      lang = codeOrObj.lang || '';
+    } else {
+      text = codeOrObj || '';
+      lang = langArg || '';
+    }
+    // Mermaid diagrams
+    if (lang === 'mermaid') {
+      const id = 'mermaid-' + Math.random().toString(36).slice(2, 9);
+      return `<div class="mermaid-block" data-id="${id}">${esc(text)}</div>`;
+    }
+    try {
+      const language = lang && hljs.getLanguage(lang) ? lang : null;
+      const highlighted = language
+        ? hljs.highlight(text, { language }).value
+        : hljs.highlightAuto(text).value;
+      const cls = language ? ` class="language-${language} hljs"` : ' class="hljs"';
+      return `<pre><code${cls}>${highlighted}</code></pre>`;
+    } catch(e) {
+      return `<pre><code>${esc(text)}</code></pre>`;
+    }
+  };
+
+  // ── Task lists: - [ ] and - [x] ──
+  renderer.listitem = function(textOrObj) {
+    let body;
+    if (typeof textOrObj === 'object' && textOrObj !== null) {
+      body = textOrObj.text || '';
+    } else {
+      body = textOrObj || '';
+    }
+    if (body.startsWith('<input')) {
+      return `<li class="task-list-item">${body}</li>\n`;
+    }
+    // Manual check for [ ] and [x]
+    const checkMatch = body.match(/^\[([ xX])\]\s*/);
+    if (checkMatch) {
+      const checked = checkMatch[1] !== ' ';
+      const rest = body.slice(checkMatch[0].length);
+      return `<li class="task-list-item"><input type="checkbox" disabled ${checked ? 'checked' : ''}> ${rest}</li>\n`;
+    }
+    return `<li>${body}</li>\n`;
+  };
+
+  // ── Links: rewrite relative .md paths to hash routes ──
+  renderer.link = function(linkOrObj, titleArg, textArg) {
+    let href, title, text;
+    if (typeof linkOrObj === 'object' && linkOrObj !== null) {
+      href = linkOrObj.href || '';
+      title = linkOrObj.title || '';
+      text = linkOrObj.text || '';
+    } else {
+      href = linkOrObj || '';
+      title = titleArg || '';
+      text = textArg || '';
+    }
+    // Only rewrite relative .md links (not http/https/# anchors)
+    if (href && !href.startsWith('http') && !href.startsWith('#') && !href.startsWith('mailto:')) {
+      href = resolveDocLink(href);
+    }
+    const titleAttr = title ? ` title="${esc(title)}"` : '';
+    const external = href.startsWith('http') ? ' target="_blank" rel="noopener"' : '';
+    return `<a href="${href}"${titleAttr}${external}>${text}</a>`;
+  };
+
+  // ── Images: add figure + caption from alt text ──
+  renderer.image = function(imgOrObj, titleArg, altArg) {
+    let href, title, alt;
+    if (typeof imgOrObj === 'object' && imgOrObj !== null) {
+      href = imgOrObj.href || '';
+      title = imgOrObj.title || '';
+      alt = imgOrObj.text || '';
+    } else {
+      href = imgOrObj || '';
+      title = titleArg || '';
+      alt = altArg || '';
+    }
+    // Shields.io badges — render inline, no figure
+    if (href.includes('shields.io') || href.includes('img.shields.io')) {
+      return `<img src="${href}" alt="${esc(alt)}" title="${esc(title)}">`;
+    }
+    // Regular images — wrap in figure with optional caption
+    const caption = alt && alt !== href ? `<figcaption>${esc(alt)}</figcaption>` : '';
+    return `<figure><img src="${href}" alt="${esc(alt)}" title="${esc(title)}" loading="lazy">${caption}</figure>`;
+  };
+
+  marked.setOptions({ breaks: false, gfm: true });
+  let html = marked.parse(md, { renderer });
+
+  // ── Admonitions: > **Note:** / > **Warning:** / > **Tip:** ──
+  // Replace the entire blockquote in one pass to avoid breaking normal blockquotes
+  html = html.replace(/<blockquote>\s*<p><strong>(Note|Warning|Tip|Info|Caution|Important):?<\/strong>\s*([\s\S]*?)<\/p>\s*<\/blockquote>/gi, function(match, type, content) {
+    const t = type.toLowerCase();
+    const icons = { note: '&#x1F4DD;', warning: '&#x26A0;&#xFE0F;', tip: '&#x1F4A1;', info: '&#x2139;&#xFE0F;', caution: '&#x1F6A8;', important: '&#x2757;' };
+    const colors = { note: 'blue', warning: 'amber', tip: 'emerald', info: 'sky', caution: 'red', important: 'purple' };
+    const c = colors[t] || 'blue';
+    return `<div class="admonition admonition-${t} border-l-4 border-${c}-400 dark:border-${c}-600 bg-${c}-50 dark:bg-${c}-900/20 rounded-r-lg p-4 my-4"><p class="font-semibold text-${c}-700 dark:text-${c}-400 mb-1">${icons[t] || ''} ${type}</p><p>${content}</p></div>`;
   });
-  return marked.parse(md);
+
+  return html;
+}
+
+// Post-render: activate mermaid blocks and KaTeX math
+function postRenderMarkdown(containerEl) {
+  if (!containerEl) return;
+
+  // ── Mermaid ──
+  const mermaidBlocks = containerEl.querySelectorAll('.mermaid-block');
+  if (mermaidBlocks.length) {
+    initMermaid();
+    mermaidBlocks.forEach(async function(block) {
+      try {
+        const { svg } = await mermaid.render(block.dataset.id, block.textContent.trim());
+        block.innerHTML = svg;
+        block.classList.add('mermaid-rendered');
+      } catch(e) {
+        block.innerHTML = '<pre class="text-red-400 text-xs">Mermaid error: ' + esc(e.message) + '</pre>';
+      }
+    });
+  }
+
+  // ── KaTeX math: $..$ inline, $$...$$ display ──
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(containerEl, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+        { left: '\\(', right: '\\)', display: false },
+        { left: '\\[', right: '\\]', display: true },
+      ],
+      throwOnError: false
+    });
+  }
 }
 
 // ─── Theme ──────────────────────────────────────────────────────────────────
@@ -262,112 +626,224 @@ function router() {
     a.classList.toggle('dark:text-gray-400', !isActive);
   });
 
-  if (hash === '/' || hash === '/home') return renderHome(app);
-  if (hash === '/connectors') return renderConnectors(app);
-  if (hash.startsWith('/connector/')) return renderConnectorDetail(app, hash.slice(11));
-  if (hash === '/playground') return renderPlayground(app);
-  if (hash === '/assistant') return renderAssistant(app);
-  if (hash.startsWith('/docs')) return renderDocs(app, hash);
-  if (hash === '/health') return renderHealth(app);
+  if (hash === '/' || hash === '/home') { renderHome(app); window.scrollTo(0,0); return; }
+  if (hash === '/connectors' || hash.startsWith('/connectors?')) { renderConnectors(app); window.scrollTo(0,0); return; }
+  if (hash.startsWith('/connector/')) { renderConnectorDetail(app, hash.slice(11)); window.scrollTo(0,0); return; }
+  if (hash === '/playground') { renderPlayground(app); window.scrollTo(0,0); return; }
+  if (hash === '/assistant') { renderAssistant(app); window.scrollTo(0,0); return; }
+  if (hash.startsWith('/docs')) { renderDocs(app, hash); window.scrollTo(0,0); return; }
+  if (hash === '/health') { renderHealth(app); window.scrollTo(0,0); return; }
 
   app.innerHTML = `<div class="page-transition text-center py-20"><h2 class="text-2xl font-bold mb-4">Page not found</h2><a href="#/" class="text-brand-600 hover:underline">Back to home</a></div>`;
 }
 
-// ─── Page: Home ─────────────────────────────────────────────────────────────
+// ─── Page: Home (Landing Page) ──────────────────────────────────────────────
 function renderHome(el) {
+  // Tool logos — domain used to build Brandfetch URL via applyLogos()
+  const toolLogos = [
+    ['mail.google.com','Gmail'],['slack.com','Slack'],['github.com','GitHub'],['stripe.com','Stripe'],
+    ['openai.com','OpenAI'],['anthropic.com','Anthropic'],['notion.so','Notion'],['atlassian.com','Jira'],
+    ['discord.com','Discord'],['aws.amazon.com','AWS S3'],['salesforce.com','Salesforce'],['hubspot.com','HubSpot'],
+    ['twilio.com','Twilio'],['shopify.com','Shopify'],['figma.com','Figma'],['linear.app','Linear'],
+    ['asana.com','Asana'],['calendar.google.com','Calendar'],['microsoft.com','Teams'],['mongodb.com','MongoDB'],
+  ];
+  const logosHtml = toolLogos.map(([domain,label]) => {
+    const bf = 'https://cdn.brandfetch.io/' + domain + '?c=1idiVFVAawYfs0vBpzR';
+    return `<div class="flex flex-col items-center gap-2 p-4"><img data-logo="${bf}" src="" alt="${label}" class="w-10 h-10 object-contain" onerror="this.parentElement.style.display='none'"><span class="text-xs text-gray-500 dark:text-gray-400 font-medium">${label}</span></div>`;
+  }).join('');
+  const remaining = Math.max(0, STATS.connectors - toolLogos.length);
+
+  // Category grid with icons
   const catGrid = Object.entries(CATEGORIES).sort((a,b) => b[1]-a[1]).map(([cat, count]) => {
     const c = CATEGORY_COLORS[cat] || 'gray';
-    return `<a href="#/connectors?category=${cat}" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-${c}-300 dark:hover:border-${c}-700 transition-colors">
-      <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-${c}-100 dark:bg-${c}-900/30 text-${c}-600 dark:text-${c}-400 flex items-center justify-center">${catIcon(cat)}</div>
-      <div><div class="font-medium text-sm">${CATEGORY_LABELS[cat] || cat}</div><div class="text-xs text-gray-500 dark:text-gray-400">${count} connector${count !== 1 ? 's' : ''}</div></div>
+    return `<a href="#/connectors?category=${cat}" class="card-hover flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-brand-400 hover:shadow-lg transition-all">
+      <div class="w-10 h-10 rounded-lg bg-${c}-100 dark:bg-${c}-900/30 text-${c}-600 dark:text-${c}-400 flex items-center justify-center flex-shrink-0">${catIcon(cat)}</div>
+      <div><div class="text-sm font-semibold">${CATEGORY_LABELS[cat] || cat}</div><div class="text-xs text-gray-400">${count} connectors</div></div>
     </a>`;
   }).join('');
 
   el.innerHTML = `<div class="page-transition">
-    <!-- Hero -->
-    <div class="text-center py-16 lg:py-24">
-      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6">
-        <span class="gradient-text">ToolsConnector</span>
-      </h1>
-      <p class="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-8">
-        One consistent interface for ${STATS.connectors} connectors and ${STATS.actions} actions.<br>
-        Built for traditional Python apps and AI agents alike.
-      </p>
-      <div class="flex flex-wrap justify-center gap-3 mb-12">
-        <a href="#/connectors" class="inline-flex items-center px-6 py-3 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors shadow-sm">
-          Browse Connectors
-          <svg class="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-        </a>
-        <a href="#/playground" class="inline-flex items-center px-6 py-3 rounded-lg border border-gray-300 dark:border-gray-700 font-medium hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
-          Schema Playground
-        </a>
-        <a href="#/docs/quickstart" class="inline-flex items-center px-6 py-3 rounded-lg border border-gray-300 dark:border-gray-700 font-medium hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
-          Documentation
-        </a>
-      </div>
+<!-- Section 1: Hero -->
+<section class="text-center pt-12 pb-16 sm:pt-20 sm:pb-24">
+  <div class="flex justify-center mb-8">
+    <img src="logo.svg" alt="ToolsConnector" class="w-24 h-24 sm:w-28 sm:h-28 drop-shadow-lg">
+  </div>
+  <h1 class="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6">
+    <span class="gradient-text">One library, every tool.</span>
+  </h1>
+  <p class="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed mb-10">
+    Connect AI agents and Python apps to ${STATS.connectors}+ APIs through a single, standardized interface.
+    Open source. Self-hosted. Works everywhere.
+  </p>
+  <div class="flex flex-wrap justify-center gap-8 sm:gap-12 mb-10">
+    <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-brand-600">${STATS.connectors}</div><div class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Connectors</div></div>
+    <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-purple-600 dark:text-purple-400">${STATS.actions.toLocaleString()}</div><div class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Actions</div></div>
+    <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-emerald-600 dark:text-emerald-400">${STATS.categories}</div><div class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Categories</div></div>
+  </div>
+  <div class="flex flex-col sm:flex-row justify-center gap-3">
+    <a href="#/docs/quickstart" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold transition-colors shadow-lg">Get Started <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg></a>
+    <a href="#/connectors" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl border border-gray-300 dark:border-gray-700 hover:border-brand-400 font-semibold transition-colors bg-white dark:bg-gray-900">Browse Connectors</a>
+  </div>
+</section>
 
-      <!-- Install snippet -->
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 font-mono text-sm">
-        <span class="text-gray-500">$</span>
-        <span>pip install toolsconnector</span>
-        <button onclick="navigator.clipboard.writeText('pip install toolsconnector');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="ml-2 px-2 py-0.5 rounded text-xs bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors">Copy</button>
-      </div>
+<!-- Section 2: The Problem -->
+<section class="py-16 sm:py-20">
+  <div class="text-center mb-12">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">Why this exists</h2>
+    <p class="text-gray-500 dark:text-gray-400">Three problems every developer building with APIs hits.</p>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+    <div class="p-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div class="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z"/></svg></div>
+      <h3 class="text-lg font-semibold mb-2">Fragmented SDKs</h3>
+      <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">Every tool has a different SDK, auth pattern, and error format. Managing 10 SDKs in one project is painful.</p>
     </div>
+    <div class="p-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div class="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"/></svg></div>
+      <h3 class="text-lg font-semibold mb-2">AI agents need tools</h3>
+      <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">LLMs can't call APIs directly. You need schemas, execution, retries, and rate limiting for every tool.</p>
+    </div>
+    <div class="p-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg></div>
+      <h3 class="text-lg font-semibold mb-2">Build vs. Buy</h3>
+      <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">Hosted platforms lock you in. Raw APIs take weeks. There's no open-source middle ground.</p>
+    </div>
+  </div>
+  <div class="text-center mt-10">
+    <svg class="w-6 h-6 mx-auto text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3"/></svg>
+    <p class="text-sm font-semibold text-brand-600 dark:text-brand-400">ToolsConnector solves all three.</p>
+  </div>
+</section>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
-      <div class="text-center p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div class="text-3xl font-bold text-brand-600">${STATS.connectors}</div>
-        <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Connectors</div>
-      </div>
-      <div class="text-center p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div class="text-3xl font-bold text-brand-600">${STATS.actions}</div>
-        <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Actions</div>
-      </div>
-      <div class="text-center p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div class="text-3xl font-bold text-brand-600">${STATS.categories}</div>
-        <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Categories</div>
-      </div>
-      <div class="text-center p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div class="text-3xl font-bold text-brand-600">REST + GraphQL</div>
-        <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Protocols</div>
-      </div>
-    </div>
+<!-- Section 3: How It Works -->
+<section class="py-16 sm:py-20">
+  <div class="text-center mb-12">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">How it works</h2>
+    <p class="text-gray-500 dark:text-gray-400">Three steps. From install to production.</p>
+  </div>
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 items-stretch">
+    <div class="flex flex-col rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+      <div class="flex items-center gap-3 px-4 pt-4 pb-2"><div class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">1</div><div><h3 class="text-lg font-semibold">Install</h3><p class="text-xs text-gray-400">Pick the connectors you need</p></div></div>
+      <div class="flex-1 px-4 pb-4"><pre class="bg-gray-900 text-gray-100 rounded-xl p-4 text-xs overflow-hidden h-full flex items-start leading-relaxed"><code><span class="text-emerald-400">$</span> pip install toolsconnector[gmail]
 
-    <!-- Search -->
-    <div class="max-w-xl mx-auto mb-12">
-      <div class="relative">
-        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-        <input id="home-search" type="text" placeholder="Search connectors..." class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all" onkeydown="if(event.key==='Enter'&&this.value.trim()){location.hash='/connectors?q='+encodeURIComponent(this.value.trim())}">
-      </div>
-    </div>
+<span class="text-gray-500"># Or multiple connectors</span>
+<span class="text-emerald-400">$</span> pip install toolsconnector[gmail,slack]
 
-    <!-- Categories -->
-    <div class="mb-16">
-      <h2 class="text-xl font-semibold mb-6">Categories</h2>
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">${catGrid}</div>
+<span class="text-gray-500"># Or install everything</span>
+<span class="text-emerald-400">$</span> pip install toolsconnector[all]</code></pre></div>
     </div>
+    <div class="flex flex-col rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+      <div class="flex items-center gap-3 px-4 pt-4 pb-2"><div class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">2</div><div><h3 class="text-lg font-semibold">Connect</h3><p class="text-xs text-gray-400">One object, any number of tools</p></div></div>
+      <div class="flex-1 px-4 pb-4"><pre class="bg-gray-900 text-gray-100 rounded-xl p-4 text-xs overflow-hidden h-full flex items-start leading-relaxed"><code><span class="text-purple-400">from</span> <span class="text-emerald-400">toolsconnector.serve</span> <span class="text-purple-400">import</span> ToolKit
 
-    <!-- Quick links -->
-    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      <a href="#/connectors" class="card-hover flex items-center gap-3 p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <svg class="w-8 h-8 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-        <div><div class="font-medium">Connectors</div><div class="text-xs text-gray-500 dark:text-gray-400">Browse all ${STATS.connectors} connectors</div></div>
-      </a>
-      <a href="#/playground" class="card-hover flex items-center gap-3 p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <svg class="w-8 h-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-        <div><div class="font-medium">Playground</div><div class="text-xs text-gray-500 dark:text-gray-400">Generate tool schemas</div></div>
-      </a>
-      <a href="#/docs/quickstart" class="card-hover flex items-center gap-3 p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <svg class="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-        <div><div class="font-medium">Documentation</div><div class="text-xs text-gray-500 dark:text-gray-400">Guides and API reference</div></div>
-      </a>
-      <a href="https://github.com/SachinVardhan662/ToolsConnector" target="_blank" rel="noopener" class="card-hover flex items-center gap-3 p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-        <div><div class="font-medium">GitHub</div><div class="text-xs text-gray-500 dark:text-gray-400">Source code and issues</div></div>
-      </a>
+kit = ToolKit(
+  [<span class="text-amber-300">"gmail"</span>, <span class="text-amber-300">"slack"</span>],
+  credentials={
+    <span class="text-amber-300">"gmail"</span>: os.environ[<span class="text-amber-300">"GMAIL_TOKEN"</span>],
+  }
+)</code></pre></div>
     </div>
-  </div>`;
+    <div class="flex flex-col rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+      <div class="flex items-center gap-3 px-4 pt-4 pb-2"><div class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">3</div><div><h3 class="text-lg font-semibold">Use anywhere</h3><p class="text-xs text-gray-400">Python, MCP, or any AI framework</p></div></div>
+      <div class="flex-1 px-4 pb-4"><pre class="bg-gray-900 text-gray-100 rounded-xl p-4 text-xs overflow-hidden h-full flex items-start leading-relaxed"><code><span class="text-gray-500"># Execute directly</span>
+kit.execute(<span class="text-amber-300">"gmail_list_emails"</span>, {})
+
+<span class="text-gray-500"># MCP Server (Claude Desktop)</span>
+kit.serve_mcp()
+
+<span class="text-gray-500"># OpenAI / Anthropic schemas</span>
+tools = kit.to_openai_tools()</code></pre></div>
+    </div>
+  </div>
+  <div class="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs">
+    <span class="text-gray-400 font-medium">Output formats:</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 font-medium text-gray-600 dark:text-gray-300"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg> Python SDK</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 font-medium text-gray-600 dark:text-gray-300"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7"/></svg> MCP Server</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 font-medium text-gray-600 dark:text-gray-300"><img data-logo="https://cdn.brandfetch.io/openai.com?c=1idiVFVAawYfs0vBpzR" src="" alt="" class="w-3.5 h-3.5 object-contain" onerror="this.style.display='none'"> OpenAI</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 font-medium text-gray-600 dark:text-gray-300"><img data-logo="https://cdn.brandfetch.io/anthropic.com?c=1idiVFVAawYfs0vBpzR" src="" alt="" class="w-3.5 h-3.5 object-contain" onerror="this.style.display='none'"> Anthropic</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 font-medium text-gray-600 dark:text-gray-300"><img data-logo="https://cdn.brandfetch.io/deepmind.google?c=1idiVFVAawYfs0vBpzR" src="" alt="" class="w-3.5 h-3.5 object-contain" onerror="this.style.display='none'"> Gemini</span>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 font-medium text-gray-600 dark:text-gray-300"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg> LangChain</span>
+  </div>
+  <div class="text-center mt-4 text-xs text-gray-400">TypeScript, Go, and Java SDKs coming soon.</div>
+</section>
+
+<!-- Section 4: Tool Logos -->
+<section class="py-16 sm:py-20 border-t border-gray-200 dark:border-gray-800">
+  <div class="text-center mb-10">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">Supported tools</h2>
+    <p class="text-gray-500 dark:text-gray-400">${STATS.connectors} connectors and growing. All standardized.</p>
+  </div>
+  <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-10 gap-2 max-w-5xl mx-auto mb-8">${logosHtml}</div>
+  <div class="text-center"><a href="#/connectors" class="text-sm font-semibold text-brand-600 dark:text-brand-400 hover:underline">+${remaining} more connectors &rarr;</a></div>
+</section>
+
+<!-- Section 5: Framework Compatibility -->
+<section class="py-16 sm:py-20 border-t border-gray-200 dark:border-gray-800">
+  <div class="text-center mb-12">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">Works with every framework</h2>
+    <p class="text-gray-500 dark:text-gray-400">One interface. Every AI platform.</p>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+    <div class="p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="flex items-center gap-3 mb-3"><img data-logo="https://cdn.brandfetch.io/openai.com?c=1idiVFVAawYfs0vBpzR" src="" alt="OpenAI" class="w-6 h-6 object-contain" onerror="this.style.display='none'"><h3 class="font-semibold">OpenAI</h3></div><code class="text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">kit.to_openai_tools()</code><p class="text-xs text-gray-500 mt-2">Function calling</p></div>
+    <div class="p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="flex items-center gap-3 mb-3"><img data-logo="https://cdn.brandfetch.io/anthropic.com?c=1idiVFVAawYfs0vBpzR" src="" alt="Anthropic" class="w-6 h-6 object-contain" onerror="this.style.display='none'"><h3 class="font-semibold">Anthropic</h3></div><code class="text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">kit.to_anthropic_tools()</code><p class="text-xs text-gray-500 mt-2">Tool use with Claude</p></div>
+    <div class="p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="flex items-center gap-3 mb-3"><svg class="w-6 h-6 text-brand-600 dark:text-brand-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7"/></svg><h3 class="font-semibold">MCP</h3></div><code class="text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">kit.serve_mcp()</code><p class="text-xs text-gray-500 mt-2">Claude Desktop, Cursor</p></div>
+    <div class="p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="flex items-center gap-3 mb-3"><svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg><h3 class="font-semibold">LangChain</h3></div><code class="text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">kit.to_langchain_tools()</code><p class="text-xs text-gray-500 mt-2">Agent frameworks</p></div>
+  </div>
+</section>
+
+<!-- Section 6: Built for Production -->
+<section class="py-16 sm:py-20 border-t border-gray-200 dark:border-gray-800">
+  <div class="text-center mb-12">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">Built for production</h2>
+    <p class="text-gray-500 dark:text-gray-400">Not a toy. Battle-tested reliability patterns.</p>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+    <div class="p-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg></div><h3 class="text-lg font-semibold mb-2">Circuit Breaker</h3><p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">Automatic failure isolation. One connector down doesn't take everything with it.</p></div>
+    <div class="p-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M21.015 4.356v4.992"/></svg></div><h3 class="text-lg font-semibold mb-2">Smart Retries</h3><p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">Exponential backoff with jitter. Respects rate limits and retry-after headers.</p></div>
+    <div class="p-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4"><svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.125 2.25h-4.5c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125v-9M10.125 2.25h.375a9 9 0 019 9v.375M10.125 2.25A3.375 3.375 0 0113.5 5.625v1.5c0 .621.504 1.125 1.125 1.125h1.5a3.375 3.375 0 013.375 3.375M9 15l2.25 2.25L15 12"/></svg></div><h3 class="text-lg font-semibold mb-2">Pre-validation</h3><p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">Arguments checked against JSON Schema before hitting the API. Catches mistakes early.</p></div>
+  </div>
+</section>
+
+<!-- Section 7: Open Source -->
+<section class="py-16 sm:py-20 border-t border-gray-200 dark:border-gray-800">
+  <div class="text-center max-w-2xl mx-auto">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-4">Open source</h2>
+    <p class="text-gray-600 dark:text-gray-400 mb-8">Apache 2.0 licensed. Self-hosted. No vendor lock-in.</p>
+    <div class="flex flex-col sm:flex-row justify-center gap-3 mb-8">
+      <a href="https://github.com/sachinshelke/ToolsConnector" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-gray-300 dark:border-gray-700 hover:border-gray-400 font-semibold transition-colors bg-white dark:bg-gray-900">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        Star on GitHub</a>
+    </div>
+    <pre class="bg-gray-900 text-gray-100 rounded-xl p-5 text-sm inline-block"><code><span class="text-emerald-400">$</span> pip install toolsconnector</code></pre>
+  </div>
+</section>
+
+<!-- Section 8: Browse by Category -->
+<section class="py-16 sm:py-20 border-t border-gray-200 dark:border-gray-800">
+  <div class="text-center mb-8">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">Browse by category</h2>
+  </div>
+  <div class="max-w-xl mx-auto mb-8">
+    <div class="relative">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+      <input type="text" placeholder="Search connectors... (e.g. gmail, slack, stripe)" class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 outline-none" onkeydown="if(event.key==='Enter'&&this.value.trim()){location.hash='/connectors?q='+encodeURIComponent(this.value.trim())}">
+    </div>
+  </div>
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">${catGrid}</div>
+</section>
+
+<!-- Section 9: Quick Links -->
+<section class="py-12 border-t border-gray-200 dark:border-gray-800">
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <a href="#/connectors" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-9 h-9 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101"/></svg></div><div class="font-medium text-sm">Browse All</div></a>
+    <a href="#/playground" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg></div><div class="font-medium text-sm">Playground</div></a>
+    <a href="#/docs/quickstart" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253"/></svg></div><div class="font-medium text-sm">Docs</div></a>
+    <a href="#/assistant" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12"/></svg></div><div class="font-medium text-sm">AI Assistant</div></a>
+    <a href="https://github.com/sachinshelke/ToolsConnector" target="_blank" rel="noopener" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg></div><div class="font-medium text-sm">GitHub</div></a>
+  </div>
+</section>
+</div>`;
+  applyLogos(el);
 }
 
 // ─── Page: Connectors ───────────────────────────────────────────────────────
@@ -438,191 +914,409 @@ function renderConnectorGrid(connectors) {
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">`;
     for (const s of items.sort((a,b) => a.display_name.localeCompare(b.display_name))) {
       const actionCount = Object.keys(s.actions || {}).length;
-      html += `<a href="#/connector/${s.name}" class="card-hover block p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div class="flex items-start justify-between mb-2">
-          <h3 class="font-semibold">${esc(s.display_name)}</h3>
-          ${catBadge(cat)}
-        </div>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">${esc(s.description)}</p>
-        <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-          <span class="flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            ${actionCount} action${actionCount !== 1 ? 's' : ''}
-          </span>
-          <span class="uppercase tracking-wide">${esc(s.protocol)}</span>
+      const meta = s.meta || {};
+      const logoUrl = meta.logo || '';
+      const color = meta.color || '#6366f1';
+      const initials = s.display_name.slice(0, 2).toUpperCase();
+      const logoHtml = logoUrl
+        ? `<img data-logo="${logoUrl}" src="" alt="${esc(s.display_name)}" class="w-9 h-9 rounded-lg object-contain" onerror="this.onerror=null;this.outerHTML='<div class=\\'w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-xs\\' style=\\'background:${color}\\'>${initials}</div>'">`
+        : `<div class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-xs" style="background:${color}">${initials}</div>`;
+      html += `<a href="#/connector/${s.name}" class="card-hover flex items-start gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div class="flex-shrink-0 mt-0.5">${logoHtml}</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-semibold text-sm">${esc(s.display_name)}</h3>
+            ${catBadge(cat)}
+          </div>
+          <p class="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">${esc(s.description || meta.tagline || '')}</p>
+          <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+            <span>${actionCount} actions</span>
+            <span class="uppercase tracking-wide">${esc(s.protocol)}</span>
+            ${(meta.repos && meta.repos.length) ? `<span class="flex items-center gap-1" title="${meta.repos.length} SDK repo${meta.repos.length>1?'s':''}"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>${meta.repos.map(r=>r.lang.split(' ')[0]).slice(0,3).join(', ')}</span>` : ''}
+          </div>
         </div>
       </a>`;
     }
     html += '</div></div>';
   }
   grid.innerHTML = html;
+  applyLogos(grid);
 }
 
-// ─── Page: Connector Detail ─────────────────────────────────────────────────
+// ─── Page: Connector Detail (100% markdown) ────────────────────────────────
 function renderConnectorDetail(el, name) {
   const spec = DATA[name];
   if (!spec) {
     el.innerHTML = `<div class="page-transition text-center py-20"><h2 class="text-2xl font-bold mb-4">Connector not found</h2><a href="#/connectors" class="text-brand-600 hover:underline">Back to connectors</a></div>`;
     return;
   }
-  const actions = Object.values(spec.actions || {});
-  const dangerousCount = actions.filter(a => a.dangerous).length;
 
-  let actionsHtml = '';
-  for (const action of actions.sort((a,b) => a.name.localeCompare(b.name))) {
-    const params = (action.parameters || []).filter(p => p.name);
-    const paramsHtml = params.length ? params.map(p =>
-      `<div class="flex items-start gap-2 py-1">
-        <code class="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-brand-600 dark:text-brand-400 whitespace-nowrap">${esc(p.name)}</code>
-        <span class="text-xs text-gray-500 dark:text-gray-400">${esc(p.type || 'any')}${p.required ? '' : ' (optional)'}</span>
-        <span class="text-xs text-gray-600 dark:text-gray-300 flex-1">${esc(p.description || '')}</span>
-      </div>`
-    ).join('') : '<div class="text-xs text-gray-400">No parameters</div>';
+  const md = spec.readme_md || `# ${esc(spec.display_name)}\n\n> ${esc(spec.description)}\n\nNo documentation available yet.`;
+  let html = renderMarkdown(md);
 
-    actionsHtml += `<div class="border border-gray-200 dark:border-gray-800 rounded-lg p-4 mb-3">
-      <div class="flex items-center gap-2 mb-2">
-        <code class="font-medium text-sm">${esc(action.name)}</code>
-        ${action.dangerous ? '<span class="px-1.5 py-0.5 text-xs rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-medium">dangerous</span>' : ''}
-        ${action.deprecated ? '<span class="px-1.5 py-0.5 text-xs rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-medium">deprecated</span>' : ''}
-        ${action.idempotent ? '<span class="px-1.5 py-0.5 text-xs rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">idempotent</span>' : ''}
-      </div>
-      <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">${esc(action.description || '')}</p>
-      <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Parameters</div>
-      <div class="space-y-0.5">${paramsHtml}</div>
-      ${action.requires_scope ? `<div class="mt-2 text-xs text-gray-500 dark:text-gray-400">Scope: <code class="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">${esc(action.requires_scope)}</code></div>` : ''}
-    </div>`;
-  }
+  // Add IDs to h2 headings for sidebar scroll-spy
+  let sidebarLinks = '';
+  html = html.replace(/<h2(.*?)>(.*?)<\/h2>/gi, function(match, attrs, text) {
+    const plainText = text.replace(/<[^>]+>/g, '');
+    const id = plainText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    sidebarLinks += `<a href="#" onclick="event.preventDefault();document.getElementById('${id}')?.scrollIntoView({behavior:'smooth',block:'start'})" class="block px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 rounded truncate">${plainText}</a>\n`;
+    return `<h2 id="${id}" class="scroll-mt-20"${attrs}>${text}</h2>`;
+  });
 
-  const codeSnippet = `from toolsconnector import ToolKit
+  // Add copy buttons to code blocks
+  html = html.replace(/<pre>/g, '<pre class="relative group">');
+  html = html.replace(/<pre class="relative group"><code/g,
+    '<pre class="relative group"><button onclick="navigator.clipboard.writeText(this.nextElementSibling.textContent.trim());this.textContent=\'Copied!\';setTimeout(()=>this.textContent=\'Copy\',1500)" class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">Copy</button><code');
 
-tk = ToolKit()
-${name} = tk.get_connector("${name}")
+  // Build DOM without template literals (html contains backticks from code blocks)
+  var wrapper = document.createElement('div');
+  wrapper.className = 'page-transition';
 
-# List available actions
-print(${name}.actions)
+  var backLink = document.createElement('a');
+  backLink.href = '#/connectors';
+  backLink.className = 'inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors mb-6';
+  backLink.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back to connectors';
+  wrapper.appendChild(backLink);
 
-# Execute an action
-result = await ${name}.${actions[0]?.name || 'action'}(${
-  (actions[0]?.parameters || []).filter(p => p.required).map(p => `${p.name}="..."`).join(', ')
-})`;
+  var flexRow = document.createElement('div');
+  flexRow.className = 'flex gap-8';
 
-  el.innerHTML = `<div class="page-transition">
-    <div class="mb-6">
-      <a href="#/connectors" class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors mb-4">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Back to connectors
-      </a>
-      <div class="flex flex-wrap items-center gap-3 mb-2">
-        <h1 class="text-3xl font-bold">${esc(spec.display_name)}</h1>
-        ${catBadge(spec.category)}
-        <span class="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-700 font-mono uppercase">${esc(spec.protocol)}</span>
-      </div>
-      <p class="text-gray-600 dark:text-gray-400 mb-4">${esc(spec.description)}</p>
-      <div class="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
-        <span>${actions.length} action${actions.length !== 1 ? 's' : ''}</span>
-        ${dangerousCount ? `<span class="text-red-500">${dangerousCount} dangerous</span>` : ''}
-        <span>v${esc(spec.version || '0.1.0')}</span>
-        ${spec.base_url ? `<span class="font-mono text-xs">${esc(spec.base_url)}</span>` : ''}
-      </div>
-    </div>
+  var nav = document.createElement('nav');
+  nav.className = 'hidden lg:block w-52 flex-shrink-0';
+  var navInner = document.createElement('div');
+  navInner.className = 'sticky top-20 space-y-0.5 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2';
+  navInner.innerHTML = sidebarLinks;
+  nav.appendChild(navInner);
+  flexRow.appendChild(nav);
 
-    <!-- Quick start -->
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold mb-3">Quick Start</h2>
-      <pre class="rounded-xl overflow-hidden"><code class="language-python hljs">${hljs.highlight(codeSnippet, {language: 'python'}).value}</code></pre>
-    </div>
+  var article = document.createElement('article');
+  article.className = 'flex-1 min-w-0 prose-content';
+  article.innerHTML = html;
+  flexRow.appendChild(article);
 
-    <!-- Actions -->
-    <div>
-      <h2 class="text-lg font-semibold mb-4">Actions (${actions.length})</h2>
-      ${actionsHtml}
-    </div>
-  </div>`;
+  wrapper.appendChild(flexRow);
+  el.innerHTML = '';
+  el.appendChild(wrapper);
+
+  // Activate mermaid + KaTeX after DOM insertion
+  postRenderMarkdown(article);
 }
 
-// ─── Page: Playground ───────────────────────────────────────────────────────
+/// ─── Page: Playground (Integration Code Generator) ──────────────────────────
 function renderPlayground(el) {
   const connectorList = Object.values(DATA).sort((a,b) => a.display_name.localeCompare(b.display_name));
 
-  el.innerHTML = `<div class="page-transition">
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold mb-2">Schema Playground</h1>
-      <p class="text-gray-600 dark:text-gray-400">Generate tool schemas for AI frameworks. Select connectors, choose a format, and export.</p>
-    </div>
-    <div class="grid lg:grid-cols-2 gap-8">
-      <!-- Controls -->
-      <div>
-        <div class="mb-4">
-          <label class="block text-sm font-medium mb-2">Framework</label>
-          <select id="pg-framework" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 outline-none">
-            <option value="openai">OpenAI</option>
-            <option value="anthropic">Anthropic</option>
-            <option value="gemini">Gemini</option>
-          </select>
-        </div>
-        <div class="mb-4 flex items-center gap-2">
-          <input type="checkbox" id="pg-exclude-dangerous" class="rounded border-gray-300 dark:border-gray-700 text-brand-600 focus:ring-brand-500">
-          <label for="pg-exclude-dangerous" class="text-sm font-medium">Exclude dangerous actions</label>
-        </div>
-        <div class="mb-4 flex items-center justify-between">
-          <label class="text-sm font-medium">Connectors</label>
-          <div class="flex gap-2">
-            <button onclick="document.querySelectorAll('.pg-cb').forEach(c=>c.checked=true)" class="text-xs text-brand-600 hover:underline">Select all</button>
-            <button onclick="document.querySelectorAll('.pg-cb').forEach(c=>c.checked=false)" class="text-xs text-brand-600 hover:underline">Clear</button>
-          </div>
-        </div>
-        <div class="max-h-80 overflow-y-auto border border-gray-200 dark:border-gray-800 rounded-lg p-3 space-y-1">
-          ${connectorList.map(s => `<label class="flex items-center gap-2 py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
-            <input type="checkbox" class="pg-cb rounded border-gray-300 dark:border-gray-700 text-brand-600 focus:ring-brand-500" value="${esc(s.name)}">
-            <span class="text-sm">${esc(s.display_name)}</span>
-            <span class="text-xs text-gray-400 ml-auto">${Object.keys(s.actions).length}</span>
-          </label>`).join('')}
-        </div>
-        <button id="pg-generate" class="mt-4 w-full py-2.5 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors">
-          Generate Schema
-        </button>
-      </div>
-      <!-- Output -->
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <label class="text-sm font-medium">Output</label>
-          <div class="flex items-center gap-2">
-            <span id="pg-count" class="text-xs text-gray-500 dark:text-gray-400"></span>
-            <button id="pg-copy" class="text-xs px-3 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors hidden">Copy</button>
-          </div>
-        </div>
-        <pre id="pg-output" class="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-4 overflow-auto max-h-[600px] text-sm font-mono"><code class="text-gray-400">Select connectors and click Generate</code></pre>
-      </div>
-    </div>
-  </div>`;
+  // Clear previous page content first (other render fns use el.innerHTML='')
+  el.innerHTML = '';
 
-  $('#pg-generate').addEventListener('click', () => {
-    const selected = Array.from($$('.pg-cb:checked')).map(cb => cb.value);
-    if (!selected.length) { $('#pg-output').innerHTML = '<code class="text-yellow-500">Select at least one connector</code>'; return; }
-    const framework = $('#pg-framework').value;
-    const excludeDangerous = $('#pg-exclude-dangerous').checked;
-    let result, count;
-    if (framework === 'openai') {
-      const r = toOpenAI(selected, excludeDangerous);
-      result = r; count = r.length;
-    } else if (framework === 'anthropic') {
-      const r = toAnthropic(selected, excludeDangerous);
-      result = r; count = r.length;
-    } else {
-      const r = toGemini(selected, excludeDangerous);
-      result = r; count = r.length;
-    }
-    const json = JSON.stringify(result, null, 2);
-    $('#pg-output').innerHTML = `<code class="language-json hljs">${hljs.highlight(json, {language: 'json'}).value}</code>`;
-    $('#pg-count').textContent = `${count} tool${count !== 1 ? 's' : ''} generated`;
-    const copyBtn = $('#pg-copy');
-    copyBtn.classList.remove('hidden');
-    copyBtn.onclick = () => {
-      navigator.clipboard.writeText(json);
-      copyBtn.textContent = 'Copied!';
-      setTimeout(() => copyBtn.textContent = 'Copy', 1500);
-    };
+  // Build page with DOM manipulation (avoid backtick template literal issues)
+  const wrap = document.createElement('div');
+  wrap.className = 'page-transition';
+
+  // ── Header ──
+  const hdr = document.createElement('div');
+  hdr.className = 'mb-8';
+  hdr.innerHTML = '<h1 class="text-3xl font-bold mb-2">Integration Code Generator</h1>' +
+    '<p class="text-gray-600 dark:text-gray-400 max-w-3xl">Pick your AI framework and connectors — get a complete, ready-to-run Python script. No guessing where JSON goes or how to wire up tool calls.</p>';
+  wrap.appendChild(hdr);
+
+  // ── "How AI function calling works" explainer ──
+  const howDiv = document.createElement('div');
+  howDiv.className = 'mb-8 p-5 rounded-2xl bg-gradient-to-r from-brand-50 via-purple-50 to-blue-50 dark:from-brand-900/20 dark:via-purple-900/20 dark:to-blue-900/20 border border-brand-100 dark:border-brand-800/40';
+  const stepData = [
+    { icon: '🧩', title: 'ToolKit Init', desc: 'You provide credentials once. ToolKit holds connections to all your connectors.' },
+    { icon: '📋', title: 'Schema Generation', desc: 'ToolKit auto-generates typed JSON schemas describing every connector action.' },
+    { icon: '🤖', title: 'AI Decides', desc: 'GPT / Claude / Gemini reads the schemas and decides which tool to call and with what parameters.' },
+    { icon: '⚡', title: 'kit.execute()', desc: 'Your code calls kit.execute() with the tool name + args. Real API call happens. Result returned.' },
+  ];
+  let howHtml = '<div class="flex items-center gap-2 mb-4"><span class="text-sm font-semibold text-brand-700 dark:text-brand-300">How AI Function Calling Works</span><span class="text-xs text-brand-500 dark:text-brand-400 bg-brand-100 dark:bg-brand-900/40 px-2 py-0.5 rounded-full">the concept behind the playground</span></div>';
+  howHtml += '<div class="grid grid-cols-2 md:grid-cols-4 gap-4">';
+  stepData.forEach(function(s, i) {
+    howHtml += '<div class="relative">';
+    if (i < 3) howHtml += '<div class="hidden md:block absolute -right-2 top-5 text-brand-300 dark:text-brand-600 font-bold z-10">→</div>';
+    howHtml += '<div class="flex items-center gap-2 mb-1.5"><span class="text-xl">' + s.icon + '</span><span class="text-xs font-bold text-gray-700 dark:text-gray-300">' + (i+1) + '. ' + s.title + '</span></div>';
+    howHtml += '<p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">' + s.desc + '</p>';
+    howHtml += '</div>';
   });
+  howHtml += '</div>';
+  howDiv.innerHTML = howHtml;
+  wrap.appendChild(howDiv);
+
+  // ── Main 2-column layout ──
+  const main = document.createElement('div');
+  main.className = 'grid lg:grid-cols-5 gap-6 items-start';
+
+  // ─── LEFT PANEL ───────────────────────────────
+  const left = document.createElement('div');
+  left.className = 'lg:col-span-2 space-y-4';
+
+  // Framework cards
+  const fwCard = document.createElement('div');
+  fwCard.className = 'bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5';
+  fwCard.innerHTML = '<div class="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">① Choose Framework</div>';
+  const fwDefs = [
+    { id: 'openai',    label: 'OpenAI',        sub: 'GPT-4o · GPT-3.5',         icon: '⚡', ring: 'ring-green-400 dark:ring-green-500',   bg: 'bg-green-50 dark:bg-green-900/20',   col: 'text-green-700 dark:text-green-400' },
+    { id: 'anthropic', label: 'Anthropic',      sub: 'Claude Sonnet · Haiku',    icon: '🧠', ring: 'ring-orange-400 dark:ring-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20', col: 'text-orange-700 dark:text-orange-400' },
+    { id: 'gemini',    label: 'Google Gemini',  sub: 'Gemini 1.5 Pro · Flash',   icon: '✨', ring: 'ring-blue-400 dark:ring-blue-500',    bg: 'bg-blue-50 dark:bg-blue-900/20',    col: 'text-blue-700 dark:text-blue-400' },
+    { id: 'mcp',       label: 'MCP Server',     sub: 'Claude Desktop · Cursor',  icon: '🔌', ring: 'ring-purple-400 dark:ring-purple-500', bg: 'bg-purple-50 dark:bg-purple-900/20', col: 'text-purple-700 dark:text-purple-400' },
+  ];
+  const fwGrid = document.createElement('div');
+  fwGrid.className = 'grid grid-cols-2 gap-2';
+  fwDefs.forEach(function(fw, i) {
+    const btn = document.createElement('button');
+    btn.dataset.fw = fw.id;
+    btn.className = 'fw-card text-left p-3 rounded-xl border-2 transition-all ' +
+      (i === 0 ? 'border-green-400 dark:border-green-500 ' + fw.bg : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-900');
+    btn.innerHTML = '<div class="text-xl mb-1">' + fw.icon + '</div>' +
+      '<div class="text-sm font-semibold ' + fw.col + '">' + fw.label + '</div>' +
+      '<div class="text-xs text-gray-400 leading-tight mt-0.5">' + fw.sub + '</div>';
+    fwGrid.appendChild(btn);
+  });
+  fwCard.appendChild(fwGrid);
+  left.appendChild(fwCard);
+
+  // Connector list
+  const connCard = document.createElement('div');
+  connCard.className = 'bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5';
+  const connCardHdr = document.createElement('div');
+  connCardHdr.className = 'flex items-center justify-between mb-3';
+  connCardHdr.innerHTML = '<div class="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">② Select Connectors <span id="pg-sel-count" class="normal-case font-normal text-brand-500 ml-1"></span></div>' +
+    '<div class="flex gap-3 text-xs"><button id="pg-sel-all" class="text-brand-600 dark:text-brand-400 hover:underline">All</button><button id="pg-sel-none" class="text-gray-400 hover:underline">None</button></div>';
+  connCard.appendChild(connCardHdr);
+  const searchRow = document.createElement('div');
+  searchRow.className = 'relative mb-2';
+  searchRow.innerHTML = '<svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
+    '<input id="pg-search" type="text" placeholder="Search connectors..." class="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 outline-none" autocomplete="off">';
+  connCard.appendChild(searchRow);
+  const cbList = document.createElement('div');
+  cbList.id = 'pg-cb-list';
+  cbList.className = 'max-h-56 overflow-y-auto space-y-0.5';
+  connectorList.forEach(function(s) {
+    var lbl = document.createElement('label');
+    lbl.className = 'pg-conn-row flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer';
+    lbl.innerHTML = '<input type="checkbox" class="pg-cb rounded border-gray-300 dark:border-gray-700 text-brand-600 focus:ring-brand-500" value="' + esc(s.name) + '">' +
+      '<span class="text-sm flex-1">' + esc(s.display_name) + '</span>' +
+      '<span class="text-xs text-gray-400">' + Object.keys(s.actions).length + '</span>';
+    cbList.appendChild(lbl);
+  });
+  connCard.appendChild(cbList);
+  const optRow = document.createElement('div');
+  optRow.className = 'mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2';
+  optRow.innerHTML = '<input type="checkbox" id="pg-excl-danger" class="rounded border-gray-300 dark:border-gray-700 text-brand-600 focus:ring-brand-500">' +
+    '<label for="pg-excl-danger" class="text-xs text-gray-600 dark:text-gray-400 cursor-pointer">Exclude dangerous / mutating actions</label>';
+  connCard.appendChild(optRow);
+  left.appendChild(connCard);
+
+  // Language toggle
+  const langCard = document.createElement('div');
+  langCard.className = 'bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4';
+  langCard.innerHTML = '<div class="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">③ Language</div>';
+  const langBtns = document.createElement('div');
+  langBtns.className = 'grid grid-cols-2 gap-2';
+  [
+    { id: 'python', label: '🐍 Python',     sub: 'pip + asyncio' },
+    { id: 'ts',     label: '🔷 TypeScript', sub: 'npm + async/await' },
+  ].forEach(function(l, i) {
+    var b = document.createElement('button');
+    b.dataset.lang = l.id;
+    b.className = 'lang-btn text-left p-2.5 rounded-xl border-2 transition-all ' +
+      (i === 0 ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600');
+    b.innerHTML = '<div class="text-sm font-semibold text-gray-700 dark:text-gray-200">' + l.label + '</div>' +
+      '<div class="text-xs text-gray-400 mt-0.5">' + l.sub + '</div>';
+    langBtns.appendChild(b);
+  });
+  langCard.appendChild(langBtns);
+  left.appendChild(langCard);
+
+  // Generate button
+  const genBtn = document.createElement('button');
+  genBtn.id = 'pg-generate';
+  genBtn.className = 'w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-semibold text-sm transition-colors shadow-sm';
+  genBtn.innerHTML = '⚙ Generate Integration Code';
+  left.appendChild(genBtn);
+
+  main.appendChild(left);
+
+  // ─── RIGHT PANEL ──────────────────────────────
+  const right = document.createElement('div');
+  right.className = 'lg:col-span-3';
+  const rightBox = document.createElement('div');
+  rightBox.className = 'bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden';
+
+  // Tab bar
+  const tabBar = document.createElement('div');
+  tabBar.className = 'flex items-center border-b border-gray-200 dark:border-gray-800 px-1';
+  const tabDefs = [
+    { id: 'code',   label: '⚙ Full Code' },
+    { id: 'schema', label: '{ } Schema JSON' },
+    { id: 'ref',    label: '📖 Quick Reference' },
+  ];
+  tabDefs.forEach(function(t, i) {
+    var tab = document.createElement('button');
+    tab.dataset.tab = t.id;
+    tab.className = 'pg-tab px-4 py-3 text-sm font-medium border-b-2 transition-colors mr-1 ' +
+      (i === 0 ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300');
+    tab.textContent = t.label;
+    tabBar.appendChild(tab);
+  });
+  const copyBtn = document.createElement('button');
+  copyBtn.id = 'pg-copy';
+  copyBtn.className = 'ml-auto mr-3 text-xs px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors hidden';
+  copyBtn.textContent = 'Copy';
+  tabBar.appendChild(copyBtn);
+  rightBox.appendChild(tabBar);
+
+  // Output area
+  const outArea = document.createElement('div');
+  outArea.id = 'pg-out';
+  outArea.className = 'p-6 min-h-[420px]';
+  // Placeholder state
+  const placeholderHtml = '<div class="flex flex-col items-center justify-center py-16 text-center">' +
+    '<div class="text-6xl mb-5">🛠</div>' +
+    '<div class="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">Build your integration</div>' +
+    '<ol class="text-sm text-gray-500 dark:text-gray-400 text-left space-y-2 max-w-xs">' +
+    '<li class="flex items-start gap-2"><span class="mt-0.5 w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400 text-xs font-bold flex items-center justify-center flex-shrink-0">1</span><span>Choose an AI framework (OpenAI, Anthropic, Gemini, or MCP)</span></li>' +
+    '<li class="flex items-start gap-2"><span class="mt-0.5 w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400 text-xs font-bold flex items-center justify-center flex-shrink-0">2</span><span>Select one or more connectors from the list</span></li>' +
+    '<li class="flex items-start gap-2"><span class="mt-0.5 w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400 text-xs font-bold flex items-center justify-center flex-shrink-0">3</span><span>Click <strong>Generate Integration Code</strong></span></li>' +
+    '</ol>' +
+    '</div>';
+  outArea.innerHTML = placeholderHtml;
+  rightBox.appendChild(outArea);
+  right.appendChild(rightBox);
+  main.appendChild(right);
+  wrap.appendChild(main);
+  el.appendChild(wrap);
+
+  // ─── State & Logic ────────────────────────────
+  var selFw = 'openai';
+  var selLang = 'python';
+  var activeTab = 'code';
+  var lastResult = null;
+
+  // Language button clicks
+  wrap.querySelectorAll('.lang-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      selLang = this.dataset.lang;
+      wrap.querySelectorAll('.lang-btn').forEach(function(b) {
+        b.className = 'lang-btn text-left p-2.5 rounded-xl border-2 transition-all ' +
+          (b.dataset.lang === selLang
+            ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600');
+      });
+      if (lastResult) { lastResult.lang = selLang; drawOutput(lastResult, activeTab); }
+    });
+  });
+
+  // Framework card clicks
+  wrap.querySelectorAll('.fw-card').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      selFw = this.dataset.fw;
+      var thisFw = fwDefs.find(function(f) { return f.id === selFw; });
+      wrap.querySelectorAll('.fw-card').forEach(function(b) {
+        var bFw = fwDefs.find(function(f) { return f.id === b.dataset.fw; });
+        if (b.dataset.fw === selFw) {
+          b.className = 'fw-card text-left p-3 rounded-xl border-2 transition-all ' + bFw.ring.replace('ring-', 'border-') + ' ' + bFw.bg;
+        } else {
+          b.className = 'fw-card text-left p-3 rounded-xl border-2 transition-all border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-900';
+        }
+      });
+    });
+  });
+
+  // Connector count badge
+  function updCount() {
+    var n = wrap.querySelectorAll('.pg-cb:checked').length;
+    var badge = document.getElementById('pg-sel-count');
+    if (badge) badge.textContent = n ? '(' + n + ' selected)' : '';
+  }
+  wrap.querySelectorAll('.pg-cb').forEach(function(cb) { cb.addEventListener('change', updCount); });
+  document.getElementById('pg-sel-all').addEventListener('click', function() {
+    wrap.querySelectorAll('.pg-cb').forEach(function(cb) { cb.checked = true; }); updCount();
+  });
+  document.getElementById('pg-sel-none').addEventListener('click', function() {
+    wrap.querySelectorAll('.pg-cb').forEach(function(cb) { cb.checked = false; }); updCount();
+  });
+
+  // Connector search
+  document.getElementById('pg-search').addEventListener('input', function() {
+    var q = this.value.toLowerCase();
+    wrap.querySelectorAll('.pg-conn-row').forEach(function(row) {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+
+  // Tab switching
+  function switchTab(id) {
+    activeTab = id;
+    wrap.querySelectorAll('.pg-tab').forEach(function(t) {
+      t.className = 'pg-tab px-4 py-3 text-sm font-medium border-b-2 transition-colors mr-1 ' +
+        (t.dataset.tab === id ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300');
+    });
+    if (lastResult) drawOutput(lastResult, id);
+  }
+  wrap.querySelectorAll('.pg-tab').forEach(function(t) { t.addEventListener('click', function() { switchTab(this.dataset.tab); }); });
+
+  // Generate button
+  genBtn.addEventListener('click', function() {
+    var selected = Array.from(wrap.querySelectorAll('.pg-cb:checked')).map(function(cb) { return cb.value; });
+    if (!selected.length) {
+      var out = document.getElementById('pg-out');
+      out.innerHTML = '<div class="flex flex-col items-center justify-center py-16 text-center">' +
+        '<div class="text-3xl mb-3">⚠️</div>' +
+        '<div class="text-sm font-semibold text-yellow-600 dark:text-yellow-400 mb-1">No connectors selected</div>' +
+        '<div class="text-xs text-gray-400">Check at least one connector in the list, then generate again.</div></div>';
+      return;
+    }
+    var excl = document.getElementById('pg-excl-danger').checked;
+    lastResult = { selected: selected, framework: selFw, excl: excl, lang: selLang };
+    drawOutput(lastResult, activeTab);
+  });
+
+  function drawOutput(res, tab) {
+    var out = document.getElementById('pg-out');
+    var cpBtn = document.getElementById('pg-copy');
+    var code = '', copyText = '';
+
+    if (tab === 'code') {
+      var pythonCode = pgBuildCode(res.framework, res.selected, res.excl, res.lang);
+      copyText = pythonCode;
+      var toolCount = res.framework === 'mcp' ? res.selected.length : (res.framework === 'gemini' ? toGemini(res.selected, res.excl)[0].function_declarations.length : (res.framework === 'anthropic' ? toAnthropic(res.selected, res.excl).length : toOpenAI(res.selected, res.excl).length));
+      var tipHtml = '<div class="flex items-start gap-3 mb-4 p-3.5 rounded-xl bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800/40">' +
+        '<span class="text-lg mt-0.5">💡</span>' +
+        '<div class="text-xs text-brand-800 dark:text-brand-200 leading-relaxed">' + pgExplainText(res.framework, res.selected.length, toolCount) + '</div>' +
+        '</div>';
+      var lang = res.lang === 'ts' ? 'typescript' : 'python';
+      var highlighted = hljs.highlight(pythonCode, { language: lang }).value;
+      code = tipHtml + '<pre class="rounded-xl bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 overflow-x-auto text-sm leading-relaxed m-0"><code class="language-' + lang + ' hljs !bg-transparent !p-4 block">' + highlighted + '</code></pre>';
+    } else if (tab === 'schema') {
+      var schema, cnt;
+      if (res.framework === 'anthropic') { schema = toAnthropic(res.selected, res.excl); cnt = schema.length; }
+      else if (res.framework === 'gemini') { schema = toGemini(res.selected, res.excl); cnt = schema[0].function_declarations.length; }
+      else { schema = toOpenAI(res.selected, res.excl); cnt = schema.length; }
+      var json = JSON.stringify(schema, null, 2);
+      copyText = json;
+      var instrHtml = '<div class="mb-4 flex items-center gap-3 p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300">' +
+        '<span class="text-lg">📋</span>' +
+        '<span><strong>' + cnt + ' tool schema' + (cnt !== 1 ? 's' : '') + '</strong> · Pass this array directly to <code class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded font-mono">tools=</code> in your API call. Or use <code class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded font-mono">kit.to_' + (res.framework === 'gemini' ? 'gemini' : res.framework === 'anthropic' ? 'anthropic' : 'openai') + '_tools()</code> at runtime.</span>' +
+        '</div>';
+      code = instrHtml + '<pre class="rounded-xl bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 overflow-x-auto max-h-[480px] text-sm leading-relaxed m-0"><code class="language-json hljs !bg-transparent !p-4 block">' + hljs.highlight(json, { language: 'json' }).value + '</code></pre>';
+    } else {
+      code = pgReferenceHtml(res.framework);
+      copyText = '';
+    }
+
+    out.innerHTML = code;
+    if (copyText) {
+      cpBtn.classList.remove('hidden');
+      cpBtn.onclick = function() {
+        navigator.clipboard.writeText(copyText);
+        cpBtn.textContent = '✓ Copied!';
+        setTimeout(function() { cpBtn.textContent = 'Copy'; }, 1800);
+      };
+    } else {
+      cpBtn.classList.add('hidden');
+    }
+  }
 }
 
 function toOpenAI(connectors, excludeDangerous) {
@@ -677,247 +1371,675 @@ function toGemini(connectors, excludeDangerous) {
   return [{ function_declarations: declarations }];
 }
 
-// ─── Page: AI Assistant ─────────────────────────────────────────────────────
+// ─── Playground Helpers ──────────────────────────────────────────────────────
+function pgExplainText(framework, connCount, toolCount) {
+  var fw = { openai: 'OpenAI', anthropic: 'Anthropic', gemini: 'Google Gemini', mcp: 'MCP Server' }[framework] || framework;
+  if (framework === 'mcp') {
+    return 'This script starts an MCP (Model Context Protocol) server that exposes your <strong>' + connCount + ' connector' + (connCount !== 1 ? 's' : '') + '</strong> to Claude Desktop, Cursor, Windsurf, or any MCP-compatible client. Add it to your <code>claude_desktop_config.json</code> and every tool becomes available automatically — no manual schema wiring needed.';
+  }
+  return '<strong>How this code works:</strong> ' +
+    '<span class="text-brand-700 dark:text-brand-300">①</span> ToolKit is initialized with your credentials ' +
+    '<span class="text-gray-400 mx-1">→</span>' +
+    '<span class="text-brand-700 dark:text-brand-300">②</span> <code>.to_' + (framework === 'gemini' ? 'gemini' : framework === 'anthropic' ? 'anthropic' : 'openai') + '_tools()</code> generates <strong>' + toolCount + ' typed schemas</strong> ' +
+    '<span class="text-gray-400 mx-1">→</span>' +
+    '<span class="text-brand-700 dark:text-brand-300">③</span> schemas are passed to <strong>' + fw + '</strong> via <code>tools=</code> so the model knows what actions exist ' +
+    '<span class="text-gray-400 mx-1">→</span>' +
+    '<span class="text-brand-700 dark:text-brand-300">④</span> when the model picks a tool, <code>kit.execute()</code> runs the real API call.';
+}
+
+function pgBuildCode(framework, selected, excl, lang) {
+  if (lang === 'ts') return pgBuildCodeTS(framework, selected, excl);
+  var namesList = selected.map(function(n) { return '"' + n + '"'; }).join(', ');
+  var credLines = selected.map(function(n) { return '        "' + n + '": "your-' + n + '-token",'; }).join('\n');
+  var extras = selected.join(',');
+
+  if (framework === 'openai') {
+    var cnt = toOpenAI(selected, excl).length;
+    return [
+      '# Step 1 — Install',
+      '# pip install "toolsconnector[' + extras + ']" openai',
+      '',
+      '# Step 2 — Import',
+      'from toolsconnector.serve import ToolKit',
+      'from openai import OpenAI',
+      '',
+      '# Step 3 — Initialize ToolKit once with your credentials (BYOK)',
+      'kit = ToolKit(',
+      '    [' + namesList + '],',
+      '    credentials={',
+      credLines,
+      '    }',
+      ')',
+      '',
+      '# Step 4 — Generate ' + cnt + ' tool schemas in OpenAI format',
+      'tools = kit.to_openai_tools()',
+      '# tools is now a list of {type, function: {name, description, parameters}}',
+      '# Pass it to the model so GPT-4o knows what actions it can call',
+      '',
+      '# Step 5 — Make an API call with tool schemas attached',
+      'client = OpenAI(api_key="sk-...")',
+      'response = client.chat.completions.create(',
+      '    model="gpt-4o",',
+      '    messages=[{"role": "user", "content": "Your task here"}],',
+      '    tools=tools,          # <-- this is where the schemas go',
+      '    tool_choice="auto",   # let the model decide when to call a tool',
+      ')',
+      '',
+      '# Step 6 — Execute the tool call the model chose',
+      'message = response.choices[0].message',
+      'if message.tool_calls:',
+      '    for tool_call in message.tool_calls:',
+      '        result = kit.execute(',
+      '            tool_call.function.name,        # e.g. "' + selected[0] + '_list_items"',
+      '            tool_call.function.arguments,   # JSON string — ToolKit parses it',
+      '        )',
+      '        print(f"[{tool_call.function.name}] => {result}")',
+    ].join('\n');
+  }
+
+  if (framework === 'anthropic') {
+    var cnt = toAnthropic(selected, excl).length;
+    return [
+      '# Step 1 — Install',
+      '# pip install "toolsconnector[' + extras + ']" anthropic',
+      '',
+      '# Step 2 — Import',
+      'import anthropic',
+      'from toolsconnector.serve import ToolKit',
+      '',
+      '# Step 3 — Initialize ToolKit once with your credentials (BYOK)',
+      'kit = ToolKit(',
+      '    [' + namesList + '],',
+      '    credentials={',
+      credLines,
+      '    }',
+      ')',
+      '',
+      '# Step 4 — Generate ' + cnt + ' tool schemas in Anthropic format',
+      'tools = kit.to_anthropic_tools()',
+      '# tools is now a list of {name, description, input_schema}',
+      '# Pass it to Claude so it knows what actions it can invoke',
+      '',
+      '# Step 5 — Make an API call with tool schemas attached',
+      'client = anthropic.Anthropic(api_key="sk-ant-...")',
+      'response = client.messages.create(',
+      '    model="claude-sonnet-4-20250514",',
+      '    max_tokens=1024,',
+      '    messages=[{"role": "user", "content": "Your task here"}],',
+      '    tools=tools,   # <-- this is where the schemas go',
+      ')',
+      '',
+      '# Step 6 — Execute tool calls from Claude\'s response',
+      'for block in response.content:',
+      '    if block.type == "tool_use":',
+      '        result = kit.execute(',
+      '            block.name,    # e.g. "' + selected[0] + '_list_items"',
+      '            block.input,   # dict — ToolKit validates it against the schema',
+      '        )',
+      '        print(f"[{block.name}] => {result}")',
+    ].join('\n');
+  }
+
+  if (framework === 'gemini') {
+    var cnt = toGemini(selected, excl)[0].function_declarations.length;
+    return [
+      '# Step 1 — Install',
+      '# pip install "toolsconnector[' + extras + ']" google-generativeai',
+      '',
+      '# Step 2 — Import',
+      'import google.generativeai as genai',
+      'from toolsconnector.serve import ToolKit',
+      '',
+      '# Step 3 — Initialize ToolKit once with your credentials (BYOK)',
+      'kit = ToolKit(',
+      '    [' + namesList + '],',
+      '    credentials={',
+      credLines,
+      '    }',
+      ')',
+      '',
+      '# Step 4 — Generate ' + cnt + ' function declarations in Gemini format',
+      'tools = kit.to_gemini_tools()',
+      '# tools is [{function_declarations: [{name, description, parameters}...]}]',
+      '# Gemini uses "function_declarations" rather than "tools"',
+      '',
+      '# Step 5 — Create model with tools and send a message',
+      'genai.configure(api_key="AIza...")',
+      'model = genai.GenerativeModel("gemini-1.5-pro", tools=tools)',
+      'response = model.generate_content("Your task here")',
+      '',
+      '# Step 6 — Execute function calls from Gemini\'s response',
+      'for part in response.parts:',
+      '    fn = getattr(part, "function_call", None)',
+      '    if fn:',
+      '        result = kit.execute(fn.name, dict(fn.args))',
+      '        print(f"[{fn.name}] => {result}")',
+    ].join('\n');
+  }
+
+  // MCP Server
+  return [
+    '# Step 1 — Install',
+    '# pip install "toolsconnector[' + extras + ',mcp]"',
+    '',
+    '# Step 2 — Import',
+    'from toolsconnector.serve import ToolKit',
+    '',
+    '# Step 3 — Initialize ToolKit with your credentials (BYOK)',
+    'kit = ToolKit(',
+    '    [' + namesList + '],',
+    '    credentials={',
+    credLines,
+    '    }',
+    ')',
+    '',
+    '# Step 4 — Start the MCP server (stdio transport)',
+    '# MCP clients (Claude Desktop, Cursor, Windsurf) connect to this process.',
+    '# Every connector action is automatically exposed as a tool.',
+    'kit.serve_mcp()',
+    '',
+    '',
+    '# ─── Claude Desktop config (claude_desktop_config.json) ───────────────────',
+    '# Add this to ~/Library/Application Support/Claude/claude_desktop_config.json',
+    '# {',
+    '#   "mcpServers": {',
+    '#     "toolsconnector": {',
+    '#       "command": "python",',
+    '#       "args": ["/absolute/path/to/this/script.py"]',
+    '#     }',
+    '#   }',
+    '# }',
+    '',
+    '# ─── Or run directly from terminal ─────────────────────────────────────────',
+    '# tc serve mcp ' + selected.join(' ') + ' --transport stdio',
+  ].join('\n');
+}
+
+function pgBuildCodeTS(framework, selected, excl) {
+  var namesList = selected.map(function(n) { return '"' + n + '"'; }).join(', ');
+  var credLines = selected.map(function(n) { return '  ' + n + ': "your-' + n + '-token",'; }).join('\n');
+  var extras = selected.join(',');
+
+  if (framework === 'openai') {
+    var cnt = toOpenAI(selected, excl).length;
+    return [
+      '// Step 1 — Install',
+      '// npm install toolsconnector openai',
+      '',
+      '// Step 2 — Import',
+      'import { ToolKit } from "toolsconnector";',
+      'import OpenAI from "openai";',
+      '',
+      '// Step 3 — Initialize ToolKit once with your credentials (BYOK)',
+      'const kit = new ToolKit(',
+      '  [' + namesList + '],',
+      '  {',
+      credLines,
+      '  }',
+      ');',
+      '',
+      '// Step 4 — Generate ' + cnt + ' tool schemas in OpenAI format',
+      'const tools = kit.toOpenAITools();',
+      '',
+      '// Step 5 — Make an API call with tool schemas attached',
+      'const client = new OpenAI({ apiKey: "sk-..." });',
+      'const response = await client.chat.completions.create({',
+      '  model: "gpt-4o",',
+      '  messages: [{ role: "user", content: "Your task here" }],',
+      '  tools,',
+      '  tool_choice: "auto",',
+      '});',
+      '',
+      '// Step 6 — Execute the tool call the model chose',
+      'for (const toolCall of response.choices[0].message.tool_calls ?? []) {',
+      '  const result = await kit.execute(',
+      '    toolCall.function.name,        // e.g. "' + selected[0] + '_list_items"',
+      '    toolCall.function.arguments,   // JSON string — ToolKit parses it',
+      '  );',
+      '  console.log(`[${toolCall.function.name}]`, result);',
+      '}',
+    ].join('\n');
+  }
+
+  if (framework === 'anthropic') {
+    var cnt = toAnthropic(selected, excl).length;
+    return [
+      '// Step 1 — Install',
+      '// npm install toolsconnector @anthropic-ai/sdk',
+      '',
+      'import Anthropic from "@anthropic-ai/sdk";',
+      'import { ToolKit } from "toolsconnector";',
+      '',
+      '// Step 3 — Initialize ToolKit',
+      'const kit = new ToolKit(',
+      '  [' + namesList + '],',
+      '  {',
+      credLines,
+      '  }',
+      ');',
+      '',
+      '// Step 4 — Generate ' + cnt + ' tool schemas in Anthropic format',
+      'const tools = kit.toAnthropicTools();',
+      '',
+      '// Step 5 — Call Claude with tools attached',
+      'const client = new Anthropic({ apiKey: "sk-ant-..." });',
+      'const response = await client.messages.create({',
+      '  model: "claude-sonnet-4-20250514",',
+      '  max_tokens: 1024,',
+      '  messages: [{ role: "user", content: "Your task here" }],',
+      '  tools,',
+      '});',
+      '',
+      '// Step 6 — Execute tool calls from Claude\'s response',
+      'for (const block of response.content) {',
+      '  if (block.type === "tool_use") {',
+      '    const result = await kit.execute(block.name, block.input);',
+      '    console.log(`[${block.name}]`, result);',
+      '  }',
+      '}',
+    ].join('\n');
+  }
+
+  if (framework === 'gemini') {
+    var cnt = toGemini(selected, excl)[0].function_declarations.length;
+    return [
+      '// Step 1 — Install',
+      '// npm install toolsconnector @google/generative-ai',
+      '',
+      'import { GoogleGenerativeAI } from "@google/generative-ai";',
+      'import { ToolKit } from "toolsconnector";',
+      '',
+      'const kit = new ToolKit(',
+      '  [' + namesList + '],',
+      '  {',
+      credLines,
+      '  }',
+      ');',
+      '',
+      '// Step 4 — Generate ' + cnt + ' function declarations in Gemini format',
+      'const tools = kit.toGeminiTools();',
+      '',
+      '// Step 5 — Create model with tools attached',
+      'const genai = new GoogleGenerativeAI("AIza...");',
+      'const model = genai.getGenerativeModel({ model: "gemini-1.5-pro", tools });',
+      'const result = await model.generateContent("Your task here");',
+      '',
+      '// Step 6 — Execute function calls',
+      'for (const part of result.response.candidates?.[0].content.parts ?? []) {',
+      '  if (part.functionCall) {',
+      '    const res = await kit.execute(',
+      '      part.functionCall.name,',
+      '      part.functionCall.args as Record<string, unknown>',
+      '    );',
+      '    console.log(`[${part.functionCall.name}]`, res);',
+      '  }',
+      '}',
+    ].join('\n');
+  }
+
+  // MCP TypeScript
+  return [
+    '// Step 1 — Install',
+    '// npm install toolsconnector @modelcontextprotocol/sdk',
+    '',
+    'import { ToolKit } from "toolsconnector";',
+    '',
+    '// Step 2 — Initialize ToolKit with your credentials (BYOK)',
+    'const kit = new ToolKit(',
+    '  [' + namesList + '],',
+    '  {',
+    credLines,
+    '  }',
+    ');',
+    '',
+    '// Step 3 — Start MCP server (stdio transport)',
+    '// Claude Desktop / Cursor / Windsurf auto-discovers all tools.',
+    'await kit.serveMcp();',
+    '',
+    '',
+    '// ─── claude_desktop_config.json ────────────────────────────────────────',
+    '// {',
+    '//   "mcpServers": {',
+    '//     "toolsconnector": {',
+    '//       "command": "npx",',
+    '//       "args": ["ts-node", "/path/to/this/script.ts"]',
+    '//     }',
+    '//   }',
+    '// }',
+    '',
+    '// ─── Or compile first ───────────────────────────────────────────────────',
+    '// tsc && node dist/script.js',
+  ].join('\n');
+}
+
+function pgReferenceHtml(activeFw) {
+  var fwLabel = { openai: 'OpenAI', anthropic: 'Anthropic', gemini: 'Gemini', mcp: 'MCP' }[activeFw] || 'All';
+  var methods = [
+    ['kit.to_openai_tools()',    'OpenAI',    'List of {type, function: {name, description, parameters}}'],
+    ['kit.to_anthropic_tools()', 'Anthropic', 'List of {name, description, input_schema}'],
+    ['kit.to_gemini_tools()',    'Gemini',    'List of {function_declarations: [{name, description, parameters}]}'],
+    ['kit.execute(name, args)',  'All',       'Run action — args can be JSON string or dict'],
+    ['await kit.aexecute(name, args)', 'All', 'Async version of execute() for async frameworks'],
+    ['kit.serve_mcp()',          'MCP',       'Start stdio MCP server — compatible with Claude Desktop, Cursor'],
+    ['kit.create_rest_app()',    'REST',      'Returns ASGI app for deployment with uvicorn / FastAPI'],
+    ['kit.list_tools()',         'All',       'Returns list of all registered tool name strings'],
+  ];
+
+  var html = '<div class="space-y-6">';
+
+  // Methods table
+  html += '<div>';
+  html += '<h4 class="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">ToolKit API Methods</h4>';
+  html += '<div class="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">';
+  html += '<table class="w-full text-xs">';
+  html += '<thead><tr class="bg-gray-50 dark:bg-gray-800"><th class="text-left px-3 py-2.5 text-gray-500 font-semibold">Method</th><th class="text-left px-3 py-2.5 text-gray-500 font-semibold">Framework</th><th class="text-left px-3 py-2.5 text-gray-500 font-semibold">Output / Notes</th></tr></thead>';
+  html += '<tbody>';
+  methods.forEach(function(row) {
+    var isActive = row[1] === fwLabel || row[1] === 'All';
+    html += '<tr class="border-t border-gray-100 dark:border-gray-800 ' + (isActive ? 'bg-brand-50/60 dark:bg-brand-900/10' : '') + '">';
+    html += '<td class="px-3 py-2 font-mono text-brand-600 dark:text-brand-400 whitespace-nowrap">' + row[0] + '</td>';
+    html += '<td class="px-3 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">' + row[1] + '</td>';
+    html += '<td class="px-3 py-2 text-gray-600 dark:text-gray-300 leading-relaxed">' + row[2] + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  // Credentials pattern
+  html += '<div>';
+  html += '<h4 class="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Credentials Pattern (BYOK)</h4>';
+  html += '<pre class="rounded-xl bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-xs leading-relaxed overflow-x-auto m-0"><code class="text-gray-700 dark:text-gray-300 !p-4 block">';
+  html += 'credentials={\n';
+  html += '    # Google services — OAuth 2.0 access token\n';
+  html += '    "gmail":    "ya29.a0AfH6S...",\n';
+  html += '    "gdrive":   "ya29.a0AfH6S...",\n\n';
+  html += '    # Token-based services\n';
+  html += '    "github":   "ghp_xxxxxxxxxxxx",\n';
+  html += '    "slack":    "xoxb-000000000-...",\n\n';
+  html += '    # API key services\n';
+  html += '    "stripe":   "sk_live_xxxxxxxxxxxx",\n';
+  html += '    "openai":   "sk-xxxxxxxxxxxx",\n';
+  html += '}';
+  html += '</code></pre>';
+  html += '<p class="text-xs text-gray-400 dark:text-gray-500 mt-2">ToolsConnector never stores your credentials. Tokens are passed per-call. Each connector documents its required credential format.</p>';
+  html += '</div>';
+
+  // Schema format comparison
+  html += '<div>';
+  html += '<h4 class="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Schema Format Comparison</h4>';
+  html += '<div class="grid grid-cols-3 gap-2 text-xs">';
+  var formats = [
+    { fw: 'OpenAI', active: activeFw === 'openai', shape: '{\n  type: "function",\n  function: {\n    name: "...",\n    description: "...",\n    parameters: {...}\n  }\n}' },
+    { fw: 'Anthropic', active: activeFw === 'anthropic', shape: '{\n  name: "...",\n  description: "...",\n  input_schema: {...}\n}' },
+    { fw: 'Gemini', active: activeFw === 'gemini', shape: '{\n  function_declarations:\n  [{\n    name: "...",\n    description: "...",\n    parameters: {...}\n  }]\n}' },
+  ];
+  formats.forEach(function(f) {
+    html += '<div class="rounded-xl border ' + (f.active ? 'border-brand-300 dark:border-brand-700' : 'border-gray-200 dark:border-gray-800') + ' overflow-hidden">';
+    html += '<div class="px-3 py-1.5 text-xs font-semibold ' + (f.active ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300' : 'bg-gray-50 dark:bg-gray-800 text-gray-500') + '">' + f.fw + '</div>';
+    html += '<pre class="p-3 bg-gray-950 text-gray-400 text-xs leading-relaxed overflow-x-auto m-0"><code>' + f.shape + '</code></pre>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  // Links
+  html += '<div class="flex flex-wrap gap-2">';
+  var links = [['#/docs/quickstart','Quick Start'], ['#/connectors','Browse Connectors'], ['#/assistant','AI Assistant'], ['https://github.com/sachinshelke/ToolsConnector','GitHub']];
+  links.forEach(function(l) {
+    html += '<a href="' + l[0] + '" class="text-xs px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors">' + l[1] + '</a>';
+  });
+  html += '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+// ─── Page: AI Assistant — Multi-Provider ────────────────────────────────────
+function getAIConfig() {
+  return {
+    provider: localStorage.getItem('tc_ai_provider') || 'openrouter',
+    model: localStorage.getItem('tc_ai_model') || '',
+    key: localStorage.getItem('tc_ai_key') || '',
+  };
+}
+function saveAIConfig(cfg) {
+  localStorage.setItem('tc_ai_provider', cfg.provider);
+  localStorage.setItem('tc_ai_model', cfg.model);
+  if (cfg.key !== undefined) localStorage.setItem('tc_ai_key', cfg.key);
+}
+function clearAIKey() {
+  localStorage.removeItem('tc_ai_key');
+}
+
 function renderAssistant(el) {
-  const apiKey = localStorage.getItem('tc-openrouter-key') || '';
-  const hasKey = apiKey.length > 0;
+  const cfg = getAIConfig();
+  const prov = AI_PROVIDERS[cfg.provider] || AI_PROVIDERS.openrouter;
+  const hasKey = cfg.key.length > 0;
+  const defaultModel = cfg.model || prov.models[0]?.id || '';
+
+  // Build provider options
+  const provOpts = Object.entries(AI_PROVIDERS).map(([k,v]) =>
+    `<option value="${k}" ${k === cfg.provider ? 'selected' : ''}>${v.name}</option>`
+  ).join('');
+
+  // Build model options
+  const modelOpts = prov.models.map(m =>
+    `<option value="${m.id}" ${m.id === defaultModel ? 'selected' : ''}>${m.label} ${m.free ? '(free)' : '(paid)'}</option>`
+  ).join('');
+
+  const keyPreview = hasKey ? `(${cfg.key.slice(0, 10)}...)` : '';
 
   el.innerHTML = `<div class="page-transition">
     <div class="mb-6">
       <h1 class="text-3xl font-bold mb-2">AI Assistant</h1>
-      <p class="text-gray-600 dark:text-gray-400">Ask questions about ToolsConnector. Powered by OpenRouter (runs in your browser).</p>
+      <p class="text-gray-600 dark:text-gray-400">Ask questions about ToolsConnector. Runs entirely in your browser.</p>
     </div>
 
-    ${!hasKey ? `<div id="api-key-section" class="max-w-lg mx-auto p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 mb-8">
-      <h3 class="font-semibold mb-3">Enter your OpenRouter API key</h3>
-      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Your key is stored in your browser's localStorage only. It is never sent anywhere except OpenRouter's API. You can get a free key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" class="text-brand-600 hover:underline">openrouter.ai/keys</a>.</p>
-      <div class="flex gap-2">
-        <input id="api-key-input" type="password" placeholder="sk-or-..." class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 outline-none font-mono text-sm">
-        <button id="api-key-save" class="px-4 py-2 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors">Save</button>
+    <!-- Settings panel -->
+    <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 mb-6">
+      <div class="flex items-center justify-between mb-4 cursor-pointer" onclick="document.getElementById('ai-settings-body').classList.toggle('hidden');document.getElementById('ai-settings-chevron').classList.toggle('rotate-180')">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span class="font-medium text-sm">Settings</span>
+          <span class="text-xs text-gray-400">${prov.name} &middot; ${prov.models.find(m=>m.id===defaultModel)?.label || 'Select model'} ${hasKey ? '<span class="text-green-500">&#10003; Key saved</span>' : '<span class="text-amber-500">No key</span>'}</span>
+        </div>
+        <svg id="ai-settings-chevron" class="w-4 h-4 text-gray-400 transition-transform ${hasKey ? 'rotate-180' : ''}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
       </div>
-    </div>` : ''}
+      <div id="ai-settings-body" class="${hasKey ? 'hidden' : ''}">
+        <div class="grid sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Provider</label>
+            <select id="ai-provider" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:ring-2 focus:ring-brand-500 outline-none">${provOpts}</select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Model</label>
+            <select id="ai-model" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:ring-2 focus:ring-brand-500 outline-none">${modelOpts}</select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">API Key <span class="text-gray-400">(stored in browser only)</span></label>
+          <div class="flex gap-2">
+            <input id="ai-key-input" type="password" value="${cfg.key}" placeholder="${cfg.provider === 'huggingface' ? 'hf_...' : 'sk-or-v1-...'}" class="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-mono focus:ring-2 focus:ring-brand-500 outline-none" autocomplete="off">
+            <button id="ai-key-save" class="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+            ${hasKey ? '<button id="ai-key-clear" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm text-gray-500 hover:text-red-500 hover:border-red-300">Remove</button>' : ''}
+          </div>
+          <a id="ai-key-link" href="${prov.keyUrl}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-brand-600 hover:underline mt-2">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+            Get a free API key from ${prov.name}</a>
+        </div>
+      </div>
+    </div>
 
+    <!-- Chat -->
     <div id="chat-container" class="${!hasKey ? 'opacity-50 pointer-events-none' : ''}">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
           <span class="w-2 h-2 rounded-full ${hasKey ? 'bg-green-500' : 'bg-gray-400'}"></span>
-          <span>${hasKey ? 'Connected' : 'No API key'}</span>
+          <span>${hasKey ? prov.name + ' connected' : 'Configure provider above'}</span>
         </div>
-        <div class="flex gap-2">
-          <button id="chat-clear" class="text-xs px-3 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">Clear chat</button>
-          <button id="chat-key-btn" class="text-xs px-3 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">${hasKey ? 'Change key' : 'Set key'}</button>
-        </div>
+        <button id="chat-clear" class="text-xs px-3 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">Clear chat</button>
       </div>
       <div id="chat-messages" class="border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-900 p-4 h-96 overflow-y-auto mb-4 space-y-4">
-        <div class="chat-msg ml-auto bg-brand-50 dark:bg-brand-900/20 rounded-xl rounded-tr-sm p-3 text-sm">
-          Welcome! I can help you with ToolsConnector -- ask me about connectors, actions, setup, or usage patterns.
+        <div class="chat-msg bg-gray-100 dark:bg-gray-800 rounded-xl rounded-tl-sm p-3 text-sm">
+          Welcome! Ask me about ToolsConnector — connectors, ToolKit setup, schema generation, or anything else.
         </div>
       </div>
       <div class="flex gap-2">
         <input id="chat-input" type="text" placeholder="Ask about ToolsConnector..." class="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 outline-none" ${!hasKey ? 'disabled' : ''}>
         <button id="chat-send" class="px-5 py-2.5 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors disabled:opacity-50" ${!hasKey ? 'disabled' : ''}>Send</button>
       </div>
+      <p class="text-xs text-gray-400 mt-2 text-center">Your API key stays in your browser. Responses may not always be accurate.</p>
     </div>
   </div>`;
 
-  // API key management
-  if (!hasKey) {
-    $('#api-key-save').addEventListener('click', () => {
-      const key = $('#api-key-input').value.trim();
-      if (key) {
-        localStorage.setItem('tc-openrouter-key', key);
-        renderAssistant(el);
-      }
-    });
-    $('#api-key-input').addEventListener('keydown', e => {
-      if (e.key === 'Enter') $('#api-key-save').click();
-    });
-  }
+  // ── Provider change → update model list + key link ──
+  $('#ai-provider').addEventListener('change', function() {
+    const p = AI_PROVIDERS[this.value];
+    const modelSel = $('#ai-model');
+    modelSel.innerHTML = p.models.map(m =>
+      `<option value="${m.id}">${m.label} ${m.free ? '(free)' : '(paid)'}</option>`
+    ).join('');
+    $('#ai-key-link').href = p.keyUrl;
+    $('#ai-key-link').textContent = 'Get a free API key from ' + p.name;
+    $('#ai-key-input').placeholder = this.value === 'huggingface' ? 'hf_...' : 'sk-or-v1-...';
+    saveAIConfig({ provider: this.value, model: p.models[0]?.id || '' });
+  });
 
-  const chatKeyBtn = $('#chat-key-btn');
-  if (chatKeyBtn) {
-    chatKeyBtn.addEventListener('click', () => {
-      const newKey = prompt('Enter your OpenRouter API key:');
-      if (newKey !== null) {
-        if (newKey.trim()) {
-          localStorage.setItem('tc-openrouter-key', newKey.trim());
-        } else {
-          localStorage.removeItem('tc-openrouter-key');
-        }
-        chatHistory = [];
-        renderAssistant(el);
-      }
-    });
-  }
+  $('#ai-model').addEventListener('change', function() {
+    saveAIConfig({ provider: $('#ai-provider').value, model: this.value });
+  });
 
-  const clearBtn = $('#chat-clear');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
+  // ── Save / clear key ──
+  $('#ai-key-save').addEventListener('click', () => {
+    const key = $('#ai-key-input').value.trim();
+    if (key) {
+      saveAIConfig({ provider: $('#ai-provider').value, model: $('#ai-model').value, key });
       chatHistory = [];
-      const msgs = $('#chat-messages');
-      msgs.innerHTML = `<div class="chat-msg ml-auto bg-brand-50 dark:bg-brand-900/20 rounded-xl rounded-tr-sm p-3 text-sm">Chat cleared. Ask me anything about ToolsConnector.</div>`;
-    });
-  }
+      renderAssistant(el);
+    }
+  });
+  $('#ai-key-input').addEventListener('keydown', e => { if (e.key === 'Enter') $('#ai-key-save').click(); });
 
-  // Chat send
-  const sendBtn = $('#chat-send');
-  const chatInput = $('#chat-input');
-  if (sendBtn && hasKey) {
+  const clearKeyBtn = $('#ai-key-clear');
+  if (clearKeyBtn) clearKeyBtn.addEventListener('click', () => { clearAIKey(); chatHistory = []; renderAssistant(el); });
+
+  // ── Clear chat ──
+  $('#chat-clear').addEventListener('click', () => {
+    chatHistory = [];
+    $('#chat-messages').innerHTML = '<div class="chat-msg bg-gray-100 dark:bg-gray-800 rounded-xl rounded-tl-sm p-3 text-sm">Chat cleared. Ask me anything.</div>';
+  });
+
+  // ── Send message ──
+  if (hasKey) {
     const doSend = async () => {
+      const chatInput = $('#chat-input'), sendBtn = $('#chat-send');
       const msg = chatInput.value.trim();
       if (!msg) return;
-      chatInput.value = '';
-      sendBtn.disabled = true;
-      chatInput.disabled = true;
+      chatInput.value = ''; sendBtn.disabled = true; chatInput.disabled = true;
       const msgs = $('#chat-messages');
 
-      // Add user message
       msgs.innerHTML += `<div class="chat-msg ml-auto bg-brand-50 dark:bg-brand-900/20 rounded-xl rounded-tr-sm p-3 text-sm">${esc(msg)}</div>`;
-
-      // Typing indicator
       const typingId = 'typing-' + Date.now();
-      msgs.innerHTML += `<div id="${typingId}" class="chat-msg bg-gray-100 dark:bg-gray-800 rounded-xl rounded-tl-sm p-3 text-sm">
-        <div class="typing-indicator flex gap-1"><span class="w-2 h-2 rounded-full bg-gray-400"></span><span class="w-2 h-2 rounded-full bg-gray-400"></span><span class="w-2 h-2 rounded-full bg-gray-400"></span></div>
-      </div>`;
+      msgs.innerHTML += `<div id="${typingId}" class="chat-msg bg-gray-100 dark:bg-gray-800 rounded-xl rounded-tl-sm p-3 text-sm"><div class="typing-indicator flex gap-1"><span class="w-2 h-2 rounded-full bg-gray-400"></span><span class="w-2 h-2 rounded-full bg-gray-400"></span><span class="w-2 h-2 rounded-full bg-gray-400"></span></div></div>`;
       msgs.scrollTop = msgs.scrollHeight;
 
       chatHistory.push({ role: 'user', content: msg });
+      const curCfg = getAIConfig();
+      const curProv = AI_PROVIDERS[curCfg.provider] || AI_PROVIDERS.openrouter;
 
       try {
-        const response = await sendChat(chatHistory, apiKey);
-        chatHistory.push({ role: 'assistant', content: response });
+        const sysPrompt = SYS_PROMPT || 'You are a helpful assistant for ToolsConnector.';
+        const apiMessages = [{ role: 'system', content: sysPrompt }, ...chatHistory];
+
+        const resp = await fetch(curProv.url, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + curCfg.key,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': location.origin || location.href,
+            'X-Title': 'ToolsConnector',
+          },
+          body: JSON.stringify({
+            model: curCfg.model || curProv.models[0]?.id,
+            messages: apiMessages,
+            stream: false,
+          }),
+        });
+
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          if (resp.status === 401 || resp.status === 403) {
+            clearAIKey();
+            throw new Error('Invalid API key. It has been removed — please re-enter.');
+          }
+          throw new Error(errData.error?.message || 'API error ' + resp.status);
+        }
+
+        const data = await resp.json();
+        const reply = data.choices?.[0]?.message?.content || 'No response.';
+        chatHistory.push({ role: 'assistant', content: reply });
         const typingEl = document.getElementById(typingId);
         if (typingEl) {
-          typingEl.innerHTML = `<div class="prose-content text-sm">${renderMarkdown(response)}</div>`;
-          typingEl.classList.remove('p-3');
-          typingEl.classList.add('p-4');
+          typingEl.innerHTML = '<div class="prose-content text-sm">' + renderMarkdown(reply) + '</div>';
+          postRenderMarkdown(typingEl.querySelector('.prose-content'));
+          typingEl.classList.remove('p-3'); typingEl.classList.add('p-4');
         }
       } catch (err) {
         const typingEl = document.getElementById(typingId);
-        if (typingEl) {
-          typingEl.innerHTML = `<div class="text-red-500 text-sm">Error: ${esc(err.message)}</div>`;
-        }
+        if (typingEl) typingEl.innerHTML = '<div class="text-red-500 text-sm">Error: ' + esc(err.message) + '</div>';
       }
       msgs.scrollTop = msgs.scrollHeight;
-      sendBtn.disabled = false;
-      chatInput.disabled = false;
-      chatInput.focus();
+      sendBtn.disabled = false; chatInput.disabled = false; chatInput.focus();
     };
-    sendBtn.addEventListener('click', doSend);
-    chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); } });
+    $('#chat-send').addEventListener('click', doSend);
+    $('#chat-input').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); } });
   }
-}
-
-function buildSystemPrompt() {
-  const connectorSummary = Object.values(DATA).map(s => {
-    const actions = Object.keys(s.actions || {}).join(', ');
-    return `- ${s.display_name} (${s.name}): ${s.description} Actions: ${actions}`;
-  }).join('\n');
-
-  return `You are a helpful assistant for ToolsConnector, an open-source Python library that provides a universal tool integration layer for both traditional Python applications and AI agents.
-
-Key facts:
-- ToolsConnector has ${STATS.connectors} connectors with ${STATS.actions} actions across ${STATS.categories} categories
-- Install: pip install toolsconnector
-- Core class: ToolKit -- used to load connectors and generate schemas
-- Works with OpenAI, Anthropic, Google Gemini, LangChain, and MCP
-- Connectors use a consistent @action decorator pattern
-- Auth is BYOK (Bring Your Own Key) -- users provide their own API keys
-- Supports async/await natively
-- Has built-in rate limiting, retries, and circuit breakers
-
-Usage patterns:
-\`\`\`python
-from toolsconnector import ToolKit
-tk = ToolKit()
-# Get a connector
-github = tk.get_connector("github")
-# Execute action
-issues = await github.list_issues(owner="user", repo="repo")
-# Generate schemas for AI
-tools = tk.to_openai_tools()
-\`\`\`
-
-Available connectors:
-${connectorSummary}
-
-Answer questions about connectors, their actions, setup, and usage patterns. Be concise and provide code examples when helpful. If asked about something outside ToolsConnector, politely redirect.`;
-}
-
-async function sendChat(messages, apiKey) {
-  const systemPrompt = buildSystemPrompt();
-  const apiMessages = [{ role: 'system', content: systemPrompt }, ...messages];
-
-  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.href,
-      'X-Title': 'ToolsConnector Assistant'
-    },
-    body: JSON.stringify({
-      model: 'qwen/qwen3-235b-a22b:free',
-      messages: apiMessages,
-      stream: false
-    })
-  });
-
-  if (!resp.ok) {
-    const errData = await resp.json().catch(() => ({}));
-    throw new Error(errData.error?.message || `API request failed (${resp.status})`);
-  }
-
-  const data = await resp.json();
-  return data.choices?.[0]?.message?.content || 'No response received.';
 }
 
 // ─── Page: Docs ─────────────────────────────────────────────────────────────
 function renderDocs(el, hash) {
   const parts = hash.split('/');
   const docId = parts[2] || 'quickstart';
-  const currentDoc = DOCS_PAGES.find(d => d.id === docId) || DOCS_PAGES[0];
+  const currentDoc = DOCS_ALL.find(d => d.id === docId) || DOCS_ALL[0];
 
-  const sidebar = DOCS_PAGES.map(d => {
-    const active = d.id === currentDoc.id;
-    return `<a href="#/docs/${d.id}" class="block px-3 py-2 rounded-lg text-sm ${active ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'} transition-colors">${d.title}</a>`;
-  }).join('');
-
-  el.innerHTML = `<div class="page-transition flex flex-col lg:flex-row gap-8">
-    <!-- Sidebar -->
-    <aside class="lg:w-56 flex-shrink-0">
-      <div class="lg:sticky lg:top-24">
-        <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 px-3">Documentation</h3>
-        <nav class="space-y-0.5">${sidebar}</nav>
-      </div>
-    </aside>
-    <!-- Content -->
-    <article id="doc-content" class="flex-1 min-w-0 prose-content">
-      <div class="flex items-center justify-center py-12 text-gray-400">
-        <svg class="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-        Loading documentation...
-      </div>
-    </article>
-  </div>`;
-
-  loadDoc(currentDoc);
-}
-
-async function loadDoc(doc) {
-  const contentEl = $('#doc-content');
-  try {
-    const resp = await fetch(GITHUB_RAW + doc.path);
-    if (!resp.ok) throw new Error(`Failed to load (${resp.status})`);
-    const md = await resp.text();
-    contentEl.innerHTML = renderMarkdown(md);
-  } catch (err) {
-    // Fallback: show embedded docs
-    contentEl.innerHTML = `<div class="text-center py-8">
-      <p class="text-gray-500 dark:text-gray-400 mb-4">Could not load documentation from GitHub.</p>
-      <p class="text-sm text-gray-400">${esc(err.message)}</p>
-      <a href="https://github.com/SachinVardhan662/ToolsConnector/tree/main/docs/${doc.path}" target="_blank" rel="noopener" class="inline-block mt-4 text-brand-600 hover:underline">View on GitHub</a>
-    </div>`;
+  // Build grouped sidebar
+  let sidebar = '';
+  for (const section of DOCS_SIDEBAR) {
+    sidebar += `<h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mt-4 mb-2 px-3">${section.heading}</h3>`;
+    for (const d of section.items) {
+      const active = d.id === currentDoc.id;
+      sidebar += `<a href="#/docs/${d.id}" class="block px-3 py-1.5 rounded-lg text-sm ${active ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'} transition-colors">${d.title}</a>`;
+    }
   }
+
+  // Get bundled content
+  const docData = DOCS_CONTENT[currentDoc.id];
+  let contentHtml = '';
+  if (docData && docData.content) {
+    contentHtml = renderMarkdown(docData.content);
+  } else {
+    contentHtml = `<div class="text-center py-12"><p class="text-gray-500 dark:text-gray-400 mb-4">Documentation page not found.</p>
+      <a href="https://github.com/sachinshelke/ToolsConnector/tree/main/docs" target="_blank" rel="noopener" class="text-brand-600 hover:underline">View docs on GitHub</a></div>`;
+  }
+
+  // Build DOM without template literals (contentHtml may contain backticks)
+  var dWrapper = document.createElement('div');
+  dWrapper.className = 'page-transition flex flex-col lg:flex-row gap-8';
+
+  var aside = document.createElement('aside');
+  aside.className = 'lg:w-56 flex-shrink-0';
+  var asideInner = document.createElement('div');
+  asideInner.className = 'lg:sticky lg:top-24 max-h-[calc(100vh-6rem)] overflow-y-auto';
+  asideInner.innerHTML = sidebar;
+  aside.appendChild(asideInner);
+  dWrapper.appendChild(aside);
+
+  var dArticle = document.createElement('article');
+  dArticle.className = 'flex-1 min-w-0 prose-content';
+  dArticle.innerHTML = contentHtml;
+  dWrapper.appendChild(dArticle);
+
+  el.innerHTML = '';
+  el.appendChild(dWrapper);
+  postRenderMarkdown(dArticle);
 }
 
 // ─── Page: Health ───────────────────────────────────────────────────────────
@@ -1010,7 +2132,23 @@ async function init() {
   try {
     const resp = await fetch('data.json');
     if (!resp.ok) throw new Error('Failed to load data.json');
-    DATA = await resp.json();
+    const raw = await resp.json();
+    // New shape: { connectors: {...}, docs: {...}, meta: {...} }
+    if (raw.connectors) {
+      DATA = {};
+      for (const [name, spec] of Object.entries(raw.connectors)) {
+        DATA[name] = { ...spec, name };
+      }
+      DOCS_CONTENT = raw.docs || {};
+      META = raw.meta || {};
+      SYS_PROMPT = META.system_prompt || '';
+    } else {
+      // Legacy flat shape fallback
+      DATA = raw;
+      for (const [name, spec] of Object.entries(DATA)) {
+        spec.name = name;
+      }
+    }
     computeStats();
   } catch (err) {
     $('#app').innerHTML = `<div class="text-center py-20"><h2 class="text-2xl font-bold mb-4 text-red-600">Failed to load data</h2><p class="text-gray-500">${esc(err.message)}</p></div>`;
@@ -1021,6 +2159,60 @@ async function init() {
 }
 
 init();
+
+// ─── Global Search ─────────────────────────────────────────────────────────
+(function() {
+  var input = document.getElementById('global-search');
+  var results = document.getElementById('global-search-results');
+  if (!input || !results) return;
+
+  input.addEventListener('input', function() {
+    var q = this.value.toLowerCase().trim();
+    if (q.length < 2) { results.classList.add('hidden'); return; }
+    var matches = [];
+    for (var name in DATA) {
+      var s = DATA[name];
+      var meta = s.meta || {};
+      var haystack = (s.name + ' ' + s.display_name + ' ' + (s.description || '') + ' ' + (meta.tagline || '')).toLowerCase();
+      if (haystack.includes(q)) {
+        matches.push(s);
+      }
+    }
+    if (!matches.length) {
+      results.innerHTML = '<div class="px-4 py-3 text-sm text-gray-400">No connectors found</div>';
+      results.classList.remove('hidden');
+      return;
+    }
+    results.innerHTML = matches.slice(0, 8).map(function(s) {
+      var logo = (s.meta && s.meta.logo) ? '<img data-logo="' + s.meta.logo + '" src="" class="w-5 h-5 rounded object-contain flex-shrink-0" onerror="this.style.display=\'none\'">' : '';
+      return '<a href="#/connector/' + s.name + '" class="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors">' +
+        logo + '<div><div class="font-medium">' + esc(s.display_name) + '</div><div class="text-xs text-gray-400">' + Object.keys(s.actions || {}).length + ' actions</div></div></a>';
+    }).join('');
+    applyLogos(results);
+    results.classList.remove('hidden');
+  });
+
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      var first = results.querySelector('a');
+      if (first) { first.click(); input.value = ''; results.classList.add('hidden'); }
+    }
+    if (e.key === 'Escape') { results.classList.add('hidden'); }
+  });
+
+  // Close on click outside
+  document.addEventListener('click', function(e) {
+    if (!document.getElementById('global-search-wrap').contains(e.target)) {
+      results.classList.add('hidden');
+    }
+  });
+
+  // Close on navigation
+  window.addEventListener('hashchange', function() {
+    input.value = '';
+    results.classList.add('hidden');
+  });
+})();
 </script>
 </body>
 </html>

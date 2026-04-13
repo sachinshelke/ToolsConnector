@@ -1,6 +1,6 @@
 # DevOps & Cloud
 
-Connectors for monitoring, deployment, CDN, and container services. 5 connectors, 40 actions.
+Connectors for monitoring, deployment, CDN, and container services. 5 connectors, 91 actions.
 
 ---
 

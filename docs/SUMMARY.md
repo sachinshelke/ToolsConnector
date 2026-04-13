@@ -44,5 +44,5 @@
 
 ## Links
 
-* [GitHub](https://github.com/toolsconnector/toolsconnector)
+* [GitHub](https://github.com/sachinshelke/ToolsConnector)
 * [PyPI](https://pypi.org/project/toolsconnector/)

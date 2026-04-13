@@ -6,7 +6,7 @@ How to expose ToolsConnector actions to Claude Desktop, Cursor, and other MCP cl
 
 The Model Context Protocol (MCP) is an open standard for connecting AI models to external tools and data sources. An MCP server advertises a set of tools -- each with a name, description, and JSON Schema for inputs -- and the AI client calls them as needed during a conversation.
 
-ToolsConnector can serve any combination of its 50+ connectors as an MCP server with a single line of code or CLI command.
+ToolsConnector can serve any combination of its 53+ connectors as an MCP server with a single line of code or CLI command.
 
 ## Install
 

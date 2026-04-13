@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FileRef + StorageBackend for file handling
 - Pluggable KeyStore (InMemory, Environment, LocalFile)
 - Full error hierarchy with structured to_dict() for AI consumption
-- 50 connectors with 395 real actions:
+- 53 connectors with 1,137 real actions:
   - Communication: Gmail, Slack, Discord, Outlook, Teams, Twilio, Telegram
   - Code: GitHub, GitLab
   - Project management: Jira, Asana, Linear, Trello
