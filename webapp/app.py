@@ -322,14 +322,15 @@ def connector_detail(name: str):
         initials = sp["display_name"][:2].upper()
         logo_html = f'<div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg" style="background:{meta["color"]}">{initials}</div>'
 
-    # External links with labels
+    # External links as labeled buttons
+    _link_cls = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs font-medium text-slate-600 dark:text-slate-400"
     ext_links_html = ""
     if meta.get("website"):
-        ext_links_html += f'<a href="{meta["website"]}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3"/></svg>Website</a>'
+        ext_links_html += f'<a href="{meta["website"]}" target="_blank" rel="noopener" class="{_link_cls}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3"/></svg>Website</a>'
     if meta.get("docs"):
-        ext_links_html += f'<a href="{meta["docs"]}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>API Docs</a>'
+        ext_links_html += f'<a href="{meta["docs"]}" target="_blank" rel="noopener" class="{_link_cls}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>API Docs</a>'
     if meta.get("github"):
-        ext_links_html += f'<a href="{meta["github"]}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>GitHub</a>'
+        ext_links_html += f'<a href="{meta["github"]}" target="_blank" rel="noopener" class="{_link_cls}"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>GitHub</a>'
 
     # Auth info footer
     auth_str = ", ".join(meta.get("auth_methods", [])) or "Bearer Token"
@@ -442,7 +443,14 @@ print(result)''')
 <!-- Section: Install -->
 <section id="install" class="scroll-mt-20 mb-8">
 <h2 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Install</h2>
-<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+<div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+<div class="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+<button onclick="document.querySelectorAll('.install-tab').forEach(t=>t.classList.add('hidden'));document.getElementById('install-python').classList.remove('hidden');document.querySelectorAll('.install-btn').forEach(b=>{{b.classList.remove('text-b-600','border-b-600','border-b-2');b.classList.add('text-slate-400','border-transparent')}});this.classList.add('text-b-600','border-b-600','border-b-2');this.classList.remove('text-slate-400','border-transparent')" class="install-btn px-4 py-2.5 text-sm font-medium border-b-2 border-b-600 text-b-600">Python</button>
+<button onclick="document.querySelectorAll('.install-tab').forEach(t=>t.classList.add('hidden'));document.getElementById('install-ts').classList.remove('hidden');document.querySelectorAll('.install-btn').forEach(b=>{{b.classList.remove('text-b-600','border-b-600','border-b-2');b.classList.add('text-slate-400','border-transparent')}});this.classList.add('text-b-600','border-b-600','border-b-2');this.classList.remove('text-slate-400','border-transparent')" class="install-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-400">TypeScript</button>
+<button onclick="document.querySelectorAll('.install-tab').forEach(t=>t.classList.add('hidden'));document.getElementById('install-go').classList.remove('hidden');document.querySelectorAll('.install-btn').forEach(b=>{{b.classList.remove('text-b-600','border-b-600','border-b-2');b.classList.add('text-slate-400','border-transparent')}});this.classList.add('text-b-600','border-b-600','border-b-2');this.classList.remove('text-slate-400','border-transparent')" class="install-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-400">Go</button>
+<button onclick="document.querySelectorAll('.install-tab').forEach(t=>t.classList.add('hidden'));document.getElementById('install-java').classList.remove('hidden');document.querySelectorAll('.install-btn').forEach(b=>{{b.classList.remove('text-b-600','border-b-600','border-b-2');b.classList.add('text-slate-400','border-transparent')}});this.classList.add('text-b-600','border-b-600','border-b-2');this.classList.remove('text-slate-400','border-transparent')" class="install-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-400">Java</button>
+</div>
+<div id="install-python" class="install-tab p-5">
 <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-3">
 <code class="text-sm font-mono text-slate-700 dark:text-slate-300 flex-1">{install_cmd}</code>
 <button onclick="navigator.clipboard.writeText('{install_cmd}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1200)" class="text-xs px-2.5 py-1 rounded bg-b-600 text-white hover:bg-b-700 cursor-pointer font-medium">Copy</button>
@@ -450,7 +458,28 @@ print(result)''')
 <div class="text-xs text-slate-400 mt-3"><code class="font-mono">export TC_{name.upper()}_CREDENTIALS=your-token</code></div>
 {prereqs_html}
 {cred_link_html}
-<div class="text-xs text-slate-400 mt-3">TypeScript, Go, Java SDKs coming soon.</div>
+</div>
+<div id="install-ts" class="install-tab hidden p-5">
+<div class="text-center py-6">
+<div class="text-sm font-medium text-slate-500 mb-1">TypeScript SDK coming soon</div>
+<div class="text-xs text-slate-400">Star the <a href="https://github.com/toolsconnector/toolsconnector" class="text-b-600 hover:underline">GitHub repo</a> to get notified when it launches.</div>
+<pre class="text-xs bg-slate-100 dark:bg-slate-800 rounded-lg p-3 mt-3 inline-block text-slate-500"><code>npm install toolsconnector  # coming soon</code></pre>
+</div>
+</div>
+<div id="install-go" class="install-tab hidden p-5">
+<div class="text-center py-6">
+<div class="text-sm font-medium text-slate-500 mb-1">Go SDK coming soon</div>
+<div class="text-xs text-slate-400">Star the <a href="https://github.com/toolsconnector/toolsconnector" class="text-b-600 hover:underline">GitHub repo</a> to get notified when it launches.</div>
+<pre class="text-xs bg-slate-100 dark:bg-slate-800 rounded-lg p-3 mt-3 inline-block text-slate-500"><code>go get github.com/toolsconnector/toolsconnector  # coming soon</code></pre>
+</div>
+</div>
+<div id="install-java" class="install-tab hidden p-5">
+<div class="text-center py-6">
+<div class="text-sm font-medium text-slate-500 mb-1">Java SDK coming soon</div>
+<div class="text-xs text-slate-400">Star the <a href="https://github.com/toolsconnector/toolsconnector" class="text-b-600 hover:underline">GitHub repo</a> to get notified when it launches.</div>
+<pre class="text-xs bg-slate-100 dark:bg-slate-800 rounded-lg p-3 mt-3 inline-block text-slate-500"><code>&lt;!-- Maven dependency coming soon --&gt;</code></pre>
+</div>
+</div>
 </div>
 </section>
 
