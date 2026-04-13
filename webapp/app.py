@@ -312,6 +312,282 @@ def connector_detail(name: str):
     meta = get_tool_meta(name)
     import html as _html
 
+    # --- Try README.md rendering first ---
+    readme_path = Path(__file__).parent.parent / "src" / "toolsconnector" / "connectors" / name / "README.md"
+    # Also check common alternate names
+    for alt_name in [name, name.replace("_connector", "")]:
+        alt_path = Path(__file__).parent.parent / "src" / "toolsconnector" / "connectors" / alt_name / "README.md"
+        if alt_path.exists():
+            readme_path = alt_path
+            break
+
+    if readme_path.exists():
+        readme_content = readme_path.read_text(encoding="utf-8")
+
+        # Auto-generate actions section
+        action_md = ""
+        for aname in sorted(actions.keys()):
+            act = actions[aname]
+            params = act.get("parameters", [])
+            scope = act.get("requires_scope", "")
+            dangerous = act.get("dangerous", False)
+            return_type = act.get("return_type", "Any")
+
+            warn = " :warning:" if dangerous else ""
+            scope_text = f" `scope: {scope}`" if scope else ""
+            action_md += f"\n### `{aname}`{warn}{scope_text}\n\n"
+            action_md += f"{act.get('description', '')}\n\n"
+
+            if params:
+                action_md += "| Parameter | Type | Required | Description |\n"
+                action_md += "|---|---|---|---|\n"
+                for p in params:
+                    req = "Yes" if p.get("required") else "No"
+                    default = f" (default: `{p['default']}`)" if p.get("default") is not None else ""
+                    action_md += f"| `{p['name']}` | `{p.get('type','any')}` | {req} | {p.get('description','')}{default} |\n"
+                action_md += "\n"
+
+            action_md += f"**Returns:** `{return_type}`\n\n"
+
+            # Example with real values
+            req_params = [p for p in params if p.get("required")]
+            opt_params = [p for p in params if not p.get("required")]
+            ex_params = req_params + opt_params[:2]
+            if ex_params:
+                args = ", ".join(f'"{p["name"]}": {_example_value(p)}' for p in ex_params)
+                action_md += f'```python\nresult = kit.execute("{name}_{aname}", {{{args}}})\n```\n\n'
+            else:
+                action_md += f'```python\nresult = kit.execute("{name}_{aname}", {{}})\n```\n\n'
+
+            action_md += "---\n"
+
+        # Inject actions into README
+        import re
+        if "<!-- ACTIONS_START -->" in readme_content:
+            readme_content = re.sub(
+                r"<!-- ACTIONS_START -->.*?<!-- ACTIONS_END -->",
+                f"<!-- ACTIONS_START -->\n{action_md}\n<!-- ACTIONS_END -->",
+                readme_content,
+                flags=re.DOTALL,
+            )
+        else:
+            # Append actions at the end if no markers
+            readme_content += f"\n\n## Actions\n\n{action_md}"
+
+        # Build sidebar from markdown headings
+        headings = re.findall(r"^##\s+(.+)$", readme_content, re.MULTILINE)
+        sidebar_links = ""
+        for h in headings:
+            h_id = h.lower().replace(" ", "-").replace("(", "").replace(")", "")
+            sidebar_links += f'<a href="#{h_id}" class="sidebar-link block px-3 py-1.5 rounded text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="{h_id}">{h}</a>\n'
+
+        sidebar_md = f'''<nav class="hidden lg:block w-52 flex-shrink-0">
+<div class="sticky top-20 space-y-0.5 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2">
+<a href="/connectors" class="block px-3 py-1.5 rounded text-sm text-slate-400 hover:text-slate-600 mb-2">&larr; All Connectors</a>
+{sidebar_links}
+</div></nav>'''
+
+        # Render with marked.js + custom styles
+        escaped_md = json.dumps(readme_content)
+
+        return _r(sp["display_name"], f"""
+<div class="flex gap-8">
+{sidebar_md}
+<div class="flex-1 min-w-0">
+<div id="readme-content" class="connector-readme"></div>
+</div>
+</div>
+
+<style>
+.connector-readme {{
+    font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.7;
+    color: #334155;
+}}
+.dark .connector-readme {{ color: #cbd5e1; }}
+.connector-readme h1 {{
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0 0 0.3em;
+    color: #0f172a;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.4em;
+}}
+.dark .connector-readme h1 {{ color: #f1f5f9; border-color: #334155; }}
+.connector-readme blockquote {{
+    border-left: 4px solid {meta.get('color', '#6366f1')};
+    padding: 0.5em 1em;
+    margin: 0 0 1.5em;
+    background: #f8fafc;
+    border-radius: 0 8px 8px 0;
+    color: #64748b;
+    font-size: 1.05em;
+}}
+.dark .connector-readme blockquote {{ background: #1e293b; color: #94a3b8; }}
+.connector-readme h2 {{
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 2em 0 0.6em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid #e2e8f0;
+    color: #1e293b;
+}}
+.dark .connector-readme h2 {{ color: #e2e8f0; border-color: #334155; }}
+.connector-readme h3 {{
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 1.5em 0 0.4em;
+    color: #334155;
+    font-family: 'JetBrains Mono', monospace;
+}}
+.dark .connector-readme h3 {{ color: #e2e8f0; }}
+.connector-readme p {{ margin: 0.5em 0 1em; }}
+.connector-readme ul, .connector-readme ol {{
+    padding-left: 1.5em;
+    margin: 0.5em 0 1em;
+}}
+.connector-readme li {{ margin: 0.3em 0; }}
+.connector-readme code:not(pre code) {{
+    background: rgba(99,102,241,0.08);
+    padding: 0.15em 0.45em;
+    border-radius: 5px;
+    font-size: 0.88em;
+    font-family: 'JetBrains Mono', monospace;
+    color: #4f46e5;
+}}
+.dark .connector-readme code:not(pre code) {{
+    background: rgba(99,102,241,0.15);
+    color: #a5b4fc;
+}}
+.connector-readme pre {{
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 10px;
+    padding: 1.2em;
+    overflow-x: auto;
+    margin: 0.8em 0 1.2em;
+    position: relative;
+    border: 1px solid #1e293b;
+}}
+.connector-readme pre code {{
+    background: none !important;
+    padding: 0 !important;
+    color: inherit !important;
+    font-size: 0.82em;
+    line-height: 1.6;
+}}
+.connector-readme table {{
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.8em 0 1.2em;
+    font-size: 0.88em;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+}}
+.dark .connector-readme table {{ border-color: #334155; }}
+.connector-readme th {{
+    background: #f1f5f9;
+    font-weight: 600;
+    text-align: left;
+    padding: 0.6em 1em;
+    font-size: 0.82em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}}
+.dark .connector-readme th {{ background: #1e293b; color: #94a3b8; }}
+.connector-readme td {{
+    padding: 0.5em 1em;
+    border-top: 1px solid #e2e8f0;
+    vertical-align: top;
+}}
+.dark .connector-readme td {{ border-color: #334155; }}
+.connector-readme tr:hover td {{ background: #f8fafc; }}
+.dark .connector-readme tr:hover td {{ background: #1e293b; }}
+.connector-readme hr {{
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 2em 0;
+}}
+.dark .connector-readme hr {{ border-color: #334155; }}
+.connector-readme a {{
+    color: #4f46e5;
+    text-decoration: none;
+}}
+.connector-readme a:hover {{ text-decoration: underline; }}
+.dark .connector-readme a {{ color: #818cf8; }}
+.connector-readme img {{ max-width: 100%; border-radius: 8px; }}
+.connector-readme strong {{ font-weight: 700; }}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script>
+marked.setOptions({{
+    breaks: false,
+    gfm: true,
+    highlight: function(code, lang) {{
+        if (lang && hljs.getLanguage(lang)) {{
+            try {{ return hljs.highlight(code, {{language: lang}}).value; }} catch(e) {{}}
+        }}
+        return hljs.highlightAuto(code).value;
+    }}
+}});
+
+// Render markdown
+var md = {escaped_md};
+var html = marked.parse(md);
+
+// Add IDs to h2 headings for scroll-spy
+html = html.replace(/<h2(.*?)>(.*?)<\\/h2>/g, function(match, attrs, text) {{
+    var id = text.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return '<h2 id="' + id + '" class="scroll-mt-20"' + attrs + '>' + text + '</h2>';
+}});
+
+document.getElementById('readme-content').innerHTML = html;
+
+// Add copy buttons to code blocks
+document.querySelectorAll('.connector-readme pre').forEach(function(pre) {{
+    var btn = document.createElement('button');
+    btn.textContent = 'Copy';
+    btn.className = 'absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-400 hover:text-white cursor-pointer';
+    btn.onclick = function() {{
+        navigator.clipboard.writeText(pre.querySelector('code').textContent.trim());
+        btn.textContent = 'Copied!';
+        setTimeout(function() {{ btn.textContent = 'Copy'; }}, 1500);
+    }};
+    pre.style.position = 'relative';
+    pre.appendChild(btn);
+}});
+
+// Scroll-spy
+(function() {{
+    var sections = document.querySelectorAll('h2[id]');
+    var links = document.querySelectorAll('.sidebar-link');
+    var observer = new IntersectionObserver(function(entries) {{
+        entries.forEach(function(entry) {{
+            if (entry.isIntersecting) {{
+                var id = entry.target.id;
+                links.forEach(function(l) {{
+                    l.classList.remove('bg-b-50','text-b-700');
+                    l.classList.add('text-slate-500');
+                }});
+                var active = document.querySelector('.sidebar-link[data-section="' + id + '"]');
+                if (active) {{
+                    active.classList.add('bg-b-50','text-b-700');
+                    active.classList.remove('text-slate-500');
+                }}
+            }}
+        }});
+    }}, {{ rootMargin: '-80px 0px -70% 0px' }});
+    sections.forEach(function(s) {{ observer.observe(s); }});
+}})();
+</script>
+""")
+
+    # --- Fallback: generated page (no README.md) ---
     first_action = _best_first_action(actions)
     install_cmd = f"pip install toolsconnector[{name}]"
 
