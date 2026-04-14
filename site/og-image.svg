@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e1b4b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="50%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#ef4444"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Subtle grid pattern -->
+  <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+    <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#ffffff08" stroke-width="1"/>
+  </pattern>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- Glow circles -->
+  <circle cx="150" cy="150" r="200" fill="#3b82f610"/>
+  <circle cx="1050" cy="480" r="250" fill="#8b5cf610"/>
+
+  <!-- Logo area — left side -->
+  <!-- Logo placeholder (simplified version of the TC logo) -->
+  <g transform="translate(100, 235)">
+    <!-- Outer hexagon-ish shape -->
+    <rect x="0" y="0" width="80" height="80" rx="20" fill="url(#logoGrad)" opacity="0.95"/>
+    <!-- TC letters -->
+    <text x="40" y="55" font-family="system-ui, sans-serif" font-weight="900" font-size="36" fill="white" text-anchor="middle">TC</text>
+  </g>
+
+  <!-- Brand name -->
+  <text x="210" y="280" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="52" fill="white">ToolsConnector</text>
+
+  <!-- Tagline with gradient -->
+  <text x="100" y="350" font-family="system-ui, -apple-system, sans-serif" font-weight="400" font-size="26" fill="#94a3b8">One Python library. Every API. Any AI agent.</text>
+
+  <!-- Accent line -->
+  <rect x="100" y="380" width="320" height="4" rx="2" fill="url(#accent)"/>
+
+  <!-- Stats row -->
+  <g transform="translate(100, 430)">
+    <!-- Stat 1 -->
+    <text x="0" y="0" font-family="system-ui, sans-serif" font-weight="800" font-size="42" fill="#60a5fa">53</text>
+    <text x="0" y="30" font-family="system-ui, sans-serif" font-weight="500" font-size="16" fill="#64748b">Connectors</text>
+    <!-- Stat 2 -->
+    <text x="160" y="0" font-family="system-ui, sans-serif" font-weight="800" font-size="42" fill="#a78bfa">1,137</text>
+    <text x="160" y="30" font-family="system-ui, sans-serif" font-weight="500" font-size="16" fill="#64748b">Actions</text>
+    <!-- Stat 3 -->
+    <text x="370" y="0" font-family="system-ui, sans-serif" font-weight="800" font-size="42" fill="#34d399">17</text>
+    <text x="370" y="30" font-family="system-ui, sans-serif" font-weight="500" font-size="16" fill="#64748b">Categories</text>
+  </g>
+
+  <!-- Right side: connector pill badges -->
+  <g transform="translate(680, 120)">
+    <!-- Row 1 -->
+    <rect x="0"   y="0"  width="110" height="36" rx="18" fill="#ffffff08" stroke="#ffffff20" stroke-width="1"/>
+    <text x="55"  y="23" font-family="system-ui, sans-serif" font-size="14" fill="#e2e8f0" text-anchor="middle" font-weight="500">Gmail</text>
+
+    <rect x="124" y="0"  width="110" height="36" rx="18" fill="#ffffff08" stroke="#ffffff20" stroke-width="1"/>
+    <text x="179" y="23" font-family="system-ui, sans-serif" font-size="14" fill="#e2e8f0" text-anchor="middle" font-weight="500">Slack</text>
+
+    <rect x="248" y="0"  width="110" height="36" rx="18" fill="#ffffff08" stroke="#ffffff20" stroke-width="1"/>
+    <text x="303" y="23" font-family="system-ui, sans-serif" font-size="14" fill="#e2e8f0" text-anchor="middle" font-weight="500">GitHub</text>
+
+    <rect x="372" y="0"  width="110" height="36" rx="18" fill="#ffffff08" stroke="#ffffff20" stroke-width="1"/>
+    <text x="427" y="23" font-family="system-ui, sans-serif" font-size="14" fill="#e2e8f0" text-anchor="middle" font-weight="500">Stripe</text>
+
+    <!-- Row 2 -->
+    <rect x="0"   y="52" width="130" height="36" rx="18" fill="#ffffff08" stroke="#ffffff20" stroke-width="1"/>
+    <text x="65"  y="75" font-family="system-ui, sans-serif" font-size="14" fill="#e2e8f0" text-anchor="middle" font-weight="500">OpenAI</text>
+
+    <rect x="144" y="52" width="140" height="36" rx="18" fill="#ffffff08" stroke="#ffffff20" stroke-width="1"/>
+    <text x="214" y="75" font-family="system-ui, sans-serif" font-size="14" fill="#e2e8f0" text-anchor="middle" font-weight="500">Anthropic</text>
+
+    <rect x="298" y="52" width="110" height="36" rx="18" fill="#ffffff08" stroke="#ffffff20" stroke-width="1"/>
+    <text x="353" y="75" font-family="system-ui, sans-serif" font-size="14" fill="#e2e8f0" text-anchor="middle" font-weight="500">Notion</text>
+
+    <rect x="422" y="52" width="60"  height="36" rx="18" fill="#3b82f620" stroke="#3b82f640" stroke-width="1"/>
+    <text x="452" y="75" font-family="system-ui, sans-serif" font-size="14" fill="#93c5fd" text-anchor="middle" font-weight="500">+47</text>
+
+    <!-- Row 3 -->
+    <rect x="0"   y="104" width="110" height="36" rx="18" fill="#ffffff08" stroke="#ffffff20" stroke-width="1"/>
+    <text x="55"  y="127" font-family="system-ui, sans-serif" font-size="14" fill="#e2e8f0" text-anchor="middle" font-weight="500">Jira</text>
+
+    <rect x="124" y="104" width="110" height="36" rx="18" fill="#ffffff08" stroke="#ffffff20" stroke-width="1"/>
+    <text x="179" y="127" font-family="system-ui, sans-serif" font-size="14" fill="#e2e8f0" text-anchor="middle" font-weight="500">Shopify</text>
+
+    <rect x="248" y="104" width="110" height="36" rx="18" fill="#ffffff08" stroke="#ffffff20" stroke-width="1"/>
+    <text x="303" y="127" font-family="system-ui, sans-serif" font-size="14" fill="#e2e8f0" text-anchor="middle" font-weight="500">Twilio</text>
+
+    <rect x="372" y="104" width="110" height="36" rx="18" fill="#ffffff08" stroke="#ffffff20" stroke-width="1"/>
+    <text x="427" y="127" font-family="system-ui, sans-serif" font-size="14" fill="#e2e8f0" text-anchor="middle" font-weight="500">Discord</text>
+
+    <!-- Row 4 -->
+    <rect x="0"   y="156" width="130" height="36" rx="18" fill="#8b5cf620" stroke="#8b5cf640" stroke-width="1"/>
+    <text x="65"  y="179" font-family="system-ui, sans-serif" font-size="14" fill="#c4b5fd" text-anchor="middle" font-weight="600">MCP Server</text>
+
+    <rect x="144" y="156" width="190" height="36" rx="18" fill="#3b82f620" stroke="#3b82f640" stroke-width="1"/>
+    <text x="239" y="179" font-family="system-ui, sans-serif" font-size="14" fill="#93c5fd" text-anchor="middle" font-weight="600">Function Calling</text>
+
+    <rect x="348" y="156" width="130" height="36" rx="18" fill="#10b98120" stroke="#10b98140" stroke-width="1"/>
+    <text x="413" y="179" font-family="system-ui, sans-serif" font-size="14" fill="#6ee7b7" text-anchor="middle" font-weight="600">Tool Use</text>
+
+    <!-- Row 5: pip install -->
+    <rect x="0" y="218" width="490" height="44" rx="10" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="16" y="246" font-family="monospace" font-size="16" fill="#22c55e">$</text>
+    <text x="36" y="246" font-family="monospace" font-size="16" fill="#e2e8f0">pip install </text>
+    <text x="164" y="246" font-family="monospace" font-size="16" fill="#f97316">"toolsconnector[gmail,slack]"</text>
+  </g>
+
+  <!-- URL bottom left -->
+  <text x="100" y="590" font-family="system-ui, sans-serif" font-size="18" fill="#475569">toolsconnector.github.io</text>
+
+  <!-- PyPI badge bottom right -->
+  <rect x="960" y="570" width="160" height="32" rx="8" fill="#ffffff08" stroke="#ffffff15" stroke-width="1"/>
+  <text x="1040" y="591" font-family="system-ui, sans-serif" font-size="14" fill="#64748b" text-anchor="middle">Apache 2.0 · Free</text>
+</svg>
