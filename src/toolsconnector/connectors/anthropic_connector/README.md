@@ -30,7 +30,7 @@ The Anthropic API provides access to Claude models for text generation, analysis
 ## Installation
 
 ```bash
-pip install toolsconnector[anthropic]
+pip install "toolsconnector[anthropic]"
 ```
 
 Set your credentials:

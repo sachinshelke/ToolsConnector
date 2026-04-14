@@ -30,7 +30,7 @@ The Google Calendar API lets you create, modify, and query calendar events. Chec
 ## Installation
 
 ```bash
-pip install toolsconnector[gcalendar]
+pip install "toolsconnector[gcalendar]"
 ```
 
 Set your credentials:

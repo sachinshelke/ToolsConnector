@@ -30,7 +30,7 @@ The Confluence REST API provides access to spaces, pages, blog posts, comments, 
 ## Installation
 
 ```bash
-pip install toolsconnector[confluence]
+pip install "toolsconnector[confluence]"
 ```
 
 Set your credentials:

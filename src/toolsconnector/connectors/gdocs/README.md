@@ -29,7 +29,7 @@ The Google Docs API lets you create and modify Google Docs programmatically. Ins
 ## Installation
 
 ```bash
-pip install toolsconnector[gdocs]
+pip install "toolsconnector[gdocs]"
 ```
 
 Set your credentials:

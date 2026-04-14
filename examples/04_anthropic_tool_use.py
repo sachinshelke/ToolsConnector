@@ -4,7 +4,7 @@ Same pattern as the OpenAI example but using the Anthropic SDK.
 ToolKit generates the correct schema format for each provider.
 
 Prerequisites:
-    pip install toolsconnector[slack] anthropic
+    pip install "toolsconnector[slack]" anthropic
     export TC_SLACK_CREDENTIALS='xoxb-your-bot-token'
     export ANTHROPIC_API_KEY='sk-ant-your-key'
 """

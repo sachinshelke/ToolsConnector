@@ -30,7 +30,7 @@ The Jira REST API provides access to issues, projects, sprints, boards, and work
 ## Installation
 
 ```bash
-pip install toolsconnector[jira]
+pip install "toolsconnector[jira]"
 ```
 
 Set your credentials:

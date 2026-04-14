@@ -30,7 +30,7 @@ The Trello API provides access to boards, lists, cards, members, and labels. Cre
 ## Installation
 
 ```bash
-pip install toolsconnector[trello]
+pip install "toolsconnector[trello]"
 ```
 
 Set your credentials:

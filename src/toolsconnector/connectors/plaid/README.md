@@ -30,7 +30,7 @@ The Plaid API provides access to financial account data, transactions, balances,
 ## Installation
 
 ```bash
-pip install toolsconnector[plaid]
+pip install "toolsconnector[plaid]"
 ```
 
 Set your credentials:

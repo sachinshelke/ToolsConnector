@@ -12,7 +12,7 @@ A clear description of the bug.
 
 ## Steps to Reproduce
 
-1. Install: `pip install toolsconnector[...]`
+1. Install: `pip install "toolsconnector[...]"`
 2. Run this code:
 ```python
 from toolsconnector.serve import ToolKit

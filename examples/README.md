@@ -7,7 +7,7 @@ variables and go.
 ## Quick Start
 
 ```bash
-pip install toolsconnector[gmail]
+pip install "toolsconnector[gmail]"
 export TC_GMAIL_CREDENTIALS='your-oauth-token'
 python examples/01_basic_usage.py
 ```

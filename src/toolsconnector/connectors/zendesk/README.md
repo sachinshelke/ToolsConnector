@@ -30,7 +30,7 @@ The Zendesk API provides access to tickets, users, organizations, and help cente
 ## Installation
 
 ```bash
-pip install toolsconnector[zendesk]
+pip install "toolsconnector[zendesk]"
 ```
 
 Set your credentials:

@@ -45,7 +45,7 @@ def create_and_run_mcp_server(
     except ImportError:
         raise ImportError(
             "MCP server requires the 'mcp' package. "
-            "Install with: pip install toolsconnector[mcp]"
+            'Install with: pip install "toolsconnector[mcp]"'
         )
 
     server = FastMCP(name)

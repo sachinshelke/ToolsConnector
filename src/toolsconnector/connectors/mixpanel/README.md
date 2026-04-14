@@ -30,7 +30,7 @@ The Mixpanel API lets you track events, query analytics data, manage user profil
 ## Installation
 
 ```bash
-pip install toolsconnector[mixpanel]
+pip install "toolsconnector[mixpanel]"
 ```
 
 Set your credentials:

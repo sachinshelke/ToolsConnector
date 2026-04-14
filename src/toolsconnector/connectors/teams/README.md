@@ -30,7 +30,7 @@ The Microsoft Teams API (via Microsoft Graph) provides access to teams, channels
 ## Installation
 
 ```bash
-pip install toolsconnector[teams]
+pip install "toolsconnector[teams]"
 ```
 
 Set your credentials:

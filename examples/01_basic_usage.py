@@ -4,7 +4,7 @@ This is the simplest possible example: create a ToolKit with one
 connector, list the available tools, and execute an action.
 
 Prerequisites:
-    pip install toolsconnector[gmail]
+    pip install "toolsconnector[gmail]"
     export TC_GMAIL_CREDENTIALS='your-oauth-token'
 
 The credential format depends on the connector. Gmail expects an

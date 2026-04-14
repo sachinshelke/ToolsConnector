@@ -5,7 +5,7 @@
 # It provides quick access to connectors without writing Python.
 #
 # Prerequisites:
-#   pip install toolsconnector[gmail,slack,github]
+#   pip install "toolsconnector[gmail,slack,github]"
 #   export TC_GMAIL_CREDENTIALS='your-token'
 
 # List all registered connectors (currently 50+)

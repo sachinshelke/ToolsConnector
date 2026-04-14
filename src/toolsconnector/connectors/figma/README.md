@@ -30,7 +30,7 @@ The Figma API provides access to files, components, styles, comments, and projec
 ## Installation
 
 ```bash
-pip install toolsconnector[figma]
+pip install "toolsconnector[figma]"
 ```
 
 Set your credentials:

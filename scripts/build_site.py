@@ -236,7 +236,7 @@ def build_system_prompt(names: list[str], specs: dict, cats: set) -> str:
         "kit.serve_mcp()  # MCP server\n"
         "```\n\n"
         "## Install\n"
-        "`pip install toolsconnector` or `pip install toolsconnector[gmail,slack]`\n\n"
+        '`pip install toolsconnector` or `pip install "toolsconnector[gmail,slack]"`\n\n'
         "## Key Features\n"
         f"{len(names)} connectors, {total_actions} actions, {len(cats)} categories. "
         "OpenAI/Anthropic/Gemini schemas. MCP server. Circuit breakers, retries, timeouts. "

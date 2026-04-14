@@ -30,7 +30,7 @@ The Datadog API lets you manage dashboards, monitors, metrics, logs, and inciden
 ## Installation
 
 ```bash
-pip install toolsconnector[datadog]
+pip install "toolsconnector[datadog]"
 ```
 
 Set your credentials:

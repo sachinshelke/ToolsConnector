@@ -30,7 +30,7 @@ The Discord API provides access to Discord servers (guilds), channels, messages,
 ## Installation
 
 ```bash
-pip install toolsconnector[discord]
+pip install "toolsconnector[discord]"
 ```
 
 Set your credentials:

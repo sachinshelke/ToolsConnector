@@ -30,7 +30,7 @@ The MongoDB Atlas Data API provides RESTful access to your MongoDB Atlas cluster
 ## Installation
 
 ```bash
-pip install toolsconnector[mongodb]
+pip install "toolsconnector[mongodb]"
 ```
 
 Set your credentials:

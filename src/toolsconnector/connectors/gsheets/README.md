@@ -30,7 +30,7 @@ The Google Sheets API provides full access to spreadsheet data and structure. Re
 ## Installation
 
 ```bash
-pip install toolsconnector[gsheets]
+pip install "toolsconnector[gsheets]"
 ```
 
 Set your credentials:

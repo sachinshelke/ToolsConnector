@@ -30,7 +30,7 @@ The GitLab REST API provides access to projects, merge requests, issues, pipelin
 ## Installation
 
 ```bash
-pip install toolsconnector[gitlab]
+pip install "toolsconnector[gitlab]"
 ```
 
 Set your credentials:

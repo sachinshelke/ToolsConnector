@@ -708,7 +708,7 @@ def _generate_readme(name: str, sp: dict, meta: dict) -> str:
     # Installation
     lines.append("## Installation\n")
     lines.append("```bash")
-    lines.append(f"pip install toolsconnector[{name}]")
+    lines.append(f'pip install "toolsconnector[{name}]"')
     lines.append("```\n")
     lines.append("Set your credentials:\n")
     lines.append("```bash")

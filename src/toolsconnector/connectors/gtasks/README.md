@@ -29,7 +29,7 @@ The Google Tasks API provides access to task lists and individual tasks. Create,
 ## Installation
 
 ```bash
-pip install toolsconnector[gtasks]
+pip install "toolsconnector[gtasks]"
 ```
 
 Set your credentials:

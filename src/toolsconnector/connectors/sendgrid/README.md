@@ -30,7 +30,7 @@ The SendGrid API provides email sending, template management, contact lists, and
 ## Installation
 
 ```bash
-pip install toolsconnector[sendgrid]
+pip install "toolsconnector[sendgrid]"
 ```
 
 Set your credentials:

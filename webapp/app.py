@@ -251,13 +251,13 @@ def home():
         </div>
       </div>
       <div class="flex-1 px-4 pb-4">
-        <pre class="bg-slate-900 text-slate-100 rounded-xl p-4 text-xs overflow-hidden h-full flex items-start leading-relaxed"><code><span class="text-emerald-400">$</span> pip install toolsconnector[gmail]
+        <pre class="bg-slate-900 text-slate-100 rounded-xl p-4 text-xs overflow-hidden h-full flex items-start leading-relaxed"><code><span class="text-emerald-400">$</span> pip install "toolsconnector[gmail]"
 
 <span class="text-slate-500"># Or multiple connectors</span>
-<span class="text-emerald-400">$</span> pip install toolsconnector[gmail,slack]
+<span class="text-emerald-400">$</span> pip install "toolsconnector[gmail,slack]"
 
 <span class="text-slate-500"># Or install everything</span>
-<span class="text-emerald-400">$</span> pip install toolsconnector[all]</code></pre>
+<span class="text-emerald-400">$</span> pip install "toolsconnector[all]"</code></pre>
       </div>
     </div>
     <!-- Step 2 -->
@@ -994,7 +994,7 @@ document.querySelectorAll('.connector-readme pre').forEach(function(pre) {{
 
     # --- Fallback: generated page (no README.md) ---
     first_action = _best_first_action(actions)
-    install_cmd = f"pip install toolsconnector[{name}]"
+    install_cmd = f'pip install "toolsconnector[{name}]"'
 
     # Logo
     if meta.get("logo"):
@@ -1301,7 +1301,7 @@ def assistant():
         'result = await kit.aexecute("gmail_list_emails", {"query": "is:unread"})\n'
         "kit.serve_mcp()  # MCP server\n"
         "```\n\n"
-        "## Install: `pip install toolsconnector` or `pip install toolsconnector[gmail,slack]`\n\n"
+        '## Install: `pip install toolsconnector` or `pip install "toolsconnector[gmail,slack]"`\n\n'
         "## Key Features\n"
         f"{len(names)} connectors, {total_actions} actions, {len(cats)} categories. "
         "OpenAI/Anthropic/Gemini schemas. MCP server. Circuit breakers, retries, timeouts. "

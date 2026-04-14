@@ -30,7 +30,7 @@ The Microsoft Graph Mail API provides access to Outlook email, calendar, and con
 ## Installation
 
 ```bash
-pip install toolsconnector[outlook]
+pip install "toolsconnector[outlook]"
 ```
 
 Set your credentials:

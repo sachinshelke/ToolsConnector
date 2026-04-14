@@ -30,7 +30,7 @@ The Shopify Admin API provides access to products, orders, customers, inventory,
 ## Installation
 
 ```bash
-pip install toolsconnector[shopify]
+pip install "toolsconnector[shopify]"
 ```
 
 Set your credentials:

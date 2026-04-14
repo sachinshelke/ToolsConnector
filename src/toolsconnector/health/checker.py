@@ -138,7 +138,7 @@ class HealthChecker:
                 connector_name=name,
                 healthy=False,
                 error=f"Import failed: {e}",
-                suggestion=f"pip install toolsconnector[{name}]",
+                suggestion=f'pip install "toolsconnector[{name}]"',
                 checked_at=checked_at,
             )
 

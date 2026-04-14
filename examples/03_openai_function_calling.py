@@ -4,7 +4,7 @@ Full loop: generate tool schemas, send to OpenAI, execute the tool
 call that comes back, and feed the result back into the conversation.
 
 Prerequisites:
-    pip install toolsconnector[github] openai
+    pip install "toolsconnector[github]" openai
     export TC_GITHUB_CREDENTIALS='ghp_your-personal-access-token'
     export OPENAI_API_KEY='sk-your-key'
 """

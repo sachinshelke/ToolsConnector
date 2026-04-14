@@ -30,7 +30,7 @@ The Linear GraphQL API provides access to issues, projects, cycles, teams, and l
 ## Installation
 
 ```bash
-pip install toolsconnector[linear]
+pip install "toolsconnector[linear]"
 ```
 
 Set your credentials:

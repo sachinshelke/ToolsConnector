@@ -30,7 +30,7 @@ The Google Drive API provides programmatic access to Google Drive files and fold
 ## Installation
 
 ```bash
-pip install toolsconnector[gdrive]
+pip install "toolsconnector[gdrive]"
 ```
 
 Set your credentials:

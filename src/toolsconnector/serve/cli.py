@@ -160,7 +160,7 @@ def _cmd_serve_rest(args: argparse.Namespace) -> int:
     except ImportError:
         print(
             "REST server requires uvicorn. "
-            "Install with: pip install toolsconnector[rest]",
+            'Install with: pip install "toolsconnector[rest]"',
             file=sys.stderr,
         )
         return 1

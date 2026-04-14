@@ -30,7 +30,7 @@ The Slack Web API provides comprehensive access to Slack workspaces. Send and ma
 ## Installation
 
 ```bash
-pip install toolsconnector[slack]
+pip install "toolsconnector[slack]"
 ```
 
 Set your credentials:

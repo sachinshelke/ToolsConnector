@@ -30,7 +30,7 @@ The Webhook connector lets you send HTTP requests to any URL endpoint. Fire webh
 ## Installation
 
 ```bash
-pip install toolsconnector[webhook]
+pip install "toolsconnector[webhook]"
 ```
 
 Set your credentials:

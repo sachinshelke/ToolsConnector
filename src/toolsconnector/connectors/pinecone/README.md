@@ -30,7 +30,7 @@ The Pinecone API provides vector database operations for AI applications. Upsert
 ## Installation
 
 ```bash
-pip install toolsconnector[pinecone]
+pip install "toolsconnector[pinecone]"
 ```
 
 Set your credentials:

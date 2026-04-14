@@ -30,7 +30,7 @@ The HubSpot CRM API provides access to contacts, companies, deals, tickets, and 
 ## Installation
 
 ```bash
-pip install toolsconnector[hubspot]
+pip install "toolsconnector[hubspot]"
 ```
 
 Set your credentials:
