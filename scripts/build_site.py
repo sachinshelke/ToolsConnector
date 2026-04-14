@@ -535,14 +535,25 @@ footer a {{ color: #94a3b8; }}
 # Sitemap generator  (proper /connectors/{name}/ URLs, not hash routes)
 # ---------------------------------------------------------------------------
 
-def generate_sitemap(connector_names: list[str], doc_keys: list[str]) -> str:
+def generate_sitemap(
+    connector_names: list[str],
+    doc_keys: list[str],
+    built_at: datetime,
+) -> str:
     """Return a sitemap.xml with only real, crawlable URLs (no # fragments).
 
     Hash-based SPA routes (#/connectors, #/docs/...) are invalid in sitemaps —
     Google rejects the entire file if any <loc> contains a fragment identifier.
     Only the homepage and the pre-generated static connector pages are included.
+
+    <lastmod> is set to the build date on all pages — this is the signal Google
+    actively uses to prioritise re-crawling recently updated content.
+    <changefreq> and <priority> are hints Google largely ignores, but we keep
+    them for completeness and third-party sitemap tools.
     """
-    base = "https://toolsconnector.github.io"
+    base     = "https://toolsconnector.github.io"
+    today    = built_at.strftime("%Y-%m-%d")   # ISO 8601 date — what Google wants
+
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
@@ -550,16 +561,18 @@ def generate_sitemap(connector_names: list[str], doc_keys: list[str]) -> str:
         "  <!-- Homepage -->",
         "  <url>",
         f"    <loc>{base}/</loc>",
+        f"    <lastmod>{today}</lastmod>",
         "    <changefreq>weekly</changefreq>",
         "    <priority>1.0</priority>",
         "  </url>",
         "",
-        "  <!-- Static connector pages (53 individually crawlable URLs) -->",
+        f"  <!-- {len(connector_names)} static connector pages (individually crawlable) -->",
     ]
     for cname in sorted(connector_names):
         lines += [
             "  <url>",
             f"    <loc>{base}/connectors/{cname}/</loc>",
+            f"    <lastmod>{today}</lastmod>",
             "    <changefreq>monthly</changefreq>",
             "    <priority>0.8</priority>",
             "  </url>",
@@ -690,11 +703,12 @@ def main():
     system_prompt = build_system_prompt(list(connectors_out.keys()), specs_for_prompt, cats)
 
     # ── Assemble output ─────────────────────────────────────────────
+    built_at = datetime.now(timezone.utc)
     output = {
         "connectors": connectors_out,
         "docs": docs,
         "meta": {
-            "built_at": datetime.now(timezone.utc).isoformat(),
+            "built_at": built_at.isoformat(),
             "connector_count": len(connectors_out),
             "action_count": total_actions,
             "category_count": len(cats),
@@ -722,9 +736,10 @@ def main():
     print(f"  {len(connectors_out)} connector pages → site/connectors/*/index.html")
 
     # ── Write sitemap.xml ───────────────────────────────────────────
-    sitemap_xml = generate_sitemap(list(connectors_out.keys()), list(docs.keys()))
+    sitemap_xml = generate_sitemap(list(connectors_out.keys()), list(docs.keys()), built_at)
     (SITE_DIR / "sitemap.xml").write_text(sitemap_xml, encoding="utf-8")
-    print(f"  Sitemap → site/sitemap.xml ({len(connectors_out) + len(docs) + 2} URLs)")
+    n_sitemap = 1 + len(connectors_out)   # homepage + 53 connector pages
+    print(f"  Sitemap → site/sitemap.xml ({n_sitemap} URLs, lastmod {built_at.strftime('%Y-%m-%d')})")
 
     print("Done.")
 
