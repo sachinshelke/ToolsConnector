@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+          http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- Homepage -->
+  <url>
+    <loc>https://toolsconnector.github.io/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Connectors directory -->
+  <url>
+    <loc>https://toolsconnector.github.io/#/connectors</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Playground -->
+  <url>
+    <loc>https://toolsconnector.github.io/#/playground</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Docs -->
+  <url>
+    <loc>https://toolsconnector.github.io/#/docs</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://toolsconnector.github.io/#/docs/quickstart</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://toolsconnector.github.io/#/docs/installation</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://toolsconnector.github.io/#/docs/authentication</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://toolsconnector.github.io/#/docs/mcp</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://toolsconnector.github.io/#/docs/openai</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://toolsconnector.github.io/#/docs/anthropic</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Individual connector pages -->
+  <url><loc>https://toolsconnector.github.io/#/connector/gmail</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/slack</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/github</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/stripe</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/openai_connector</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/anthropic_connector</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/notion</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/jira</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/discord</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/s3</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/salesforce</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/hubspot</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/twilio</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/shopify</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/figma</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/linear</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/asana</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/gcalendar</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/teams</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/mongodb</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/airtable</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/firestore</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/supabase</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/redis_connector</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/gitlab</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/confluence</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/trello</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/outlook</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/zendesk</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/freshdesk</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/intercom</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/pinecone</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/datadog</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/pagerduty</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/vercel</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/cloudflare</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/dockerhub</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/plaid</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/mailchimp</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/sendgrid</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/gdrive</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/gdocs</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/gsheets</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/gtasks</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/calendly</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/telegram</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/okta</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/auth0</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/mixpanel</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/segment</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/sqs</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/rabbitmq</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://toolsconnector.github.io/#/connector/webhook</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+
+</urlset>

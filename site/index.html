@@ -1,11 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" prefix="og: https://ogp.me/ns#">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ToolsConnector - Universal Tool Integration for Python and AI Agents</title>
+
+<!-- ═══ Primary SEO ══════════════════════════════════════════════════════════ -->
+<title>ToolsConnector — Python Library for 53 API Connectors | AI Agents &amp; MCP</title>
+<meta name="description" content="Open-source Python library giving AI agents and Python apps a unified interface to 53 APIs — Gmail, Slack, GitHub, Stripe, OpenAI, Anthropic, and 47 more. MCP server, OpenAI function calling, and Anthropic tool use built in. Apache 2.0.">
+<meta name="keywords" content="Python API library, AI agent tools, OpenAI function calling, Anthropic tool use, MCP server, LLM tool calling, Gmail API Python, Slack API Python, GitHub API Python, API connector Python, tool integration Python, AI function calling library, Model Context Protocol Python">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/">
 <link rel="icon" type="image/svg+xml" href="logo.svg">
-<meta name="description" content="53 connectors, 1,137 actions. One consistent interface for traditional Python apps and AI agents alike.">
+<meta name="theme-color" content="#2563eb">
+<meta name="application-name" content="ToolsConnector">
+
+<!-- ═══ Open Graph — Facebook / LinkedIn / WhatsApp ═════════════════════════ -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="ToolsConnector — One Python Library for 53 APIs">
+<meta property="og:description" content="Connect AI agents and Python apps to Gmail, Slack, GitHub, Stripe, OpenAI, Anthropic, and 47 more through a single interface. MCP server, function calling, and tool use built in. Free &amp; open source.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ToolsConnector — 53 API Connectors for Python and AI Agents">
+<meta property="og:locale" content="en_US">
+
+<!-- ═══ Twitter / X Card ═════════════════════════════════════════════════════ -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="ToolsConnector — One Python Library for 53 APIs">
+<meta name="twitter:description" content="Connect AI agents and Python apps to Gmail, Slack, GitHub, Stripe, OpenAI, Anthropic, and 47 more. MCP server built-in. Open source.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+<meta name="twitter:image:alt" content="ToolsConnector — 53 API Connectors for Python and AI Agents">
+
+<!-- Sitemap reference -->
+<link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -158,8 +189,141 @@ tailwind.config = {
   .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
   @keyframes blink { 0%,80%,100% { opacity: 0; } 40% { opacity: 1; } }
 </style>
+
+<!-- ═══ JSON-LD Structured Data ══════════════════════════════════════════════ -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://toolsconnector.github.io/#software",
+      "name": "ToolsConnector",
+      "description": "Open-source Python library providing a unified interface to 53 API connectors for AI agents and Python apps. Supports MCP server, OpenAI function calling, Anthropic tool use, and Google Gemini.",
+      "url": "https://toolsconnector.github.io/",
+      "downloadUrl": "https://pypi.org/project/toolsconnector/",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "API Integration Library",
+      "operatingSystem": "Any",
+      "softwareRequirements": "Python 3.9+",
+      "programmingLanguage": "Python",
+      "codeRepository": "https://github.com/ToolsConnector/ToolsConnector",
+      "softwareVersion": "0.1.0",
+      "license": "https://opensource.org/licenses/Apache-2.0",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "featureList": [
+        "53 API connectors across 17 categories",
+        "1137 typed actions",
+        "MCP server — one line to serve Claude Desktop or Cursor",
+        "OpenAI function calling schema generation",
+        "Anthropic tool use schema generation",
+        "Google Gemini function declarations",
+        "Async-first with sync wrappers",
+        "Circuit breaker and smart retry",
+        "Pydantic V2 type-safe models",
+        "REST API serving with Starlette",
+        "CLI for all connectors"
+      ],
+      "screenshot": "https://toolsconnector.github.io/og-image.png",
+      "author": { "@id": "https://toolsconnector.github.io/#org" }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://toolsconnector.github.io/#org",
+      "name": "ToolsConnector",
+      "url": "https://toolsconnector.github.io/",
+      "logo": "https://toolsconnector.github.io/logo.svg",
+      "sameAs": [
+        "https://github.com/ToolsConnector/ToolsConnector",
+        "https://pypi.org/project/toolsconnector/"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://toolsconnector.github.io/#website",
+      "name": "ToolsConnector",
+      "url": "https://toolsconnector.github.io/",
+      "description": "Documentation and connector reference for the ToolsConnector Python library",
+      "publisher": { "@id": "https://toolsconnector.github.io/#org" },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://toolsconnector.github.io/#/connectors?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is ToolsConnector?",
+          "acceptedAnswer": { "@type": "Answer", "text": "ToolsConnector is an open-source Python library that connects AI agents and Python apps to 53+ APIs — Gmail, Slack, GitHub, Stripe, OpenAI, Anthropic, and more — through a single standardized interface. It generates tool schemas for OpenAI, Anthropic, and Gemini and can serve any connector as a one-line MCP server." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I install ToolsConnector?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Install via pip: pip install toolsconnector. For specific connectors use extras: pip install \"toolsconnector[gmail,slack,github]\". Requires Python 3.9+. Core dependencies are only pydantic, httpx, and docstring-parser." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does ToolsConnector work with OpenAI function calling?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Call kit.to_openai_tools() to generate OpenAI-compatible JSON Schema tool definitions for any combination of connectors. The same ToolKit supports Anthropic tool use via kit.to_anthropic_tools() and Google Gemini via kit.to_gemini_tools()." }
+        },
+        {
+          "@type": "Question",
+          "name": "What is MCP and does ToolsConnector support it?",
+          "acceptedAnswer": { "@type": "Answer", "text": "MCP (Model Context Protocol) is an open standard for connecting AI models to external tools and data. ToolsConnector supports MCP out of the box: call kit.serve_mcp() to expose any connector as an MCP server for Claude Desktop, Cursor, Windsurf, or any compatible client. No extra configuration needed." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is ToolsConnector free and open source?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. ToolsConnector is released under the Apache 2.0 license — free to use, modify, and distribute in commercial projects. No hosted backend required. Bring your own API keys (BYOK)." }
+        },
+        {
+          "@type": "Question",
+          "name": "Which APIs does ToolsConnector support?",
+          "acceptedAnswer": { "@type": "Answer", "text": "ToolsConnector supports 53 connectors across 17 categories: Gmail, Slack, Discord, Outlook, Teams, Twilio, Telegram (Communication); Jira, Asana, Linear, Trello (Project Management); HubSpot, Salesforce, Zendesk, Freshdesk, Intercom (CRM); GitHub, GitLab (Code); Notion, Confluence (Knowledge); Google Drive, AWS S3 (Storage); Airtable, Firestore, MongoDB, Redis, Supabase (Database); Cloudflare, Datadog, Docker Hub, PagerDuty, Vercel (DevOps); Stripe, Plaid (Finance); Mailchimp, SendGrid (Marketing); OpenAI, Anthropic, Pinecone (AI/ML); Mixpanel, Segment (Analytics); AWS SQS, RabbitMQ (Message Queue); Okta, Auth0 (Security); Google Calendar, Google Docs, Google Sheets, Google Tasks, Calendly, Figma (Productivity); Shopify (E-Commerce)." }
+        }
+      ]
+    }
+  ]
+}
+</script>
 </head>
 <body class="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen">
+
+<!-- Noscript fallback for crawlers without JS execution -->
+<noscript>
+<div style="max-width:900px;margin:2rem auto;padding:1.5rem 1rem;font-family:system-ui,sans-serif;line-height:1.6">
+  <h1 style="font-size:2rem;font-weight:800;margin-bottom:.5rem">ToolsConnector — Python Library for 53 API Connectors</h1>
+  <p style="font-size:1.1rem;color:#444;margin-bottom:1.5rem">Open-source Python library giving AI agents and Python apps a unified interface to 53 APIs. Works with OpenAI function calling, Anthropic tool use, Google Gemini, MCP servers, and any Python framework. Apache 2.0. Free forever.</p>
+  <p><code style="background:#f1f5f9;padding:.2em .5em;border-radius:4px">pip install toolsconnector</code></p>
+  <h2 style="margin-top:2rem">Supported Connectors (53 across 17 categories)</h2>
+  <ul style="columns:2;gap:2rem">
+    <li><strong>Communication (7):</strong> Gmail, Slack, Discord, Outlook, Teams, Twilio, Telegram</li>
+    <li><strong>Project Management (4):</strong> Jira, Asana, Linear, Trello</li>
+    <li><strong>CRM &amp; Support (5):</strong> HubSpot, Salesforce, Zendesk, Freshdesk, Intercom</li>
+    <li><strong>Code Platforms (2):</strong> GitHub, GitLab</li>
+    <li><strong>Knowledge (2):</strong> Notion, Confluence</li>
+    <li><strong>Storage (2):</strong> Google Drive, AWS S3</li>
+    <li><strong>Database (5):</strong> Airtable, Firebase Firestore, MongoDB Atlas, Redis, Supabase</li>
+    <li><strong>DevOps (5):</strong> Cloudflare, Datadog, Docker Hub, PagerDuty, Vercel</li>
+    <li><strong>Finance (2):</strong> Stripe, Plaid</li>
+    <li><strong>Marketing (2):</strong> Mailchimp, SendGrid</li>
+    <li><strong>AI / ML (3):</strong> OpenAI, Anthropic, Pinecone</li>
+    <li><strong>Analytics (2):</strong> Mixpanel, Segment</li>
+    <li><strong>Message Queue (2):</strong> AWS SQS, RabbitMQ</li>
+    <li><strong>Security (2):</strong> Okta, Auth0</li>
+    <li><strong>Productivity (6):</strong> Google Calendar, Google Docs, Google Sheets, Google Tasks, Calendly, Figma</li>
+    <li><strong>E-Commerce (1):</strong> Shopify</li>
+    <li><strong>Custom (1):</strong> Webhook</li>
+  </ul>
+  <p style="margin-top:2rem">Enable JavaScript for the full interactive experience. <a href="https://github.com/ToolsConnector/ToolsConnector">View on GitHub</a> · <a href="https://pypi.org/project/toolsconnector/">PyPI</a></p>
+</div>
+</noscript>
 
 <!-- Navigation -->
 <nav id="navbar" class="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-lg">
@@ -188,7 +352,7 @@ tailwind.config = {
           <svg id="icon-sun" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
           <svg id="icon-moon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
         </button>
-        <a href="https://github.com/sachinshelke/ToolsConnector" target="_blank" rel="noopener" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="GitHub">
+        <a href="https://github.com/ToolsConnector/ToolsConnector" target="_blank" rel="noopener" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="GitHub">
           <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a>
         <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -220,9 +384,9 @@ tailwind.config = {
         <span>ToolsConnector</span>
       </div>
       <div class="flex items-center gap-6">
-        <a href="https://github.com/sachinshelke/ToolsConnector" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">GitHub</a>
+        <a href="https://github.com/ToolsConnector/ToolsConnector" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">GitHub</a>
         <a href="https://pypi.org/project/toolsconnector/" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">PyPI</a>
-        <span>MIT License</span>
+        <a href="https://opensource.org/licenses/Apache-2.0" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">Apache 2.0</a>
       </div>
     </div>
   </div>
@@ -610,6 +774,17 @@ $('#mobile-menu-btn').addEventListener('click', () => {
   $('#mobile-menu').classList.toggle('hidden');
 });
 
+// ─── SEO: Dynamic page meta ──────────────────────────────────────────────────
+function updatePageMeta(title, description) {
+  document.title = title;
+  const setMeta = (sel, attr, val) => { const el = document.querySelector(sel); if (el) el.setAttribute(attr, val); };
+  setMeta('meta[name="description"]',          'content', description);
+  setMeta('meta[property="og:title"]',         'content', title);
+  setMeta('meta[property="og:description"]',   'content', description);
+  setMeta('meta[name="twitter:title"]',        'content', title);
+  setMeta('meta[name="twitter:description"]',  'content', description);
+}
+
 // ─── Router ─────────────────────────────────────────────────────────────────
 function router() {
   const hash = location.hash.slice(1) || '/';
@@ -626,13 +801,60 @@ function router() {
     a.classList.toggle('dark:text-gray-400', !isActive);
   });
 
-  if (hash === '/' || hash === '/home') { renderHome(app); window.scrollTo(0,0); return; }
-  if (hash === '/connectors' || hash.startsWith('/connectors?')) { renderConnectors(app); window.scrollTo(0,0); return; }
-  if (hash.startsWith('/connector/')) { renderConnectorDetail(app, hash.slice(11)); window.scrollTo(0,0); return; }
-  if (hash === '/playground') { renderPlayground(app); window.scrollTo(0,0); return; }
-  if (hash === '/assistant') { renderAssistant(app); window.scrollTo(0,0); return; }
-  if (hash.startsWith('/docs')) { renderDocs(app, hash); window.scrollTo(0,0); return; }
-  if (hash === '/health') { renderHealth(app); window.scrollTo(0,0); return; }
+  if (hash === '/' || hash === '/home') {
+    updatePageMeta(
+      'ToolsConnector — Python Library for 53 API Connectors | AI Agents & MCP',
+      'Open-source Python library for AI agents and Python apps. Unified interface to 53 APIs — Gmail, Slack, GitHub, Stripe, OpenAI, Anthropic, and 47 more. MCP server, function calling, and tool use built in.'
+    );
+    renderHome(app); window.scrollTo(0,0); return;
+  }
+  if (hash === '/connectors' || hash.startsWith('/connectors?')) {
+    updatePageMeta(
+      'All 53 API Connectors — ToolsConnector',
+      'Browse all 53 API connectors: Gmail, Slack, GitHub, Stripe, OpenAI, Anthropic, Jira, Notion, Stripe, and 44 more. Each with 10–50 typed actions for Python and AI agents.'
+    );
+    renderConnectors(app); window.scrollTo(0,0); return;
+  }
+  if (hash.startsWith('/connector/')) {
+    const cname = hash.slice(11).split('?')[0];
+    const conn = DATA[cname] || {};
+    const displayName = conn.display_name || cname;
+    const actionCount = Object.keys(conn.actions || {}).length;
+    const category = conn.category || 'API';
+    updatePageMeta(
+      `${displayName} Python Connector — ${actionCount} Actions | ToolsConnector`,
+      `Use ${displayName} in Python or AI agents with ${actionCount} typed actions. Works with OpenAI, Anthropic, MCP, Gemini, and LangChain. pip install "toolsconnector[${cname}]"`
+    );
+    renderConnectorDetail(app, cname); window.scrollTo(0,0); return;
+  }
+  if (hash === '/playground') {
+    updatePageMeta(
+      'API Playground — ToolsConnector',
+      'Generate ready-to-run Python code for any of 53 API connectors. Copy-paste snippets for OpenAI function calling, Anthropic tool use, MCP server, and direct Python usage.'
+    );
+    renderPlayground(app); window.scrollTo(0,0); return;
+  }
+  if (hash === '/assistant') {
+    updatePageMeta(
+      'AI Assistant — ToolsConnector',
+      'Ask questions about ToolsConnector connectors, actions, and usage. Powered by your choice of OpenRouter or HuggingFace free models. API key stays in your browser.'
+    );
+    renderAssistant(app); window.scrollTo(0,0); return;
+  }
+  if (hash.startsWith('/docs')) {
+    const docKey = hash.replace(/^\/docs\/?/, '') || 'home';
+    const docData = DOCS_CONTENT[docKey] || {};
+    const docTitle = docData.title || 'Documentation';
+    updatePageMeta(
+      `${docTitle} — ToolsConnector Docs`,
+      `${docTitle} guide for ToolsConnector — the unified Python API connector library for AI agents and Python apps.`
+    );
+    renderDocs(app, hash); window.scrollTo(0,0); return;
+  }
+  if (hash === '/health') {
+    updatePageMeta('Connector Health Dashboard — ToolsConnector', 'Live connectivity status for all 53 ToolsConnector API connectors.');
+    renderHealth(app); window.scrollTo(0,0); return;
+  }
 
   app.innerHTML = `<div class="page-transition text-center py-20"><h2 class="text-2xl font-bold mb-4">Page not found</h2><a href="#/" class="text-brand-600 hover:underline">Back to home</a></div>`;
 }
@@ -810,7 +1032,7 @@ tools = kit.to_openai_tools()</code></pre></div>
     <h2 class="text-2xl sm:text-3xl font-bold mb-4">Open source</h2>
     <p class="text-gray-600 dark:text-gray-400 mb-8">Apache 2.0 licensed. Self-hosted. No vendor lock-in.</p>
     <div class="flex flex-col sm:flex-row justify-center gap-3 mb-8">
-      <a href="https://github.com/sachinshelke/ToolsConnector" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-gray-300 dark:border-gray-700 hover:border-gray-400 font-semibold transition-colors bg-white dark:bg-gray-900">
+      <a href="https://github.com/ToolsConnector/ToolsConnector" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-gray-300 dark:border-gray-700 hover:border-gray-400 font-semibold transition-colors bg-white dark:bg-gray-900">
         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
         Star on GitHub</a>
     </div>
@@ -839,7 +1061,7 @@ tools = kit.to_openai_tools()</code></pre></div>
     <a href="#/playground" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg></div><div class="font-medium text-sm">Playground</div></a>
     <a href="#/docs/quickstart" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253"/></svg></div><div class="font-medium text-sm">Docs</div></a>
     <a href="#/assistant" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12"/></svg></div><div class="font-medium text-sm">AI Assistant</div></a>
-    <a href="https://github.com/sachinshelke/ToolsConnector" target="_blank" rel="noopener" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg></div><div class="font-medium text-sm">GitHub</div></a>
+    <a href="https://github.com/ToolsConnector/ToolsConnector" target="_blank" rel="noopener" class="card-hover flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"><div class="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg></div><div class="font-medium text-sm">GitHub</div></a>
   </div>
 </section>
 </div>`;
@@ -1782,7 +2004,7 @@ function pgReferenceHtml(activeFw) {
 
   // Links
   html += '<div class="flex flex-wrap gap-2">';
-  var links = [['#/docs/quickstart','Quick Start'], ['#/connectors','Browse Connectors'], ['#/assistant','AI Assistant'], ['https://github.com/sachinshelke/ToolsConnector','GitHub']];
+  var links = [['#/docs/quickstart','Quick Start'], ['#/connectors','Browse Connectors'], ['#/assistant','AI Assistant'], ['https://github.com/ToolsConnector/ToolsConnector','GitHub']];
   links.forEach(function(l) {
     html += '<a href="' + l[0] + '" class="text-xs px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors">' + l[1] + '</a>';
   });
@@ -2017,7 +2239,7 @@ function renderDocs(el, hash) {
     contentHtml = renderMarkdown(docData.content);
   } else {
     contentHtml = `<div class="text-center py-12"><p class="text-gray-500 dark:text-gray-400 mb-4">Documentation page not found.</p>
-      <a href="https://github.com/sachinshelke/ToolsConnector/tree/main/docs" target="_blank" rel="noopener" class="text-brand-600 hover:underline">View docs on GitHub</a></div>`;
+      <a href="https://github.com/ToolsConnector/ToolsConnector/tree/main/docs" target="_blank" rel="noopener" class="text-brand-600 hover:underline">View docs on GitHub</a></div>`;
   }
 
   // Build DOM without template literals (contentHtml may contain backticks)
