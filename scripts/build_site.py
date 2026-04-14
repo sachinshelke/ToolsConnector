@@ -536,7 +536,12 @@ footer a {{ color: #94a3b8; }}
 # ---------------------------------------------------------------------------
 
 def generate_sitemap(connector_names: list[str], doc_keys: list[str]) -> str:
-    """Return a sitemap.xml that includes the pre-generated connector pages."""
+    """Return a sitemap.xml with only real, crawlable URLs (no # fragments).
+
+    Hash-based SPA routes (#/connectors, #/docs/...) are invalid in sitemaps —
+    Google rejects the entire file if any <loc> contains a fragment identifier.
+    Only the homepage and the pre-generated static connector pages are included.
+    """
     base = "https://toolsconnector.github.io"
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -549,14 +554,7 @@ def generate_sitemap(connector_names: list[str], doc_keys: list[str]) -> str:
         "    <priority>1.0</priority>",
         "  </url>",
         "",
-        "  <!-- Connectors directory (SPA) -->",
-        "  <url>",
-        f"    <loc>{base}/#/connectors</loc>",
-        "    <changefreq>weekly</changefreq>",
-        "    <priority>0.9</priority>",
-        "  </url>",
-        "",
-        "  <!-- Static connector pages (individually indexed by Google) -->",
+        "  <!-- Static connector pages (53 individually crawlable URLs) -->",
     ]
     for cname in sorted(connector_names):
         lines += [
@@ -564,19 +562,6 @@ def generate_sitemap(connector_names: list[str], doc_keys: list[str]) -> str:
             f"    <loc>{base}/connectors/{cname}/</loc>",
             "    <changefreq>monthly</changefreq>",
             "    <priority>0.8</priority>",
-            "  </url>",
-        ]
-
-    lines += [
-        "",
-        "  <!-- Docs pages (SPA) -->",
-    ]
-    for doc_key in sorted(doc_keys):
-        lines += [
-            "  <url>",
-            f"    <loc>{base}/#/docs/{doc_key}</loc>",
-            "    <changefreq>monthly</changefreq>",
-            "    <priority>0.7</priority>",
             "  </url>",
         ]
 
