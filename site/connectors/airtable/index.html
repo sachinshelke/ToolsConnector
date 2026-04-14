@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Airtable Python Connector — 26 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Airtable to Python apps and AI agents with 26 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[airtable]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="Airtable Python, Airtable API Python, Airtable connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/airtable/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/airtable/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="Airtable Python Connector — 26 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Airtable to Python apps and AI agents with 26 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[airtable]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="Airtable Python Connector — 26 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Airtable to Python apps and AI agents with 26 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[airtable]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 Airtable Connector",
+  "description": "Connect Airtable to Python apps and AI agents with 26 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[airtable]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/airtable/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "batch_create",
+    "create_comment",
+    "create_field",
+    "create_record",
+    "create_table",
+    "create_webhook",
+    "delete_comment",
+    "delete_record",
+    "delete_records",
+    "delete_webhook",
+    "get_base_schema",
+    "get_base_tables",
+    "get_record",
+    "get_view",
+    "list_bases",
+    "list_collaborators",
+    "list_comments",
+    "list_records",
+    "list_views",
+    "list_webhook_payloads",
+    "list_webhooks",
+    "update_comment",
+    "update_field",
+    "update_record",
+    "update_records",
+    "update_table"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#10B981; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/airtable" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/airtable.com?c=1idiVFVAawYfs0vBpzR" alt="Airtable" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Database</span>
+      <h1>Airtable Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to Airtable to list bases, browse table schemas, and perform CRUD operations on records.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[airtable]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">26</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Database</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 26 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>batch_create</code></td><td class="desc">Batch create records in an Airtable table</td><td><span class="req">base_id, table_name, records</span></td><td><code>list</code></td></tr>
+<tr><td><code>create_comment ⚠</code></td><td class="desc">Create a comment on a record</td><td><span class="req">base_id, table_name, record_id, text</span></td><td><code>dict</code></td></tr>
+<tr><td><code>create_field ⚠</code></td><td class="desc">Create a field in an Airtable table</td><td><span class="req">base_id, table_id, name, type</span> &nbsp;<span class="opt">[options]</span></td><td><code>AirtableField</code></td></tr>
+<tr><td><code>create_record</code></td><td class="desc">Create a record in an Airtable table</td><td><span class="req">base_id, table_name, fields</span></td><td><code>AirtableRecord</code></td></tr>
+<tr><td><code>create_table ⚠</code></td><td class="desc">Create a table in an Airtable base</td><td><span class="req">base_id, name, fields</span> &nbsp;<span class="opt">[description]</span></td><td><code>AirtableTable</code></td></tr>
+<tr><td><code>create_webhook ⚠</code></td><td class="desc">Create a webhook</td><td><span class="req">base_id, notification_url</span> &nbsp;<span class="opt">[specification]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>delete_comment ⚠</code></td><td class="desc">Delete a comment on a record</td><td><span class="req">base_id, table_name, record_id, comment_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_record ⚠</code></td><td class="desc">Delete a record from an Airtable table</td><td><span class="req">base_id, table_name, record_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_records ⚠</code></td><td class="desc">Delete multiple records from a table</td><td><span class="req">base_id, table_name, record_ids</span></td><td><code>bool</code></td></tr>
+<tr><td><code>delete_webhook ⚠</code></td><td class="desc">Delete a webhook</td><td><span class="req">base_id, webhook_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>get_base_schema</code></td><td class="desc">Get the schema of an Airtable base</td><td><span class="req">base_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>get_base_tables</code></td><td class="desc">Get all tables in an Airtable base</td><td><span class="req">base_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>get_record</code></td><td class="desc">Get a single record from an Airtable table</td><td><span class="req">base_id, table_name, record_id</span></td><td><code>AirtableRecord</code></td></tr>
+<tr><td><code>get_view</code></td><td class="desc">Get a specific view</td><td><span class="req">base_id, table_id, view_id</span></td><td><code>dict</code></td></tr>
+<tr><td><code>list_bases</code></td><td class="desc">List all accessible Airtable bases</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_collaborators</code></td><td class="desc">List collaborators on an Airtable base</td><td><span class="req">base_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_comments</code></td><td class="desc">List comments on a record</td><td><span class="req">base_id, table_name, record_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_records</code></td><td class="desc">List records from an Airtable table</td><td><span class="req">base_id, table_name</span> &nbsp;<span class="opt">[fields, filter_formula, sort, limit, offset]</span></td><td><code>PaginatedList[AirtableRecord]</code></td></tr>
+<tr><td><code>list_views</code></td><td class="desc">List views in a table</td><td><span class="req">base_id, table_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_webhook_payloads</code></td><td class="desc">List webhook payloads</td><td><span class="req">base_id, webhook_id</span> &nbsp;<span class="opt">[cursor]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>list_webhooks</code></td><td class="desc">List webhooks for a base</td><td><span class="req">base_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>update_comment ⚠</code></td><td class="desc">Update a comment on a record</td><td><span class="req">base_id, table_name, record_id, comment_id, text</span></td><td><code>dict</code></td></tr>
+<tr><td><code>update_field</code></td><td class="desc">Update a field in an Airtable table</td><td><span class="req">base_id, table_id, field_id</span> &nbsp;<span class="opt">[name, description]</span></td><td><code>AirtableField</code></td></tr>
+<tr><td><code>update_record</code></td><td class="desc">Update a record in an Airtable table</td><td><span class="req">base_id, table_name, record_id, fields</span></td><td><code>AirtableRecord</code></td></tr>
+<tr><td><code>update_records</code></td><td class="desc">Update multiple records in a table</td><td><span class="req">base_id, table_name, records</span></td><td><code>list</code></td></tr>
+<tr><td><code>update_table ⚠</code></td><td class="desc">Update a table</td><td><span class="req">base_id, table_id</span> &nbsp;<span class="opt">[name, description]</span></td><td><code>dict</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/airtable">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

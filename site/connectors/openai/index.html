@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenAI Python Connector — 26 Actions | ToolsConnector</title>
+<meta name="description" content="Connect OpenAI to Python apps and AI agents with 26 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[openai]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="OpenAI Python, OpenAI API Python, OpenAI connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/openai/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/openai/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="OpenAI Python Connector — 26 Actions | ToolsConnector">
+<meta property="og:description" content="Connect OpenAI to Python apps and AI agents with 26 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[openai]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="OpenAI Python Connector — 26 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect OpenAI to Python apps and AI agents with 26 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[openai]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 OpenAI Connector",
+  "description": "Connect OpenAI to Python apps and AI agents with 26 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[openai]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/openai/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "chat_completion",
+    "create_assistant",
+    "create_embedding",
+    "create_fine_tuning_job",
+    "create_image",
+    "create_moderation",
+    "create_speech",
+    "create_thread",
+    "create_thread_message",
+    "delete_assistant",
+    "delete_file",
+    "delete_model",
+    "get_assistant",
+    "get_file",
+    "get_file_content",
+    "get_model",
+    "get_thread_run",
+    "list_assistants",
+    "list_files",
+    "list_fine_tuning_jobs",
+    "list_models",
+    "list_thread_messages",
+    "run_thread",
+    "transcribe_audio",
+    "update_assistant",
+    "upload_file"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#7C3AED; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/openai" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/openai.com?c=1idiVFVAawYfs0vBpzR" alt="OpenAI" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">AI / ML</span>
+      <h1>OpenAI Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to OpenAI for chat completions, embeddings, image generation, audio transcription, and assistants management.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[openai]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">26</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">AI / ML</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 26 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>chat_completion</code></td><td class="desc">Create a chat completion</td><td><span class="req">model, messages</span> &nbsp;<span class="opt">[temperature, max_tokens, tools]</span></td><td><code>ChatCompletion</code></td></tr>
+<tr><td><code>create_assistant</code></td><td class="desc">Create an assistant</td><td><span class="req">model, name</span> &nbsp;<span class="opt">[instructions, tools]</span></td><td><code>Assistant</code></td></tr>
+<tr><td><code>create_embedding</code></td><td class="desc">Create text embeddings</td><td><span class="req">model, input</span></td><td><code>Embedding</code></td></tr>
+<tr><td><code>create_fine_tuning_job ⚠</code></td><td class="desc">Create a fine-tuning job</td><td><span class="req">model, training_file</span></td><td><code>FineTuningJob</code></td></tr>
+<tr><td><code>create_image</code></td><td class="desc">Generate images from a text prompt</td><td><span class="req">prompt</span> &nbsp;<span class="opt">[size, n]</span></td><td><code>ImageResult</code></td></tr>
+<tr><td><code>create_moderation</code></td><td class="desc">Run content moderation on text</td><td><span class="req">input</span></td><td><code>ModerationResult</code></td></tr>
+<tr><td><code>create_speech</code></td><td class="desc">Generate speech audio from text</td><td><span class="req">input, voice</span> &nbsp;<span class="opt">[model, response_format, speed]</span></td><td><code>bytes</code></td></tr>
+<tr><td><code>create_thread</code></td><td class="desc">Create a thread</td><td><span class="opt">—</span></td><td><code>Thread</code></td></tr>
+<tr><td><code>create_thread_message</code></td><td class="desc">Create a message in a thread</td><td><span class="req">thread_id, content</span> &nbsp;<span class="opt">[role]</span></td><td><code>ThreadMessage</code></td></tr>
+<tr><td><code>delete_assistant ⚠</code></td><td class="desc">Delete an assistant</td><td><span class="req">assistant_id</span></td><td><code>bool</code></td></tr>
+<tr><td><code>delete_file ⚠</code></td><td class="desc">Delete an uploaded file</td><td><span class="req">file_id</span></td><td><code>bool</code></td></tr>
+<tr><td><code>delete_model ⚠</code></td><td class="desc">Delete a fine-tuned model</td><td><span class="req">model_id</span></td><td><code>bool</code></td></tr>
+<tr><td><code>get_assistant</code></td><td class="desc">Get an assistant by ID</td><td><span class="req">assistant_id</span></td><td><code>Assistant</code></td></tr>
+<tr><td><code>get_file</code></td><td class="desc">Get file metadata by ID</td><td><span class="req">file_id</span></td><td><code>OpenAIFile</code></td></tr>
+<tr><td><code>get_file_content</code></td><td class="desc">Get file content by ID</td><td><span class="req">file_id</span></td><td><code>str</code></td></tr>
+<tr><td><code>get_model</code></td><td class="desc">Get a model by ID</td><td><span class="req">model_id</span></td><td><code>OpenAIModel</code></td></tr>
+<tr><td><code>get_thread_run</code></td><td class="desc">Get a thread run by ID</td><td><span class="req">thread_id, run_id</span></td><td><code>ThreadRun</code></td></tr>
+<tr><td><code>list_assistants</code></td><td class="desc">List assistants</td><td><span class="opt">[limit]</span></td><td><code>PaginatedList[Assistant]</code></td></tr>
+<tr><td><code>list_files</code></td><td class="desc">List uploaded files</td><td><span class="opt">[purpose]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_fine_tuning_jobs</code></td><td class="desc">List fine-tuning jobs</td><td><span class="opt">[limit]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_models</code></td><td class="desc">List available models</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_thread_messages</code></td><td class="desc">List messages in a thread</td><td><span class="req">thread_id</span> &nbsp;<span class="opt">[limit]</span></td><td><code>list</code></td></tr>
+<tr><td><code>run_thread</code></td><td class="desc">Run a thread with an assistant</td><td><span class="req">thread_id, assistant_id</span></td><td><code>ThreadRun</code></td></tr>
+<tr><td><code>transcribe_audio</code></td><td class="desc">Transcribe audio to text</td><td><span class="req">file_url</span> &nbsp;<span class="opt">[model]</span></td><td><code>AudioTranscription</code></td></tr>
+<tr><td><code>update_assistant</code></td><td class="desc">Update an assistant</td><td><span class="req">assistant_id</span> &nbsp;<span class="opt">[name, instructions, model]</span></td><td><code>Assistant</code></td></tr>
+<tr><td><code>upload_file</code></td><td class="desc">Upload a file to OpenAI</td><td><span class="req">file_content, purpose</span> &nbsp;<span class="opt">[filename]</span></td><td><code>OpenAIFile</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/openai">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

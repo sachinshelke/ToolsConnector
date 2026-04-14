@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Python Connector — 37 Actions | ToolsConnector</title>
+<meta name="description" content="Connect GitHub to Python apps and AI agents with 37 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[github]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="GitHub Python, GitHub API Python, GitHub connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/github/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/github/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="GitHub Python Connector — 37 Actions | ToolsConnector">
+<meta property="og:description" content="Connect GitHub to Python apps and AI agents with 37 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[github]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="GitHub Python Connector — 37 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect GitHub to Python apps and AI agents with 37 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[github]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 GitHub Connector",
+  "description": "Connect GitHub to Python apps and AI agents with 37 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[github]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/github/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "add_labels",
+    "create_comment",
+    "create_gist",
+    "create_issue",
+    "create_or_update_file",
+    "create_pull_request",
+    "create_release",
+    "create_repo",
+    "delete_file",
+    "fork_repo",
+    "get_authenticated_user",
+    "get_branch",
+    "get_content",
+    "get_issue",
+    "get_latest_release",
+    "get_pull_request",
+    "get_rate_limit",
+    "get_repo",
+    "list_branches",
+    "list_comments",
+    "list_commits",
+    "list_gists",
+    "list_issues",
+    "list_pull_requests",
+    "list_releases",
+    "list_repos",
+    "list_workflow_runs",
+    "list_workflows",
+    "merge_pull_request",
+    "remove_label",
+    "search_code",
+    "search_issues",
+    "search_repos",
+    "star_repo",
+    "trigger_workflow",
+    "unstar_repo",
+    "update_issue"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#1E293B; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/github" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/github.com?c=1idiVFVAawYfs0vBpzR" alt="GitHub" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Code Platform</span>
+      <h1>GitHub Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to GitHub — manage repositories, issues, PRs, branches, releases, workflows, files, gists, and more.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[github]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">37</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Code Platform</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 37 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>add_labels</code></td><td class="desc">Add labels to an issue</td><td><span class="req">owner, repo, issue_number, labels</span></td><td><code>list</code></td></tr>
+<tr><td><code>create_comment ⚠</code></td><td class="desc">Create a comment on an issue or pull request</td><td><span class="req">owner, repo, issue_number, body</span></td><td><code>Comment</code></td></tr>
+<tr><td><code>create_gist ⚠</code></td><td class="desc">Create a gist</td><td><span class="req">files</span> &nbsp;<span class="opt">[description, public]</span></td><td><code>GitHubGist</code></td></tr>
+<tr><td><code>create_issue ⚠</code></td><td class="desc">Create an issue in a repository</td><td><span class="req">owner, repo, title</span> &nbsp;<span class="opt">[body, labels, assignees]</span></td><td><code>Issue</code></td></tr>
+<tr><td><code>create_or_update_file ⚠</code></td><td class="desc">Create or update a file in a repository</td><td><span class="req">owner, repo, path, content, message</span> &nbsp;<span class="opt">[sha, branch]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>create_pull_request ⚠</code></td><td class="desc">Create a pull request</td><td><span class="req">owner, repo, title, head, base</span> &nbsp;<span class="opt">[body, draft]</span></td><td><code>PullRequest</code></td></tr>
+<tr><td><code>create_release ⚠</code></td><td class="desc">Create a release</td><td><span class="req">owner, repo, tag_name</span> &nbsp;<span class="opt">[name, body, draft, prerelease, target_commitish]</span></td><td><code>Release</code></td></tr>
+<tr><td><code>create_repo ⚠</code></td><td class="desc">Create a new repository</td><td><span class="req">name</span> &nbsp;<span class="opt">[description, private, auto_init, org]</span></td><td><code>Repository</code></td></tr>
+<tr><td><code>delete_file ⚠</code></td><td class="desc">Delete a file from a repository</td><td><span class="req">owner, repo, path, sha, message</span> &nbsp;<span class="opt">[branch]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>fork_repo ⚠</code></td><td class="desc">Fork a repository</td><td><span class="req">owner, repo</span> &nbsp;<span class="opt">[organization]</span></td><td><code>Repository</code></td></tr>
+<tr><td><code>get_authenticated_user</code></td><td class="desc">Get the authenticated user&#39;s profile</td><td><span class="opt">—</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_branch</code></td><td class="desc">Get a single branch</td><td><span class="req">owner, repo, branch</span></td><td><code>Branch</code></td></tr>
+<tr><td><code>get_content</code></td><td class="desc">Get file or directory contents from a repository</td><td><span class="req">owner, repo, path</span> &nbsp;<span class="opt">[ref]</span></td><td><code>FileContent</code></td></tr>
+<tr><td><code>get_issue</code></td><td class="desc">Get a single issue by number</td><td><span class="req">owner, repo, issue_number</span></td><td><code>Issue</code></td></tr>
+<tr><td><code>get_latest_release</code></td><td class="desc">Get the latest release</td><td><span class="req">owner, repo</span></td><td><code>Release</code></td></tr>
+<tr><td><code>get_pull_request</code></td><td class="desc">Get a single pull request by number</td><td><span class="req">owner, repo, pr_number</span></td><td><code>PullRequest</code></td></tr>
+<tr><td><code>get_rate_limit</code></td><td class="desc">Get the current rate limit status</td><td><span class="opt">—</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_repo</code></td><td class="desc">Get a single repository by owner and name</td><td><span class="req">owner, repo</span></td><td><code>Repository</code></td></tr>
+<tr><td><code>list_branches</code></td><td class="desc">List branches in a repository</td><td><span class="req">owner, repo</span> &nbsp;<span class="opt">[limit, page]</span></td><td><code>PaginatedList[Branch]</code></td></tr>
+<tr><td><code>list_comments</code></td><td class="desc">List comments on an issue</td><td><span class="req">owner, repo, issue_number</span> &nbsp;<span class="opt">[limit, page]</span></td><td><code>PaginatedList[Comment]</code></td></tr>
+<tr><td><code>list_commits</code></td><td class="desc">List commits for a repository</td><td><span class="req">owner, repo</span> &nbsp;<span class="opt">[sha, path, author, limit, page]</span></td><td><code>PaginatedList[Commit]</code></td></tr>
+<tr><td><code>list_gists</code></td><td class="desc">List gists for the authenticated user</td><td><span class="opt">[limit, page]</span></td><td><code>PaginatedList[GitHubGist]</code></td></tr>
+<tr><td><code>list_issues</code></td><td class="desc">List issues for a repository</td><td><span class="req">owner, repo</span> &nbsp;<span class="opt">[state, labels, assignee, limit, page]</span></td><td><code>PaginatedList[Issue]</code></td></tr>
+<tr><td><code>list_pull_requests</code></td><td class="desc">List pull requests for a repository</td><td><span class="req">owner, repo</span> &nbsp;<span class="opt">[state, limit, page]</span></td><td><code>PaginatedList[PullRequest]</code></td></tr>
+<tr><td><code>list_releases</code></td><td class="desc">List releases for a repository</td><td><span class="req">owner, repo</span> &nbsp;<span class="opt">[limit, page]</span></td><td><code>PaginatedList[Release]</code></td></tr>
+<tr><td><code>list_repos</code></td><td class="desc">List repositories for a user or organisation</td><td><span class="opt">[org, user, limit, page]</span></td><td><code>PaginatedList[Repository]</code></td></tr>
+<tr><td><code>list_workflow_runs</code></td><td class="desc">List workflow runs for a repository</td><td><span class="req">owner, repo</span> &nbsp;<span class="opt">[workflow_id, branch, status, limit, page]</span></td><td><code>PaginatedList[WorkflowRun]</code></td></tr>
+<tr><td><code>list_workflows</code></td><td class="desc">List workflows in a repository</td><td><span class="req">owner, repo</span> &nbsp;<span class="opt">[limit, page]</span></td><td><code>PaginatedList[Workflow]</code></td></tr>
+<tr><td><code>merge_pull_request ⚠</code></td><td class="desc">Merge a pull request</td><td><span class="req">owner, repo, pr_number</span> &nbsp;<span class="opt">[merge_method, commit_title, commit_message]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>remove_label ⚠</code></td><td class="desc">Remove a label from an issue</td><td><span class="req">owner, repo, issue_number, label_name</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>search_code</code></td><td class="desc">Search code across GitHub repositories</td><td><span class="req">query</span> &nbsp;<span class="opt">[limit, page]</span></td><td><code>PaginatedList[CodeSearchResult]</code></td></tr>
+<tr><td><code>search_issues</code></td><td class="desc">Search issues and pull requests on GitHub</td><td><span class="req">query</span> &nbsp;<span class="opt">[sort, order, limit, page]</span></td><td><code>PaginatedList[Issue]</code></td></tr>
+<tr><td><code>search_repos</code></td><td class="desc">Search repositories on GitHub</td><td><span class="req">query</span> &nbsp;<span class="opt">[sort, order, limit, page]</span></td><td><code>PaginatedList[Repository]</code></td></tr>
+<tr><td><code>star_repo ⚠</code></td><td class="desc">Star a repository</td><td><span class="req">owner, repo</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>trigger_workflow ⚠</code></td><td class="desc">Trigger a workflow dispatch</td><td><span class="req">owner, repo, workflow_id</span> &nbsp;<span class="opt">[ref, inputs]</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>unstar_repo ⚠</code></td><td class="desc">Unstar a repository</td><td><span class="req">owner, repo</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>update_issue</code></td><td class="desc">Update an existing issue</td><td><span class="req">owner, repo, issue_number</span> &nbsp;<span class="opt">[title, body, state, labels, assignees]</span></td><td><code>Issue</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/github">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slack Python Connector — 51 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Slack to Python apps and AI agents with 51 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[slack]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="Slack Python, Slack API Python, Slack connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/slack/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/slack/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="Slack Python Connector — 51 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Slack to Python apps and AI agents with 51 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[slack]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="Slack Python Connector — 51 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Slack to Python apps and AI agents with 51 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[slack]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 Slack Connector",
+  "description": "Connect Slack to Python apps and AI agents with 51 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[slack]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/slack/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "add_bookmark",
+    "add_reaction",
+    "add_reminder",
+    "archive_channel",
+    "auth_test",
+    "create_channel",
+    "create_usergroup",
+    "delete_file",
+    "delete_message",
+    "delete_reminder",
+    "delete_scheduled_message",
+    "get_channel",
+    "get_file_info",
+    "get_permalink",
+    "get_reactions",
+    "get_team_info",
+    "get_user",
+    "get_user_presence",
+    "get_user_profile",
+    "invite_to_channel",
+    "join_channel",
+    "kick_from_channel",
+    "leave_channel",
+    "list_bookmarks",
+    "list_channel_members",
+    "list_channels",
+    "list_emoji",
+    "list_messages",
+    "list_pins",
+    "list_reminders",
+    "list_scheduled_messages",
+    "list_thread_replies",
+    "list_usergroups",
+    "list_users",
+    "lookup_user_by_email",
+    "pin_message",
+    "remove_bookmark",
+    "remove_reaction",
+    "rename_channel",
+    "schedule_message",
+    "search_messages",
+    "send_message",
+    "set_channel_purpose",
+    "set_channel_topic",
+    "set_presence",
+    "set_status",
+    "unarchive_channel",
+    "unpin_message",
+    "update_message",
+    "update_usergroup",
+    "upload_file"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#3B82F6; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/slack" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/slack.com?c=1idiVFVAawYfs0vBpzR" alt="Slack" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Communication</span>
+      <h1>Slack Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to Slack workspaces — send and manage messages, channels, users, files, reactions, pins, reminders, and more.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[slack]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">51</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Communication</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 51 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>add_bookmark</code></td><td class="desc">Add a bookmark to a channel</td><td><span class="req">channel_id, title, link</span> &nbsp;<span class="opt">[emoji]</span></td><td><code>Bookmark</code></td></tr>
+<tr><td><code>add_reaction</code></td><td class="desc">Add a reaction emoji to a message</td><td><span class="req">channel, timestamp, emoji</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>add_reminder</code></td><td class="desc">Create a reminder</td><td><span class="req">text, time</span> &nbsp;<span class="opt">[user]</span></td><td><code>Reminder</code></td></tr>
+<tr><td><code>archive_channel ⚠</code></td><td class="desc">Archive a channel</td><td><span class="req">channel</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>auth_test</code></td><td class="desc">Test authentication and get workspace info</td><td><span class="opt">—</span></td><td><code>dict</code></td></tr>
+<tr><td><code>create_channel ⚠</code></td><td class="desc">Create a new channel</td><td><span class="req">name</span> &nbsp;<span class="opt">[is_private]</span></td><td><code>Channel</code></td></tr>
+<tr><td><code>create_usergroup ⚠</code></td><td class="desc">Create a user group</td><td><span class="req">name, handle</span> &nbsp;<span class="opt">[description, channels]</span></td><td><code>SlackUserGroup</code></td></tr>
+<tr><td><code>delete_file ⚠</code></td><td class="desc">Delete a file</td><td><span class="req">file_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_message ⚠</code></td><td class="desc">Delete a message from a channel</td><td><span class="req">channel, ts</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_reminder ⚠</code></td><td class="desc">Delete a reminder</td><td><span class="req">reminder_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_scheduled_message ⚠</code></td><td class="desc">Delete a scheduled message</td><td><span class="req">channel, scheduled_message_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>get_channel</code></td><td class="desc">Get a single channel by ID</td><td><span class="req">channel_id</span></td><td><code>Channel</code></td></tr>
+<tr><td><code>get_file_info</code></td><td class="desc">Get file info</td><td><span class="req">file_id</span></td><td><code>SlackFile</code></td></tr>
+<tr><td><code>get_permalink</code></td><td class="desc">Get a permalink URL for a specific message</td><td><span class="req">channel, message_ts</span></td><td><code>str</code></td></tr>
+<tr><td><code>get_reactions</code></td><td class="desc">Get reactions for a message</td><td><span class="req">channel, timestamp</span></td><td><code>list</code></td></tr>
+<tr><td><code>get_team_info</code></td><td class="desc">Get workspace team information</td><td><span class="opt">—</span></td><td><code>SlackTeam</code></td></tr>
+<tr><td><code>get_user</code></td><td class="desc">Get a single user by ID</td><td><span class="req">user_id</span></td><td><code>SlackUser</code></td></tr>
+<tr><td><code>get_user_presence</code></td><td class="desc">Get a user&#39;s presence status</td><td><span class="req">user_id</span></td><td><code>UserPresence</code></td></tr>
+<tr><td><code>get_user_profile</code></td><td class="desc">Get a user&#39;s profile</td><td><span class="req">user_id</span></td><td><code>UserProfile</code></td></tr>
+<tr><td><code>invite_to_channel</code></td><td class="desc">Invite a user to a channel</td><td><span class="req">channel, users</span></td><td><code>Channel</code></td></tr>
+<tr><td><code>join_channel</code></td><td class="desc">Join a channel</td><td><span class="req">channel</span></td><td><code>Channel</code></td></tr>
+<tr><td><code>kick_from_channel ⚠</code></td><td class="desc">Remove a user from a channel</td><td><span class="req">channel, user</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>leave_channel</code></td><td class="desc">Leave a channel</td><td><span class="req">channel</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>list_bookmarks</code></td><td class="desc">List bookmarks in a channel</td><td><span class="req">channel_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_channel_members</code></td><td class="desc">List members of a channel</td><td><span class="req">channel</span> &nbsp;<span class="opt">[limit, cursor]</span></td><td><code>PaginatedList[str]</code></td></tr>
+<tr><td><code>list_channels</code></td><td class="desc">List channels in the workspace</td><td><span class="opt">[limit, cursor, exclude_archived]</span></td><td><code>PaginatedList[Channel]</code></td></tr>
+<tr><td><code>list_emoji</code></td><td class="desc">List custom emoji in the workspace</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_messages</code></td><td class="desc">List messages in a channel</td><td><span class="req">channel</span> &nbsp;<span class="opt">[limit, cursor, oldest, latest]</span></td><td><code>PaginatedList[Message]</code></td></tr>
+<tr><td><code>list_pins</code></td><td class="desc">List pinned items in a channel</td><td><span class="req">channel</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_reminders</code></td><td class="desc">List all reminders</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_scheduled_messages</code></td><td class="desc">List scheduled messages</td><td><span class="opt">[channel, cursor, limit]</span></td><td><code>PaginatedList[ScheduledMessage]</code></td></tr>
+<tr><td><code>list_thread_replies</code></td><td class="desc">List replies in a message thread</td><td><span class="req">channel, thread_ts</span> &nbsp;<span class="opt">[limit, cursor]</span></td><td><code>PaginatedList[Message]</code></td></tr>
+<tr><td><code>list_usergroups</code></td><td class="desc">List user groups in the workspace</td><td><span class="opt">[include_users, include_disabled]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_users</code></td><td class="desc">List users in the workspace</td><td><span class="opt">[limit, cursor]</span></td><td><code>PaginatedList[SlackUser]</code></td></tr>
+<tr><td><code>lookup_user_by_email</code></td><td class="desc">Look up a user by email address</td><td><span class="req">email</span></td><td><code>SlackUser</code></td></tr>
+<tr><td><code>pin_message</code></td><td class="desc">Pin a message to a channel</td><td><span class="req">channel, timestamp</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>remove_bookmark ⚠</code></td><td class="desc">Remove a bookmark from a channel</td><td><span class="req">bookmark_id, channel_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>remove_reaction</code></td><td class="desc">Remove a reaction emoji from a message</td><td><span class="req">channel, timestamp, emoji</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>rename_channel ⚠</code></td><td class="desc">Rename a channel</td><td><span class="req">channel, name</span></td><td><code>Channel</code></td></tr>
+<tr><td><code>schedule_message ⚠</code></td><td class="desc">Schedule a message for future delivery</td><td><span class="req">channel, text, post_at</span> &nbsp;<span class="opt">[thread_ts]</span></td><td><code>ScheduledMessage</code></td></tr>
+<tr><td><code>search_messages</code></td><td class="desc">Search for messages across the workspace</td><td><span class="req">query</span> &nbsp;<span class="opt">[sort, sort_dir, count, page]</span></td><td><code>list</code></td></tr>
+<tr><td><code>send_message ⚠</code></td><td class="desc">Send a message to a Slack channel or thread</td><td><span class="req">channel, text</span> &nbsp;<span class="opt">[thread_ts, unfurl_links, unfurl_media]</span></td><td><code>Message</code></td></tr>
+<tr><td><code>set_channel_purpose</code></td><td class="desc">Set the purpose of a channel</td><td><span class="req">channel, purpose</span></td><td><code>Channel</code></td></tr>
+<tr><td><code>set_channel_topic</code></td><td class="desc">Set the topic of a channel</td><td><span class="req">channel, topic</span></td><td><code>Channel</code></td></tr>
+<tr><td><code>set_presence</code></td><td class="desc">Set the bot user&#39;s presence status</td><td><span class="req">presence</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>set_status ⚠</code></td><td class="desc">Set the authenticated user&#39;s status</td><td><span class="req">status_text</span> &nbsp;<span class="opt">[status_emoji, expiration]</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>unarchive_channel</code></td><td class="desc">Unarchive a channel</td><td><span class="req">channel</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>unpin_message</code></td><td class="desc">Unpin a message from a channel</td><td><span class="req">channel, timestamp</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>update_message ⚠</code></td><td class="desc">Update an existing message</td><td><span class="req">channel, ts, text</span></td><td><code>Message</code></td></tr>
+<tr><td><code>update_usergroup ⚠</code></td><td class="desc">Update an existing user group</td><td><span class="req">usergroup_id</span> &nbsp;<span class="opt">[name, handle, description, channels]</span></td><td><code>SlackUserGroup</code></td></tr>
+<tr><td><code>upload_file ⚠</code></td><td class="desc">Upload a file to Slack channels</td><td><span class="req">channels, content, filename</span> &nbsp;<span class="opt">[title]</span></td><td><code>SlackFile</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/slack">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

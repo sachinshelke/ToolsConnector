@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plaid Python Connector — 17 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Plaid to Python apps and AI agents with 17 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[plaid]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="Plaid Python, Plaid API Python, Plaid connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/plaid/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/plaid/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="Plaid Python Connector — 17 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Plaid to Python apps and AI agents with 17 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[plaid]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="Plaid Python Connector — 17 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Plaid to Python apps and AI agents with 17 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[plaid]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 Plaid Connector",
+  "description": "Connect Plaid to Python apps and AI agents with 17 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[plaid]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/plaid/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "create_link_token",
+    "create_processor_token",
+    "exchange_public_token",
+    "get_accounts",
+    "get_auth",
+    "get_balance",
+    "get_identity",
+    "get_institution",
+    "get_investment_holdings",
+    "get_investment_transactions",
+    "get_item",
+    "get_liabilities",
+    "get_transactions",
+    "item_webhook_update",
+    "refresh_investments",
+    "remove_item",
+    "search_institutions"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#6366F1; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/plaid" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/plaid.com?c=1idiVFVAawYfs0vBpzR" alt="Plaid" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Finance</span>
+      <h1>Plaid Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to Plaid for financial data -- accounts, transactions, balances, identity, and institution lookup.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[plaid]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">17</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Finance</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 17 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>create_link_token</code></td><td class="desc">Create a Link token for client-side initialization</td><td><span class="req">user_client_id, products</span></td><td><code>PlaidLinkToken</code></td></tr>
+<tr><td><code>create_processor_token</code></td><td class="desc">Create a processor token for a third-party integration</td><td><span class="req">access_token, account_id, processor</span></td><td><code>PlaidProcessorToken</code></td></tr>
+<tr><td><code>exchange_public_token</code></td><td class="desc">Exchange a public token for an access token</td><td><span class="req">public_token</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_accounts</code></td><td class="desc">Get accounts linked to an access token</td><td><span class="req">access_token</span></td><td><code>PaginatedList[PlaidAccount]</code></td></tr>
+<tr><td><code>get_auth</code></td><td class="desc">Get account and routing numbers</td><td><span class="req">access_token</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_balance</code></td><td class="desc">Get real-time account balances</td><td><span class="req">access_token</span></td><td><code>PaginatedList[PlaidBalance]</code></td></tr>
+<tr><td><code>get_identity</code></td><td class="desc">Get identity information for accounts</td><td><span class="req">access_token</span></td><td><code>PaginatedList[PlaidAccount]</code></td></tr>
+<tr><td><code>get_institution</code></td><td class="desc">Get institution details by ID</td><td><span class="req">institution_id</span></td><td><code>PlaidInstitution</code></td></tr>
+<tr><td><code>get_investment_holdings</code></td><td class="desc">Get investment holdings for an access token</td><td><span class="req">access_token</span></td><td><code>list</code></td></tr>
+<tr><td><code>get_investment_transactions</code></td><td class="desc">Get investment transactions for a date range</td><td><span class="req">access_token, start_date, end_date</span> &nbsp;<span class="opt">[limit, offset]</span></td><td><code>PaginatedList[PlaidInvestmentTransaction]</code></td></tr>
+<tr><td><code>get_item</code></td><td class="desc">Get Item details</td><td><span class="req">access_token</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_liabilities</code></td><td class="desc">Get liabilities for an access token</td><td><span class="req">access_token</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_transactions</code></td><td class="desc">Get transactions for a date range</td><td><span class="req">access_token, start_date, end_date</span> &nbsp;<span class="opt">[limit, offset]</span></td><td><code>PaginatedList[PlaidTransaction]</code></td></tr>
+<tr><td><code>item_webhook_update</code></td><td class="desc">Update the webhook URL for an Item</td><td><span class="req">access_token</span> &nbsp;<span class="opt">[webhook]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>refresh_investments</code></td><td class="desc">Refresh investment data for an Item</td><td><span class="req">access_token</span></td><td><code>dict</code></td></tr>
+<tr><td><code>remove_item ⚠</code></td><td class="desc">Remove a linked Item</td><td><span class="req">access_token</span></td><td><code>dict</code></td></tr>
+<tr><td><code>search_institutions</code></td><td class="desc">Search for institutions by name</td><td><span class="req">query</span> &nbsp;<span class="opt">[country_codes]</span></td><td><code>PaginatedList[PlaidInstitution]</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/plaid">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

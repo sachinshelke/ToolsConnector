@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intercom Python Connector — 16 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Intercom to Python apps and AI agents with 16 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[intercom]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="Intercom Python, Intercom API Python, Intercom connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/intercom/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/intercom/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="Intercom Python Connector — 16 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Intercom to Python apps and AI agents with 16 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[intercom]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="Intercom Python Connector — 16 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Intercom to Python apps and AI agents with 16 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[intercom]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 Intercom Connector",
+  "description": "Connect Intercom to Python apps and AI agents with 16 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[intercom]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/intercom/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "close_conversation",
+    "create_contact",
+    "create_message",
+    "create_note",
+    "get_admin",
+    "get_contact",
+    "get_conversation",
+    "list_admins",
+    "list_contacts",
+    "list_conversations",
+    "list_notes",
+    "list_tags",
+    "reply_to_conversation",
+    "search_contacts",
+    "tag_contact",
+    "update_contact"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#F59E0B; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/intercom" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/intercom.com?c=1idiVFVAawYfs0vBpzR" alt="Intercom" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">CRM &amp; Support</span>
+      <h1>Intercom Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to Intercom to manage contacts, conversations, and send messages.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[intercom]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">16</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">CRM & Support</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 16 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>close_conversation</code></td><td class="desc">Close a conversation</td><td><span class="req">conversation_id</span></td><td><code>IntercomConversation</code></td></tr>
+<tr><td><code>create_contact ⚠</code></td><td class="desc">Create a new contact</td><td><span class="opt">[role, email, name, phone]</span></td><td><code>IntercomContact</code></td></tr>
+<tr><td><code>create_message ⚠</code></td><td class="desc">Create and send a new message</td><td><span class="req">from_email, to_email, subject, body</span></td><td><code>IntercomMessage</code></td></tr>
+<tr><td><code>create_note ⚠</code></td><td class="desc">Create a note on a contact</td><td><span class="req">contact_id, body</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_admin</code></td><td class="desc">Get a single admin by ID</td><td><span class="req">admin_id</span></td><td><code>IntercomAdmin</code></td></tr>
+<tr><td><code>get_contact</code></td><td class="desc">Get a single contact by ID</td><td><span class="req">contact_id</span></td><td><code>IntercomContact</code></td></tr>
+<tr><td><code>get_conversation</code></td><td class="desc">Get a single conversation by ID</td><td><span class="req">conversation_id</span></td><td><code>IntercomConversation</code></td></tr>
+<tr><td><code>list_admins</code></td><td class="desc">List all admins in the workspace</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_contacts</code></td><td class="desc">List contacts</td><td><span class="opt">[limit, starting_after]</span></td><td><code>PaginatedList[IntercomContact]</code></td></tr>
+<tr><td><code>list_conversations</code></td><td class="desc">List conversations</td><td><span class="opt">[limit, starting_after]</span></td><td><code>PaginatedList[IntercomConversation]</code></td></tr>
+<tr><td><code>list_notes</code></td><td class="desc">List notes on a contact</td><td><span class="req">contact_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_tags</code></td><td class="desc">List all tags in the workspace</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>reply_to_conversation ⚠</code></td><td class="desc">Reply to a conversation</td><td><span class="req">conversation_id, body</span> &nbsp;<span class="opt">[message_type]</span></td><td><code>IntercomConversation</code></td></tr>
+<tr><td><code>search_contacts</code></td><td class="desc">Search contacts using filters</td><td><span class="req">query</span> &nbsp;<span class="opt">[field, operator]</span></td><td><code>PaginatedList[IntercomContact]</code></td></tr>
+<tr><td><code>tag_contact ⚠</code></td><td class="desc">Tag a contact</td><td><span class="req">contact_id, tag_name</span></td><td><code>bool</code></td></tr>
+<tr><td><code>update_contact</code></td><td class="desc">Update an existing contact</td><td><span class="req">contact_id</span> &nbsp;<span class="opt">[name, email]</span></td><td><code>IntercomContact</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/intercom">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>
