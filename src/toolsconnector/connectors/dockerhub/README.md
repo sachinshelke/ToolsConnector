@@ -30,7 +30,7 @@ The Docker Hub API provides access to repositories, images, tags, and organizati
 ## Installation
 
 ```bash
-pip install toolsconnector[dockerhub]
+pip install "toolsconnector[dockerhub]"
 ```
 
 Set your credentials:

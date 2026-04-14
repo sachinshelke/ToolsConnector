@@ -30,7 +30,7 @@ The Segment API provides access to sources, destinations, tracking events, and u
 ## Installation
 
 ```bash
-pip install toolsconnector[segment]
+pip install "toolsconnector[segment]"
 ```
 
 Set your credentials:

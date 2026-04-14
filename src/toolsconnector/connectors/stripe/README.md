@@ -30,7 +30,7 @@ The Stripe API provides a complete payment infrastructure. Process payments, man
 ## Installation
 
 ```bash
-pip install toolsconnector[stripe]
+pip install "toolsconnector[stripe]"
 ```
 
 Set your credentials:

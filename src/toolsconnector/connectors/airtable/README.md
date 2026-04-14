@@ -30,7 +30,7 @@ The Airtable API lets you create, read, update, and delete records in your Airta
 ## Installation
 
 ```bash
-pip install toolsconnector[airtable]
+pip install "toolsconnector[airtable]"
 ```
 
 Set your credentials:

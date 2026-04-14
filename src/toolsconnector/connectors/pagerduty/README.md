@@ -30,7 +30,7 @@ The PagerDuty API provides access to incidents, services, users, schedules, and 
 ## Installation
 
 ```bash
-pip install toolsconnector[pagerduty]
+pip install "toolsconnector[pagerduty]"
 ```
 
 Set your credentials:

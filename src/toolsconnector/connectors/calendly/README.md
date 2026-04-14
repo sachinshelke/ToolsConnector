@@ -30,7 +30,7 @@ The Calendly API provides access to event types, scheduled events, invitees, and
 ## Installation
 
 ```bash
-pip install toolsconnector[calendly]
+pip install "toolsconnector[calendly]"
 ```
 
 Set your credentials:

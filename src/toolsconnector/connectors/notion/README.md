@@ -30,7 +30,7 @@ The Notion API provides access to pages, databases, blocks, and users. Query and
 ## Installation
 
 ```bash
-pip install toolsconnector[notion]
+pip install "toolsconnector[notion]"
 ```
 
 Set your credentials:

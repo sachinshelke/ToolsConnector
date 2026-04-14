@@ -30,7 +30,7 @@ The Firestore REST API provides access to documents and collections in your Fire
 ## Installation
 
 ```bash
-pip install toolsconnector[firestore]
+pip install "toolsconnector[firestore]"
 ```
 
 Set your credentials:

@@ -30,7 +30,7 @@ The Asana API lets you manage tasks, projects, sections, and teams programmatica
 ## Installation
 
 ```bash
-pip install toolsconnector[asana]
+pip install "toolsconnector[asana]"
 ```
 
 Set your credentials:

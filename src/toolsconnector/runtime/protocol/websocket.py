@@ -49,7 +49,7 @@ class WebSocketAdapter:
         except ImportError:
             raise ImportError(
                 "WebSocket adapter requires 'websockets'. "
-                "Install with: pip install toolsconnector[websocket]"
+                'Install with: pip install "toolsconnector[websocket]"'
             )
 
         self._connection = await websockets.connect(

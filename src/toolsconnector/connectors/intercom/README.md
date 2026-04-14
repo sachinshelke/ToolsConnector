@@ -30,7 +30,7 @@ The Intercom API provides access to contacts, conversations, articles, teams, an
 ## Installation
 
 ```bash
-pip install toolsconnector[intercom]
+pip install "toolsconnector[intercom]"
 ```
 
 Set your credentials:

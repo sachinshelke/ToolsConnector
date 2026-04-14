@@ -32,7 +32,7 @@ and what authentication it supports.}
 ## Installation
 
 ```bash
-pip install toolsconnector[{name}]
+pip install "toolsconnector[{name}]"
 ```
 
 Set your credentials:

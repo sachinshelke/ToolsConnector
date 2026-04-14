@@ -30,7 +30,7 @@ The Vercel API provides access to projects, deployments, domains, and environmen
 ## Installation
 
 ```bash
-pip install toolsconnector[vercel]
+pip install "toolsconnector[vercel]"
 ```
 
 Set your credentials:

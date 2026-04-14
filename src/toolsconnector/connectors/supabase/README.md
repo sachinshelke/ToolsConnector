@@ -30,7 +30,7 @@ The Supabase API provides RESTful access to your Postgres database, authenticati
 ## Installation
 
 ```bash
-pip install toolsconnector[supabase]
+pip install "toolsconnector[supabase]"
 ```
 
 Set your credentials:

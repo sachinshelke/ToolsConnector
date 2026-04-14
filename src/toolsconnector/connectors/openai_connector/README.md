@@ -30,7 +30,7 @@ The OpenAI API provides access to GPT models for text generation, embeddings for
 ## Installation
 
 ```bash
-pip install toolsconnector[openai]
+pip install "toolsconnector[openai]"
 ```
 
 Set your credentials:

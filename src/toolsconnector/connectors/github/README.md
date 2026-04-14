@@ -30,7 +30,7 @@ The GitHub REST API provides access to repositories, issues, pull requests, comm
 ## Installation
 
 ```bash
-pip install toolsconnector[github]
+pip install "toolsconnector[github]"
 ```
 
 Set your credentials:

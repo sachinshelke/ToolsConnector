@@ -30,7 +30,7 @@ The Twilio API provides SMS messaging, voice calls, and communication services. 
 ## Installation
 
 ```bash
-pip install toolsconnector[twilio]
+pip install "toolsconnector[twilio]"
 ```
 
 Set your credentials:

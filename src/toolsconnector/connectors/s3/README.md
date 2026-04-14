@@ -30,7 +30,7 @@ The AWS S3 API provides object storage operations for buckets and objects. Uploa
 ## Installation
 
 ```bash
-pip install toolsconnector[s3]
+pip install "toolsconnector[s3]"
 ```
 
 Set your credentials:

@@ -30,7 +30,7 @@ The Cloudflare API provides access to DNS records, zones, firewall rules, Worker
 ## Installation
 
 ```bash
-pip install toolsconnector[cloudflare]
+pip install "toolsconnector[cloudflare]"
 ```
 
 Set your credentials:

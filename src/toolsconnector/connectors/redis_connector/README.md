@@ -30,7 +30,7 @@ The Upstash Redis REST API provides HTTP-based access to Redis data structures. 
 ## Installation
 
 ```bash
-pip install toolsconnector[redis]
+pip install "toolsconnector[redis]"
 ```
 
 Set your credentials:

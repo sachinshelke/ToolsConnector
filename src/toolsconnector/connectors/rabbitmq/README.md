@@ -30,7 +30,7 @@ The RabbitMQ Management HTTP API provides access to exchanges, queues, bindings,
 ## Installation
 
 ```bash
-pip install toolsconnector[rabbitmq]
+pip install "toolsconnector[rabbitmq]"
 ```
 
 Set your credentials:

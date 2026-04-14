@@ -30,7 +30,7 @@ The Auth0 Management API lets you manage users, connections, roles, and applicat
 ## Installation
 
 ```bash
-pip install toolsconnector[auth0]
+pip install "toolsconnector[auth0]"
 ```
 
 Set your credentials:

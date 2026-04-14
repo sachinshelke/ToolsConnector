@@ -125,9 +125,9 @@ def build_system_prompt() -> str:
     ## Installation
     ```bash
     pip install toolsconnector              # core
-    pip install toolsconnector[gmail,slack]  # with specific connectors
-    pip install toolsconnector[mcp]         # with MCP server support
-    pip install toolsconnector[all]         # everything
+    pip install "toolsconnector[gmail,slack]"  # with specific connectors
+    pip install "toolsconnector[mcp]"         # with MCP server support
+    pip install "toolsconnector[all]"         # everything
     ```
 
     ## Core Concept: ToolKit
@@ -287,9 +287,9 @@ def build_system_prompt() -> str:
 _OFFLINE_ANSWERS: dict[str, str] = {
     "install": textwrap.dedent("""\
         pip install toolsconnector              # core only
-        pip install toolsconnector[gmail,slack]  # specific connectors
-        pip install toolsconnector[mcp]         # MCP server support
-        pip install toolsconnector[all]         # everything
+        pip install "toolsconnector[gmail,slack]"  # specific connectors
+        pip install "toolsconnector[mcp]"         # MCP server support
+        pip install "toolsconnector[all]"         # everything
     """),
     "quickstart": textwrap.dedent("""\
         from toolsconnector.serve import ToolKit

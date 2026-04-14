@@ -30,7 +30,7 @@ The AWS SQS API provides message queuing operations for decoupling distributed s
 ## Installation
 
 ```bash
-pip install toolsconnector[sqs]
+pip install "toolsconnector[sqs]"
 ```
 
 Set your credentials:

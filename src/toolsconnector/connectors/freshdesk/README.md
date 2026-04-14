@@ -30,7 +30,7 @@ The Freshdesk API provides access to tickets, contacts, agents, companies, and k
 ## Installation
 
 ```bash
-pip install toolsconnector[freshdesk]
+pip install "toolsconnector[freshdesk]"
 ```
 
 Set your credentials:

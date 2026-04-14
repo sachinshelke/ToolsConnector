@@ -30,7 +30,7 @@ The Telegram Bot API lets you send and receive messages, manage groups and chann
 ## Installation
 
 ```bash
-pip install toolsconnector[telegram]
+pip install "toolsconnector[telegram]"
 ```
 
 Set your credentials:

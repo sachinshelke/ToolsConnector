@@ -29,10 +29,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/sachinshelke/ToolsConnector"
-Repository = "https://github.com/sachinshelke/ToolsConnector"
-Issues = "https://github.com/sachinshelke/ToolsConnector/issues"
-Changelog = "https://github.com/sachinshelke/ToolsConnector/blob/main/CHANGELOG.md"
+Homepage = "https://toolsconnector.github.io"
+Documentation = "https://toolsconnector.github.io"
+Repository = "https://github.com/ToolsConnector/ToolsConnector"
+Issues = "https://github.com/ToolsConnector/ToolsConnector/issues"
+Changelog = "https://github.com/ToolsConnector/ToolsConnector/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 # --- Connectors: Communication ---
@@ -183,6 +184,19 @@ tc = "toolsconnector.serve.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/toolsconnector"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/",
+    "tests/",
+    "docs/",
+    "examples/",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "pyproject.toml",
+]
 
 [tool.ruff]
 src = ["src"]

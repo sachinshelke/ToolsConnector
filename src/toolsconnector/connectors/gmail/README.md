@@ -33,7 +33,7 @@ The Gmail API lets you read, compose, send, and organize email messages and thre
 ## Installation
 
 ```bash
-pip install toolsconnector[gmail]
+pip install "toolsconnector[gmail]"
 ```
 
 Set your credentials:

@@ -30,7 +30,7 @@ The Salesforce REST API provides access to CRM objects including leads, contacts
 ## Installation
 
 ```bash
-pip install toolsconnector[salesforce]
+pip install "toolsconnector[salesforce]"
 ```
 
 Set your credentials:

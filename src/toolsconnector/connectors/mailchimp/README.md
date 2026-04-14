@@ -30,7 +30,7 @@ The Mailchimp Marketing API provides access to audiences, campaigns, templates, 
 ## Installation
 
 ```bash
-pip install toolsconnector[mailchimp]
+pip install "toolsconnector[mailchimp]"
 ```
 
 Set your credentials:

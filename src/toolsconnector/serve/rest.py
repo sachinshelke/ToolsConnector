@@ -1,7 +1,7 @@
 """REST API exposure for ToolsConnector.
 
 Creates a lightweight ASGI app that exposes ToolKit tools as REST endpoints.
-Requires ``starlette`` (optional dependency via ``pip install toolsconnector[rest]``).
+Requires ``starlette`` (optional dependency via ``pip install "toolsconnector[rest]"``).
 
 Routes::
 
@@ -44,7 +44,7 @@ def create_rest_app(toolkit: "ToolKit", *, prefix: str = "/api/v1") -> Any:
     except ImportError:
         raise ImportError(
             "REST server requires 'starlette' and 'uvicorn'. "
-            "Install with: pip install toolsconnector[rest]"
+            'Install with: pip install "toolsconnector[rest]"'
         )
 
     async def list_connectors(request: Request) -> JSONResponse:

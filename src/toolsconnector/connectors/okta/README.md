@@ -30,7 +30,7 @@ The Okta API provides access to users, groups, applications, and system logs. Ma
 ## Installation
 
 ```bash
-pip install toolsconnector[okta]
+pip install "toolsconnector[okta]"
 ```
 
 Set your credentials:

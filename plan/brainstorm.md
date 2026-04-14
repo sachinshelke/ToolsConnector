@@ -664,16 +664,16 @@ pip install toolsconnector-slack
 pip install toolsconnector
 
 # Individual tools
-pip install toolsconnector[gmail]
-pip install toolsconnector[slack]
+pip install "toolsconnector[gmail]"
+pip install "toolsconnector[slack]"
 
 # By category
-pip install toolsconnector[google]           # All Google tools
-pip install toolsconnector[communication]    # Slack, Discord, Teams, email
-pip install toolsconnector[project-mgmt]     # Jira, Asana, Linear
+pip install "toolsconnector[google]"           # All Google tools
+pip install "toolsconnector[communication]"    # Slack, Discord, Teams, email
+pip install "toolsconnector[project-mgmt]"     # Jira, Asana, Linear
 
 # Everything
-pip install toolsconnector[all]
+pip install "toolsconnector[all]"
 ```
 
 **Sachin's input:**
@@ -1458,7 +1458,7 @@ File handling (e.g., Slack attachments, Gmail attachments) requires a standardiz
 
 **The project succeeds when:**
 
-1. A developer can `pip install toolsconnector[gmail]` and send an email in **under 5 minutes**, with zero prior knowledge of the Gmail API
+1. A developer can `pip install "toolsconnector[gmail]"` and send an email in **under 5 minutes**, with zero prior knowledge of the Gmail API
 2. An AI platform can expose ANY installed connector as an MCP server in **one line**
 3. Contributing a new connector takes a **single PR** with one Python file
 4. At least **5 major AI frameworks/platforms** adopt it as their default tool layer

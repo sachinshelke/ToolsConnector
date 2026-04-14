@@ -5,7 +5,7 @@ over stdio or HTTP. This script starts a server that exposes
 your connectors as MCP tools.
 
 Prerequisites:
-    pip install toolsconnector[mcp,gmail,slack]
+    pip install "toolsconnector[mcp,gmail,slack]"
     export TC_GMAIL_CREDENTIALS='your-token'
     export TC_SLACK_CREDENTIALS='your-token'
 

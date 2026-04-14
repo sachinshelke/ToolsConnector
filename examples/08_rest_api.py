@@ -5,7 +5,7 @@ connectors over HTTP. Useful for language-agnostic integrations
 or when your AI agent runtime expects a REST backend.
 
 Prerequisites:
-    pip install toolsconnector[rest,gmail,slack]
+    pip install "toolsconnector[rest,gmail,slack]"
     export TC_GMAIL_CREDENTIALS='your-token'
     export TC_SLACK_CREDENTIALS='your-token'
 
