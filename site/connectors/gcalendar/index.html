@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Calendar Python Connector — 20 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Google Calendar to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gcalendar]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="Google Calendar Python, Google Calendar API Python, Google Calendar connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/gcalendar/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/gcalendar/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="Google Calendar Python Connector — 20 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Google Calendar to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gcalendar]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="Google Calendar Python Connector — 20 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Google Calendar to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gcalendar]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 Google Calendar Connector",
+  "description": "Connect Google Calendar to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[gcalendar]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/gcalendar/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "add_calendar_acl",
+    "clear_calendar",
+    "create_calendar",
+    "create_event",
+    "delete_calendar",
+    "delete_event",
+    "get_colors",
+    "get_event",
+    "get_free_busy",
+    "list_calendar_acl",
+    "list_calendars",
+    "list_event_instances",
+    "list_events",
+    "move_event",
+    "quick_add_event",
+    "remove_calendar_acl",
+    "subscribe_calendar",
+    "unsubscribe_calendar",
+    "update_calendar",
+    "update_event"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#F97316; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/gcalendar" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_32dp.png" alt="Google Calendar" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Productivity</span>
+      <h1>Google Calendar Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to Google Calendar to manage events and calendars.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[gcalendar]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">20</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Productivity</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 20 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>add_calendar_acl ⚠</code></td><td class="desc">Add an access-control rule to a calendar</td><td><span class="req">calendar_id, email</span> &nbsp;<span class="opt">[role]</span></td><td><code>CalendarACL</code></td></tr>
+<tr><td><code>clear_calendar ⚠</code></td><td class="desc">Clear all events from a calendar</td><td><span class="req">calendar_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>create_calendar ⚠</code></td><td class="desc">Create a new calendar</td><td><span class="req">summary</span> &nbsp;<span class="opt">[description, time_zone]</span></td><td><code>Calendar</code></td></tr>
+<tr><td><code>create_event ⚠</code></td><td class="desc">Create a calendar event</td><td><span class="req">summary, start, end</span> &nbsp;<span class="opt">[calendar_id, description, location, time_zone, attendees, send_updates]</span></td><td><code>CalendarEvent</code></td></tr>
+<tr><td><code>delete_calendar ⚠</code></td><td class="desc">Delete a calendar</td><td><span class="req">calendar_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_event ⚠</code></td><td class="desc">Delete a calendar event</td><td><span class="req">event_id</span> &nbsp;<span class="opt">[calendar_id, send_updates]</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>get_colors</code></td><td class="desc">Get available calendar and event colors</td><td><span class="opt">—</span></td><td><code>CalendarColors</code></td></tr>
+<tr><td><code>get_event</code></td><td class="desc">Get a single event by ID</td><td><span class="req">event_id</span> &nbsp;<span class="opt">[calendar_id]</span></td><td><code>CalendarEvent</code></td></tr>
+<tr><td><code>get_free_busy</code></td><td class="desc">Query free/busy information for calendars</td><td><span class="req">time_min, time_max, calendar_ids</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_calendar_acl</code></td><td class="desc">List access-control rules for a calendar</td><td><span class="req">calendar_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_calendars</code></td><td class="desc">List calendars</td><td><span class="opt">[page_token, max_results]</span></td><td><code>PaginatedList[Calendar]</code></td></tr>
+<tr><td><code>list_event_instances</code></td><td class="desc">List instances of a recurring event</td><td><span class="req">calendar_id, event_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_events</code></td><td class="desc">List calendar events</td><td><span class="opt">[calendar_id, time_min, time_max, query, max_results, single_events, order_by, page_token]</span></td><td><code>PaginatedList[CalendarEvent]</code></td></tr>
+<tr><td><code>move_event</code></td><td class="desc">Move an event to a different calendar</td><td><span class="req">calendar_id, event_id, destination_calendar_id</span></td><td><code>CalendarEvent</code></td></tr>
+<tr><td><code>quick_add_event ⚠</code></td><td class="desc">Quick-add an event using natural language</td><td><span class="req">text</span> &nbsp;<span class="opt">[calendar_id]</span></td><td><code>CalendarEvent</code></td></tr>
+<tr><td><code>remove_calendar_acl ⚠</code></td><td class="desc">Remove an access-control rule from a calendar</td><td><span class="req">calendar_id, rule_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>subscribe_calendar ⚠</code></td><td class="desc">Subscribe to an external calendar</td><td><span class="req">calendar_id</span></td><td><code>Calendar</code></td></tr>
+<tr><td><code>unsubscribe_calendar ⚠</code></td><td class="desc">Unsubscribe from a calendar</td><td><span class="req">calendar_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>update_calendar ⚠</code></td><td class="desc">Update a calendar</td><td><span class="req">calendar_id</span> &nbsp;<span class="opt">[summary, description, time_zone]</span></td><td><code>Calendar</code></td></tr>
+<tr><td><code>update_event ⚠</code></td><td class="desc">Update a calendar event</td><td><span class="req">event_id</span> &nbsp;<span class="opt">[calendar_id, summary, start, end, description, location, time_zone, attendees, send_updates]</span></td><td><code>CalendarEvent</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/gcalendar">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

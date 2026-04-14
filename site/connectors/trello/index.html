@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trello Python Connector — 25 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Trello to Python apps and AI agents with 25 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[trello]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="Trello Python, Trello API Python, Trello connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/trello/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/trello/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="Trello Python Connector — 25 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Trello to Python apps and AI agents with 25 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[trello]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="Trello Python Connector — 25 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Trello to Python apps and AI agents with 25 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[trello]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 Trello Connector",
+  "description": "Connect Trello to Python apps and AI agents with 25 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[trello]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/trello/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "add_attachment",
+    "add_comment",
+    "add_label",
+    "archive_card",
+    "archive_list",
+    "create_card",
+    "create_checklist",
+    "create_label",
+    "create_list",
+    "delete_card",
+    "get_board",
+    "get_card",
+    "get_list",
+    "list_attachments",
+    "list_board_members",
+    "list_boards",
+    "list_card_actions",
+    "list_cards",
+    "list_checklists",
+    "list_labels",
+    "list_lists",
+    "list_members",
+    "move_card",
+    "unarchive_card",
+    "update_card"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#8B5CF6; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/trello" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/trello.com?c=1idiVFVAawYfs0vBpzR" alt="Trello" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Project Management</span>
+      <h1>Trello Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to Trello to manage boards, lists, cards, and comments.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[trello]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">25</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Project Management</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 25 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>add_attachment ⚠</code></td><td class="desc">Add an attachment to a Trello card</td><td><span class="req">card_id</span> &nbsp;<span class="opt">[url, name]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>add_comment ⚠</code></td><td class="desc">Add a comment to a Trello card</td><td><span class="req">card_id, text</span></td><td><code>TrelloComment</code></td></tr>
+<tr><td><code>add_label</code></td><td class="desc">Add a label to a Trello card</td><td><span class="req">card_id, label_id</span></td><td><code>bool</code></td></tr>
+<tr><td><code>archive_card ⚠</code></td><td class="desc">Archive a Trello card</td><td><span class="req">card_id</span></td><td><code>TrelloCard</code></td></tr>
+<tr><td><code>archive_list ⚠</code></td><td class="desc">Archive a Trello list</td><td><span class="req">list_id</span></td><td><code>TrelloList</code></td></tr>
+<tr><td><code>create_card ⚠</code></td><td class="desc">Create a new Trello card</td><td><span class="req">list_id, name</span> &nbsp;<span class="opt">[desc]</span></td><td><code>TrelloCard</code></td></tr>
+<tr><td><code>create_checklist ⚠</code></td><td class="desc">Create a checklist on a Trello card</td><td><span class="req">card_id, name</span></td><td><code>dict</code></td></tr>
+<tr><td><code>create_label ⚠</code></td><td class="desc">Create a label on a Trello board</td><td><span class="req">board_id, name</span> &nbsp;<span class="opt">[color]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>create_list ⚠</code></td><td class="desc">Create a new list on a Trello board</td><td><span class="req">board_id, name</span></td><td><code>TrelloList</code></td></tr>
+<tr><td><code>delete_card ⚠</code></td><td class="desc">Delete a Trello card</td><td><span class="req">card_id</span></td><td><code>bool</code></td></tr>
+<tr><td><code>get_board</code></td><td class="desc">Get a single Trello board by ID</td><td><span class="req">board_id</span></td><td><code>TrelloBoard</code></td></tr>
+<tr><td><code>get_card</code></td><td class="desc">Get a single Trello card by ID</td><td><span class="req">card_id</span></td><td><code>TrelloCard</code></td></tr>
+<tr><td><code>get_list</code></td><td class="desc">Get a single Trello list by ID</td><td><span class="req">list_id</span></td><td><code>TrelloList</code></td></tr>
+<tr><td><code>list_attachments</code></td><td class="desc">List attachments on a Trello card</td><td><span class="req">card_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_board_members</code></td><td class="desc">List members of a Trello board</td><td><span class="req">board_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_boards</code></td><td class="desc">List boards for a Trello member</td><td><span class="opt">[member]</span></td><td><code>PaginatedList[TrelloBoard]</code></td></tr>
+<tr><td><code>list_card_actions</code></td><td class="desc">List actions (activity log) on a Trello card</td><td><span class="req">card_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_cards</code></td><td class="desc">List cards in a Trello list</td><td><span class="req">list_id</span></td><td><code>PaginatedList[TrelloCard]</code></td></tr>
+<tr><td><code>list_checklists</code></td><td class="desc">List checklists on a Trello card</td><td><span class="req">card_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_labels</code></td><td class="desc">List all labels on a Trello board</td><td><span class="req">board_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_lists</code></td><td class="desc">List all lists on a Trello board</td><td><span class="req">board_id</span></td><td><code>PaginatedList[TrelloList]</code></td></tr>
+<tr><td><code>list_members</code></td><td class="desc">List members of a Trello board</td><td><span class="req">board_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>move_card ⚠</code></td><td class="desc">Move a Trello card to a different list</td><td><span class="req">card_id, list_id</span></td><td><code>TrelloCard</code></td></tr>
+<tr><td><code>unarchive_card</code></td><td class="desc">Unarchive a Trello card</td><td><span class="req">card_id</span></td><td><code>TrelloCard</code></td></tr>
+<tr><td><code>update_card ⚠</code></td><td class="desc">Update a Trello card</td><td><span class="req">card_id</span> &nbsp;<span class="opt">[name, desc, list_id]</span></td><td><code>TrelloCard</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/trello">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

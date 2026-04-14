@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gmail Python Connector — 38 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Gmail to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gmail]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="Gmail Python, Gmail API Python, Gmail connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/gmail/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/gmail/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="Gmail Python Connector — 38 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Gmail to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gmail]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="Gmail Python Connector — 38 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Gmail to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gmail]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 Gmail Connector",
+  "description": "Connect Gmail to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[gmail]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/gmail/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "batch_delete",
+    "batch_modify",
+    "create_draft",
+    "create_label",
+    "delete_draft",
+    "delete_email",
+    "delete_label",
+    "delete_thread",
+    "get_attachment",
+    "get_draft",
+    "get_email",
+    "get_label",
+    "get_profile",
+    "get_thread",
+    "get_vacation_settings",
+    "import_message",
+    "insert_message",
+    "list_drafts",
+    "list_emails",
+    "list_history",
+    "list_labels",
+    "list_threads",
+    "mark_as_read",
+    "mark_as_unread",
+    "modify_labels",
+    "modify_thread",
+    "search_emails",
+    "send_draft",
+    "send_email",
+    "star_email",
+    "trash_email",
+    "trash_thread",
+    "unstar_email",
+    "untrash_email",
+    "untrash_thread",
+    "update_draft",
+    "update_label",
+    "update_vacation_settings"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#3B82F6; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/gmail" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Communication</span>
+      <h1>Gmail Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to Gmail to read, send, and manage emails.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[gmail]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">38</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Communication</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 38 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>batch_delete ⚠</code></td><td class="desc">Batch delete messages permanently</td><td><span class="req">email_ids</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>batch_modify</code></td><td class="desc">Batch modify labels on multiple emails</td><td><span class="req">email_ids</span> &nbsp;<span class="opt">[add_labels, remove_labels]</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>create_draft</code></td><td class="desc">Create a draft email</td><td><span class="req">to, subject, body</span> &nbsp;<span class="opt">[cc]</span></td><td><code>DraftId</code></td></tr>
+<tr><td><code>create_label</code></td><td class="desc">Create a new label</td><td><span class="req">name</span> &nbsp;<span class="opt">[label_color]</span></td><td><code>Label</code></td></tr>
+<tr><td><code>delete_draft ⚠</code></td><td class="desc">Delete a draft</td><td><span class="req">draft_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_email ⚠</code></td><td class="desc">Delete an email</td><td><span class="req">email_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_label ⚠</code></td><td class="desc">Delete a label</td><td><span class="req">label_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_thread ⚠</code></td><td class="desc">Permanently delete a thread</td><td><span class="req">thread_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>get_attachment</code></td><td class="desc">Download an email attachment</td><td><span class="req">email_id, attachment_id</span></td><td><code>Attachment</code></td></tr>
+<tr><td><code>get_draft</code></td><td class="desc">Get a single draft by ID</td><td><span class="req">draft_id</span> &nbsp;<span class="opt">[format]</span></td><td><code>Draft</code></td></tr>
+<tr><td><code>get_email</code></td><td class="desc">Get a single email by ID</td><td><span class="req">email_id</span> &nbsp;<span class="opt">[format]</span></td><td><code>Email</code></td></tr>
+<tr><td><code>get_label</code></td><td class="desc">Get a single label by ID</td><td><span class="req">label_id</span></td><td><code>Label</code></td></tr>
+<tr><td><code>get_profile</code></td><td class="desc">Get user profile</td><td><span class="opt">—</span></td><td><code>UserProfile</code></td></tr>
+<tr><td><code>get_thread</code></td><td class="desc">Get a single thread by ID</td><td><span class="req">thread_id</span> &nbsp;<span class="opt">[format]</span></td><td><code>Thread</code></td></tr>
+<tr><td><code>get_vacation_settings</code></td><td class="desc">Get vacation auto-reply settings</td><td><span class="opt">—</span></td><td><code>VacationSettings</code></td></tr>
+<tr><td><code>import_message ⚠</code></td><td class="desc">Import an email message into the mailbox</td><td><span class="req">raw_rfc2822</span> &nbsp;<span class="opt">[label_ids, internal_date_source]</span></td><td><code>MessageId</code></td></tr>
+<tr><td><code>insert_message ⚠</code></td><td class="desc">Insert an email message directly into the mailbox</td><td><span class="req">raw_rfc2822</span> &nbsp;<span class="opt">[label_ids, internal_date_source]</span></td><td><code>MessageId</code></td></tr>
+<tr><td><code>list_drafts</code></td><td class="desc">List drafts</td><td><span class="opt">[limit, page_token]</span></td><td><code>PaginatedList[Draft]</code></td></tr>
+<tr><td><code>list_emails</code></td><td class="desc">List emails matching a query</td><td><span class="opt">[query, limit, labels, page_token]</span></td><td><code>PaginatedList[Email]</code></td></tr>
+<tr><td><code>list_history</code></td><td class="desc">List mailbox history</td><td><span class="req">start_history_id</span> &nbsp;<span class="opt">[label_id, history_types, limit, page_token]</span></td><td><code>PaginatedList[HistoryRecord]</code></td></tr>
+<tr><td><code>list_labels</code></td><td class="desc">List all labels</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_threads</code></td><td class="desc">List email threads</td><td><span class="opt">[query, limit, page_token]</span></td><td><code>PaginatedList[Thread]</code></td></tr>
+<tr><td><code>mark_as_read</code></td><td class="desc">Mark an email as read</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
+<tr><td><code>mark_as_unread</code></td><td class="desc">Mark an email as unread</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
+<tr><td><code>modify_labels</code></td><td class="desc">Modify email labels</td><td><span class="req">email_id</span> &nbsp;<span class="opt">[add_labels, remove_labels]</span></td><td><code>Email</code></td></tr>
+<tr><td><code>modify_thread</code></td><td class="desc">Modify thread labels</td><td><span class="req">thread_id</span> &nbsp;<span class="opt">[add_labels, remove_labels]</span></td><td><code>Thread</code></td></tr>
+<tr><td><code>search_emails</code></td><td class="desc">Search emails with advanced query</td><td><span class="req">query</span> &nbsp;<span class="opt">[limit, page_token]</span></td><td><code>PaginatedList[Email]</code></td></tr>
+<tr><td><code>send_draft ⚠</code></td><td class="desc">Send a draft</td><td><span class="req">draft_id</span></td><td><code>MessageId</code></td></tr>
+<tr><td><code>send_email ⚠</code></td><td class="desc">Send an email</td><td><span class="req">to, subject, body</span> &nbsp;<span class="opt">[cc, bcc, reply_to]</span></td><td><code>MessageId</code></td></tr>
+<tr><td><code>star_email</code></td><td class="desc">Star an email</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
+<tr><td><code>trash_email</code></td><td class="desc">Move an email to trash</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
+<tr><td><code>trash_thread</code></td><td class="desc">Move a thread to trash</td><td><span class="req">thread_id</span></td><td><code>Thread</code></td></tr>
+<tr><td><code>unstar_email</code></td><td class="desc">Remove star from an email</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
+<tr><td><code>untrash_email</code></td><td class="desc">Remove an email from trash</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
+<tr><td><code>untrash_thread</code></td><td class="desc">Remove a thread from trash</td><td><span class="req">thread_id</span></td><td><code>Thread</code></td></tr>
+<tr><td><code>update_draft</code></td><td class="desc">Update a draft</td><td><span class="req">draft_id, to, subject, body</span> &nbsp;<span class="opt">[cc]</span></td><td><code>Draft</code></td></tr>
+<tr><td><code>update_label</code></td><td class="desc">Update a label</td><td><span class="req">label_id</span> &nbsp;<span class="opt">[name, label_color]</span></td><td><code>Label</code></td></tr>
+<tr><td><code>update_vacation_settings ⚠</code></td><td class="desc">Update vacation auto-reply settings</td><td><span class="req">enable</span> &nbsp;<span class="opt">[response_subject, response_body, start_time, end_time]</span></td><td><code>VacationSettings</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/gmail">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

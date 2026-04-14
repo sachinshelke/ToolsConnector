@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWS S3 Python Connector — 20 Actions | ToolsConnector</title>
+<meta name="description" content="Connect AWS S3 to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[s3]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="AWS S3 Python, AWS S3 API Python, AWS S3 connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/s3/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/s3/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="AWS S3 Python Connector — 20 Actions | ToolsConnector">
+<meta property="og:description" content="Connect AWS S3 to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[s3]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="AWS S3 Python Connector — 20 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect AWS S3 to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[s3]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 AWS S3 Connector",
+  "description": "Connect AWS S3 to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[s3]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/s3/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "copy_object",
+    "create_bucket",
+    "delete_bucket",
+    "delete_object",
+    "delete_object_tags",
+    "generate_presigned_url",
+    "get_bucket_location",
+    "get_bucket_policy",
+    "get_bucket_versioning",
+    "get_object",
+    "get_object_tags",
+    "head_object",
+    "list_buckets",
+    "list_multipart_uploads",
+    "list_object_versions",
+    "list_objects",
+    "put_bucket_policy",
+    "put_bucket_versioning",
+    "put_object",
+    "set_object_tags"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#14B8A6; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/s3" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/aws.amazon.com?c=1idiVFVAawYfs0vBpzR" alt="AWS S3" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Storage</span>
+      <h1>AWS S3 Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to AWS S3 to list buckets, manage objects, upload/download files, and copy objects between buckets.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[s3]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">20</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Storage</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 20 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>copy_object</code></td><td class="desc">Copy an object between S3 locations</td><td><span class="req">source_bucket, source_key, dest_bucket, dest_key</span></td><td><code>S3CopyResult</code></td></tr>
+<tr><td><code>create_bucket ⚠</code></td><td class="desc">Create a new S3 bucket</td><td><span class="req">bucket</span> &nbsp;<span class="opt">[region]</span></td><td><code>S3Bucket</code></td></tr>
+<tr><td><code>delete_bucket ⚠</code></td><td class="desc">Delete an S3 bucket</td><td><span class="req">bucket</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_object ⚠</code></td><td class="desc">Delete an object from S3</td><td><span class="req">bucket, key</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_object_tags ⚠</code></td><td class="desc">Delete all tags from an S3 object</td><td><span class="req">bucket, key</span> &nbsp;<span class="opt">[version_id]</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>generate_presigned_url</code></td><td class="desc">Generate a pre-signed URL for an S3 object</td><td><span class="req">bucket, key</span> &nbsp;<span class="opt">[expiration, method]</span></td><td><code>S3PresignedUrl</code></td></tr>
+<tr><td><code>get_bucket_location</code></td><td class="desc">Get the region (location) of an S3 bucket</td><td><span class="req">bucket</span></td><td><code>S3BucketLocation</code></td></tr>
+<tr><td><code>get_bucket_policy</code></td><td class="desc">Get the bucket policy</td><td><span class="req">bucket</span></td><td><code>S3BucketPolicy</code></td></tr>
+<tr><td><code>get_bucket_versioning</code></td><td class="desc">Get bucket versioning configuration</td><td><span class="req">bucket</span></td><td><code>S3BucketVersioning</code></td></tr>
+<tr><td><code>get_object</code></td><td class="desc">Download an object from S3</td><td><span class="req">bucket, key</span></td><td><code>S3ObjectData</code></td></tr>
+<tr><td><code>get_object_tags</code></td><td class="desc">Get tags on an S3 object</td><td><span class="req">bucket, key</span> &nbsp;<span class="opt">[version_id]</span></td><td><code>S3ObjectTagSet</code></td></tr>
+<tr><td><code>head_object</code></td><td class="desc">Get object metadata without downloading the content</td><td><span class="req">bucket, key</span></td><td><code>S3ObjectMetadata</code></td></tr>
+<tr><td><code>list_buckets</code></td><td class="desc">List all S3 buckets in the account</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_multipart_uploads</code></td><td class="desc">List in-progress multipart uploads in a bucket</td><td><span class="req">bucket</span> &nbsp;<span class="opt">[prefix, limit, key_marker]</span></td><td><code>PaginatedList[S3MultipartUpload]</code></td></tr>
+<tr><td><code>list_object_versions</code></td><td class="desc">List object versions in a bucket</td><td><span class="req">bucket</span> &nbsp;<span class="opt">[prefix, limit, key_marker]</span></td><td><code>PaginatedList[S3ObjectVersion]</code></td></tr>
+<tr><td><code>list_objects</code></td><td class="desc">List objects in an S3 bucket</td><td><span class="req">bucket</span> &nbsp;<span class="opt">[prefix, limit, continuation_token]</span></td><td><code>PaginatedList[S3Object]</code></td></tr>
+<tr><td><code>put_bucket_policy ⚠</code></td><td class="desc">Set the bucket policy</td><td><span class="req">bucket, policy</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>put_bucket_versioning ⚠</code></td><td class="desc">Set bucket versioning configuration</td><td><span class="req">bucket, status</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>put_object ⚠</code></td><td class="desc">Upload an object to S3</td><td><span class="req">bucket, key, body</span> &nbsp;<span class="opt">[content_type]</span></td><td><code>S3PutResult</code></td></tr>
+<tr><td><code>set_object_tags</code></td><td class="desc">Set tags on an S3 object</td><td><span class="req">bucket, key, tags</span></td><td><code>NoneType</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/s3">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopify Python Connector — 27 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Shopify to Python apps and AI agents with 27 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[shopify]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="Shopify Python, Shopify API Python, Shopify connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/shopify/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/shopify/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="Shopify Python Connector — 27 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Shopify to Python apps and AI agents with 27 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[shopify]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="Shopify Python Connector — 27 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Shopify to Python apps and AI agents with 27 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[shopify]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 Shopify Connector",
+  "description": "Connect Shopify to Python apps and AI agents with 27 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[shopify]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/shopify/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "cancel_order",
+    "complete_draft_order",
+    "count_products",
+    "create_customer",
+    "create_discount",
+    "create_draft_order",
+    "create_product",
+    "create_product_variant",
+    "create_webhook",
+    "delete_product",
+    "fulfill_order",
+    "get_customer",
+    "get_order",
+    "get_product",
+    "list_collections",
+    "list_customers",
+    "list_draft_orders",
+    "list_fulfillments",
+    "list_inventory_levels",
+    "list_locations",
+    "list_orders",
+    "list_product_variants",
+    "list_products",
+    "list_webhooks",
+    "update_inventory",
+    "update_order",
+    "update_product"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#84CC16; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/shopify" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/shopify.com?c=1idiVFVAawYfs0vBpzR" alt="Shopify" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">E-Commerce</span>
+      <h1>Shopify Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to Shopify to manage products, orders, and customers via the REST Admin API.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[shopify]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">27</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">E-Commerce</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 27 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>cancel_order ⚠</code></td><td class="desc">Cancel an order</td><td><span class="req">order_id</span></td><td><code>ShopifyOrder</code></td></tr>
+<tr><td><code>complete_draft_order ⚠</code></td><td class="desc">Complete a draft order</td><td><span class="req">draft_order_id</span></td><td><code>ShopifyDraftOrder</code></td></tr>
+<tr><td><code>count_products</code></td><td class="desc">Count products in your Shopify store</td><td><span class="opt">—</span></td><td><code>int</code></td></tr>
+<tr><td><code>create_customer ⚠</code></td><td class="desc">Create a new customer</td><td><span class="req">email</span> &nbsp;<span class="opt">[first_name, last_name]</span></td><td><code>ShopifyCustomer</code></td></tr>
+<tr><td><code>create_discount ⚠</code></td><td class="desc">Create a price rule / discount</td><td><span class="req">title, value, type</span></td><td><code>dict</code></td></tr>
+<tr><td><code>create_draft_order ⚠</code></td><td class="desc">Create a draft order</td><td><span class="req">line_items</span> &nbsp;<span class="opt">[customer, note]</span></td><td><code>ShopifyDraftOrder</code></td></tr>
+<tr><td><code>create_product ⚠</code></td><td class="desc">Create a new product in your Shopify store</td><td><span class="req">title</span> &nbsp;<span class="opt">[body_html, vendor, product_type, variants]</span></td><td><code>ShopifyProduct</code></td></tr>
+<tr><td><code>create_product_variant ⚠</code></td><td class="desc">Create a variant for a product</td><td><span class="req">product_id, option1, price</span> &nbsp;<span class="opt">[sku]</span></td><td><code>ShopifyVariant</code></td></tr>
+<tr><td><code>create_webhook ⚠</code></td><td class="desc">Create a webhook subscription</td><td><span class="req">topic, address</span> &nbsp;<span class="opt">[format_]</span></td><td><code>ShopifyWebhook</code></td></tr>
+<tr><td><code>delete_product ⚠</code></td><td class="desc">Delete a product from your Shopify store</td><td><span class="req">product_id</span></td><td><code>bool</code></td></tr>
+<tr><td><code>fulfill_order ⚠</code></td><td class="desc">Fulfill an order</td><td><span class="req">order_id</span> &nbsp;<span class="opt">[tracking_number, tracking_company]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_customer</code></td><td class="desc">Get a single Shopify customer by ID</td><td><span class="req">customer_id</span></td><td><code>ShopifyCustomer</code></td></tr>
+<tr><td><code>get_order</code></td><td class="desc">Get a single Shopify order by ID</td><td><span class="req">order_id</span></td><td><code>ShopifyOrder</code></td></tr>
+<tr><td><code>get_product</code></td><td class="desc">Get a single Shopify product by ID</td><td><span class="req">product_id</span></td><td><code>ShopifyProduct</code></td></tr>
+<tr><td><code>list_collections</code></td><td class="desc">List collections from your Shopify store</td><td><span class="opt">[limit]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_customers</code></td><td class="desc">List customers from your Shopify store</td><td><span class="opt">[limit, since_id]</span></td><td><code>PaginatedList[ShopifyCustomer]</code></td></tr>
+<tr><td><code>list_draft_orders</code></td><td class="desc">List draft orders from your Shopify store</td><td><span class="opt">[limit, since_id]</span></td><td><code>PaginatedList[ShopifyDraftOrder]</code></td></tr>
+<tr><td><code>list_fulfillments</code></td><td class="desc">List fulfillments for an order</td><td><span class="req">order_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_inventory_levels</code></td><td class="desc">List inventory levels by location</td><td><span class="opt">[location_id]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_locations</code></td><td class="desc">List locations for your Shopify store</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_orders</code></td><td class="desc">List orders from your Shopify store</td><td><span class="opt">[status, limit, since_id]</span></td><td><code>PaginatedList[ShopifyOrder]</code></td></tr>
+<tr><td><code>list_product_variants</code></td><td class="desc">List variants for a product</td><td><span class="req">product_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_products</code></td><td class="desc">List products from your Shopify store</td><td><span class="opt">[limit, since_id]</span></td><td><code>PaginatedList[ShopifyProduct]</code></td></tr>
+<tr><td><code>list_webhooks</code></td><td class="desc">List webhooks from your Shopify store</td><td><span class="opt">[limit]</span></td><td><code>list</code></td></tr>
+<tr><td><code>update_inventory</code></td><td class="desc">Update inventory quantity for an item</td><td><span class="req">inventory_item_id, available</span></td><td><code>dict</code></td></tr>
+<tr><td><code>update_order</code></td><td class="desc">Update an existing order</td><td><span class="req">order_id</span> &nbsp;<span class="opt">[note]</span></td><td><code>ShopifyOrder</code></td></tr>
+<tr><td><code>update_product ⚠</code></td><td class="desc">Update an existing Shopify product</td><td><span class="req">product_id</span> &nbsp;<span class="opt">[title, body_html]</span></td><td><code>ShopifyProduct</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/shopify">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

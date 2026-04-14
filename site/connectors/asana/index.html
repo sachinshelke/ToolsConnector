@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asana Python Connector — 38 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Asana to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[asana]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="Asana Python, Asana API Python, Asana connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/asana/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/asana/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="Asana Python Connector — 38 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Asana to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[asana]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="Asana Python Connector — 38 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Asana to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[asana]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 Asana Connector",
+  "description": "Connect Asana to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[asana]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/asana/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "add_comment",
+    "add_dependencies",
+    "add_followers",
+    "add_tag",
+    "add_task_to_section",
+    "create_project",
+    "create_section",
+    "create_subtask",
+    "create_tag",
+    "create_task",
+    "create_webhook",
+    "delete_project",
+    "delete_tag",
+    "delete_task",
+    "delete_webhook",
+    "duplicate_task",
+    "get_me",
+    "get_project",
+    "get_task",
+    "get_task_count",
+    "get_user",
+    "get_workspace",
+    "list_attachments",
+    "list_custom_fields",
+    "list_projects",
+    "list_sections",
+    "list_stories",
+    "list_subtasks",
+    "list_tags",
+    "list_tasks",
+    "list_teams",
+    "list_users",
+    "list_webhooks",
+    "list_workspaces",
+    "search_tasks",
+    "set_parent",
+    "update_project",
+    "update_task"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#8B5CF6; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/asana" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/asana.com?c=1idiVFVAawYfs0vBpzR" alt="Asana" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Project Management</span>
+      <h1>Asana Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to Asana to manage tasks, projects, workspaces, and comments via the Asana REST API.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[asana]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">38</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Project Management</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 38 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>add_comment ⚠</code></td><td class="desc">Add a comment to a task</td><td><span class="req">task_gid, text</span></td><td><code>AsanaComment</code></td></tr>
+<tr><td><code>add_dependencies ⚠</code></td><td class="desc">Add task dependencies</td><td><span class="req">task_gid, dependencies</span></td><td><code>dict</code></td></tr>
+<tr><td><code>add_followers ⚠</code></td><td class="desc">Add followers to a task</td><td><span class="req">task_gid, followers</span></td><td><code>dict</code></td></tr>
+<tr><td><code>add_tag</code></td><td class="desc">Add a tag to a task</td><td><span class="req">task_gid, tag_gid</span></td><td><code>bool</code></td></tr>
+<tr><td><code>add_task_to_section ⚠</code></td><td class="desc">Add a task to a section</td><td><span class="req">section_gid, task_gid</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>create_project ⚠</code></td><td class="desc">Create a new project</td><td><span class="req">workspace_gid, name</span> &nbsp;<span class="opt">[notes]</span></td><td><code>AsanaProject</code></td></tr>
+<tr><td><code>create_section ⚠</code></td><td class="desc">Create a section in a project</td><td><span class="req">project_gid, name</span></td><td><code>dict</code></td></tr>
+<tr><td><code>create_subtask ⚠</code></td><td class="desc">Create a subtask under a parent task</td><td><span class="req">task_gid, name</span></td><td><code>AsanaTask</code></td></tr>
+<tr><td><code>create_tag ⚠</code></td><td class="desc">Create a tag</td><td><span class="req">workspace_gid, name</span> &nbsp;<span class="opt">[color]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>create_task ⚠</code></td><td class="desc">Create a new task</td><td><span class="req">project_gid, name</span> &nbsp;<span class="opt">[notes, assignee, due_on]</span></td><td><code>AsanaTask</code></td></tr>
+<tr><td><code>create_webhook ⚠</code></td><td class="desc">Create a webhook</td><td><span class="req">resource, target</span></td><td><code>dict</code></td></tr>
+<tr><td><code>delete_project ⚠</code></td><td class="desc">Delete a project</td><td><span class="req">project_gid</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_tag ⚠</code></td><td class="desc">Delete a tag</td><td><span class="req">tag_gid</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_task ⚠</code></td><td class="desc">Delete a task by GID</td><td><span class="req">task_gid</span></td><td><code>bool</code></td></tr>
+<tr><td><code>delete_webhook ⚠</code></td><td class="desc">Delete a webhook</td><td><span class="req">webhook_gid</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>duplicate_task ⚠</code></td><td class="desc">Duplicate a task</td><td><span class="req">task_gid</span> &nbsp;<span class="opt">[name, include]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_me</code></td><td class="desc">Get the current user</td><td><span class="opt">—</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_project</code></td><td class="desc">Get a single project by GID</td><td><span class="req">project_gid</span></td><td><code>AsanaProject</code></td></tr>
+<tr><td><code>get_task</code></td><td class="desc">Get a single task by GID</td><td><span class="req">task_gid</span></td><td><code>AsanaTask</code></td></tr>
+<tr><td><code>get_task_count</code></td><td class="desc">Get task count for a project</td><td><span class="req">project_gid</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_user</code></td><td class="desc">Get a user by ID</td><td><span class="req">user_gid</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_workspace</code></td><td class="desc">Get a workspace by GID</td><td><span class="req">workspace_gid</span></td><td><code>AsanaWorkspace</code></td></tr>
+<tr><td><code>list_attachments</code></td><td class="desc">List attachments on a task</td><td><span class="req">task_gid</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_custom_fields</code></td><td class="desc">List custom fields in a workspace</td><td><span class="req">workspace_gid</span> &nbsp;<span class="opt">[limit]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_projects</code></td><td class="desc">List projects in a workspace</td><td><span class="req">workspace_gid</span> &nbsp;<span class="opt">[limit, offset]</span></td><td><code>PaginatedList[AsanaProject]</code></td></tr>
+<tr><td><code>list_sections</code></td><td class="desc">List sections in a project</td><td><span class="req">project_gid</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_stories</code></td><td class="desc">List stories (activity) on a task</td><td><span class="req">task_gid</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_subtasks</code></td><td class="desc">List subtasks of a task</td><td><span class="req">task_gid</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_tags</code></td><td class="desc">List tags in a workspace</td><td><span class="req">workspace_gid</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_tasks</code></td><td class="desc">List tasks in a project</td><td><span class="req">project_gid</span> &nbsp;<span class="opt">[limit, offset]</span></td><td><code>PaginatedList[AsanaTask]</code></td></tr>
+<tr><td><code>list_teams</code></td><td class="desc">List teams in a workspace</td><td><span class="req">workspace_gid</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_users</code></td><td class="desc">List users in a workspace</td><td><span class="req">workspace_gid</span> &nbsp;<span class="opt">[limit, offset]</span></td><td><code>PaginatedList[dict[str, Any]]</code></td></tr>
+<tr><td><code>list_webhooks</code></td><td class="desc">List webhooks</td><td><span class="req">workspace_gid</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_workspaces</code></td><td class="desc">List workspaces accessible to the user</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>search_tasks</code></td><td class="desc">Search tasks in a workspace</td><td><span class="req">workspace_gid</span> &nbsp;<span class="opt">[text, assignee, completed, is_subtask, limit]</span></td><td><code>list</code></td></tr>
+<tr><td><code>set_parent ⚠</code></td><td class="desc">Set parent for a task</td><td><span class="req">task_gid, parent</span></td><td><code>dict</code></td></tr>
+<tr><td><code>update_project ⚠</code></td><td class="desc">Update a project</td><td><span class="req">project_gid</span> &nbsp;<span class="opt">[name, notes, color]</span></td><td><code>AsanaProject</code></td></tr>
+<tr><td><code>update_task</code></td><td class="desc">Update an existing task</td><td><span class="req">task_gid</span> &nbsp;<span class="opt">[name, notes, completed, due_on]</span></td><td><code>AsanaTask</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/asana">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

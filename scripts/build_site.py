@@ -246,6 +246,345 @@ def build_system_prompt(names: list[str], specs: dict, cats: set) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Static connector page generator  (one HTML file per connector for SEO)
+# ---------------------------------------------------------------------------
+
+CATEGORY_LABELS_PY: dict[str, str] = {
+    "communication": "Communication", "database": "Database", "devops": "DevOps",
+    "crm": "CRM & Support", "project_management": "Project Management",
+    "ai_ml": "AI / ML", "productivity": "Productivity", "security": "Security",
+    "knowledge": "Knowledge", "storage": "Storage", "code_platform": "Code Platform",
+    "marketing": "Marketing", "analytics": "Analytics", "finance": "Finance",
+    "message_queue": "Message Queue", "ecommerce": "E-Commerce", "custom": "Custom",
+}
+
+CATEGORY_COLORS_PY: dict[str, str] = {
+    "communication": "#3B82F6", "database": "#10B981", "devops": "#06B6D4",
+    "crm": "#F59E0B", "project_management": "#8B5CF6", "ai_ml": "#7C3AED",
+    "productivity": "#F97316", "security": "#059669", "knowledge": "#0EA5E9",
+    "storage": "#14B8A6", "code_platform": "#1E293B", "marketing": "#EC4899",
+    "analytics": "#8B5CF6", "finance": "#6366F1", "message_queue": "#EF4444",
+    "ecommerce": "#84CC16", "custom": "#6366F1",
+}
+
+
+def _esc(text: str) -> str:
+    """HTML-escape a string."""
+    return (text.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#39;"))
+
+
+def generate_connector_page(name: str, data: dict) -> str:
+    """Return a fully static, SEO-rich HTML page for one connector."""
+    display_name = data["display_name"]
+    description  = data.get("description", "")
+    category_key = data.get("category", "")
+    category     = CATEGORY_LABELS_PY.get(category_key, category_key.replace("_", " ").title())
+    cat_color    = CATEGORY_COLORS_PY.get(category_key, "#6366F1")
+    actions      = data.get("actions", {})
+    n_actions    = len(actions)
+    meta         = data.get("meta", {})
+    logo_url     = meta.get("logo", "")
+    install_pkg  = name.replace("_connector", "")
+
+    page_title = f"{display_name} Python Connector — {n_actions} Actions | ToolsConnector"
+    page_desc  = (
+        f"Connect {display_name} to Python apps and AI agents with {n_actions} typed actions. "
+        f"Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. "
+        f'Install: pip install "toolsconnector[{install_pkg}]". Apache 2.0. Free.'
+    )
+    keywords = ", ".join([
+        f"{display_name} Python", f"{display_name} API Python", f"{display_name} connector Python",
+        "OpenAI function calling", "Anthropic tool use", "MCP server Python",
+        "AI agent tools Python", "ToolsConnector",
+    ])
+
+    # ── JSON-LD ──────────────────────────────────────────────────────────────
+    jsonld = json.dumps({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": f"ToolsConnector — {display_name} Connector",
+        "description": page_desc,
+        "url": f"https://toolsconnector.github.io/connectors/{name}/",
+        "downloadUrl": "https://pypi.org/project/toolsconnector/",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any",
+        "programmingLanguage": "Python",
+        "license": "https://opensource.org/licenses/Apache-2.0",
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+        "featureList": [a for a in sorted(actions.keys())],
+        "author": {
+            "@type": "Organization",
+            "name": "ToolsConnector",
+            "url": "https://toolsconnector.github.io/",
+        },
+    }, indent=2)
+
+    # ── Action rows ──────────────────────────────────────────────────────────
+    action_rows: list[str] = []
+    for aname in sorted(actions.keys()):
+        act   = actions[aname]
+        params = act.get("parameters", [])
+        desc  = _esc(act.get("description", ""))
+        rtype = _esc(act.get("return_type", "Any"))
+        danger = " ⚠" if act.get("dangerous") else ""
+        req   = [_esc(p["name"]) for p in params if p.get("required")]
+        opt   = [_esc(p["name"]) for p in params if not p.get("required")]
+        param_bits: list[str] = []
+        if req:
+            param_bits.append(f'<span class="req">{", ".join(req)}</span>')
+        if opt:
+            param_bits.append(f'<span class="opt">[{", ".join(opt)}]</span>')
+        param_html = " &nbsp;".join(param_bits) if param_bits else '<span class="opt">—</span>'
+        action_rows.append(
+            f'<tr><td><code>{_esc(aname)}{danger}</code></td>'
+            f'<td class="desc">{desc}</td>'
+            f'<td>{param_html}</td>'
+            f'<td><code>{rtype}</code></td></tr>'
+        )
+    table_body = "\n".join(action_rows)
+
+    # ── Logo img ─────────────────────────────────────────────────────────────
+    logo_html = (
+        f'<img src="{_esc(logo_url)}" alt="{_esc(display_name)}" '
+        f'width="56" height="56" style="border-radius:14px;object-fit:contain;'
+        f'background:#f8fafc;padding:4px">'
+        if logo_url else ""
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{_esc(page_title)}</title>
+<meta name="description" content="{_esc(page_desc)}">
+<meta name="keywords" content="{_esc(keywords)}">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/{name}/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/{name}/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="{_esc(page_title)}">
+<meta property="og:description" content="{_esc(page_desc)}">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="{_esc(page_title)}">
+<meta name="twitter:description" content="{_esc(page_desc)}">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{jsonld}
+</script>
+
+<style>
+*, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }}
+a {{ color: #2563eb; text-decoration: none; }}
+a:hover {{ text-decoration: underline; }}
+code {{ font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }}
+
+/* ── Nav ── */
+nav {{ border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }}
+.nav-logo {{ font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }}
+nav a.btn {{ margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }}
+nav a.btn:hover {{ background: #1d4ed8; text-decoration: none; }}
+
+/* ── Hero ── */
+.hero {{ max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }}
+.hero-top {{ display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }}
+.badge {{ display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:{cat_color}; }}
+h1 {{ font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }}
+.desc {{ font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }}
+.install-box {{ background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }}
+.install-box .dollar {{ color: #22c55e; margin-right:.5rem; }}
+.install-box .pkg {{ color: #f97316; }}
+
+/* ── Stats strip ── */
+.stats {{ display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }}
+.stat {{ text-align: center; }}
+.stat-num {{ font-size: 1.75rem; font-weight: 800; color: #2563eb; }}
+.stat-lbl {{ font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }}
+
+/* ── Actions table ── */
+.section {{ max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }}
+.section h2 {{ font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }}
+.tbl-wrap {{ overflow-x: auto; }}
+table {{ width: 100%; border-collapse: collapse; font-size: .875rem; }}
+th {{ text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }}
+td {{ padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }}
+tr:last-child td {{ border-bottom: none; }}
+td.desc {{ color: #475569; max-width: 380px; }}
+.req {{ color: #dc2626; }}
+.opt {{ color: #94a3b8; }}
+
+/* ── CTA ── */
+.cta {{ text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }}
+.cta a {{ display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }}
+.cta a:hover {{ background: #1d4ed8; text-decoration: none; }}
+.cta p {{ margin-top: .75rem; color: #94a3b8; font-size: .875rem; }}
+
+/* ── Footer ── */
+footer {{ border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }}
+footer a {{ color: #94a3b8; }}
+
+@media (max-width: 600px) {{
+  .stats {{ gap: 1rem; }} .stat-num {{ font-size: 1.4rem; }}
+  th:nth-child(3), td:nth-child(3) {{ display: none; }}
+}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/{name}" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    {logo_html}
+    <div>
+      <span class="badge">{_esc(category)}</span>
+      <h1>{_esc(display_name)} Connector</h1>
+    </div>
+  </div>
+  <p class="desc">{_esc(description)}</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[{_esc(install_pkg)}]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">{n_actions}</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">{category}</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All {n_actions} Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        {table_body}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/{name}">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>
+"""
+
+
+# ---------------------------------------------------------------------------
+# Sitemap generator  (proper /connectors/{name}/ URLs, not hash routes)
+# ---------------------------------------------------------------------------
+
+def generate_sitemap(connector_names: list[str], doc_keys: list[str]) -> str:
+    """Return a sitemap.xml that includes the pre-generated connector pages."""
+    base = "https://toolsconnector.github.io"
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        "",
+        "  <!-- Homepage -->",
+        "  <url>",
+        f"    <loc>{base}/</loc>",
+        "    <changefreq>weekly</changefreq>",
+        "    <priority>1.0</priority>",
+        "  </url>",
+        "",
+        "  <!-- Connectors directory (SPA) -->",
+        "  <url>",
+        f"    <loc>{base}/#/connectors</loc>",
+        "    <changefreq>weekly</changefreq>",
+        "    <priority>0.9</priority>",
+        "  </url>",
+        "",
+        "  <!-- Static connector pages (individually indexed by Google) -->",
+    ]
+    for cname in sorted(connector_names):
+        lines += [
+            "  <url>",
+            f"    <loc>{base}/connectors/{cname}/</loc>",
+            "    <changefreq>monthly</changefreq>",
+            "    <priority>0.8</priority>",
+            "  </url>",
+        ]
+
+    lines += [
+        "",
+        "  <!-- Docs pages (SPA) -->",
+    ]
+    for doc_key in sorted(doc_keys):
+        lines += [
+            "  <url>",
+            f"    <loc>{base}/#/docs/{doc_key}</loc>",
+            "    <changefreq>monthly</changefreq>",
+            "    <priority>0.7</priority>",
+            "  </url>",
+        ]
+
+    lines += ["", "</urlset>", ""]
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Main build
 # ---------------------------------------------------------------------------
 
@@ -378,13 +717,30 @@ def main():
         },
     }
 
-    # ── Write ───────────────────────────────────────────────────────
+    # ── Write data.json ─────────────────────────────────────────────
     SITE_DIR.mkdir(exist_ok=True)
     out_path = SITE_DIR / "data.json"
     out_path.write_text(json.dumps(output, indent=None, ensure_ascii=False), encoding="utf-8")
     size_mb = out_path.stat().st_size / 1024 / 1024
     print(f"Output: {out_path} ({size_mb:.1f} MB)")
     print(f"Connectors: {len(connectors_out)} | Actions: {total_actions} | Docs: {len(docs)} | Categories: {len(cats)}")
+
+    # ── Write static connector pages ────────────────────────────────
+    print("\nGenerating static connector pages...")
+    pages_dir = SITE_DIR / "connectors"
+    pages_dir.mkdir(exist_ok=True)
+    for cname, cdata in connectors_out.items():
+        page_dir = pages_dir / cname
+        page_dir.mkdir(exist_ok=True)
+        html = generate_connector_page(cname, cdata)
+        (page_dir / "index.html").write_text(html, encoding="utf-8")
+    print(f"  {len(connectors_out)} connector pages → site/connectors/*/index.html")
+
+    # ── Write sitemap.xml ───────────────────────────────────────────
+    sitemap_xml = generate_sitemap(list(connectors_out.keys()), list(docs.keys()))
+    (SITE_DIR / "sitemap.xml").write_text(sitemap_xml, encoding="utf-8")
+    print(f"  Sitemap → site/sitemap.xml ({len(connectors_out) + len(docs) + 2} URLs)")
+
     print("Done.")
 
 
