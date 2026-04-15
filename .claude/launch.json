@@ -2,14 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web-playground",
-      "runtimeExecutable": ".venv/bin/python",
-      "runtimeArgs": ["webapp/app.py"],
-      "port": 5001,
-      "env": {
-        "PYTHONPATH": "src",
-        "OPENROUTER_API_KEY": "<REDACTED-KEY-rotated-2026-04-22>"
-      }
+      "name": "static-site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5001", "--directory", "site"],
+      "port": 5001
     }
   ]
 }

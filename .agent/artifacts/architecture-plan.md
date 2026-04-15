@@ -1423,7 +1423,7 @@ Build:
 10. Public launch: PyPI, GitHub, documentation site
 
 **Exit criteria:**
-- `pip install toolsconnector[gmail]` + send email in <5 minutes
+- `pip install "toolsconnector[gmail]"` + send email in <5 minutes
 - 15+ connectors across 5+ categories
 - Documentation complete (quickstart, API reference, connector authoring guide)
 - RFC process live, CONTRIBUTING.md, governance defined
