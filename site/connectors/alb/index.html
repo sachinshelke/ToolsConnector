@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWS ALB Python Connector — 18 Actions | ToolsConnector</title>
+<meta name="description" content="Connect AWS ALB to Python apps and AI agents with 18 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[alb]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="AWS ALB Python, AWS ALB API Python, AWS ALB connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/alb/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/alb/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="AWS ALB Python Connector — 18 Actions | ToolsConnector">
+<meta property="og:description" content="Connect AWS ALB to Python apps and AI agents with 18 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[alb]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="AWS ALB Python Connector — 18 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect AWS ALB to Python apps and AI agents with 18 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[alb]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 AWS ALB Connector",
+  "description": "Connect AWS ALB to Python apps and AI agents with 18 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[alb]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/alb/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "create_listener",
+    "create_load_balancer",
+    "create_rule",
+    "create_target_group",
+    "delete_listener",
+    "delete_load_balancer",
+    "delete_rule",
+    "delete_target_group",
+    "deregister_targets",
+    "describe_listeners",
+    "describe_load_balancers",
+    "describe_rules",
+    "describe_target_groups",
+    "describe_target_health",
+    "modify_listener",
+    "modify_load_balancer_attributes",
+    "modify_rule",
+    "register_targets"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#6366F1; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/alb" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/aws.amazon.com?c=1idiVFVAawYfs0vBpzR" alt="AWS ALB" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Networking</span>
+      <h1>AWS ALB Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Manage Application Load Balancers, target groups, listeners, and routing rules.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[alb]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">18</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Networking</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 18 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>create_listener</code></td><td class="desc">Create a listener on a load balancer</td><td><span class="req">load_balancer_arn</span> &nbsp;<span class="opt">[port, protocol, default_action_type, target_group_arn, certificate_arn]</span></td><td><code>ALBListener</code></td></tr>
+<tr><td><code>create_load_balancer</code></td><td class="desc">Create an Application Load Balancer</td><td><span class="req">name, subnets</span> &nbsp;<span class="opt">[security_groups, scheme, ip_address_type]</span></td><td><code>ALBLoadBalancer</code></td></tr>
+<tr><td><code>create_rule</code></td><td class="desc">Create a routing rule on a listener</td><td><span class="req">listener_arn, priority, conditions</span> &nbsp;<span class="opt">[action_type, target_group_arn]</span></td><td><code>ALBRule</code></td></tr>
+<tr><td><code>create_target_group</code></td><td class="desc">Create a target group</td><td><span class="req">name</span> &nbsp;<span class="opt">[protocol, port, vpc_id, target_type, health_check_path]</span></td><td><code>ALBTargetGroup</code></td></tr>
+<tr><td><code>delete_listener ⚠</code></td><td class="desc">Delete a listener</td><td><span class="req">listener_arn</span></td><td><code>dict</code></td></tr>
+<tr><td><code>delete_load_balancer ⚠</code></td><td class="desc">Delete a load balancer</td><td><span class="req">load_balancer_arn</span></td><td><code>dict</code></td></tr>
+<tr><td><code>delete_rule ⚠</code></td><td class="desc">Delete a routing rule</td><td><span class="req">rule_arn</span></td><td><code>dict</code></td></tr>
+<tr><td><code>delete_target_group ⚠</code></td><td class="desc">Delete a target group</td><td><span class="req">target_group_arn</span></td><td><code>dict</code></td></tr>
+<tr><td><code>deregister_targets</code></td><td class="desc">Deregister targets from a target group</td><td><span class="req">target_group_arn, targets</span></td><td><code>dict</code></td></tr>
+<tr><td><code>describe_listeners</code></td><td class="desc">Describe listeners</td><td><span class="req">load_balancer_arn</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_load_balancers</code></td><td class="desc">Describe load balancers</td><td><span class="opt">[names, arns]</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_rules</code></td><td class="desc">Describe rules for a listener</td><td><span class="req">listener_arn</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_target_groups</code></td><td class="desc">Describe target groups</td><td><span class="opt">[names, arns]</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_target_health</code></td><td class="desc">Describe target health</td><td><span class="req">target_group_arn</span></td><td><code>list</code></td></tr>
+<tr><td><code>modify_listener</code></td><td class="desc">Modify a listener</td><td><span class="req">listener_arn</span> &nbsp;<span class="opt">[port, protocol, default_action_type, target_group_arn, certificate_arn]</span></td><td><code>ALBListener</code></td></tr>
+<tr><td><code>modify_load_balancer_attributes</code></td><td class="desc">Modify load balancer attributes</td><td><span class="req">load_balancer_arn, attributes</span></td><td><code>dict</code></td></tr>
+<tr><td><code>modify_rule</code></td><td class="desc">Modify a routing rule</td><td><span class="req">rule_arn</span> &nbsp;<span class="opt">[conditions, action_type, target_group_arn]</span></td><td><code>ALBRule</code></td></tr>
+<tr><td><code>register_targets</code></td><td class="desc">Register targets with a target group</td><td><span class="req">target_group_arn, targets</span></td><td><code>dict</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/alb">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

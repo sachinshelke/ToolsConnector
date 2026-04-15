@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWS EC2 Python Connector — 30 Actions | ToolsConnector</title>
+<meta name="description" content="Connect AWS EC2 to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[ec2]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="AWS EC2 Python, AWS EC2 API Python, AWS EC2 connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/ec2/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/ec2/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="AWS EC2 Python Connector — 30 Actions | ToolsConnector">
+<meta property="og:description" content="Connect AWS EC2 to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[ec2]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="AWS EC2 Python Connector — 30 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect AWS EC2 to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[ec2]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 AWS EC2 Connector",
+  "description": "Connect AWS EC2 to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[ec2]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/ec2/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "allocate_address",
+    "associate_address",
+    "authorize_security_group_egress",
+    "authorize_security_group_ingress",
+    "create_key_pair",
+    "create_security_group",
+    "create_tags",
+    "create_volume",
+    "delete_key_pair",
+    "delete_security_group",
+    "describe_addresses",
+    "describe_availability_zones",
+    "describe_images",
+    "describe_instance_types",
+    "describe_instances",
+    "describe_key_pairs",
+    "describe_security_groups",
+    "describe_subnets",
+    "describe_tags",
+    "describe_volumes",
+    "describe_vpcs",
+    "get_console_output",
+    "reboot_instances",
+    "release_address",
+    "revoke_security_group_egress",
+    "revoke_security_group_ingress",
+    "run_instances",
+    "start_instances",
+    "stop_instances",
+    "terminate_instances"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#6366F1; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/ec2" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/aws.amazon.com?c=1idiVFVAawYfs0vBpzR" alt="AWS EC2" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Compute</span>
+      <h1>AWS EC2 Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Launch and manage EC2 instances, security groups, key pairs, and Elastic IPs.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[ec2]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">30</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Compute</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 30 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>allocate_address</code></td><td class="desc">Allocate an Elastic IP address</td><td><span class="opt">[domain]</span></td><td><code>EC2Address</code></td></tr>
+<tr><td><code>associate_address</code></td><td class="desc">Associate an Elastic IP with an instance</td><td><span class="req">allocation_id, instance_id</span></td><td><code>dict</code></td></tr>
+<tr><td><code>authorize_security_group_egress</code></td><td class="desc">Add an outbound rule to a security group</td><td><span class="req">group_id, ip_protocol, from_port, to_port</span> &nbsp;<span class="opt">[cidr_ip]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>authorize_security_group_ingress</code></td><td class="desc">Add an inbound rule to a security group</td><td><span class="req">group_id, ip_protocol, from_port, to_port</span> &nbsp;<span class="opt">[cidr_ip]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>create_key_pair</code></td><td class="desc">Create a key pair</td><td><span class="req">key_name</span></td><td><code>EC2KeyPair</code></td></tr>
+<tr><td><code>create_security_group</code></td><td class="desc">Create a security group</td><td><span class="req">group_name, description</span> &nbsp;<span class="opt">[vpc_id]</span></td><td><code>EC2SecurityGroup</code></td></tr>
+<tr><td><code>create_tags</code></td><td class="desc">Create or update tags on EC2 resources</td><td><span class="req">resource_ids, tags</span></td><td><code>dict</code></td></tr>
+<tr><td><code>create_volume</code></td><td class="desc">Create an EBS volume</td><td><span class="req">availability_zone</span> &nbsp;<span class="opt">[size, volume_type, encrypted]</span></td><td><code>EC2Volume</code></td></tr>
+<tr><td><code>delete_key_pair ⚠</code></td><td class="desc">Delete a key pair</td><td><span class="req">key_name</span></td><td><code>dict</code></td></tr>
+<tr><td><code>delete_security_group ⚠</code></td><td class="desc">Delete a security group</td><td><span class="req">group_id</span></td><td><code>dict</code></td></tr>
+<tr><td><code>describe_addresses</code></td><td class="desc">Describe Elastic IP addresses</td><td><span class="opt">[allocation_ids]</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_availability_zones</code></td><td class="desc">Describe availability zones</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_images</code></td><td class="desc">Describe AMI images</td><td><span class="opt">[image_ids, owners, filters]</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_instance_types</code></td><td class="desc">Describe available instance types</td><td><span class="opt">[instance_types]</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_instances</code></td><td class="desc">Describe EC2 instances</td><td><span class="opt">[instance_ids, filters]</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_key_pairs</code></td><td class="desc">Describe key pairs</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_security_groups</code></td><td class="desc">Describe security groups</td><td><span class="opt">[group_ids]</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_subnets</code></td><td class="desc">Describe subnets</td><td><span class="opt">[subnet_ids, filters]</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_tags</code></td><td class="desc">Describe tags</td><td><span class="opt">[filters]</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_volumes</code></td><td class="desc">Describe EBS volumes</td><td><span class="opt">[volume_ids]</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_vpcs</code></td><td class="desc">Describe VPCs</td><td><span class="opt">[vpc_ids]</span></td><td><code>list</code></td></tr>
+<tr><td><code>get_console_output</code></td><td class="desc">Get instance console output</td><td><span class="req">instance_id</span></td><td><code>dict</code></td></tr>
+<tr><td><code>reboot_instances</code></td><td class="desc">Reboot EC2 instances</td><td><span class="req">instance_ids</span></td><td><code>dict</code></td></tr>
+<tr><td><code>release_address ⚠</code></td><td class="desc">Release an Elastic IP address</td><td><span class="req">allocation_id</span></td><td><code>dict</code></td></tr>
+<tr><td><code>revoke_security_group_egress</code></td><td class="desc">Remove an outbound rule from a security group</td><td><span class="req">group_id, ip_protocol, from_port, to_port</span> &nbsp;<span class="opt">[cidr_ip]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>revoke_security_group_ingress</code></td><td class="desc">Remove an inbound rule from a security group</td><td><span class="req">group_id, ip_protocol, from_port, to_port</span> &nbsp;<span class="opt">[cidr_ip]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>run_instances ⚠</code></td><td class="desc">Launch new EC2 instances</td><td><span class="req">image_id</span> &nbsp;<span class="opt">[instance_type, min_count, max_count, key_name, security_group_ids, subnet_id, user_data]</span></td><td><code>list</code></td></tr>
+<tr><td><code>start_instances</code></td><td class="desc">Start stopped EC2 instances</td><td><span class="req">instance_ids</span></td><td><code>list</code></td></tr>
+<tr><td><code>stop_instances</code></td><td class="desc">Stop running EC2 instances</td><td><span class="req">instance_ids</span> &nbsp;<span class="opt">[force]</span></td><td><code>list</code></td></tr>
+<tr><td><code>terminate_instances ⚠</code></td><td class="desc">Terminate EC2 instances</td><td><span class="req">instance_ids</span></td><td><code>list</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/ec2">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>

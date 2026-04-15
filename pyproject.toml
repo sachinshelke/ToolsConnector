@@ -82,7 +82,7 @@ gtasks = []
 # --- Connectors: Storage ---
 gdrive = ["google-api-python-client>=2.0", "google-auth>=2.0"]
 gcalendar = ["google-api-python-client>=2.0", "google-auth>=2.0"]
-s3 = ["boto3>=1.28"]
+s3 = []
 
 # --- Connectors: Database ---
 supabase = []
@@ -90,6 +90,16 @@ mongodb = []
 airtable = []
 firestore = []
 redis = []
+
+# --- Connectors: AWS ---
+ec2 = []
+alb = []
+route53 = []
+acm = []
+cloudwatch = []
+iam = []
+secrets_manager = []
+rds = []
 
 # --- Connectors: DevOps ---
 datadog = []
@@ -108,7 +118,10 @@ mixpanel = []
 segment = []
 
 # --- Connectors: Message Queue ---
-sqs = ["boto3>=1.28"]
+sqs = []
+cloudfront = []
+ecr = []
+ecs = []
 rabbitmq = []
 
 # --- Connectors: Security ---
@@ -153,6 +166,13 @@ devops = ["toolsconnector[datadog,pagerduty,vercel,cloudflare,dockerhub]"]
 ai = ["toolsconnector[openai,anthropic,pinecone]"]
 crm = ["toolsconnector[hubspot,salesforce,zendesk,freshdesk,intercom]"]
 
+# --- AWS bundles ---
+aws-deploy = ["toolsconnector[ecs,ecr,cloudfront,alb,route53,acm,s3,cloudwatch]"]
+aws-infra = ["toolsconnector[ec2,iam,secrets_manager]"]
+aws-monitor = ["toolsconnector[cloudwatch]"]
+aws-data = ["toolsconnector[s3,sqs,rds]"]
+aws = ["toolsconnector[aws-deploy,aws-infra,aws-monitor,aws-data]"]
+
 # --- Agent orchestrator ---
 orchestrator = ["anthropic>=0.40.0", "pyyaml>=6.0", "rich>=13.0"]
 
@@ -173,6 +193,8 @@ all = [
     "toolsconnector[gmail,slack,discord,github,gitlab,notion,jira,linear]",
     "toolsconnector[gdrive,gcalendar,s3,outlook,teams,confluence,asana]",
     "toolsconnector[hubspot,salesforce,stripe,twilio,sendgrid,mcp,rest]",
+    "toolsconnector[cloudfront,ecr,ecs,ec2,alb,route53,acm]",
+    "toolsconnector[cloudwatch,iam,secrets_manager,rds]",
 ]
 
 [project.scripts]

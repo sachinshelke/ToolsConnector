@@ -40,7 +40,7 @@ from ._helpers import (
     extract_user_metadata as _extract_user_metadata,
     find_text as _find_text,
 )
-from ._signing import sign_v4
+from toolsconnector.connectors._aws.signing import sign_v4
 from .types import (
     S3Bucket,
     S3BucketLocation,
@@ -94,13 +94,11 @@ class S3(BaseConnector):
 
     async def _setup(self) -> None:
         """Initialise credentials and httpx client."""
-        creds = self._credentials or {}
-        if isinstance(creds, str):
-            creds = json.loads(creds)
-
-        self._access_key_id: str = creds.get("access_key_id", "")
-        self._secret_access_key: str = creds.get("secret_access_key", "")
-        self._region: str = creds.get("region", "us-east-1")
+        from toolsconnector.connectors._aws.auth import parse_credentials
+        creds = parse_credentials(self._credentials)
+        self._access_key_id = creds.access_key_id
+        self._secret_access_key = creds.secret_access_key
+        self._region = creds.region
         self._host = f"s3.{self._region}.amazonaws.com"
 
         self._client = httpx.AsyncClient(
@@ -177,6 +175,7 @@ class S3(BaseConnector):
         sign_v4(
             method, full_url, headers, payload_hash,
             self._access_key_id, self._secret_access_key, self._region,
+            service="s3",
         )
 
         resp = await self._client.request(

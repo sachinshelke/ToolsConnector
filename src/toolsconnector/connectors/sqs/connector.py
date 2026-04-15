@@ -28,7 +28,7 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PaginatedList, PageState
 from toolsconnector.errors import APIError, NotFoundError, ValidationError
 
-from toolsconnector.connectors.s3._signing import get_signing_key, hmac_sha256
+from toolsconnector.connectors._aws.signing import sign_v4
 
 from .types import (
     SQSBatchResult,
@@ -40,90 +40,6 @@ from .types import (
 )
 
 logger = logging.getLogger("toolsconnector.sqs")
-
-
-def _sqs_sign_v4(
-    method: str,
-    url: str,
-    headers: dict[str, str],
-    body: str,
-    access_key: str,
-    secret_key: str,
-    region: str,
-) -> dict[str, str]:
-    """Build AWS SigV4 Authorization header for SQS JSON API.
-
-    Args:
-        method: HTTP method.
-        url: Full request URL.
-        headers: Request headers (must include host, x-amz-date).
-        body: Request body string.
-        access_key: AWS access key ID.
-        secret_key: AWS secret access key.
-        region: AWS region.
-
-    Returns:
-        Updated headers dict with Authorization header.
-    """
-    import urllib.parse
-    import hmac
-
-    parsed = urllib.parse.urlparse(url)
-    canonical_uri = urllib.parse.quote(parsed.path or "/", safe="/")
-    canonical_querystring = ""
-
-    payload_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
-    headers["x-amz-content-sha256"] = payload_hash
-
-    amz_date = headers["x-amz-date"]
-    date_stamp = amz_date[:8]
-
-    signed_header_keys = sorted(
-        k.lower() for k in headers if k.lower() != "authorization"
-    )
-    canonical_headers = ""
-    for k in signed_header_keys:
-        for orig_k, v in headers.items():
-            if orig_k.lower() == k:
-                canonical_headers += f"{k}:{v.strip()}\n"
-                break
-
-    signed_headers_str = ";".join(signed_header_keys)
-
-    canonical_request = (
-        f"{method}\n"
-        f"{canonical_uri}\n"
-        f"{canonical_querystring}\n"
-        f"{canonical_headers}\n"
-        f"{signed_headers_str}\n"
-        f"{payload_hash}"
-    )
-
-    credential_scope = f"{date_stamp}/{region}/sqs/aws4_request"
-    canonical_hash = hashlib.sha256(
-        canonical_request.encode("utf-8"),
-    ).hexdigest()
-    string_to_sign = (
-        f"AWS4-HMAC-SHA256\n"
-        f"{amz_date}\n"
-        f"{credential_scope}\n"
-        f"{canonical_hash}"
-    )
-
-    signing_key = get_signing_key(secret_key, date_stamp, region, "sqs")
-    signature = hmac.new(
-        signing_key,
-        string_to_sign.encode("utf-8"),
-        hashlib.sha256,
-    ).hexdigest()
-
-    headers["Authorization"] = (
-        f"AWS4-HMAC-SHA256 "
-        f"Credential={access_key}/{credential_scope}, "
-        f"SignedHeaders={signed_headers_str}, "
-        f"Signature={signature}"
-    )
-    return headers
 
 
 class SQS(BaseConnector):
@@ -154,15 +70,11 @@ class SQS(BaseConnector):
 
     async def _setup(self) -> None:
         """Parse credentials and initialise the HTTP client."""
-        creds = str(self._credentials)
-        parts = creds.split(":")
-        if len(parts) < 3:
-            raise ValueError(
-                "SQS credentials must be 'access_key:secret_key:region'"
-            )
-        self._access_key = parts[0]
-        self._secret_key = parts[1]
-        self._region = parts[2]
+        from toolsconnector.connectors._aws.auth import parse_credentials
+        creds = parse_credentials(self._credentials)
+        self._access_key = creds.access_key_id
+        self._secret_key = creds.secret_access_key
+        self._region = creds.region
         self._base_url = f"https://sqs.{self._region}.amazonaws.com"
 
         self._client = httpx.AsyncClient(timeout=self._timeout)
@@ -198,27 +110,31 @@ class SQS(BaseConnector):
         amz_date = now.strftime("%Y%m%dT%H%M%SZ")
         body = json.dumps(payload)
 
+        payload_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
+
         headers: dict[str, str] = {
             "Content-Type": "application/x-amz-json-1.0",
             "X-Amz-Target": f"AmazonSQS.{target_action}",
-            "X-Amz-Date": amz_date,
+            "x-amz-date": amz_date,
             "Host": f"sqs.{self._region}.amazonaws.com",
+            "x-amz-content-sha256": payload_hash,
         }
 
-        signed = _sqs_sign_v4(
+        sign_v4(
             "POST",
             self._base_url + "/",
             headers,
-            body,
+            payload_hash,
             self._access_key,
             self._secret_key,
             self._region,
+            "sqs",
         )
 
         response = await self._client.post(
             self._base_url + "/",
             content=body,
-            headers=signed,
+            headers=headers,
         )
 
         if response.status_code >= 400:

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWS ECS Python Connector — 25 Actions | ToolsConnector</title>
+<meta name="description" content="Connect AWS ECS to Python apps and AI agents with 25 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[ecs]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="AWS ECS Python, AWS ECS API Python, AWS ECS connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/ecs/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/ecs/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="AWS ECS Python Connector — 25 Actions | ToolsConnector">
+<meta property="og:description" content="Connect AWS ECS to Python apps and AI agents with 25 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[ecs]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="AWS ECS Python Connector — 25 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect AWS ECS to Python apps and AI agents with 25 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[ecs]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 AWS ECS Connector",
+  "description": "Connect AWS ECS to Python apps and AI agents with 25 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[ecs]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/ecs/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "create_cluster",
+    "create_service",
+    "delete_cluster",
+    "delete_service",
+    "deregister_task_definition",
+    "describe_clusters",
+    "describe_container_instances",
+    "describe_services",
+    "describe_task_definition",
+    "describe_tasks",
+    "list_account_settings",
+    "list_clusters",
+    "list_container_instances",
+    "list_services",
+    "list_tags_for_resource",
+    "list_task_definition_families",
+    "list_task_definitions",
+    "list_tasks",
+    "put_cluster_capacity_providers",
+    "register_task_definition",
+    "run_task",
+    "stop_task",
+    "tag_resource",
+    "update_cluster_settings",
+    "update_service"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  }
+}
+</script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; background: #fff; line-height: 1.6; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: #f1f5f9;
+        padding: .15em .4em; border-radius: 4px; }
+
+/* ── Nav ── */
+nav { border-bottom: 1px solid #e2e8f0; padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: .75rem; }
+.nav-logo { font-weight: 800; font-size: 1.1rem; color: #0f172a; display:flex; align-items:center; gap:.5rem; }
+nav a.btn { margin-left: auto; background: #2563eb; color: #fff; padding: .45rem 1.1rem;
+             border-radius: 8px; font-size: .875rem; font-weight: 600; }
+nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 860px; margin: 3rem auto 2rem; padding: 0 1.5rem; }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
+.badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#6366F1; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
+.desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
+.install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .875rem; display:inline-block; margin-bottom:1.5rem; }
+.install-box .dollar { color: #22c55e; margin-right:.5rem; }
+.install-box .pkg { color: #f97316; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.75rem; font-weight: 800; color: #2563eb; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing:.05em; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+.section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: .5rem;
+               border-bottom: 2px solid #e2e8f0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { text-align: left; padding: .6rem .75rem; background: #f8fafc; color: #64748b;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing:.05em;
+      border-bottom: 1px solid #e2e8f0; }
+td { padding: .6rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.desc { color: #475569; max-width: 380px; }
+.req { color: #dc2626; }
+.opt { color: #94a3b8; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 2rem 1.5rem; border-top: 1px solid #e2e8f0; margin-top: 1rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: #2563eb; color: #fff;
+          padding: .7rem 1.75rem; border-radius: 10px; font-weight: 700; font-size: 1rem; }
+.cta a:hover { background: #1d4ed8; text-decoration: none; }
+.cta p { margin-top: .75rem; color: #94a3b8; font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; text-align:center;
+          color: #94a3b8; font-size: .8rem; }
+footer a { color: #94a3b8; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1rem; } .stat-num { font-size: 1.4rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" style="color:#64748b;font-size:.875rem">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/ecs" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/aws.amazon.com?c=1idiVFVAawYfs0vBpzR" alt="AWS ECS" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
+    <div>
+      <span class="badge">Compute</span>
+      <h1>AWS ECS Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Deploy and manage containerized applications with ECS and Fargate.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[ecs]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">25</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#8b5cf6">Compute</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" style="color:#10b981">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 25 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>create_cluster</code></td><td class="desc">Create an ECS cluster</td><td><span class="req">cluster_name</span> &nbsp;<span class="opt">[capacity_providers, settings]</span></td><td><code>ECSCluster</code></td></tr>
+<tr><td><code>create_service</code></td><td class="desc">Create an ECS service</td><td><span class="req">cluster, service_name, task_definition</span> &nbsp;<span class="opt">[desired_count, launch_type, network_configuration, load_balancers]</span></td><td><code>ECSService</code></td></tr>
+<tr><td><code>delete_cluster ⚠</code></td><td class="desc">Delete an ECS cluster</td><td><span class="req">cluster</span></td><td><code>ECSCluster</code></td></tr>
+<tr><td><code>delete_service ⚠</code></td><td class="desc">Delete an ECS service</td><td><span class="req">cluster, service</span> &nbsp;<span class="opt">[force]</span></td><td><code>ECSService</code></td></tr>
+<tr><td><code>deregister_task_definition</code></td><td class="desc">Deregister a task definition</td><td><span class="req">task_definition</span></td><td><code>ECSTaskDefinition</code></td></tr>
+<tr><td><code>describe_clusters</code></td><td class="desc">Describe ECS clusters</td><td><span class="req">clusters</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_container_instances</code></td><td class="desc">Describe container instances</td><td><span class="req">cluster, container_instances</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_services</code></td><td class="desc">Describe ECS services</td><td><span class="req">cluster, services</span></td><td><code>list</code></td></tr>
+<tr><td><code>describe_task_definition</code></td><td class="desc">Describe a task definition</td><td><span class="req">task_definition</span></td><td><code>ECSTaskDefinition</code></td></tr>
+<tr><td><code>describe_tasks</code></td><td class="desc">Describe tasks</td><td><span class="req">cluster, tasks</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_account_settings</code></td><td class="desc">List account-level ECS settings</td><td><span class="opt">[effective_settings]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_clusters</code></td><td class="desc">List ECS clusters</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_container_instances</code></td><td class="desc">List container instances in a cluster</td><td><span class="req">cluster</span> &nbsp;<span class="opt">[status]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_services</code></td><td class="desc">List ECS services in a cluster</td><td><span class="req">cluster</span> &nbsp;<span class="opt">[launch_type]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_tags_for_resource</code></td><td class="desc">List tags for an ECS resource</td><td><span class="req">resource_arn</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_task_definition_families</code></td><td class="desc">List task definition families</td><td><span class="opt">[family_prefix, status]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_task_definitions</code></td><td class="desc">List task definition revisions</td><td><span class="opt">[family_prefix, status, sort]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_tasks</code></td><td class="desc">List tasks in a cluster</td><td><span class="req">cluster</span> &nbsp;<span class="opt">[service_name, desired_status]</span></td><td><code>list</code></td></tr>
+<tr><td><code>put_cluster_capacity_providers</code></td><td class="desc">Put cluster capacity providers</td><td><span class="req">cluster, capacity_providers, default_capacity_provider_strategy</span></td><td><code>ECSCluster</code></td></tr>
+<tr><td><code>register_task_definition</code></td><td class="desc">Register a new task definition</td><td><span class="req">family, container_definitions</span> &nbsp;<span class="opt">[cpu, memory, network_mode, requires_compatibilities, execution_role_arn, task_role_arn]</span></td><td><code>ECSTaskDefinition</code></td></tr>
+<tr><td><code>run_task</code></td><td class="desc">Run a standalone task</td><td><span class="req">cluster, task_definition</span> &nbsp;<span class="opt">[count, launch_type, network_configuration]</span></td><td><code>list</code></td></tr>
+<tr><td><code>stop_task ⚠</code></td><td class="desc">Stop a running task</td><td><span class="req">cluster, task</span> &nbsp;<span class="opt">[reason]</span></td><td><code>ECSTask</code></td></tr>
+<tr><td><code>tag_resource</code></td><td class="desc">Add tags to an ECS resource</td><td><span class="req">resource_arn, tags</span></td><td><code>dict</code></td></tr>
+<tr><td><code>update_cluster_settings</code></td><td class="desc">Update cluster settings</td><td><span class="req">cluster, settings</span></td><td><code>ECSCluster</code></td></tr>
+<tr><td><code>update_service</code></td><td class="desc">Update an ECS service</td><td><span class="req">cluster, service</span> &nbsp;<span class="opt">[task_definition, desired_count, force_new_deployment]</span></td><td><code>ECSService</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/ecs">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/ToolsConnector/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+</footer>
+
+</body>
+</html>
