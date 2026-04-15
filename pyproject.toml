@@ -100,6 +100,7 @@ cloudwatch = []
 iam = []
 secrets_manager = []
 rds = []
+lambda_connector = []
 
 # --- Connectors: DevOps ---
 datadog = []
@@ -171,7 +172,7 @@ aws-deploy = ["toolsconnector[ecs,ecr,cloudfront,alb,route53,acm,s3,cloudwatch]"
 aws-infra = ["toolsconnector[ec2,iam,secrets_manager]"]
 aws-monitor = ["toolsconnector[cloudwatch]"]
 aws-data = ["toolsconnector[s3,sqs,rds]"]
-aws = ["toolsconnector[aws-deploy,aws-infra,aws-monitor,aws-data]"]
+aws = ["toolsconnector[aws-deploy,aws-infra,aws-monitor,aws-data,lambda_connector]"]
 
 # --- Agent orchestrator ---
 orchestrator = ["anthropic>=0.40.0", "pyyaml>=6.0", "rich>=13.0"]
@@ -194,7 +195,7 @@ all = [
     "toolsconnector[gdrive,gcalendar,s3,outlook,teams,confluence,asana]",
     "toolsconnector[hubspot,salesforce,stripe,twilio,sendgrid,mcp,rest]",
     "toolsconnector[cloudfront,ecr,ecs,ec2,alb,route53,acm]",
-    "toolsconnector[cloudwatch,iam,secrets_manager,rds]",
+    "toolsconnector[cloudwatch,iam,secrets_manager,rds,lambda_connector]",
 ]
 
 [project.scripts]
