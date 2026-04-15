@@ -104,17 +104,17 @@ class MCPServer:
                 description = self._optimize_description(description)
 
             async def handler(
-                _tn: str = tool_name, **kwargs: Any
+                tn: str = tool_name, **kwargs: Any
             ) -> str:
                 try:
-                    result = await self._toolkit.aexecute(_tn, kwargs)
+                    result = await self._toolkit.aexecute(tn, kwargs)
                     return (
                         result
                         if isinstance(result, str)
                         else json.dumps(result, default=str)
                     )
                 except Exception as e:
-                    logger.error(f"Tool {_tn} failed: {e}")
+                    logger.error(f"Tool {tn} failed: {e}")
                     raise
 
             handler.__name__ = tool_name
