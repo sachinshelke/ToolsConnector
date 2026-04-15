@@ -15,6 +15,38 @@ from typing import Any, Optional
 logger = logging.getLogger("toolsconnector.mcp")
 
 
+def _make_tool_handler(toolkit: Any, tool_name: str) -> Any:
+    """Return an async handler whose public signature is *only* ``**kwargs``.
+
+    Using a factory function instead of a default-argument closure ensures that
+    the captured ``tool_name`` variable never surfaces as a positional parameter
+    when ``inspect.signature()`` is called.  FastMCP, OpenAI schema generators,
+    Pydantic, and LangChain all use ``inspect.signature()`` to derive the tool's
+    input schema, so a naked positional default would incorrectly appear as a
+    required/optional user field.
+
+    Args:
+        toolkit: The ToolKit that owns the connector.
+        tool_name: Fully-qualified tool name (``"{connector}_{action}"``).
+
+    Returns:
+        An async callable ``(**kwargs: Any) -> str``.
+    """
+    async def _handler(**kwargs: Any) -> str:
+        try:
+            result = await toolkit.aexecute(tool_name, kwargs)
+            return (
+                result
+                if isinstance(result, str)
+                else json.dumps(result, default=str)
+            )
+        except Exception as e:
+            logger.error(f"Tool {tool_name} failed: {e}")
+            raise
+
+    return _handler
+
+
 class MCPServer:
     """Production-grade MCP server for ToolsConnector.
 
@@ -103,20 +135,9 @@ class MCPServer:
             if self._optimize:
                 description = self._optimize_description(description)
 
-            async def handler(
-                tn: str = tool_name, **kwargs: Any
-            ) -> str:
-                try:
-                    result = await self._toolkit.aexecute(tn, kwargs)
-                    return (
-                        result
-                        if isinstance(result, str)
-                        else json.dumps(result, default=str)
-                    )
-                except Exception as e:
-                    logger.error(f"Tool {tn} failed: {e}")
-                    raise
-
+            # Build the handler via a module-level factory so 'tool_name' is
+            # never a parameter visible to inspect.signature().
+            handler = _make_tool_handler(self._toolkit, tool_name)
             handler.__name__ = tool_name
             handler.__doc__ = description
             server.tool(name=tool_name, description=description)(handler)
