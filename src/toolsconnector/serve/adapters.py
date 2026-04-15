@@ -6,10 +6,56 @@ and gets a real result, no manual wiring needed.
 
 from __future__ import annotations
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from toolsconnector.serve.toolkit import ToolKit
+
+
+def _make_sync_func(toolkit: "ToolKit", tool_name: str, description: str) -> Any:
+    """Return a sync callable with a clean ``**kwargs``-only signature.
+
+    Using a factory prevents ``tool_name`` from appearing as a positional
+    parameter when LangChain calls ``inspect.signature()`` to build its
+    args schema.
+
+    Args:
+        toolkit: ToolKit instance that owns the connector.
+        tool_name: Fully-qualified tool name.
+        description: Human-readable description for the tool.
+
+    Returns:
+        A sync callable ``(**kwargs) -> str``.
+    """
+    def func(**kwargs: Any) -> str:
+        return toolkit.execute(tool_name, kwargs)
+
+    func.__name__ = tool_name
+    func.__doc__ = description
+    return func
+
+
+def _make_async_func(toolkit: "ToolKit", tool_name: str, description: str) -> Any:
+    """Return an async callable with a clean ``**kwargs``-only signature.
+
+    Using a factory prevents ``tool_name`` from appearing as a positional
+    parameter when LangChain calls ``inspect.signature()`` to build its
+    args schema.
+
+    Args:
+        toolkit: ToolKit instance that owns the connector.
+        tool_name: Fully-qualified tool name.
+        description: Human-readable description for the tool.
+
+    Returns:
+        An async callable ``(**kwargs) -> str``.
+    """
+    async def afunc(**kwargs: Any) -> str:
+        return await toolkit.aexecute(tool_name, kwargs)
+
+    afunc.__name__ = tool_name
+    afunc.__doc__ = description
+    return afunc
 
 
 def to_langchain_tools(toolkit: "ToolKit") -> list:
@@ -41,30 +87,14 @@ def to_langchain_tools(toolkit: "ToolKit") -> list:
     for entry_dict in toolkit.list_tools():
         tool_name: str = entry_dict["name"]
         description: str = entry_dict["description"]
-        input_schema: dict[str, Any] = entry_dict.get("input_schema", {})
 
-        # Build the args_schema as a dict for StructuredTool
-        # StructuredTool accepts a function + description
-
-        def _make_func(tn: str = tool_name) -> Any:
-            def func(**kwargs: Any) -> str:
-                return toolkit.execute(tn, kwargs)
-            func.__name__ = tn
-            func.__doc__ = description
-            return func
-
-        def _make_afunc(tn: str = tool_name) -> Any:
-            async def afunc(**kwargs: Any) -> str:
-                return await toolkit.aexecute(tn, kwargs)
-            afunc.__name__ = tn
-            afunc.__doc__ = description
-            return afunc
-
+        # Use module-level factory functions so 'tool_name' is never visible
+        # as a positional parameter to inspect.signature() / schema generators.
         tool = StructuredTool.from_function(
-            func=_make_func(),
+            func=_make_sync_func(toolkit, tool_name, description),
             name=tool_name,
             description=description,
-            coroutine=_make_afunc(),
+            coroutine=_make_async_func(toolkit, tool_name, description),
         )
         tools.append(tool)
 

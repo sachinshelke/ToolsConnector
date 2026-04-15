@@ -6,7 +6,7 @@ Tools are dynamically registered from the ToolKit's filtered tool list.
 
 from __future__ import annotations
 
-import asyncio
+import functools
 import json
 import logging
 from typing import Any, TYPE_CHECKING
@@ -15,6 +15,36 @@ if TYPE_CHECKING:
     from toolsconnector.serve.toolkit import ToolKit
 
 logger = logging.getLogger("toolsconnector.serve.mcp")
+
+
+def _make_tool_handler(toolkit: "ToolKit", tool_name: str) -> Any:
+    """Return an async handler whose signature is *only* **kwargs.
+
+    Using a factory function (instead of a default-argument closure) prevents
+    the captured ``tool_name`` from appearing as a positional parameter in
+    ``inspect.signature()``.  FastMCP, OpenAI schema generators, and Pydantic
+    all call ``inspect.signature()`` to build the tool input schema, so any
+    non-``**kwargs`` parameter would be incorrectly surfaced as a user-facing
+    input field.
+
+    Args:
+        toolkit: The ToolKit instance that owns the connector.
+        tool_name: The fully-qualified tool name (``"{connector}_{action}"``).
+
+    Returns:
+        An async callable that accepts only ``**kwargs`` at call time.
+    """
+    async def _handler(**kwargs: Any) -> str:
+        try:
+            result = await toolkit.aexecute(tool_name, kwargs)
+            return result if isinstance(result, str) else json.dumps(result, default=str)
+        except Exception as e:
+            # Log and re-raise — FastMCP converts the exception to an isError
+            # MCP response automatically.
+            logger.error(f"Tool {tool_name} failed: {e}")
+            raise
+
+    return _handler
 
 
 def create_and_run_mcp_server(
@@ -32,7 +62,7 @@ def create_and_run_mcp_server(
 
     Args:
         toolkit: Configured ToolKit instance.
-        transport: Transport protocol ("stdio", "sse", "streamable-http").
+        transport: Transport protocol (\"stdio\", \"sse\", \"streamable-http\").
         name: Server name shown to MCP clients.
         port: Port for HTTP transports.
 
@@ -57,29 +87,17 @@ def create_and_run_mcp_server(
     for entry_dict in tool_entries:
         tool_name = entry_dict["name"]
         description = entry_dict["description"]
-        input_schema = entry_dict.get("input_schema", {})
 
-        # Build the handler function
-        # Use default args to capture loop variable
-        async def _handler(
-            _tool_name: str = tool_name,
-            **kwargs: Any,
-        ) -> str:
-            try:
-                result = await toolkit.aexecute(_tool_name, kwargs)
-                return result if isinstance(result, str) else json.dumps(result, default=str)
-            except Exception as e:
-                # Log and re-raise — FastMCP handles exception -> isError response
-                logger.error(f"Tool {_tool_name} failed: {e}")
-                raise
+        # Build the handler via a factory so 'tool_name' is never a parameter
+        # visible to inspect.signature().  Only **kwargs is exposed, which is
+        # intentionally omitted from schema generation by FastMCP/OpenAI.
+        handler = _make_tool_handler(toolkit, tool_name)
+        handler.__name__ = tool_name
+        handler.__doc__ = description
 
-        # Set function metadata for FastMCP
-        _handler.__name__ = tool_name
-        _handler.__doc__ = description
-
-        # Register with FastMCP
-        # FastMCP's @tool() accepts the function and uses its name/doc
-        server.tool(name=tool_name, description=description)(_handler)
+        # Register with FastMCP using explicit name + description so the schema
+        # is built from entry metadata, not from the handler's signature.
+        server.tool(name=tool_name, description=description)(handler)
 
     logger.info(f"Starting MCP server (transport={transport})")
 
