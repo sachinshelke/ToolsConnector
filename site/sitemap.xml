@@ -9,7 +9,7 @@
     <priority>1.0</priority>
   </url>
 
-  <!-- 64 static connector pages (individually crawlable) -->
+  <!-- 65 static connector pages (individually crawlable) -->
   <url>
     <loc>https://toolsconnector.github.io/connectors/acm/</loc>
     <lastmod>2026-04-15</lastmod>
@@ -198,6 +198,12 @@
   </url>
   <url>
     <loc>https://toolsconnector.github.io/connectors/jira/</loc>
+    <lastmod>2026-04-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://toolsconnector.github.io/connectors/lambda_connector/</loc>
     <lastmod>2026-04-15</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

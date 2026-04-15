@@ -43,6 +43,7 @@ _KNOWN_CONNECTORS: dict[str, str] = {
     "iam": "toolsconnector.connectors.iam:IAM",
     "intercom": "toolsconnector.connectors.intercom:Intercom",
     "jira": "toolsconnector.connectors.jira:Jira",
+    "lambda_connector": "toolsconnector.connectors.lambda_connector:Lambda",
     "linear": "toolsconnector.connectors.linear:Linear",
     "mailchimp": "toolsconnector.connectors.mailchimp:Mailchimp",
     "mixpanel": "toolsconnector.connectors.mixpanel:Mixpanel",
