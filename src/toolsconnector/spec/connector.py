@@ -35,6 +35,8 @@ class ConnectorCategory(str, Enum):
     SECURITY = "security"
     AI_ML = "ai_ml"
     PRODUCTIVITY = "productivity"
+    COMPUTE = "compute"
+    NETWORKING = "networking"
     CUSTOM = "custom"
 
 
