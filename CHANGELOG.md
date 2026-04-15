@@ -5,6 +5,55 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-04-16
+
+### Added
+
+- **14 AWS connectors** — full infrastructure lifecycle management for AI agents:
+  - `cloudfront` — 10 actions (distributions, invalidations, config)
+  - `ecr` — 12 actions (repositories, images, lifecycle policies, auth tokens)
+  - `ecs` — 25 actions (clusters, services, task definitions, tasks, capacity)
+  - `ec2` — 30 actions (instances, security groups, key pairs, elastic IPs, VPCs, AMIs)
+  - `alb` — 18 actions (load balancers, target groups, listeners, rules, health checks)
+  - `route53` — 15 actions (hosted zones, DNS records, health checks)
+  - `acm` — 10 actions (SSL certificates, validation, tagging)
+  - `cloudwatch` — 20 actions (metrics, alarms, dashboards, log groups, log events)
+  - `iam` — 20 actions (roles, policies, instance profiles, access keys, users)
+  - `secrets_manager` — 12 actions (secrets CRUD, rotation, random password)
+  - `rds` — 25 actions (DB instances, clusters, snapshots, replicas, subnet groups)
+  - `lambda_connector` — 15 actions (functions, invocation, versions, aliases, permissions)
+- **`connectors/_aws/` shared foundation** — zero duplication across all 14 AWS connectors:
+  - `auth.py` — `AWSCredentials` + `parse_credentials()` supporting 5 input formats
+    (JSON dict, colon-separated string, env vars, AWS profile, STS session token)
+  - `signing.py` — generic `sign_v4(service=...)` (service was hardcoded `"s3"` before)
+  - `client.py` — `AWSBaseClient` with 3 API patterns: REST, JSON Target, Query+XML
+  - `errors.py` — structured AWS error parsing for JSON and XML error responses
+  - `regions.py` — `get_endpoint()` with global service handling (IAM, Route53, CloudFront)
+  - `xml_helpers.py` — generic XML parsing utilities
+- **AWS install bundles**: `[aws-deploy]`, `[aws-infra]`, `[aws-monitor]`, `[aws-data]`, `[aws]`
+- **New ConnectorCategory values**: `COMPUTE`, `NETWORKING`
+- **Static documentation site**: 65 pre-generated connector pages at `/connectors/{name}/`
+  with full action tables, JSON-LD structured data, and install instructions
+- **SEO**: Open Graph, Twitter Cards, JSON-LD (SoftwareApplication + FAQPage), sitemap.xml,
+  robots.txt, OG image (1200×630), per-route dynamic meta updates
+
+### Changed
+
+- S3 connector migrated to use shared `_aws/` signing and credential parsing
+- SQS connector migrated to use shared `_aws/` signing (removed 82-line duplicate SigV4)
+- `s3` and `sqs` extras no longer incorrectly list `boto3` as a dependency
+
+### Fixed
+
+- MCP server handler: renamed `_tn` → `tn` closure parameter — FastMCP rejected any
+  parameter starting with `_`, causing `InvalidSignature` on all tool registrations
+
+### Stats
+
+- **65 connectors** (up from 53), **1,349 actions** (up from 1,137)
+- **14 AWS connectors** covering the full deploy → operate → monitor lifecycle
+- **Zero new external dependencies** — all AWS connectors use raw httpx + SigV4
+
 ## [0.1.0] - 2026-04-05
 
 ### Added
