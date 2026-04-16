@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "toolsconnector"
-version = "0.2.0"
+version = "0.2.1"
 description = "A foundational primitive for standardizing external API tool connections — for both traditional applications and AI agents."
 readme = "README.md"
 license = "Apache-2.0"
