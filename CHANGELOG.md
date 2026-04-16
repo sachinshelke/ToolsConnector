@@ -5,6 +5,17 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-04-16
+
+### Fixed
+
+- **Critical MCP fix**: handler `__signature__` now built from the tool's JSON Schema instead
+  of using bare `(**kwargs: Any)`. A `**kwargs` signature caused FastMCP to emit a single
+  opaque `kwargs: object` parameter in the MCP schema and route all LLM arguments as
+  `_handler(kwargs={...})` — wrapping args one level too deep, breaking every tool call with
+  `TypeError: method() got an unexpected keyword argument 'kwargs'`.
+  Affects both `ToolKit.serve_mcp()` and `MCPServer`. Closes #1.
+
 ## [0.2.0] - 2026-04-16
 
 ### Added
