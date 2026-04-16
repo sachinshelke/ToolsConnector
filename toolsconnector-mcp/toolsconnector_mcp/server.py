@@ -8,6 +8,7 @@ Builds on top of ToolKit to provide production-grade MCP serving:
 
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 from typing import Any, Optional
@@ -15,23 +16,63 @@ from typing import Any, Optional
 logger = logging.getLogger("toolsconnector.mcp")
 
 
-def _make_tool_handler(toolkit: Any, tool_name: str) -> Any:
-    """Return an async handler whose public signature is *only* ``**kwargs``.
+def _json_type_to_python(param_schema: dict[str, Any], required: bool) -> Any:
+    """Map a JSON Schema property definition to a Python type annotation."""
+    json_type = param_schema.get("type", "string")
+    type_map: dict[str, Any] = {
+        "integer": int,
+        "number": float,
+        "boolean": bool,
+        "string": str,
+        "array": list,
+        "object": dict,
+    }
+    py_type = type_map.get(json_type, Any)
+    return py_type if required else Optional[py_type]  # type: ignore[return-value]
 
-    Using a factory function instead of a default-argument closure ensures that
-    the captured ``tool_name`` variable never surfaces as a positional parameter
-    when ``inspect.signature()`` is called.  FastMCP, OpenAI schema generators,
-    Pydantic, and LangChain all use ``inspect.signature()`` to derive the tool's
-    input schema, so a naked positional default would incorrectly appear as a
-    required/optional user field.
+
+def _make_tool_handler(
+    toolkit: Any,
+    tool_name: str,
+    input_schema: dict[str, Any],
+) -> Any:
+    """Return an async handler whose ``__signature__`` matches the tool's JSON Schema.
+
+    FastMCP uses ``inspect.signature()`` to build the MCP input schema exposed
+    to LLM clients.  A bare ``(**kwargs: Any)`` signature causes FastMCP to emit
+    a single opaque ``kwargs`` parameter of type ``object``, and then route the
+    LLM's arguments as ``_handler(kwargs={...})``.  The handler then passes
+    ``{"kwargs": {...}}`` to ``aexecute()``, which calls ``method(kwargs={...})``
+    — one nesting level too deep, causing ``TypeError`` on every connector method.
+
+    The fix: replace ``__signature__`` with one built from the tool's actual JSON
+    Schema properties.  FastMCP then generates the correct per-parameter schema,
+    calls the handler with named arguments, and the connector method receives
+    exactly what it expects.
 
     Args:
         toolkit: The ToolKit that owns the connector.
         tool_name: Fully-qualified tool name (``"{connector}_{action}"``).
+        input_schema: JSON Schema dict for the tool's input parameters.
 
     Returns:
-        An async callable ``(**kwargs: Any) -> str``.
+        An async callable with a correct ``__signature__`` for schema generation.
     """
+    properties: dict[str, Any] = input_schema.get("properties", {})
+    required_set: set[str] = set(input_schema.get("required", []))
+
+    params: list[inspect.Parameter] = []
+    for param_name, param_schema in properties.items():
+        is_required = param_name in required_set
+        params.append(
+            inspect.Parameter(
+                param_name,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                default=inspect.Parameter.empty if is_required else None,
+                annotation=_json_type_to_python(param_schema, is_required),
+            )
+        )
+
     async def _handler(**kwargs: Any) -> str:
         try:
             result = await toolkit.aexecute(tool_name, kwargs)
@@ -44,6 +85,8 @@ def _make_tool_handler(toolkit: Any, tool_name: str) -> Any:
             logger.error(f"Tool {tool_name} failed: {e}")
             raise
 
+    # Override __signature__ so FastMCP sees real parameter names, not **kwargs.
+    _handler.__signature__ = inspect.Signature(params, return_annotation=str)
     return _handler
 
 
@@ -131,13 +174,15 @@ class MCPServer:
         for entry in tools:
             tool_name = entry["name"]
             description = entry["description"]
+            input_schema = entry.get("input_schema", {})
 
             if self._optimize:
                 description = self._optimize_description(description)
 
-            # Build the handler via a module-level factory so 'tool_name' is
-            # never a parameter visible to inspect.signature().
-            handler = _make_tool_handler(self._toolkit, tool_name)
+            # Build the handler with a __signature__ derived from the tool's
+            # actual JSON Schema so FastMCP generates correct per-parameter
+            # schemas instead of a single opaque 'kwargs' object parameter.
+            handler = _make_tool_handler(self._toolkit, tool_name, input_schema)
             handler.__name__ = tool_name
             handler.__doc__ = description
             server.tool(name=tool_name, description=description)(handler)
