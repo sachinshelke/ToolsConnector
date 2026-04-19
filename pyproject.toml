@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "toolsconnector"
-version = "0.2.1"
+version = "0.3.0"
 description = "A foundational primitive for standardizing external API tool connections — for both traditional applications and AI agents."
 readme = "README.md"
 license = "Apache-2.0"
@@ -78,6 +78,11 @@ mailchimp = []
 gsheets = []
 gdocs = []
 gtasks = []
+
+# --- Connectors: Social ---
+linkedin = []
+x = []
+medium = []
 
 # --- Connectors: Storage ---
 gdrive = ["google-api-python-client>=2.0", "google-auth>=2.0"]
@@ -166,6 +171,7 @@ databases = ["toolsconnector[supabase,mongodb,airtable,firestore,redis]"]
 devops = ["toolsconnector[datadog,pagerduty,vercel,cloudflare,dockerhub]"]
 ai = ["toolsconnector[openai,anthropic,pinecone]"]
 crm = ["toolsconnector[hubspot,salesforce,zendesk,freshdesk,intercom]"]
+publishers = ["toolsconnector[linkedin,x,medium]"]
 
 # --- AWS bundles ---
 aws-deploy = ["toolsconnector[ecs,ecr,cloudfront,alb,route53,acm,s3,cloudwatch]"]
@@ -196,6 +202,7 @@ all = [
     "toolsconnector[hubspot,salesforce,stripe,twilio,sendgrid,mcp,rest]",
     "toolsconnector[cloudfront,ecr,ecs,ec2,alb,route53,acm]",
     "toolsconnector[cloudwatch,iam,secrets_manager,rds,lambda_connector]",
+    "toolsconnector[linkedin,x,medium]",
 ]
 
 [project.scripts]
