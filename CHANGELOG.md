@@ -5,6 +5,44 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-04-19
+
+### Added
+
+- **3 social publisher connectors** for content workflows:
+  - `linkedin` — 8 actions for posts, comments, reactions on personal feed.
+    Auth: OAuth 2.0 Bearer token with `openid profile email w_member_social r_member_social` scopes.
+    Uses `/rest/posts` (with `LinkedIn-Version: 202506` header) for posts and
+    `/v2/socialActions` for comments and reactions.
+    DMs and mentions are out of scope — they require LinkedIn Partner Program
+    approval (a contract, not OAuth scopes) and are not BYOK-accessible.
+    Token expiry (60 days) raises `TokenExpiredError` with a clear hint.
+  - `x` (Twitter) — 9 actions for tweets, threads, replies, likes, mentions, DMs.
+    Auth: OAuth 2.0 Bearer token (user context).
+    Free tier covers all write actions; `list_mentions` and `send_dm` require
+    Basic tier ($100/mo). Tier-gated 403 responses are mapped to
+    `PermissionDeniedError` with a friendly upgrade hint.
+    `create_thread` posts sequentially with partial-success visibility:
+    on failure, posted-so-far tweets are preserved on `e.details["posted_tweets"]`.
+  - `medium` — 4 actions for publishing to personal feed and publications.
+    Auth: Bearer integration token. NOTE: Medium API was deprecated for new
+    tokens in 2023; this connector works only for users with existing legacy
+    tokens. Comments and post listing are out of scope (Medium API does not
+    provide them; RSS scraping rejected as TOS-violating).
+
+- **`[publishers]` install bundle**: `pip install "toolsconnector[publishers]"`
+  installs all three together for content-workflow agents.
+
+- **`ConnectorCategory.SOCIAL`** put into active use for the first time
+  (was reserved in the enum, now used by linkedin/x/medium).
+
+### Stats
+
+- 68 connectors (↑ from 65), 1,370 actions (↑ from 1,349)
+- All three new connectors register in `_KNOWN_CONNECTORS`, generate static
+  HTML pages with JSON-LD + sitemap entries, and are MCP-served via the
+  fixed JSON-Schema-derived handler signatures (#1).
+
 ## [0.2.1] - 2026-04-16
 
 ### Fixed
