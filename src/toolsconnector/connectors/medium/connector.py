@@ -228,27 +228,27 @@ class Medium(BaseConnector):
             The authenticated user's profile.
         """
         data = await self._request("GET", "/me")
-        return MediumUser(**data)
+        return MediumUser.model_validate(data)
 
     # ======================================================================
     # PUBLICATIONS
     # ======================================================================
 
     @action("List publications the user is allowed to write to")
-    async def list_publications(self, userId: str) -> list[MediumPublication]:
+    async def list_publications(self, user_id: str) -> list[MediumPublication]:
         """List publications the user contributes to or owns.
 
         The Medium API returns all publications in a single response (no
         pagination is supported by this endpoint).
 
         Args:
-            userId: The Medium user ID (from ``get_me``).
+            user_id: The Medium user ID (from ``get_me``).
 
         Returns:
             A list of publications the user is associated with.
         """
-        data = await self._request("GET", f"/users/{userId}/publications")
-        return [MediumPublication(**pub) for pub in data]
+        data = await self._request("GET", f"/users/{user_id}/publications")
+        return [MediumPublication.model_validate(pub) for pub in data]
 
     # ======================================================================
     # POSTS
@@ -260,50 +260,55 @@ class Medium(BaseConnector):
     )
     async def create_user_post(
         self,
-        userId: str,
+        user_id: str,
         title: str,
-        contentFormat: str,
+        content_format: str,
         content: str,
         tags: Optional[list[str]] = None,
-        canonicalUrl: Optional[str] = None,
-        publishStatus: str = "public",
-        license: Optional[str] = None,
-        notifyFollowers: bool = False,
+        canonical_url: Optional[str] = None,
+        publish_status: str = "public",
+        license_type: Optional[str] = None,
+        notify_followers: bool = False,
     ) -> MediumPost:
         """Publish an article to the user's personal Medium feed.
 
         Args:
-            userId: The Medium user ID (from ``get_me``).
+            user_id: The Medium user ID (from ``get_me``).
             title: The post title (used in the URL slug).
-            contentFormat: Either ``"html"`` or ``"markdown"``.
+            content_format: Either ``"html"`` or ``"markdown"``.
             content: The post body in the chosen format.
             tags: Up to 5 tags (each <= 25 chars).
-            canonicalUrl: Original URL if this is a republished post.
-            publishStatus: ``"public"``, ``"draft"``, or ``"unlisted"``.
+            canonical_url: Original URL if this is a republished post.
+            publish_status: ``"public"``, ``"draft"``, or ``"unlisted"``.
                 Defaults to ``"public"``.
-            license: Content license (e.g. ``"all-rights-reserved"``,
-                ``"cc-40-by"``, ``"cc-40-by-sa"``).
-            notifyFollowers: Whether to notify the author's followers.
+            license_type: Content license (e.g. ``"all-rights-reserved"``,
+                ``"cc-40-by"``, ``"cc-40-by-sa"``). Sent to Medium as the
+                ``license`` field; renamed in Python to avoid shadowing the
+                ``license`` builtin.
+            notify_followers: Whether to notify the author's followers.
 
         Returns:
             The created post.
         """
+        # Medium's wire format is camelCase; Python params are snake_case.
         payload: dict[str, Any] = {
             "title": title,
-            "contentFormat": contentFormat,
+            "contentFormat": content_format,
             "content": content,
-            "publishStatus": publishStatus,
-            "notifyFollowers": notifyFollowers,
+            "publishStatus": publish_status,
+            "notifyFollowers": notify_followers,
         }
         if tags:
             payload["tags"] = tags
-        if canonicalUrl:
-            payload["canonicalUrl"] = canonicalUrl
-        if license:
-            payload["license"] = license
+        if canonical_url:
+            payload["canonicalUrl"] = canonical_url
+        if license_type:
+            payload["license"] = license_type
 
-        data = await self._request("POST", f"/users/{userId}/posts", json_body=payload)
-        return MediumPost(**data)
+        data = await self._request(
+            "POST", f"/users/{user_id}/posts", json_body=payload
+        )
+        return MediumPost.model_validate(data)
 
     @action(
         "Publish an article to a Medium publication",
@@ -311,15 +316,15 @@ class Medium(BaseConnector):
     )
     async def create_publication_post(
         self,
-        publicationId: str,
+        publication_id: str,
         title: str,
-        contentFormat: str,
+        content_format: str,
         content: str,
         tags: Optional[list[str]] = None,
-        canonicalUrl: Optional[str] = None,
-        publishStatus: str = "public",
-        license: Optional[str] = None,
-        notifyFollowers: bool = False,
+        canonical_url: Optional[str] = None,
+        publish_status: str = "public",
+        license_type: Optional[str] = None,
+        notify_followers: bool = False,
     ) -> MediumPost:
         """Publish an article to a Medium publication.
 
@@ -327,36 +332,39 @@ class Medium(BaseConnector):
         authenticated user is allowed to publish to.
 
         Args:
-            publicationId: The publication ID (from ``list_publications``).
+            publication_id: The publication ID (from ``list_publications``).
             title: The post title (used in the URL slug).
-            contentFormat: Either ``"html"`` or ``"markdown"``.
+            content_format: Either ``"html"`` or ``"markdown"``.
             content: The post body in the chosen format.
             tags: Up to 5 tags (each <= 25 chars).
-            canonicalUrl: Original URL if this is a republished post.
-            publishStatus: ``"public"``, ``"draft"``, or ``"unlisted"``.
+            canonical_url: Original URL if this is a republished post.
+            publish_status: ``"public"``, ``"draft"``, or ``"unlisted"``.
                 Defaults to ``"public"``.
-            license: Content license (e.g. ``"all-rights-reserved"``,
-                ``"cc-40-by"``, ``"cc-40-by-sa"``).
-            notifyFollowers: Whether to notify the author's followers.
+            license_type: Content license (e.g. ``"all-rights-reserved"``,
+                ``"cc-40-by"``, ``"cc-40-by-sa"``). Sent to Medium as the
+                ``license`` field; renamed in Python to avoid shadowing the
+                ``license`` builtin.
+            notify_followers: Whether to notify the author's followers.
 
         Returns:
             The created post.
         """
+        # Medium's wire format is camelCase; Python params are snake_case.
         payload: dict[str, Any] = {
             "title": title,
-            "contentFormat": contentFormat,
+            "contentFormat": content_format,
             "content": content,
-            "publishStatus": publishStatus,
-            "notifyFollowers": notifyFollowers,
+            "publishStatus": publish_status,
+            "notifyFollowers": notify_followers,
         }
         if tags:
             payload["tags"] = tags
-        if canonicalUrl:
-            payload["canonicalUrl"] = canonicalUrl
-        if license:
-            payload["license"] = license
+        if canonical_url:
+            payload["canonicalUrl"] = canonical_url
+        if license_type:
+            payload["license"] = license_type
 
         data = await self._request(
-            "POST", f"/publications/{publicationId}/posts", json_body=payload
+            "POST", f"/publications/{publication_id}/posts", json_body=payload
         )
-        return MediumPost(**data)
+        return MediumPost.model_validate(data)

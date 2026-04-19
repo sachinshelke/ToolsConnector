@@ -94,7 +94,10 @@ class X(BaseConnector):
             headers={
                 "Authorization": f"Bearer {self._credentials}",
                 "Content-Type": "application/json",
-                "User-Agent": "ToolsConnector/0.3.0 (+https://github.com/sachinshelke/ToolsConnector)",
+                "User-Agent": (
+                    "ToolsConnector/0.3.0 "
+                    "(+https://github.com/sachinshelke/ToolsConnector)"
+                ),
             },
             timeout=self._timeout,
         )
@@ -266,7 +269,7 @@ class X(BaseConnector):
         """
         if "data" in raw and isinstance(raw["data"], dict):
             raw = raw["data"]
-        return Tweet(**{k: v for k, v in raw.items() if k in Tweet.model_fields})
+        return Tweet.model_validate(raw)
 
     # ======================================================================
     # USER
@@ -292,7 +295,7 @@ class X(BaseConnector):
             },
         )
         data = body.get("data", body)
-        return XUser(**{k: v for k, v in data.items() if k in XUser.model_fields})
+        return XUser.model_validate(data)
 
     # ======================================================================
     # TWEETS — write
@@ -473,10 +476,7 @@ class X(BaseConnector):
         body = await self._request(
             "GET", f"/users/{user_id}/mentions", params=params
         )
-        items = [
-            Tweet(**{k: v for k, v in t.items() if k in Tweet.model_fields})
-            for t in body.get("data", [])
-        ]
+        items = [Tweet.model_validate(t) for t in body.get("data", [])]
         meta = body.get("meta", {}) or {}
         next_token = meta.get("next_token")
         return PaginatedList(

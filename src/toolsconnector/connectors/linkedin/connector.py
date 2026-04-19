@@ -316,9 +316,7 @@ class LinkedIn(BaseConnector):
             The authenticated user's profile.
         """
         body = await self._request("GET", "/v2/userinfo")
-        return LinkedInProfile(
-            **{k: v for k, v in body.items() if k in LinkedInProfile.model_fields}
-        )
+        return LinkedInProfile.model_validate(body)
 
     # ======================================================================
     # POSTS  (uses /rest/posts — newer)
@@ -333,7 +331,7 @@ class LinkedIn(BaseConnector):
         author: str,
         commentary: str,
         visibility: str = "PUBLIC",
-        lifecycleState: str = "PUBLISHED",
+        lifecycle_state: str = "PUBLISHED",
         content: Optional[dict[str, Any]] = None,
     ) -> LinkedInPost:
         """Publish a post via the ``/rest/posts`` API (LinkedIn-Version 202506).
@@ -345,7 +343,8 @@ class LinkedIn(BaseConnector):
                 mention/hashtag markup).
             visibility: ``"PUBLIC"`` (default), ``"CONNECTIONS"``, or
                 ``"LOGGED_IN"``.
-            lifecycleState: ``"PUBLISHED"`` (default) or ``"DRAFT"``.
+            lifecycle_state: ``"PUBLISHED"`` (default) or ``"DRAFT"``.
+                Sent to LinkedIn as the ``lifecycleState`` field.
             content: Optional content block (article, image, poll, etc.).
                 See LinkedIn /rest/posts docs for shape. Omit for a
                 text-only post.
@@ -353,11 +352,12 @@ class LinkedIn(BaseConnector):
         Returns:
             The created post (with URN).
         """
+        # LinkedIn's wire format is camelCase; Python params are snake_case.
         payload: dict[str, Any] = {
             "author": author,
             "commentary": commentary,
             "visibility": visibility,
-            "lifecycleState": lifecycleState,
+            "lifecycleState": lifecycle_state,
             "distribution": {
                 "feedDistribution": "MAIN_FEED",
                 "targetEntities": [],
@@ -376,10 +376,10 @@ class LinkedIn(BaseConnector):
         body.setdefault("author", author)
         body.setdefault("commentary", commentary)
         body.setdefault("visibility", visibility)
-        body.setdefault("lifecycleState", lifecycleState)
-        return LinkedInPost(
-            **{k: v for k, v in body.items() if k in LinkedInPost.model_fields}
-        )
+        body.setdefault("lifecycleState", lifecycle_state)
+        # Pydantic V2 with populate_by_name=True respects camelCase aliases
+        # AND ignores unknown fields by default — no manual filter needed.
+        return LinkedInPost.model_validate(body)
 
     @action(
         "Delete a LinkedIn post you authored",
@@ -409,9 +409,7 @@ class LinkedIn(BaseConnector):
         """
         encoded = url_quote(urn, safe="")
         body = await self._request("GET", f"/rest/posts/{encoded}")
-        return LinkedInPost(
-            **{k: v for k, v in body.items() if k in LinkedInPost.model_fields}
-        )
+        return LinkedInPost.model_validate(body)
 
     @action("List the authenticated user's recent posts")
     async def list_my_posts(
@@ -443,10 +441,7 @@ class LinkedIn(BaseConnector):
         }
         body = await self._request("GET", "/rest/posts", params=params)
         elements = body.get("elements", []) if isinstance(body, dict) else []
-        items = [
-            LinkedInPost(**{k: v for k, v in p.items() if k in LinkedInPost.model_fields})
-            for p in elements
-        ]
+        items = [LinkedInPost.model_validate(p) for p in elements]
         # If the page is full we assume more results may exist; LinkedIn
         # also exposes a paging.total when available.
         paging = (body.get("paging") or {}) if isinstance(body, dict) else {}
@@ -499,9 +494,7 @@ class LinkedIn(BaseConnector):
             f"/v2/socialActions/{encoded}/comments",
             json_body=payload,
         )
-        return LinkedInComment(
-            **{k: v for k, v in body.items() if k in LinkedInComment.model_fields}
-        )
+        return LinkedInComment.model_validate(body)
 
     @action("List comments on a LinkedIn post")
     async def list_comments(
@@ -529,12 +522,7 @@ class LinkedIn(BaseConnector):
             params=params,
         )
         elements = body.get("elements", []) if isinstance(body, dict) else []
-        items = [
-            LinkedInComment(
-                **{k: v for k, v in c.items() if k in LinkedInComment.model_fields}
-            )
-            for c in elements
-        ]
+        items = [LinkedInComment.model_validate(c) for c in elements]
         paging = (body.get("paging") or {}) if isinstance(body, dict) else {}
         total = paging.get("total")
         has_more = (
