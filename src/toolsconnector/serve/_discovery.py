@@ -45,7 +45,9 @@ _KNOWN_CONNECTORS: dict[str, str] = {
     "jira": "toolsconnector.connectors.jira:Jira",
     "lambda_connector": "toolsconnector.connectors.lambda_connector:Lambda",
     "linear": "toolsconnector.connectors.linear:Linear",
+    "linkedin": "toolsconnector.connectors.linkedin:LinkedIn",
     "mailchimp": "toolsconnector.connectors.mailchimp:Mailchimp",
+    "medium": "toolsconnector.connectors.medium:Medium",
     "mixpanel": "toolsconnector.connectors.mixpanel:Mixpanel",
     "mongodb": "toolsconnector.connectors.mongodb:MongoDB",
     "notion": "toolsconnector.connectors.notion:Notion",
@@ -75,6 +77,7 @@ _KNOWN_CONNECTORS: dict[str, str] = {
     "twilio": "toolsconnector.connectors.twilio:Twilio",
     "vercel": "toolsconnector.connectors.vercel:Vercel",
     "webhook": "toolsconnector.connectors.webhook:Webhook",
+    "x": "toolsconnector.connectors.x:X",
     "zendesk": "toolsconnector.connectors.zendesk:Zendesk",
 }
 
