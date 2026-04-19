@@ -179,10 +179,10 @@ footer a { color: #94a3b8; }
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>create_publication_post ⚠</code></td><td class="desc">Publish an article to a Medium publication</td><td><span class="req">publicationId, title, contentFormat, content</span> &nbsp;<span class="opt">[tags, canonicalUrl, publishStatus, license, notifyFollowers]</span></td><td><code>MediumPost</code></td></tr>
-<tr><td><code>create_user_post ⚠</code></td><td class="desc">Publish an article to the authenticated user&#39;s personal Medium feed</td><td><span class="req">userId, title, contentFormat, content</span> &nbsp;<span class="opt">[tags, canonicalUrl, publishStatus, license, notifyFollowers]</span></td><td><code>MediumPost</code></td></tr>
+        <tr><td><code>create_publication_post ⚠</code></td><td class="desc">Publish an article to a Medium publication</td><td><span class="req">publication_id, title, content_format, content</span> &nbsp;<span class="opt">[tags, canonical_url, publish_status, license_type, notify_followers]</span></td><td><code>MediumPost</code></td></tr>
+<tr><td><code>create_user_post ⚠</code></td><td class="desc">Publish an article to the authenticated user&#39;s personal Medium feed</td><td><span class="req">user_id, title, content_format, content</span> &nbsp;<span class="opt">[tags, canonical_url, publish_status, license_type, notify_followers]</span></td><td><code>MediumPost</code></td></tr>
 <tr><td><code>get_me</code></td><td class="desc">Get the authenticated Medium user&#39;s profile</td><td><span class="opt">—</span></td><td><code>MediumUser</code></td></tr>
-<tr><td><code>list_publications</code></td><td class="desc">List publications the user is allowed to write to</td><td><span class="req">userId</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_publications</code></td><td class="desc">List publications the user is allowed to write to</td><td><span class="req">user_id</span></td><td><code>list</code></td></tr>
       </tbody>
     </table>
   </div>

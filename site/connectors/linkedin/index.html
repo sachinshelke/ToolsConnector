@@ -184,7 +184,7 @@ footer a { color: #94a3b8; }
       </thead>
       <tbody>
         <tr><td><code>create_comment ⚠</code></td><td class="desc">Post a comment on a LinkedIn post</td><td><span class="req">post_urn, actor, text</span></td><td><code>LinkedInComment</code></td></tr>
-<tr><td><code>create_post ⚠</code></td><td class="desc">Publish a post to the authenticated user&#39;s LinkedIn feed</td><td><span class="req">author, commentary</span> &nbsp;<span class="opt">[visibility, lifecycleState, content]</span></td><td><code>LinkedInPost</code></td></tr>
+<tr><td><code>create_post ⚠</code></td><td class="desc">Publish a post to the authenticated user&#39;s LinkedIn feed</td><td><span class="req">author, commentary</span> &nbsp;<span class="opt">[visibility, lifecycle_state, content]</span></td><td><code>LinkedInPost</code></td></tr>
 <tr><td><code>delete_post ⚠</code></td><td class="desc">Delete a LinkedIn post you authored</td><td><span class="req">urn</span></td><td><code>NoneType</code></td></tr>
 <tr><td><code>get_post</code></td><td class="desc">Get a single LinkedIn post by URN</td><td><span class="req">urn</span></td><td><code>LinkedInPost</code></td></tr>
 <tr><td><code>get_profile</code></td><td class="desc">Get the authenticated LinkedIn user&#39;s profile (OIDC userinfo)</td><td><span class="opt">—</span></td><td><code>LinkedInProfile</code></td></tr>
