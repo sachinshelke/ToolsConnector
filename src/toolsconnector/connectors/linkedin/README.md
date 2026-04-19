@@ -91,30 +91,53 @@ except AuthError as e:
     print(f"Auth failed: {e.suggestion}")
 ```
 
-## Not Supported
+## What works without LinkedIn approval
 
-Some LinkedIn capabilities cannot be exposed under standard BYOK OAuth — they require a contractual relationship with LinkedIn (the **Partner Program**), not a developer token:
+Every developer can call these immediately after enabling **Sign In with LinkedIn using OpenID Connect** + **Share on LinkedIn** on a [LinkedIn Developer App](https://www.linkedin.com/developers/apps). Required scopes: `openid profile email w_member_social`.
+
+| Action | Endpoint | Scope |
+|---|---|---|
+| `get_profile` | `GET /v2/userinfo` | `openid profile email` |
+| `create_post` | `POST /rest/posts` | `w_member_social` |
+| `delete_post` | `DELETE /rest/posts/{urn}` | `w_member_social` |
+| `create_comment` | `POST /rest/socialActions/{urn}/comments` | `w_member_social` |
+| `react_to_post` | `POST /rest/reactions?actor={urn}` | `w_member_social` |
+
+## Restricted (LinkedIn-approved developers only)
+
+LinkedIn gates the `r_member_social` scope behind a manual approval process. Standard apps will get HTTP 403 `ACCESS_DENIED` (mapped here to `PermissionDeniedError`) when calling these:
+
+| Action | Endpoint | Scope |
+|---|---|---|
+| `get_post` | `GET /rest/posts/{urn}` | `r_member_social` (RESTRICTED) |
+| `list_my_posts` | `GET /rest/posts?q=author&author={urn}` | `r_member_social` (RESTRICTED) |
+| `list_comments` | `GET /rest/socialActions/{urn}/comments` | `r_member_social` (RESTRICTED) |
+
+## Not supported (Partner Program required)
+
+These cannot be exposed under standard BYOK access — they require a contractual partnership with LinkedIn, not just OAuth scopes:
 
 | Capability | Why it's not implemented |
 |---|---|
 | **DMs / Messaging API** | Requires LinkedIn Partner Program approval. Standard developer apps cannot send messages on behalf of members. |
 | **Mentions / Notifications** | The Notifications API is partner-only. There is no public BYOK endpoint to read mentions. |
-
-If your use case requires these, the path is to apply to the LinkedIn Partner Program directly — once approved, you can build on top of those APIs separately.
+| **Image / Video / Document uploads** | Require a separate multi-step Vector Asset upload flow. Use the `content` parameter on `create_post` if you already have an asset URN. |
 
 ## Token expiry
 
-LinkedIn access tokens expire **60 days** after issue. When that happens, this connector raises `TokenExpiredError` with a hint to regenerate at https://www.linkedin.com/developers/apps. Plan for token rotation in production.
+LinkedIn access tokens expire **60 days** after issue. When that happens, the connector raises `TokenExpiredError` with a hint to regenerate at https://www.linkedin.com/developers/apps. Plan for token rotation in production.
 
-## API surface
+## Versioned API
 
-This connector deliberately mixes two LinkedIn API versions:
+This connector targets LinkedIn's Versioned API (`/rest/*`). The `Linkedin-Version` header is pinned to `202604` (the latest version in the documented support range as of 2026-04). LinkedIn versions are valid for ~12 months — when bumping to a newer version, check the [migration guide](https://learn.microsoft.com/en-us/linkedin/marketing/integrations/migrations) for any breaking schema changes.
 
-- `/rest/posts` (newer, sent with `LinkedIn-Version: 202506`) — for `create_post`, `delete_post`, `get_post`, `list_my_posts`. This is LinkedIn's documented forward path.
-- `/v2/socialActions/{urn}` (legacy v2) — for `create_comment`, `list_comments`, `react_to_post`. No `/rest` equivalent exists yet.
-- `/v2/userinfo` (OIDC) — for `get_profile`. Most reliable user-identity endpoint across versions.
+## Reference docs
 
-Each action's docstring documents which surface it targets.
+- [Sign In with LinkedIn using OpenID Connect](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2)
+- [Share on LinkedIn (consumer overview)](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/share-on-linkedin)
+- [Posts API (Versioned)](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api)
+- [Comments API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/comments-api)
+- [Reactions API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/reactions-api)
 
 ## Actions
 

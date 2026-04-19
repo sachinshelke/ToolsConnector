@@ -2,23 +2,54 @@
 
 Uses the LinkedIn REST API with OAuth 2.0 Bearer token authentication.
 
-API version strategy
---------------------
-LinkedIn maintains two parallel API surfaces. We use them deliberately:
+Endpoint surfaces
+-----------------
+This connector calls three LinkedIn API surfaces, all under
+``api.linkedin.com``:
 
-- ``/rest/posts`` (newer, requires ``LinkedIn-Version`` header) — for posts
-  CRUD. This is LinkedIn's documented forward path.
-- ``/v2/socialActions/{urn}`` (legacy v2) — for comments and reactions.
-  No ``/rest`` equivalent exists yet for these endpoints.
+- ``/rest/posts`` (Versioned API) — Posts API for create/get/list/delete.
+  Requires the ``Linkedin-Version`` header (we pin ``202604``, the latest
+  in the documented support range as of 2026-04). Replaces the legacy
+  ``/v2/ugcPosts`` API.
+  Docs: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api
+
+- ``/rest/socialActions/{urn}/comments`` (Versioned API) — Comments API.
+  Same ``Linkedin-Version`` header. Same wire-protocol headers
+  (``X-Restli-Protocol-Version: 2.0.0``).
+  Docs: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/comments-api
+
+- ``/rest/reactions`` (Versioned API) — Reactions API. Note that ``actor``
+  is a **query parameter**, not a body field, on POST.
+  Docs: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/reactions-api
+
 - ``/v2/userinfo`` (OIDC) — for fetching the authenticated user's identity.
-  Most reliable way to get the person URN across API versions.
+  Standard OIDC userinfo endpoint, no version header needed.
+  Docs: https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2
 
-Each action's docstring documents which surface it targets.
+Scope tiers
+-----------
+LinkedIn splits read and write scopes:
+
+- WRITE scopes (open via standard "Share on LinkedIn" + "Sign In with LinkedIn"
+  products, available to any developer):
+  ``openid profile email`` — get_profile.
+  ``w_member_social`` — create_post, delete_post, create_comment, react_to_post.
+
+- READ scope (RESTRICTED — granted to LinkedIn-approved developers only):
+  ``r_member_social`` — get_post, list_my_posts, list_comments.
+
+Standard apps without ``r_member_social`` will get HTTP 403 ``ACCESS_DENIED``
+on the read endpoints, mapped here to ``PermissionDeniedError`` with a clear
+hint.
 
 Out of scope (see README "Not Supported"):
 - DMs / Messaging API — requires LinkedIn Partner Program approval (a
   contract with LinkedIn, not OAuth scopes). Not BYOK-accessible.
 - Mentions / Notifications — partner-only Notifications API.
+- Image / video / document uploads — require a separate multi-step
+  upload flow (Images API / Videos API / Documents API) not implemented
+  here. Use ``content`` parameter on ``create_post`` with a pre-uploaded
+  asset URN if you have one.
 """
 
 from __future__ import annotations
@@ -48,26 +79,34 @@ from .types import LinkedInComment, LinkedInPost, LinkedInProfile
 logger = logging.getLogger("toolsconnector.linkedin")
 
 # Pin a stable, well-supported version. LinkedIn versions are YYYYMM strings
-# and remain available for ~12 months after release.
-_LINKEDIN_VERSION = "202506"
+# and remain available for ~12 months after release. As of 2026-04, the
+# supported range is 202505..202604; we target 202604 as the latest.
+# Source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api
+_LINKEDIN_VERSION = "202604"
 
-# Substrings in a 401 body indicating the token has expired (vs. invalid format).
+# Substrings in a 401 body indicating the token has expired or is missing.
+# Per LinkedIn's documented error codes, EMPTY_ACCESS_TOKEN is the value
+# returned when the token is missing entirely; EXPIRED/REVOKED indicate
+# a stale token that needs regeneration.
 _EXPIRED_TOKEN_MARKERS = (
     "EXPIRED_ACCESS_TOKEN",
     "REVOKED_ACCESS_TOKEN",
+    "EMPTY_ACCESS_TOKEN",
     "expired access token",
     "revoked access token",
 )
 
-# Allowed reaction types per LinkedIn's documented enum.
+# Allowed reaction types per LinkedIn's documented Reactions API enum.
+# NOTE: MAYBE ("Curious" in UI) is deprecated since version 202307 and
+# will return 400 if sent — omitted here.
+# Source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/reactions-api
 _REACTION_TYPES = {
-    "LIKE",
-    "PRAISE",
-    "EMPATHY",
-    "INTEREST",
-    "APPRECIATION",
-    "MAYBE",
-    "ENTERTAINMENT",
+    "LIKE",          # "Like"
+    "PRAISE",        # "Celebrate"
+    "EMPATHY",       # "Love"
+    "INTEREST",      # "Insightful"
+    "APPRECIATION",  # "Support"
+    "ENTERTAINMENT", # "Funny"
 }
 
 
@@ -78,12 +117,17 @@ class LinkedIn(BaseConnector):
     must include scopes appropriate to your use:
 
     - ``openid profile email`` — for ``get_profile`` (OIDC userinfo).
-    - ``w_member_social`` — for posting, deleting, commenting, reacting.
-    - ``r_member_social`` — for reading own posts and comments.
+      Granted by the **Sign in with LinkedIn using OpenID Connect** product.
+    - ``w_member_social`` — for ``create_post``, ``delete_post``,
+      ``create_comment``, ``react_to_post``.
+      Granted by the **Share on LinkedIn** product.
+    - ``r_member_social`` — for ``get_post``, ``list_my_posts``,
+      ``list_comments``. **RESTRICTED**: this scope is granted to
+      approved developers only. Standard apps cannot call read endpoints.
 
-    Tokens expire after 60 days. Expired tokens raise
-    ``TokenExpiredError`` with a hint to regenerate via the LinkedIn
-    Developer App console.
+    Tokens expire after 60 days (default for LinkedIn member tokens).
+    Missing/expired tokens raise ``TokenExpiredError`` with a hint to
+    regenerate via the LinkedIn Developer App console.
 
     DMs and mentions are NOT supported — they require LinkedIn Partner
     Program approval (a contract, not OAuth scopes). See README.
@@ -96,9 +140,14 @@ class LinkedIn(BaseConnector):
     base_url = "https://api.linkedin.com"
     description = (
         "Post to your LinkedIn personal feed, comment on posts, react. "
-        "BYOK OAuth 2.0 access tokens (60-day expiry). DMs and mentions "
-        "are not supported (LinkedIn Partner Program required)."
+        "BYOK OAuth 2.0 access tokens (60-day expiry). Read endpoints "
+        "(get_post, list_my_posts, list_comments) require the restricted "
+        "r_member_social scope (approved developers only). DMs and "
+        "mentions require LinkedIn Partner Program approval."
     )
+    # Standard Share-on-LinkedIn rate limit is ~150 calls/day per member
+    # (UTC daily window). This advisory limit is intentionally well under
+    # that — server-side enforcement is the source of truth.
     _rate_limit_config = RateLimitSpec(rate=1, period=2, burst=3)
 
     # ------------------------------------------------------------------
@@ -113,7 +162,9 @@ class LinkedIn(BaseConnector):
                 "Authorization": f"Bearer {self._credentials}",
                 "Content-Type": "application/json",
                 "X-Restli-Protocol-Version": "2.0.0",
-                "LinkedIn-Version": _LINKEDIN_VERSION,
+                # Header name canonicalization per LinkedIn docs:
+                # https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api
+                "Linkedin-Version": _LINKEDIN_VERSION,
             },
             timeout=self._timeout,
         )
@@ -334,23 +385,42 @@ class LinkedIn(BaseConnector):
         lifecycle_state: str = "PUBLISHED",
         content: Optional[dict[str, Any]] = None,
     ) -> LinkedInPost:
-        """Publish a post via the ``/rest/posts`` API (LinkedIn-Version 202506).
+        """Publish a post via the LinkedIn Posts API.
+
+        Endpoint: ``POST /rest/posts`` (Linkedin-Version 202604).
+        Required scope: ``w_member_social`` (granted by the "Share on
+        LinkedIn" product). Subject to LinkedIn's daily share quota.
 
         Args:
             author: The author URN (e.g. ``urn:li:person:abc123``).
-                Use ``get_profile()`` then ``urn:li:person:{sub}``.
-            commentary: The post text body (supports plain text + LinkedIn
-                mention/hashtag markup).
-            visibility: ``"PUBLIC"`` (default), ``"CONNECTIONS"``, or
-                ``"LOGGED_IN"``.
-            lifecycle_state: ``"PUBLISHED"`` (default) or ``"DRAFT"``.
-                Sent to LinkedIn as the ``lifecycleState`` field.
-            content: Optional content block (article, image, poll, etc.).
-                See LinkedIn /rest/posts docs for shape. Omit for a
-                text-only post.
+                Use ``get_profile()`` then build ``urn:li:person:{sub}``.
+                For organization posts, use ``urn:li:organization:{id}``
+                — note that organization posting requires the
+                ``w_organization_social`` scope and an admin role on the
+                page.
+            commentary: The post text body. Supports LinkedIn's "little"
+                text format with mention markup like
+                ``"Hello @[Name](urn:li:person:abc)"`` and hashtags
+                like ``#topic``.
+            visibility: ``"PUBLIC"`` (default — anyone on LinkedIn) or
+                ``"CONNECTIONS"`` (1st-degree connections only).
+            lifecycle_state: ``"PUBLISHED"`` (default — visible
+                immediately) or ``"DRAFT"``. Sent to LinkedIn as
+                ``lifecycleState``.
+            content: Optional content block. Examples:
+                - Article:
+                  ``{"article": {"source": "https://...",
+                  "thumbnail": "urn:li:image:...",
+                  "title": "...", "description": "..."}}``
+                - Media (image/video):
+                  ``{"media": {"id": "urn:li:image:...", "title": "..."}}``
+                Image/video URNs come from the Images/Videos APIs which
+                require a separate upload flow not implemented here.
+                Omit for a text-only post.
 
         Returns:
-            The created post (with URN).
+            The created post. The URN is exposed via ``post.id``,
+            populated from the LinkedIn ``x-restli-id`` response header.
         """
         # LinkedIn's wire format is camelCase; Python params are snake_case.
         payload: dict[str, Any] = {
@@ -386,20 +456,30 @@ class LinkedIn(BaseConnector):
         dangerous=True,
     )
     async def delete_post(self, urn: str) -> None:
-        """Delete a post via ``/rest/posts/{urn}``.
+        """Delete a post via the LinkedIn Posts API.
 
-        Only the post's author can delete it.
+        Endpoint: ``DELETE /rest/posts/{encoded urn}``.
+        Required scope: ``w_member_social``. Only the post's author can
+        delete it. Returns 204 on success; deletion is idempotent
+        (deleting an already-deleted post also returns 204).
 
         Args:
-            urn: The post URN (e.g. ``urn:li:share:7012345``).
+            urn: The post URN (e.g. ``urn:li:share:7012345`` or
+                ``urn:li:ugcPost:...``).
         """
         encoded = url_quote(urn, safe="")
         await self._request("DELETE", f"/rest/posts/{encoded}")
         return None
 
-    @action("Get a single LinkedIn post by URN")
+    @action("Get a single LinkedIn post by URN (RESTRICTED scope)")
     async def get_post(self, urn: str) -> LinkedInPost:
-        """Fetch a post via ``/rest/posts/{urn}``.
+        """Fetch a post via the LinkedIn Posts API.
+
+        Endpoint: ``GET /rest/posts/{encoded urn}``.
+        Required scope: ``r_member_social`` — **RESTRICTED**, granted
+        to LinkedIn-approved developers only. Standard "Share on
+        LinkedIn" apps will get a 403 ``ACCESS_DENIED`` here, mapped
+        to ``PermissionDeniedError`` with a clear hint.
 
         Args:
             urn: The post URN.
@@ -411,21 +491,28 @@ class LinkedIn(BaseConnector):
         body = await self._request("GET", f"/rest/posts/{encoded}")
         return LinkedInPost.model_validate(body)
 
-    @action("List the authenticated user's recent posts")
+    @action("List the authenticated user's recent posts (RESTRICTED scope)")
     async def list_my_posts(
         self,
         author: str,
         count: int = 10,
         start: int = 0,
     ) -> PaginatedList[LinkedInPost]:
-        """List posts authored by ``author`` via ``/rest/posts``.
+        """List posts authored by ``author`` via the LinkedIn Posts API.
+
+        Endpoint: ``GET /rest/posts?q=author&author={urn}``.
+        Required scope: ``r_member_social`` — **RESTRICTED**, granted to
+        LinkedIn-approved developers only. Standard "Share on LinkedIn"
+        apps will get a 403 ``ACCESS_DENIED`` here, mapped to
+        ``PermissionDeniedError`` with a clear hint.
 
         LinkedIn paginates with ``start``+``count`` (offset-based).
-        ``has_more`` is set when the returned page is full.
+        ``has_more`` is set when the returned page is full or when
+        the server-reported ``paging.total`` indicates more remain.
 
         Args:
             author: The author URN to filter by (the authenticated user's
-                URN, from ``get_profile()``).
+                URN, derived from ``get_profile()``).
             count: Page size (1..100). Defaults to 10.
             start: Zero-based offset for pagination. Defaults to 0.
 
@@ -460,7 +547,7 @@ class LinkedIn(BaseConnector):
         )
 
     # ======================================================================
-    # COMMENTS  (uses /v2/socialActions/{urn}/comments — legacy v2)
+    # COMMENTS  (uses /rest/socialActions/{urn}/comments — Versioned API)
     # ======================================================================
 
     @action(
@@ -473,15 +560,23 @@ class LinkedIn(BaseConnector):
         actor: str,
         text: str,
     ) -> LinkedInComment:
-        """Comment on a post via ``/v2/socialActions/{urn}/comments``.
+        """Comment on a post via the LinkedIn Comments API.
+
+        Endpoint: ``POST /rest/socialActions/{encoded post_urn}/comments``.
+        Required scope: ``w_member_social`` (Share on LinkedIn product
+        grants this — same scope used for posting).
 
         Args:
-            post_urn: The post URN to comment on (e.g. ``urn:li:share:123``).
-            actor: The commenter's URN (typically ``urn:li:person:{sub}``).
-            text: The comment body (plain text + mention markup).
+            post_urn: The post URN to comment on (e.g.
+                ``urn:li:share:7012345`` or ``urn:li:ugcPost:...``).
+            actor: The commenter's URN (typically derived from
+                ``get_profile()`` as ``urn:li:person:{sub}``).
+            text: The comment body. Supports LinkedIn's text format
+                with mention markup.
 
         Returns:
-            The created comment.
+            The created comment. The composite comment URN is in
+            ``comment.id`` (or via the response header).
         """
         encoded = url_quote(post_urn, safe="")
         payload = {
@@ -491,19 +586,25 @@ class LinkedIn(BaseConnector):
         }
         body = await self._request(
             "POST",
-            f"/v2/socialActions/{encoded}/comments",
+            f"/rest/socialActions/{encoded}/comments",
             json_body=payload,
         )
         return LinkedInComment.model_validate(body)
 
-    @action("List comments on a LinkedIn post")
+    @action("List comments on a LinkedIn post (RESTRICTED scope)")
     async def list_comments(
         self,
         post_urn: str,
         count: int = 10,
         start: int = 0,
     ) -> PaginatedList[LinkedInComment]:
-        """List comments on a post via ``/v2/socialActions/{urn}/comments``.
+        """List comments on a post via the LinkedIn Comments API.
+
+        Endpoint: ``GET /rest/socialActions/{encoded post_urn}/comments``.
+        Required scope: ``r_member_social`` — **RESTRICTED**, granted to
+        LinkedIn-approved developers only. Standard "Share on LinkedIn"
+        apps will get a 403 ``ACCESS_DENIED`` here, mapped to
+        ``PermissionDeniedError`` with a clear hint.
 
         Args:
             post_urn: The post URN whose comments to list.
@@ -518,7 +619,7 @@ class LinkedIn(BaseConnector):
         params = {"count": count, "start": max(0, int(start))}
         body = await self._request(
             "GET",
-            f"/v2/socialActions/{encoded}/comments",
+            f"/rest/socialActions/{encoded}/comments",
             params=params,
         )
         elements = body.get("elements", []) if isinstance(body, dict) else []
@@ -539,12 +640,12 @@ class LinkedIn(BaseConnector):
         )
 
     # ======================================================================
-    # REACTIONS  (uses /v2/reactions — legacy v2)
+    # REACTIONS  (uses /rest/reactions — Versioned API)
     # ======================================================================
 
     @action(
         "React to a LinkedIn post (LIKE / PRAISE / EMPATHY / INTEREST / "
-        "APPRECIATION / MAYBE / ENTERTAINMENT)",
+        "APPRECIATION / ENTERTAINMENT)",
         dangerous=True,
     )
     async def react_to_post(
@@ -553,29 +654,49 @@ class LinkedIn(BaseConnector):
         actor: str,
         reaction_type: str = "LIKE",
     ) -> None:
-        """Add a reaction to a post via ``/v2/reactions``.
+        """Add a reaction to a post via the LinkedIn Reactions API.
+
+        Endpoint: ``POST /rest/reactions?actor={encoded actor URN}``.
+        Required scope: ``w_member_social``. Note that LinkedIn's
+        Reactions API takes ``actor`` as a **query parameter**, not a
+        body field. The body carries only ``root`` (the entity being
+        reacted to) and ``reactionType``.
 
         Args:
-            post_urn: The post URN (the reaction target).
-            actor: The reactor's URN (typically ``urn:li:person:{sub}``).
-            reaction_type: One of ``LIKE`` (default), ``PRAISE``, ``EMPATHY``,
-                ``INTEREST``, ``APPRECIATION``, ``MAYBE``, ``ENTERTAINMENT``.
+            post_urn: The reaction target URN. Can be a share URN, ugcPost
+                URN, activity URN, or comment URN (composite form).
+            actor: The reactor's URN (typically ``urn:li:person:{sub}``,
+                derived from ``get_profile()``). LinkedIn returns 201
+                with the new reaction's composite URN.
+            reaction_type: One of ``LIKE`` (default — "Like" in UI),
+                ``PRAISE`` ("Celebrate"), ``EMPATHY`` ("Love"),
+                ``INTEREST`` ("Insightful"), ``APPRECIATION``
+                ("Support"), or ``ENTERTAINMENT`` ("Funny").
+                The ``MAYBE`` reaction (formerly "Curious") was
+                deprecated in version 202307 and is no longer accepted.
 
         Raises:
-            ValidationError: If ``reaction_type`` is not in the documented set.
+            ValidationError: If ``reaction_type`` is not in the
+                supported set.
         """
         rt = reaction_type.upper()
         if rt not in _REACTION_TYPES:
             raise ValidationError(
                 f"Unknown reaction_type {reaction_type!r}. "
-                f"Allowed: {sorted(_REACTION_TYPES)}",
+                f"Allowed: {sorted(_REACTION_TYPES)} "
+                f"(MAYBE was deprecated in LinkedIn-Version 202307).",
                 connector="linkedin",
-                action="/v2/reactions",
+                action="/rest/reactions",
             )
+        # actor goes in the QUERY STRING per LinkedIn's spec, not the body.
+        encoded_actor = url_quote(actor, safe="")
         payload = {
             "root": post_urn,
             "reactionType": rt,
-            "actor": actor,
         }
-        await self._request("POST", "/v2/reactions", json_body=payload)
+        await self._request(
+            "POST",
+            f"/rest/reactions?actor={encoded_actor}",
+            json_body=payload,
+        )
         return None
