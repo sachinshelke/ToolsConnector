@@ -348,7 +348,7 @@ class CloudWatch(BaseConnector):
         start_time: str,
         end_time: str,
         period: int = 300,
-        statistics: list[str] | None = None,
+        statistics: Optional[list[str]] = None,
     ) -> dict:
         """Get metric statistics for a CloudWatch metric.
 
@@ -410,7 +410,7 @@ class CloudWatch(BaseConnector):
     @action("Describe CloudWatch alarms")
     async def describe_alarms(
         self,
-        alarm_names: list[str] | None = None,
+        alarm_names: Optional[list[str]] = None,
         state_value: str = "",
     ) -> list[CWMetricAlarm]:
         """Describe CloudWatch alarms.
@@ -462,7 +462,7 @@ class CloudWatch(BaseConnector):
         evaluation_periods: int = 1,
         threshold: float = 0.0,
         comparison_operator: str = "GreaterThanThreshold",
-        alarm_actions: list[str] | None = None,
+        alarm_actions: Optional[list[str]] = None,
     ) -> dict:
         """Create or update a CloudWatch metric alarm.
 

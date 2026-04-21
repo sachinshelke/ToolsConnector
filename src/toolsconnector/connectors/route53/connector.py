@@ -472,8 +472,8 @@ class Route53(BaseConnector):
         name: str,
         record_type: str,
         ttl: int = 300,
-        values: list[str] | None = None,
-        alias_target: dict | None = None,
+        values: Optional[list[str]] = None,
+        alias_target: Optional[dict] = None,
     ) -> R53ChangeInfo:
         """Create or update a DNS record in a hosted zone.
 
@@ -507,7 +507,7 @@ class Route53(BaseConnector):
         name: str,
         record_type: str,
         ttl: int = 300,
-        values: list[str] | None = None,
+        values: Optional[list[str]] = None,
     ) -> R53ChangeInfo:
         """Delete a DNS record from a hosted zone.
 
@@ -537,8 +537,8 @@ class Route53(BaseConnector):
         record_type: str,
         *,
         ttl: int = 300,
-        values: list[str] | None = None,
-        alias_target: dict | None = None,
+        values: Optional[list[str]] = None,
+        alias_target: Optional[dict] = None,
     ) -> R53ChangeInfo:
         """Build and submit a ChangeBatch request.
 
@@ -816,8 +816,8 @@ class Route53(BaseConnector):
         self,
         resource_type: str,
         resource_id: str,
-        add_tags: dict | None = None,
-        remove_tag_keys: list[str] | None = None,
+        add_tags: Optional[dict] = None,
+        remove_tag_keys: Optional[list[str]] = None,
     ) -> dict:
         """Add or remove tags for a Route 53 resource.
 

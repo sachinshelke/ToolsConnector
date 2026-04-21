@@ -171,7 +171,7 @@ class ACM(BaseConnector):
     async def request_certificate(
         self,
         domain_name: str,
-        subject_alternative_names: list[str] | None = None,
+        subject_alternative_names: Optional[list[str]] = None,
         validation_method: str = "DNS",
     ) -> str:
         """Request a new ACM SSL/TLS certificate.
@@ -244,7 +244,7 @@ class ACM(BaseConnector):
     @action("List certificates")
     async def list_certificates(
         self,
-        statuses: list[str] | None = None,
+        statuses: Optional[list[str]] = None,
     ) -> list[ACMCertificateSummary]:
         """List ACM certificates, optionally filtered by status.
 

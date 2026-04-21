@@ -149,7 +149,7 @@ footer a { color: #94a3b8; }
       <h1>X (Twitter) Connector</h1>
     </div>
   </div>
-  <p class="desc">Post tweets, threads, replies. Like, reply, mention. Send DMs (Basic tier $100/mo). BYOK OAuth 2.0 Bearer tokens.</p>
+  <p class="desc">Post tweets, threads, replies. Like and unlike. Read mentions. Send DMs. BYOK OAuth 2.0 Bearer tokens. Some endpoints may require X API Basic tier ($100/mo) per X&#39;s tier policies — tier-gated 403s are mapped to PermissionDeniedError.</p>
 
   <div class="install-box">
     <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[x]"</span>
@@ -184,15 +184,15 @@ footer a { color: #94a3b8; }
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>create_thread ⚠</code></td><td class="desc">Post a thread of tweets sequentially (Free tier)</td><td><span class="req">texts</span></td><td><code>list</code></td></tr>
-<tr><td><code>create_tweet ⚠</code></td><td class="desc">Post a tweet (Free tier)</td><td><span class="req">text</span> &nbsp;<span class="opt">[reply_to_tweet_id, quote_tweet_id]</span></td><td><code>Tweet</code></td></tr>
-<tr><td><code>delete_tweet ⚠</code></td><td class="desc">Delete a tweet you authored (Free tier)</td><td><span class="req">tweet_id</span></td><td><code>NoneType</code></td></tr>
-<tr><td><code>get_me</code></td><td class="desc">Get the authenticated X user&#39;s profile (Free tier)</td><td><span class="opt">—</span></td><td><code>XUser</code></td></tr>
-<tr><td><code>like_tweet ⚠</code></td><td class="desc">Like a tweet on behalf of the authenticated user (Free tier)</td><td><span class="req">user_id, tweet_id</span></td><td><code>NoneType</code></td></tr>
-<tr><td><code>list_mentions</code></td><td class="desc">List recent tweets that mention the user (Basic tier required)</td><td><span class="req">user_id</span> &nbsp;<span class="opt">[max_results, pagination_token]</span></td><td><code>PaginatedList[Tweet]</code></td></tr>
-<tr><td><code>reply_to_tweet ⚠</code></td><td class="desc">Reply to a tweet (Free tier)</td><td><span class="req">tweet_id, text</span></td><td><code>Tweet</code></td></tr>
-<tr><td><code>send_dm ⚠</code></td><td class="desc">Send a direct message to another X user (Basic tier required)</td><td><span class="req">participant_id, text</span></td><td><code>XDirectMessage</code></td></tr>
-<tr><td><code>unlike_tweet ⚠</code></td><td class="desc">Unlike a previously-liked tweet (Free tier)</td><td><span class="req">user_id, tweet_id</span></td><td><code>NoneType</code></td></tr>
+        <tr><td><code>create_thread ⚠</code></td><td class="desc">Post a thread of tweets sequentially</td><td><span class="req">texts</span></td><td><code>list</code></td></tr>
+<tr><td><code>create_tweet ⚠</code></td><td class="desc">Post a tweet on behalf of the authenticated user</td><td><span class="req">text</span> &nbsp;<span class="opt">[reply_to_tweet_id, quote_tweet_id]</span></td><td><code>Tweet</code></td></tr>
+<tr><td><code>delete_tweet ⚠</code></td><td class="desc">Delete a tweet you authored</td><td><span class="req">tweet_id</span></td><td><code>bool</code></td></tr>
+<tr><td><code>get_me</code></td><td class="desc">Get the authenticated X user&#39;s profile</td><td><span class="opt">—</span></td><td><code>XUser</code></td></tr>
+<tr><td><code>like_tweet ⚠</code></td><td class="desc">Like a tweet on behalf of the authenticated user</td><td><span class="req">user_id, tweet_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>list_mentions</code></td><td class="desc">List recent tweets that mention the user</td><td><span class="req">user_id</span> &nbsp;<span class="opt">[max_results, pagination_token]</span></td><td><code>PaginatedList[Tweet]</code></td></tr>
+<tr><td><code>reply_to_tweet ⚠</code></td><td class="desc">Reply to a tweet</td><td><span class="req">tweet_id, text</span></td><td><code>Tweet</code></td></tr>
+<tr><td><code>send_dm ⚠</code></td><td class="desc">Send a direct message to another X user</td><td><span class="req">participant_id, text</span></td><td><code>XDirectMessage</code></td></tr>
+<tr><td><code>unlike_tweet ⚠</code></td><td class="desc">Unlike a previously-liked tweet</td><td><span class="req">user_id, tweet_id</span></td><td><code>NoneType</code></td></tr>
       </tbody>
     </table>
   </div>

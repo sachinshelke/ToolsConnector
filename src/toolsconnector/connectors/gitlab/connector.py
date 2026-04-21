@@ -7,7 +7,7 @@ Page-number pagination via ``X-Total`` / ``X-Total-Pages`` headers.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from urllib.parse import quote
 
 import httpx
@@ -50,7 +50,7 @@ from .types import (
 logger = logging.getLogger("toolsconnector.gitlab")
 
 
-def _encode_project_id(project_id: str | int) -> str:
+def _encode_project_id(project_id: Union[str, int]) -> str:
     """URL-encode a project ID for the GitLab API.
 
     Numeric IDs pass through as-is. Path-style IDs

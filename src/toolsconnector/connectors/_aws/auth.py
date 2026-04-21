@@ -27,7 +27,7 @@ _RG_KEYS = ("region", "aws_region", "aws_default_region")
 _ST_KEYS = ("session_token", "aws_session_token")
 
 
-def _pick(d: dict[str, Any], candidates: tuple[str, ...]) -> str | None:
+def _pick(d: dict[str, Any], candidates: tuple[str, ...]) -> Optional[str]:
     """Return the first matching value from *d* for the given key candidates."""
     for k in candidates:
         if k in d:

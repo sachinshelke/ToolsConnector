@@ -219,7 +219,7 @@ class RDS(BaseConnector):
     async def _rds_request(
         self,
         rds_action: str,
-        params: dict[str, str] | None = None,
+        params: Optional[dict[str, str]] = None,
     ) -> ET.Element:
         """Send a Query API request to RDS.
 
@@ -508,7 +508,7 @@ class RDS(BaseConnector):
         publicly_accessible: bool = False,
         availability_zone: str = "",
         db_name: str = "",
-        vpc_security_group_ids: list[str] | None = None,
+        vpc_security_group_ids: Optional[list[str]] = None,
         db_subnet_group_name: str = "",
     ) -> RDSInstance:
         """Create a new RDS database instance.
