@@ -12,8 +12,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import asyncio
-import json
 import sys
 from typing import Optional
 
@@ -190,8 +188,7 @@ def _handle_connector_command(argv: list[str]) -> int:
     Returns:
         Exit code.
     """
-    from toolsconnector.serve._discovery import get_connector_class, list_connectors
-    from toolsconnector.serve._serialization import serialize_result
+    from toolsconnector.serve._discovery import list_connectors
 
     connector_name = argv[0]
 
@@ -299,7 +296,6 @@ def _execute_action(
         Exit code.
     """
     from toolsconnector.serve.toolkit import ToolKit
-    from toolsconnector.serve._serialization import serialize_result
 
     # Parse --key value pairs
     arguments: dict[str, object] = {}

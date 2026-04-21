@@ -5,36 +5,89 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2026-04-19
+## [0.3.0] - 2026-04-20
 
 ### Added
 
-- **3 social publisher connectors** for content workflows:
-  - `linkedin` — 8 actions for posts, comments, reactions on personal feed.
-    Auth: OAuth 2.0 Bearer token with `openid profile email w_member_social r_member_social` scopes.
-    Uses `/rest/posts` (with `LinkedIn-Version: 202506` header) for posts and
-    `/v2/socialActions` for comments and reactions.
-    DMs and mentions are out of scope — they require LinkedIn Partner Program
-    approval (a contract, not OAuth scopes) and are not BYOK-accessible.
-    Token expiry (60 days) raises `TokenExpiredError` with a clear hint.
-  - `x` (Twitter) — 9 actions for tweets, threads, replies, likes, mentions, DMs.
-    Auth: OAuth 2.0 Bearer token (user context).
-    Free tier covers all write actions; `list_mentions` and `send_dm` require
-    Basic tier ($100/mo). Tier-gated 403 responses are mapped to
-    `PermissionDeniedError` with a friendly upgrade hint.
+- **3 social publisher connectors** for content workflows. All endpoints,
+  request bodies, headers, and OAuth scopes were verified against the
+  actual canonical API docs (Microsoft Learn for LinkedIn,
+  docs.x.com/x-api for X, github.com/Medium/medium-api-docs for Medium):
+
+  - **`linkedin`** — 8 actions across the LinkedIn Versioned API and OIDC.
+
+    Auth: OAuth 2.0 Bearer token. Scopes you'll need depend on the actions
+    you call — `openid profile email` for `get_profile`, `w_member_social`
+    for `create_post` / `delete_post` / `create_comment` / `react_to_post`,
+    and the **RESTRICTED** `r_member_social` (LinkedIn-approved developers
+    only) for `get_post` / `list_my_posts` / `list_comments`.
+
+    Endpoints:
+    - `GET /v2/userinfo` — get_profile (OIDC userinfo)
+    - `POST /rest/posts` — create_post (with `Linkedin-Version: 202604`)
+    - `DELETE /rest/posts/{urn}` — delete_post
+    - `GET /rest/posts/{urn}` — get_post (RESTRICTED scope)
+    - `GET /rest/posts?q=author&author=...` — list_my_posts (RESTRICTED scope)
+    - `POST /rest/socialActions/{urn}/comments` — create_comment
+    - `GET /rest/socialActions/{urn}/comments` — list_comments (RESTRICTED scope)
+    - `POST /rest/reactions?actor={urn}` — react_to_post (actor as QUERY param,
+      not body field; reaction types: LIKE / PRAISE / EMPATHY / INTEREST /
+      APPRECIATION / ENTERTAINMENT — `MAYBE` deprecated in version 202307)
+
+    Token expiry (60 days, plus the `EXPIRED_ACCESS_TOKEN` /
+    `REVOKED_ACCESS_TOKEN` / `EMPTY_ACCESS_TOKEN` error markers) raises
+    `TokenExpiredError` with a regenerate-token hint. Restricted-scope
+    403s map to `PermissionDeniedError`. DMs / mentions / asset uploads
+    are out of scope — they require LinkedIn Partner Program approval
+    (a contract, not OAuth scopes).
+
+  - **`x`** (Twitter) — 9 actions on the X API v2 (base
+    `https://api.x.com/2`).
+
+    Auth: OAuth 2.0 user-context Bearer token. Scopes per action:
+    `tweet.read users.read` for `get_me` / `list_mentions`,
+    `tweet.read tweet.write users.read` for tweet write actions,
+    `like.write` for `like_tweet` / `unlike_tweet`,
+    `dm.write` for `send_dm`. `offline.access` is optional (only for
+    refresh tokens).
+
+    Endpoints:
+    - `GET /2/users/me` — get_me
+    - `POST /2/tweets` — create_tweet, reply_to_tweet, create_thread
+    - `DELETE /2/tweets/{id}` — delete_tweet (returns the `data.deleted`
+      bool from X's response)
+    - `POST /2/users/{id}/likes` — like_tweet (body `{tweet_id}`)
+    - `DELETE /2/users/{id}/likes/{tweet_id}` — unlike_tweet
+    - `GET /2/users/{id}/mentions` — list_mentions (cursor pagination
+      via `pagination_token` ↔ `meta.next_token`)
+    - `POST /2/dm_conversations/with/{participant_id}/messages` — send_dm
+
+    The X tier policy (Free / Basic / Pro / Enterprise) is set by X's
+    commercial policy and isn't formally per-endpoint in the OpenAPI spec.
+    Tier-gated 403s (`client-not-enrolled`, `usage cap`, `client-forbidden`)
+    map to `PermissionDeniedError` with a hint pointing at
+    https://developer.x.com/en/products/twitter-api.
+
     `create_thread` posts sequentially with partial-success visibility:
-    on failure, posted-so-far tweets are preserved on `e.details["posted_tweets"]`.
-  - `medium` — 4 actions for publishing to personal feed and publications.
-    Auth: Bearer integration token. NOTE: Medium API was deprecated for new
-    tokens in 2023; this connector works only for users with existing legacy
-    tokens. Comments and post listing are out of scope (Medium API does not
-    provide them; RSS scraping rejected as TOS-violating).
+    on failure, posted-so-far tweets are preserved on
+    `e.details["posted_tweets"]`.
+
+  - **`medium`** — 4 actions for publishing to personal feed and
+    publications. Auth: Bearer integration token. **NOTE**: Medium API
+    was deprecated for new tokens in 2023; this connector works only for
+    users with existing legacy tokens. Comments and post listing are out
+    of scope (Medium API does not provide them; RSS scraping rejected
+    as TOS-violating).
 
 - **`[publishers]` install bundle**: `pip install "toolsconnector[publishers]"`
   installs all three together for content-workflow agents.
 
 - **`ConnectorCategory.SOCIAL`** put into active use for the first time
   (was reserved in the enum, now used by linkedin/x/medium).
+
+- **End-to-end verification with respx**: every linkedin and x endpoint's
+  HTTP method, path, query parameters, body shape, and error mapping was
+  verified against mocks of the documented APIs before this release.
 
 ### Stats
 

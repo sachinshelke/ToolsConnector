@@ -26,21 +26,34 @@ This connector calls three LinkedIn API surfaces, all under
   Standard OIDC userinfo endpoint, no version header needed.
   Docs: https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2
 
-Scope tiers
------------
-LinkedIn splits read and write scopes:
+Scope tiers (verified against the live API, 2026-04)
+------------------------------------------------------
+LinkedIn's public docs claim ``w_member_social`` covers posts, comments,
+and reactions. **Live testing proves only a subset is actually available
+to standard BYOK developers** — comments, reactions, and all read actions
+are additionally gated behind LinkedIn Partner Program approval and
+return ``403 partnerApi*.CREATE/READ`` regardless of OAuth scope.
 
-- WRITE scopes (open via standard "Share on LinkedIn" + "Sign In with LinkedIn"
-  products, available to any developer):
-  ``openid profile email`` — get_profile.
-  ``w_member_social`` — create_post, delete_post, create_comment, react_to_post.
+WORKS for any developer with "Sign In with LinkedIn using OpenID Connect"
++ "Share on LinkedIn" products enabled (default self-serve):
+  - ``get_profile``    — OIDC ``/v2/userinfo`` (``openid profile email``)
+  - ``create_post``    — ``POST /rest/posts``        (``w_member_social``)
+  - ``delete_post``    — ``DELETE /rest/posts/{urn}`` (``w_member_social``)
 
-- READ scope (RESTRICTED — granted to LinkedIn-approved developers only):
-  ``r_member_social`` — get_post, list_my_posts, list_comments.
+REQUIRES LinkedIn Partner Program approval (returns HTTP 403 with
+``partnerApiReactions.*`` / ``partnerApiSocialActions.*`` / read-scope
+errors on standard tokens):
+  - ``react_to_post``  — ``partnerApiReactions.CREATE``
+  - ``create_comment`` — ``partnerApiSocialActions.CREATE``
+  - ``list_comments``  — ``partnerApiSocialActions.READ``
+  - ``get_post``       — ``r_member_social`` (restricted scope)
+  - ``list_my_posts``  — ``r_member_social`` (restricted scope)
 
-Standard apps without ``r_member_social`` will get HTTP 403 ``ACCESS_DENIED``
-on the read endpoints, mapped here to ``PermissionDeniedError`` with a clear
-hint.
+All partner-gated endpoints are still exposed by this connector — they
+return ``PermissionDeniedError`` with a hint pointing at the LinkedIn
+Partner Program when called without approval. This matches the X-tier
+pattern where the connector reaches the full API surface and lets X's
+server-side enforcement decide what the user's account can do.
 
 Out of scope (see README "Not Supported"):
 - DMs / Messaging API — requires LinkedIn Partner Program approval (a
@@ -113,24 +126,30 @@ _REACTION_TYPES = {
 class LinkedIn(BaseConnector):
     """Connect to LinkedIn to post, comment, and react on the authenticated feed.
 
-    Requires an OAuth 2.0 Bearer token passed as ``credentials``. The token
-    must include scopes appropriate to your use:
+    Requires an OAuth 2.0 Bearer token passed as ``credentials``.
 
-    - ``openid profile email`` — for ``get_profile`` (OIDC userinfo).
-      Granted by the **Sign in with LinkedIn using OpenID Connect** product.
-    - ``w_member_social`` — for ``create_post``, ``delete_post``,
-      ``create_comment``, ``react_to_post``.
-      Granted by the **Share on LinkedIn** product.
-    - ``r_member_social`` — for ``get_post``, ``list_my_posts``,
-      ``list_comments``. **RESTRICTED**: this scope is granted to
-      approved developers only. Standard apps cannot call read endpoints.
+    Scopes you can request via the standard self-serve products:
+
+    - ``openid profile email`` (Sign In with LinkedIn using OpenID Connect)
+      → ``get_profile``.
+    - ``w_member_social`` (Share on LinkedIn product)
+      → ``create_post``, ``delete_post``.
+
+    Everything else (``create_comment``, ``react_to_post``,
+    ``list_comments``, ``get_post``, ``list_my_posts``) requires
+    **LinkedIn Partner Program approval**. Standard self-serve tokens
+    hit ``partnerApi*`` gating and get HTTP 403, which this connector
+    maps to ``PermissionDeniedError`` with a clear hint. This is a
+    LinkedIn commercial policy — documented here based on LIVE testing
+    against the real API, not inferred from LinkedIn's public docs
+    (which incorrectly imply ``w_member_social`` is sufficient).
 
     Tokens expire after 60 days (default for LinkedIn member tokens).
     Missing/expired tokens raise ``TokenExpiredError`` with a hint to
     regenerate via the LinkedIn Developer App console.
 
-    DMs and mentions are NOT supported — they require LinkedIn Partner
-    Program approval (a contract, not OAuth scopes). See README.
+    DMs and mentions also require Partner Program approval and are
+    not included at all.
     """
 
     name = "linkedin"
@@ -551,7 +570,7 @@ class LinkedIn(BaseConnector):
     # ======================================================================
 
     @action(
-        "Post a comment on a LinkedIn post",
+        "Post a comment on a LinkedIn post (PARTNER APPROVAL REQUIRED)",
         dangerous=True,
     )
     async def create_comment(
@@ -563,8 +582,13 @@ class LinkedIn(BaseConnector):
         """Comment on a post via the LinkedIn Comments API.
 
         Endpoint: ``POST /rest/socialActions/{encoded post_urn}/comments``.
-        Required scope: ``w_member_social`` (Share on LinkedIn product
-        grants this — same scope used for posting).
+
+        Required scope (per LinkedIn public docs): ``w_member_social``.
+        However, **live testing 2026-04 shows this endpoint is gated
+        behind the LinkedIn Partner Program** (partnerApiSocialActions).
+        Standard self-serve tokens return 403 here, mapped to
+        ``PermissionDeniedError`` with a hint pointing at the Partner
+        Program.
 
         Args:
             post_urn: The post URN to comment on (e.g.
@@ -644,8 +668,8 @@ class LinkedIn(BaseConnector):
     # ======================================================================
 
     @action(
-        "React to a LinkedIn post (LIKE / PRAISE / EMPATHY / INTEREST / "
-        "APPRECIATION / ENTERTAINMENT)",
+        "React to a LinkedIn post (PARTNER APPROVAL REQUIRED) — "
+        "LIKE / PRAISE / EMPATHY / INTEREST / APPRECIATION / ENTERTAINMENT",
         dangerous=True,
     )
     async def react_to_post(
@@ -657,10 +681,17 @@ class LinkedIn(BaseConnector):
         """Add a reaction to a post via the LinkedIn Reactions API.
 
         Endpoint: ``POST /rest/reactions?actor={encoded actor URN}``.
-        Required scope: ``w_member_social``. Note that LinkedIn's
-        Reactions API takes ``actor`` as a **query parameter**, not a
-        body field. The body carries only ``root`` (the entity being
-        reacted to) and ``reactionType``.
+
+        Required scope (per LinkedIn public docs): ``w_member_social``.
+        However, **live testing 2026-04 shows this endpoint is gated
+        behind the LinkedIn Partner Program** (partnerApiReactions).
+        Standard self-serve tokens return 403 here, mapped to
+        ``PermissionDeniedError`` with a hint pointing at the Partner
+        Program.
+
+        LinkedIn's Reactions API takes ``actor`` as a **query parameter**,
+        not a body field. The body carries only ``root`` (the entity
+        being reacted to) and ``reactionType``.
 
         Args:
             post_urn: The reaction target URN. Can be a share URN, ugcPost

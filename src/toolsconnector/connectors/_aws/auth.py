@@ -219,10 +219,10 @@ def parse_credentials(
         )
 
     raise ValueError(
-        f"Unrecognised credential format. Accepted formats:\n"
-        f"  1. None or 'env' -- read from environment variables\n"
-        f"  2. dict with 'access_key_id' and 'secret_access_key'\n"
-        f"  3. JSON string: '{{\"access_key_id\": ..., ...}}'\n"
-        f"  4. 'profile:<name>' -- read from ~/.aws/credentials\n"
-        f"  5. 'key:secret:region' -- colon-separated string"
+        "Unrecognised credential format. Accepted formats:\n"
+        "  1. None or 'env' -- read from environment variables\n"
+        "  2. dict with 'access_key_id' and 'secret_access_key'\n"
+        "  3. JSON string: '{\"access_key_id\": ..., ...}'\n"
+        "  4. 'profile:<name>' -- read from ~/.aws/credentials\n"
+        "  5. 'key:secret:region' -- colon-separated string"
     )

@@ -22,12 +22,9 @@ from toolsconnector.types import PageState, PaginatedList
 from .types import (
     PDEscalationPolicy,
     PDIncident,
-    PDMaintenanceWindow,
     PDOncall,
-    PDPriority,
     PDSchedule,
     PDService,
-    PDTeam,
     PDUser,
 )
 

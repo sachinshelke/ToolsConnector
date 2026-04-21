@@ -108,7 +108,7 @@ def build_presigned_url(
     def _sign(k: bytes, msg: str) -> bytes:
         return hmac.new(k, msg.encode("utf-8"), hashlib.sha256).digest()
 
-    date_key = _sign(f"AWS4{secret_access_key}".encode("utf-8"), date_stamp)
+    date_key = _sign(f"AWS4{secret_access_key}".encode(), date_stamp)
     region_key = _sign(date_key, region)
     service_key = _sign(region_key, "s3")
     signing_key = _sign(service_key, "aws4_request")
@@ -151,7 +151,7 @@ def build_tagging_xml(tags: dict[str, str], namespace: str) -> bytes:
         f'<Tagging xmlns="{namespace}">'
         f"<TagSet>{tag_elements}</TagSet>"
         f"</Tagging>"
-    ).encode("utf-8")
+    ).encode()
 
 
 def compute_content_md5(body: bytes) -> str:

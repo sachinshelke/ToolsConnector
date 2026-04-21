@@ -15,7 +15,6 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PageState, PaginatedList
 
 from .types import (
-    CalendlyAvailableTime,
     CalendlyEvent,
     CalendlyEventType,
     CalendlyInvitee,
@@ -360,13 +359,14 @@ class Calendly(BaseConnector):
         if reason:
             body["reason"] = reason
 
-        data = await self._request(
+        # Issue the cancellation. The response payload is intentionally
+        # discarded — we re-fetch the event below to return the full
+        # post-cancellation state to the caller.
+        await self._request(
             "POST",
             f"/scheduled_events/{event_uuid}/cancellation",
             json=body,
         )
-        resource = data.get("resource", data)
-        # Refetch the event to get full details
         return await self.get_event(event_uuid)
 
     # ------------------------------------------------------------------

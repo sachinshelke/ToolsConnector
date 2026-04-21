@@ -16,11 +16,9 @@ from toolsconnector.types import PageState, PaginatedList
 
 from .types import (
     IntercomAdmin,
-    IntercomCompany,
     IntercomContact,
     IntercomConversation,
     IntercomMessage,
-    IntercomSegment,
     IntercomTag,
 )
 

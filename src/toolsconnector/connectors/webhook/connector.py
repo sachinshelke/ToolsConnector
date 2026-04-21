@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
-import logging
 import time
 from typing import Any, Optional
 from xml.etree.ElementTree import Element, SubElement, tostring

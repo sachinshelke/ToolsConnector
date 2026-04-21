@@ -408,11 +408,11 @@ class Firestore(BaseConnector):
         path = _doc_path(project, collection, document_id)
         encoded = _encode_fields(fields)
 
+        # httpx handles repeated query params via list values, so passing
+        # the field-paths list directly produces ?updateMask.fieldPaths=a
+        # &updateMask.fieldPaths=b... per the Firestore patch-mask spec.
         params: dict[str, Any] = {}
         field_paths = list(fields.keys())
-        for fp in field_paths:
-            params.setdefault("updateMask.fieldPaths", [])
-        # httpx handles repeated params via list values
         if field_paths:
             params["updateMask.fieldPaths"] = field_paths
 

@@ -44,7 +44,7 @@ class BasicAuthProvider:
         self._username = username
         self._password = password
         # Pre-compute the encoded value since it never changes.
-        raw = f"{self._username}:{self._password}".encode("utf-8")
+        raw = f"{self._username}:{self._password}".encode()
         self._encoded = base64.b64encode(raw).decode("ascii")
 
     # ------------------------------------------------------------------

@@ -1,19 +1,26 @@
 {
-    "permissions": {
-        "allow": [
-            "Read",
-            "Edit",
-            "Bash",
-            "Bash(git commit *)",
-            "Bash(git * main)",
-            "Bash(*)",
-            "WebSearch",
-            "WebFetch(*)"
-        ],
-        "deny": [
-            "Bash(git push *)",
-            "Bash(sudo *)"
-        ],
-        "defaultMode": "bypassPermissions"
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Bash",
+      "Bash(git * main)",
+      "Bash(*)",
+      "WebSearch",
+      "WebFetch(*)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Bash(sudo *)"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "mcpServers": {
+    "codevira": {
+      "command": "/Users/sachin/.local/bin/codevira",
+      "args": [],
+      "cwd": "/Users/sachin/Documents/Projects/Agentic/ToolsConnector"
     }
+  }
 }

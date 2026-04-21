@@ -400,10 +400,8 @@ class Airtable(BaseConnector):
         Returns:
             True if the deletion was successful.
         """
-        params: dict[str, Any] = {}
-        for i, rid in enumerate(record_ids[:10]):
-            params[f"records[]"] = rid
-        # Airtable expects repeated query params for batch delete
+        # Airtable expects repeated query params for batch delete:
+        # ?records[]=id1&records[]=id2... (max 10 per call).
         query_parts = "&".join(f"records[]={rid}" for rid in record_ids[:10])
         resp = await self._request(
             "DELETE", f"/{base_id}/{table_name}?{query_parts}",

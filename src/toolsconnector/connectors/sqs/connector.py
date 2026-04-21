@@ -26,7 +26,7 @@ from toolsconnector.spec.connector import (
     RateLimitSpec,
 )
 from toolsconnector.types import PaginatedList, PageState
-from toolsconnector.errors import APIError, NotFoundError, ValidationError
+from toolsconnector.errors import APIError, NotFoundError
 
 from toolsconnector.connectors._aws.signing import sign_v4
 

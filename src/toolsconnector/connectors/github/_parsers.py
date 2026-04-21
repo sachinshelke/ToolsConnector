@@ -21,7 +21,6 @@ from .types import (
     GitHubMilestone,
     GitHubUser,
     Issue,
-    PullRequest,
     Release,
     Repository,
     Workflow,

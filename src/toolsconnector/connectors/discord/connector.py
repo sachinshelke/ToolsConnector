@@ -21,7 +21,6 @@ from toolsconnector.errors import (
 )
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
-from toolsconnector.types import PaginatedList
 
 from .types import (
     DiscordChannel,
@@ -30,7 +29,6 @@ from .types import (
     DiscordRole,
     DiscordUser,
     DiscordWebhook,
-    Embed,
     GuildMember,
 )
 

@@ -20,7 +20,6 @@ from .types import (
     CalendarColors,
     CalendarEvent,
     EventAttendee,
-    EventId,
     EventTime,
     FreeBusyCalendar,
 )

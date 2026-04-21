@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import io
 from pathlib import Path
-from typing import AsyncIterator, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
+from collections.abc import AsyncIterator
 
 from pydantic import BaseModel, ConfigDict, Field
 

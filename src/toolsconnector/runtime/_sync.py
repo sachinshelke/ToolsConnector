@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from typing import Any, Coroutine, TypeVar
+from typing import Any, TypeVar
+from collections.abc import Coroutine
 
 T = TypeVar("T")
 
@@ -48,27 +49,45 @@ def _get_background_loop() -> asyncio.AbstractEventLoop:
 def run_sync(coro: Coroutine[Any, Any, T]) -> T:
     """Run an async coroutine synchronously.
 
-    Detects whether an event loop is already running:
-    - If no loop is running: uses ``asyncio.run()``.
-    - If a loop is already running (e.g., inside Jupyter, FastAPI):
-      dispatches to a background thread's event loop.
+    Always dispatches to a long-lived background-thread event loop so
+    that async resources (httpx clients, connection pools, cached
+    connector instances) can survive across multiple sync calls.
+
+    Rationale:
+        An earlier version used ``asyncio.run()`` when no loop was
+        active. That creates a fresh loop per call and closes it after
+        the coroutine returns. ``ToolKit`` caches connector instances
+        (including their ``httpx.AsyncClient``) across calls, so the
+        second ``kit.execute()`` would try to use a client whose
+        transport was bound to the closed first loop, raising
+        ``RuntimeError: Event loop is closed`` during response cleanup.
+
+        Using a single persistent background loop means the cached
+        httpx transports stay bound to a loop that never closes for
+        the process lifetime — cache + sync API now compose correctly.
 
     Args:
         coro: The coroutine to execute.
 
     Returns:
         The coroutine's return value.
-    """
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
 
-    if loop is None:
-        # No event loop running — safe to use asyncio.run()
-        return asyncio.run(coro)
-    else:
-        # Event loop already running — dispatch to background thread
-        bg_loop = _get_background_loop()
-        future = asyncio.run_coroutine_threadsafe(coro, bg_loop)
-        return future.result()
+    Raises:
+        RuntimeError: If called from inside a coroutine running on the
+            background loop itself (would deadlock). Use ``await`` there.
+    """
+    bg_loop = _get_background_loop()
+
+    try:
+        running = asyncio.get_running_loop()
+    except RuntimeError:
+        running = None
+
+    if running is bg_loop:
+        raise RuntimeError(
+            "run_sync() called from inside the background async loop; "
+            "use 'await' directly instead."
+        )
+
+    future = asyncio.run_coroutine_threadsafe(coro, bg_loop)
+    return future.result()

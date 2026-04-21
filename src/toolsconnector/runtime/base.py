@@ -13,10 +13,7 @@ from abc import ABC
 from typing import (
     Any,
     ClassVar,
-    Dict,
-    List,
     Optional,
-    Type,
 )
 
 from pydantic import BaseModel
@@ -71,7 +68,7 @@ class BaseConnector(ABC):
     base_url: ClassVar[Optional[str]] = None
 
     # Overridden by subclasses to declare auth, rate limits
-    _auth_providers_config: ClassVar[List[Any]] = []
+    _auth_providers_config: ClassVar[list[Any]] = []
     _rate_limit_config: ClassVar[Optional[RateLimitSpec]] = None
 
     def __init__(
@@ -79,7 +76,7 @@ class BaseConnector(ABC):
         *,
         credentials: Any = None,
         keystore: Any = None,
-        middleware: Optional[List[Any]] = None,
+        middleware: Optional[list[Any]] = None,
         storage: Any = None,
         tenant_id: Optional[str] = None,
         base_url: Optional[str] = None,
@@ -171,7 +168,7 @@ class BaseConnector(ABC):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_val: Optional[BaseException],
         exc_tb: Any,
     ) -> None:
@@ -187,7 +184,7 @@ class BaseConnector(ABC):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_val: Optional[BaseException],
         exc_tb: Any,
     ) -> None:
@@ -198,7 +195,7 @@ class BaseConnector(ABC):
     # --- Schema introspection (no instantiation needed) ---
 
     @classmethod
-    def get_actions(cls) -> Dict[str, ActionMeta]:
+    def get_actions(cls) -> dict[str, ActionMeta]:
         """Extract all action metadata from this connector.
 
         Returns:
@@ -219,7 +216,7 @@ class BaseConnector(ABC):
         actions_meta = cls.get_actions()
 
         # Convert ActionMeta → ActionSpec
-        action_specs: Dict[str, ActionSpec] = {}
+        action_specs: dict[str, ActionSpec] = {}
         for name, meta in actions_meta.items():
             action_specs[name] = ActionSpec(
                 name=meta.name,

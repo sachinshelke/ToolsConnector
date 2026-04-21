@@ -21,7 +21,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 
 # Default location for the encrypted key file

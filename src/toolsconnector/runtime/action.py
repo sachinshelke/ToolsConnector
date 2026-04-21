@@ -15,13 +15,11 @@ from __future__ import annotations
 import functools
 import inspect
 from dataclasses import dataclass, field
+from collections.abc import Sequence
 from typing import (
     Any,
     Callable,
-    Dict,
-    List,
     Optional,
-    Sequence,
     get_type_hints,
 )
 
@@ -57,15 +55,15 @@ class ActionMeta:
 
     name: str
     description: str
-    parameters: List[ParameterSpec] = field(default_factory=list)
-    input_schema: Dict[str, Any] = field(default_factory=dict)
-    output_schema: Dict[str, Any] = field(default_factory=dict)
+    parameters: list[ParameterSpec] = field(default_factory=list)
+    input_schema: dict[str, Any] = field(default_factory=dict)
+    output_schema: dict[str, Any] = field(default_factory=dict)
     return_type_name: str = "Any"
     requires_scope: Optional[str] = None
     dangerous: bool = False
     idempotent: bool = False
     pagination: Optional[PaginationSpec] = None
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     rate_limit_weight: int = 1
 
 
@@ -89,18 +87,18 @@ def _python_type_to_json_type(annotation: Any) -> str:
 
 def _build_parameter_specs(
     func: Callable[..., Any],
-) -> List[ParameterSpec]:
+) -> list[ParameterSpec]:
     """Extract parameter specs from a function's signature and docstring."""
     sig = inspect.signature(func)
     hints = get_type_hints(func) if hasattr(func, "__annotations__") else {}
     doc = parse_docstring(func.__doc__ or "")
 
     # Build a map of param name → docstring description
-    doc_params: Dict[str, str] = {}
+    doc_params: dict[str, str] = {}
     for dp in doc.params:
         doc_params[dp.arg_name] = dp.description or ""
 
-    params: List[ParameterSpec] = []
+    params: list[ParameterSpec] = []
     for name, param in sig.parameters.items():
         if name == "self":
             continue
@@ -139,13 +137,13 @@ def _build_parameter_specs(
 def _build_input_schema(
     func: Callable[..., Any],
     param_specs: Sequence[ParameterSpec],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a JSON Schema dict for the action's input parameters."""
-    properties: Dict[str, Any] = {}
-    required: List[str] = []
+    properties: dict[str, Any] = {}
+    required: list[str] = []
 
     for ps in param_specs:
-        prop: Dict[str, Any] = {"type": ps.type}
+        prop: dict[str, Any] = {"type": ps.type}
         if ps.description:
             prop["description"] = ps.description
         if ps.default is not None:
@@ -163,7 +161,7 @@ def _build_input_schema(
         if ps.required:
             required.append(ps.name)
 
-    schema: Dict[str, Any] = {"type": "object", "properties": properties}
+    schema: dict[str, Any] = {"type": "object", "properties": properties}
     if required:
         schema["required"] = required
     return schema
@@ -176,7 +174,7 @@ def action(
     dangerous: bool = False,
     idempotent: bool = False,
     pagination: Optional[PaginationSpec] = None,
-    tags: Optional[List[str]] = None,
+    tags: Optional[list[str]] = None,
     rate_limit_weight: int = 1,
 ) -> Callable[..., Any]:
     """Decorator that marks a method as a connector action.
@@ -268,7 +266,7 @@ def action(
     return decorator
 
 
-def get_actions(cls: type) -> Dict[str, ActionMeta]:
+def get_actions(cls: type) -> dict[str, ActionMeta]:
     """Extract all action metadata from a connector class.
 
     Args:
@@ -277,7 +275,7 @@ def get_actions(cls: type) -> Dict[str, ActionMeta]:
     Returns:
         Dict mapping action name to ActionMeta.
     """
-    actions: Dict[str, ActionMeta] = {}
+    actions: dict[str, ActionMeta] = {}
     for name in dir(cls):
         method = getattr(cls, name, None)
         if method is not None and hasattr(method, "__action_meta__"):
