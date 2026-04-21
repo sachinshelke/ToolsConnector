@@ -16,7 +16,7 @@ import datetime
 import hashlib
 import json
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import httpx
 
@@ -148,7 +148,7 @@ class Lambda(BaseConnector):
         self,
         method: str,
         path: str,
-        body: dict | bytes | None = None,
+        body: Optional[Union[dict, bytes]] = None,
     ) -> httpx.Response:
         """Send a SigV4-signed REST request to the Lambda API.
 

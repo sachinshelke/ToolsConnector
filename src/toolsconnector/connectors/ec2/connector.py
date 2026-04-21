@@ -22,7 +22,7 @@ import hashlib
 import logging
 import urllib.parse
 import xml.etree.ElementTree as ET
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import httpx
 
@@ -99,7 +99,7 @@ def _find_deep(elem: ET.Element, path: str) -> str:
         Element text or empty string if not found.
     """
     parts = path.split(".")
-    current: ET.Element | None = elem
+    current: Optional[ET.Element] = elem
     for part in parts[:-1]:
         if current is None:
             return ""
@@ -132,7 +132,7 @@ def _encode_list(prefix: str, items: list[str]) -> dict[str, str]:
     return {f"{prefix}.{i}": v for i, v in enumerate(items, 1)}
 
 
-def _encode_filters(filters: dict[str, str | list[str]]) -> dict[str, str]:
+def _encode_filters(filters: dict[str, Union[str, list[str]]]) -> dict[str, str]:
     """Encode a filter dict into EC2 numbered filter parameter format.
 
     EC2 uses ``Filter.N.Name`` and ``Filter.N.Value.M`` notation::
@@ -239,7 +239,7 @@ class EC2(BaseConnector):
     async def _ec2_request(
         self,
         ec2_action: str,
-        params: dict[str, str] | None = None,
+        params: Optional[dict[str, str]] = None,
     ) -> ET.Element:
         """Send a Query API request to EC2.
 
@@ -577,7 +577,7 @@ class EC2(BaseConnector):
         min_count: int = 1,
         max_count: int = 1,
         key_name: str = "",
-        security_group_ids: list[str] | None = None,
+        security_group_ids: Optional[list[str]] = None,
         subnet_id: str = "",
         user_data: str = "",
     ) -> list[EC2Instance]:
@@ -630,8 +630,8 @@ class EC2(BaseConnector):
     @action("Describe EC2 instances")
     async def describe_instances(
         self,
-        instance_ids: list[str] | None = None,
-        filters: dict[str, str | list[str]] | None = None,
+        instance_ids: Optional[list[str]] = None,
+        filters: Optional[dict[str, Union[str, list[str]]]] = None,
     ) -> list[EC2Instance]:
         """Describe EC2 instances with optional filtering.
 
@@ -895,7 +895,7 @@ class EC2(BaseConnector):
     @action("Describe Elastic IP addresses")
     async def describe_addresses(
         self,
-        allocation_ids: list[str] | None = None,
+        allocation_ids: Optional[list[str]] = None,
     ) -> list[EC2Address]:
         """Describe Elastic IP addresses.
 
@@ -959,7 +959,7 @@ class EC2(BaseConnector):
     @action("Describe security groups")
     async def describe_security_groups(
         self,
-        group_ids: list[str] | None = None,
+        group_ids: Optional[list[str]] = None,
     ) -> list[EC2SecurityGroup]:
         """Describe security groups.
 
@@ -1134,9 +1134,9 @@ class EC2(BaseConnector):
     @action("Describe AMI images")
     async def describe_images(
         self,
-        image_ids: list[str] | None = None,
-        owners: list[str] | None = None,
-        filters: dict[str, str | list[str]] | None = None,
+        image_ids: Optional[list[str]] = None,
+        owners: Optional[list[str]] = None,
+        filters: Optional[dict[str, Union[str, list[str]]]] = None,
     ) -> list[EC2Image]:
         """Describe Amazon Machine Images (AMIs).
 
@@ -1168,7 +1168,7 @@ class EC2(BaseConnector):
     @action("Describe available instance types")
     async def describe_instance_types(
         self,
-        instance_types: list[str] | None = None,
+        instance_types: Optional[list[str]] = None,
     ) -> list[EC2InstanceType]:
         """Describe available EC2 instance types and their specifications.
 
@@ -1244,7 +1244,7 @@ class EC2(BaseConnector):
     @action("Describe tags")
     async def describe_tags(
         self,
-        filters: dict[str, str | list[str]] | None = None,
+        filters: Optional[dict[str, Union[str, list[str]]]] = None,
     ) -> list[dict[str, Any]]:
         """Describe tags on EC2 resources with optional filtering.
 
@@ -1279,7 +1279,7 @@ class EC2(BaseConnector):
     @action("Describe VPCs")
     async def describe_vpcs(
         self,
-        vpc_ids: list[str] | None = None,
+        vpc_ids: Optional[list[str]] = None,
     ) -> list[EC2Vpc]:
         """Describe Virtual Private Clouds.
 
@@ -1305,8 +1305,8 @@ class EC2(BaseConnector):
     @action("Describe subnets")
     async def describe_subnets(
         self,
-        subnet_ids: list[str] | None = None,
-        filters: dict[str, str | list[str]] | None = None,
+        subnet_ids: Optional[list[str]] = None,
+        filters: Optional[dict[str, Union[str, list[str]]]] = None,
     ) -> list[EC2Subnet]:
         """Describe VPC subnets.
 
@@ -1339,7 +1339,7 @@ class EC2(BaseConnector):
     @action("Describe EBS volumes")
     async def describe_volumes(
         self,
-        volume_ids: list[str] | None = None,
+        volume_ids: Optional[list[str]] = None,
     ) -> list[EC2Volume]:
         """Describe EBS volumes.
 

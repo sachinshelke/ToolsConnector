@@ -24,7 +24,7 @@ import hashlib
 import logging
 import urllib.parse
 import xml.etree.ElementTree as ET
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 
@@ -174,7 +174,7 @@ class IAM(BaseConnector):
     async def _iam_request(
         self,
         iam_action: str,
-        params: dict[str, str] | None = None,
+        params: Optional[dict[str, str]] = None,
     ) -> ET.Element:
         """Send a Query API request to IAM.
 

@@ -211,7 +211,7 @@ class ALB(BaseConnector):
     async def _alb_request(
         self,
         api_action: str,
-        params: dict[str, str] | None = None,
+        params: Optional[dict[str, str]] = None,
     ) -> ET.Element:
         """Execute a signed ELBv2 Query API request.
 
