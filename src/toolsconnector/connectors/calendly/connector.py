@@ -89,9 +89,7 @@ class Calendly(BaseConnector):
         Raises:
             httpx.HTTPStatusError: On non-2xx responses.
         """
-        response = await self._client.request(
-            method, path, json=json, params=params
-        )
+        response = await self._client.request(method, path, json=json, params=params)
         response.raise_for_status()
         if response.status_code == 204:
             return {}
@@ -250,9 +248,7 @@ class Calendly(BaseConnector):
         if page_token:
             params["page_token"] = page_token
 
-        data = await self._request(
-            "GET", "/event_types", params=params
-        )
+        data = await self._request("GET", "/event_types", params=params)
 
         collection = data.get("collection", [])
         event_types = [self._parse_event_type(et) for et in collection]
@@ -307,9 +303,7 @@ class Calendly(BaseConnector):
         if page_token:
             params["page_token"] = page_token
 
-        data = await self._request(
-            "GET", "/scheduled_events", params=params
-        )
+        data = await self._request("GET", "/scheduled_events", params=params)
 
         collection = data.get("collection", [])
         events = [self._parse_event(e) for e in collection]
@@ -334,9 +328,7 @@ class Calendly(BaseConnector):
         Returns:
             The requested CalendlyEvent.
         """
-        data = await self._request(
-            "GET", f"/scheduled_events/{event_uuid}"
-        )
+        data = await self._request("GET", f"/scheduled_events/{event_uuid}")
         resource = data.get("resource", data)
         return self._parse_event(resource)
 
@@ -438,9 +430,7 @@ class Calendly(BaseConnector):
             "organization": organization_uri,
             "scope": scope,
         }
-        data = await self._request(
-            "GET", "/webhook_subscriptions", params=params
-        )
+        data = await self._request("GET", "/webhook_subscriptions", params=params)
 
         collection = data.get("collection", [])
         webhooks = [self._parse_webhook(w) for w in collection]
@@ -481,9 +471,7 @@ class Calendly(BaseConnector):
             "organization": organization_uri,
             "scope": scope,
         }
-        data = await self._request(
-            "POST", "/webhook_subscriptions", json=body
-        )
+        data = await self._request("POST", "/webhook_subscriptions", json=body)
         resource = data.get("resource", data)
         return self._parse_webhook(resource)
 
@@ -508,7 +496,8 @@ class Calendly(BaseConnector):
         # Extract org UUID from URI
         org_uuid = org_uri.rstrip("/").split("/")[-1]
         org_data = await self._request(
-            "GET", f"/organizations/{org_uuid}",
+            "GET",
+            f"/organizations/{org_uuid}",
         )
         return org_data.get("resource", org_data)
 
@@ -525,7 +514,8 @@ class Calendly(BaseConnector):
         org_uri = resource.get("current_organization", "")
 
         data = await self._request(
-            "GET", "/routing_forms",
+            "GET",
+            "/routing_forms",
             params={"organization": org_uri},
         )
         return data.get("collection", [])
@@ -536,7 +526,8 @@ class Calendly(BaseConnector):
 
     @action("Get a single event type by UUID")
     async def get_event_type(
-        self, event_type_uuid: str,
+        self,
+        event_type_uuid: str,
     ) -> CalendlyEventType:
         """Retrieve a single event type by its UUID.
 
@@ -547,7 +538,8 @@ class Calendly(BaseConnector):
             The requested CalendlyEventType.
         """
         data = await self._request(
-            "GET", f"/event_types/{event_type_uuid}",
+            "GET",
+            f"/event_types/{event_type_uuid}",
         )
         resource = data.get("resource", data)
         return self._parse_event_type(resource)
@@ -583,7 +575,9 @@ class Calendly(BaseConnector):
             params["end_time"] = end
 
         data = await self._request(
-            "GET", "/event_type_available_times", params=params,
+            "GET",
+            "/event_type_available_times",
+            params=params,
         )
         return data.get("collection", [])
 
@@ -672,7 +666,9 @@ class Calendly(BaseConnector):
             params["page_token"] = page_token
 
         data = await self._request(
-            "GET", "/organization_memberships", params=params,
+            "GET",
+            "/organization_memberships",
+            params=params,
         )
 
         collection = data.get("collection", [])
@@ -700,7 +696,8 @@ class Calendly(BaseConnector):
 
     @action("Delete a webhook subscription", dangerous=True)
     async def delete_webhook(
-        self, webhook_id: str,
+        self,
+        webhook_id: str,
     ) -> bool:
         """Delete a webhook subscription.
 
@@ -711,7 +708,8 @@ class Calendly(BaseConnector):
             True if the webhook was deleted.
         """
         await self._request(
-            "DELETE", f"/webhook_subscriptions/{webhook_id}",
+            "DELETE",
+            f"/webhook_subscriptions/{webhook_id}",
         )
         return True
 
@@ -733,7 +731,8 @@ class Calendly(BaseConnector):
             List of availability schedule dicts.
         """
         data = await self._request(
-            "GET", "/user_availability_schedules",
+            "GET",
+            "/user_availability_schedules",
             params={"user": user_uri},
         )
         return data.get("collection", [])
@@ -758,7 +757,8 @@ class Calendly(BaseConnector):
             List of busy time dicts with start_time and end_time.
         """
         data = await self._request(
-            "GET", "/user_busy_times",
+            "GET",
+            "/user_busy_times",
             params={
                 "user": user_uri,
                 "start_time": start_time,
@@ -799,7 +799,8 @@ class Calendly(BaseConnector):
         if timezone:
             payload["timezone"] = timezone
         data = await self._request(
-            "POST", f"/scheduled_events/{event_uuid}/invitees",
+            "POST",
+            f"/scheduled_events/{event_uuid}/invitees",
             json=payload,
         )
         return data.get("resource", data)
@@ -830,7 +831,9 @@ class Calendly(BaseConnector):
         if cursor:
             params["page_token"] = cursor
         data = await self._request(
-            "GET", "/activity_log_entries", params=params,
+            "GET",
+            "/activity_log_entries",
+            params=params,
         )
         entries = data.get("collection", [])
         pagination = data.get("pagination", {})

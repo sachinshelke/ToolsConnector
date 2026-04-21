@@ -94,8 +94,7 @@ class RateLimitMiddleware:
 
             if wait_time > self._timeout:
                 raise RateLimitError(
-                    f"Rate limit wait ({wait_time:.1f}s) exceeds "
-                    f"timeout ({self._timeout:.1f}s).",
+                    f"Rate limit wait ({wait_time:.1f}s) exceeds timeout ({self._timeout:.1f}s).",
                     connector=context.connector_name,
                     action=context.action_name,
                     retry_after_seconds=wait_time,

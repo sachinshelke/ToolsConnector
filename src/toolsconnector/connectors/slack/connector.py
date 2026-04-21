@@ -297,7 +297,9 @@ class Slack(BaseConnector):
             payload["thread_ts"] = thread_ts
 
         body = await self._request(
-            "POST", "chat.scheduleMessage", json_body=payload,
+            "POST",
+            "chat.scheduleMessage",
+            json_body=payload,
         )
         return ScheduledMessage(
             id=body.get("scheduled_message_id", ""),
@@ -331,7 +333,9 @@ class Slack(BaseConnector):
             payload["cursor"] = cursor
 
         body = await self._request(
-            "POST", "chat.scheduledMessages.list", json_body=payload,
+            "POST",
+            "chat.scheduledMessages.list",
+            json_body=payload,
         )
         items = [
             ScheduledMessage(
@@ -487,7 +491,9 @@ class Slack(BaseConnector):
             channel: Channel ID to archive.
         """
         await self._request(
-            "POST", "conversations.archive", json_body={"channel": channel},
+            "POST",
+            "conversations.archive",
+            json_body={"channel": channel},
         )
 
     @action("Unarchive a channel")
@@ -498,7 +504,9 @@ class Slack(BaseConnector):
             channel: Channel ID to unarchive.
         """
         await self._request(
-            "POST", "conversations.unarchive", json_body={"channel": channel},
+            "POST",
+            "conversations.unarchive",
+            json_body={"channel": channel},
         )
 
     @action("Rename a channel", dangerous=True)
@@ -598,7 +606,9 @@ class Slack(BaseConnector):
             The Channel object after joining.
         """
         body = await self._request(
-            "POST", "conversations.join", json_body={"channel": channel},
+            "POST",
+            "conversations.join",
+            json_body={"channel": channel},
         )
         return Channel(**body.get("channel", {}))
 
@@ -610,7 +620,9 @@ class Slack(BaseConnector):
             channel: Channel ID to leave.
         """
         await self._request(
-            "POST", "conversations.leave", json_body={"channel": channel},
+            "POST",
+            "conversations.leave",
+            json_body={"channel": channel},
         )
 
     @action("List members of a channel")
@@ -687,10 +699,7 @@ class Slack(BaseConnector):
 
         body = await self._request("GET", "conversations.history", params=params)
 
-        messages = [
-            Message(**{**msg, "channel": channel})
-            for msg in body.get("messages", [])
-        ]
+        messages = [Message(**{**msg, "channel": channel}) for msg in body.get("messages", [])]
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
         has_more = body.get("has_more", False) or bool(next_cursor)
 
@@ -730,10 +739,7 @@ class Slack(BaseConnector):
             params["cursor"] = cursor
 
         body = await self._request("GET", "conversations.replies", params=params)
-        messages = [
-            Message(**{**msg, "channel": channel})
-            for msg in body.get("messages", [])
-        ]
+        messages = [Message(**{**msg, "channel": channel}) for msg in body.get("messages", [])]
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
         has_more = body.get("has_more", False) or bool(next_cursor)
         return PaginatedList(
@@ -869,7 +875,9 @@ class Slack(BaseConnector):
             List of PinnedItem objects.
         """
         body = await self._request(
-            "GET", "pins.list", params={"channel": channel},
+            "GET",
+            "pins.list",
+            params={"channel": channel},
         )
         return [
             PinnedItem(
@@ -925,7 +933,9 @@ class Slack(BaseConnector):
             file_id: The file ID to delete.
         """
         await self._request(
-            "POST", "files.delete", json_body={"file": file_id},
+            "POST",
+            "files.delete",
+            json_body={"file": file_id},
         )
 
     @action("Get file info")
@@ -939,7 +949,9 @@ class Slack(BaseConnector):
             The SlackFile object with full metadata.
         """
         body = await self._request(
-            "GET", "files.info", params={"file": file_id},
+            "GET",
+            "files.info",
+            params={"file": file_id},
         )
         return SlackFile(**body.get("file", {}))
 
@@ -1026,7 +1038,9 @@ class Slack(BaseConnector):
             UserPresence object with activity status.
         """
         body = await self._request(
-            "GET", "users.getPresence", params={"user": user_id},
+            "GET",
+            "users.getPresence",
+            params={"user": user_id},
         )
         return UserPresence(
             presence=body.get("presence", "away"),
@@ -1165,7 +1179,9 @@ class Slack(BaseConnector):
             payload["emoji"] = emoji
 
         body = await self._request(
-            "POST", "bookmarks.add", json_body=payload,
+            "POST",
+            "bookmarks.add",
+            json_body=payload,
         )
         bk = body.get("bookmark", {})
         return Bookmark(
@@ -1190,7 +1206,9 @@ class Slack(BaseConnector):
             List of Bookmark objects.
         """
         body = await self._request(
-            "GET", "bookmarks.list", params={"channel_id": channel_id},
+            "GET",
+            "bookmarks.list",
+            params={"channel_id": channel_id},
         )
         return [
             Bookmark(
@@ -1251,7 +1269,9 @@ class Slack(BaseConnector):
             payload["user"] = user
 
         body = await self._request(
-            "POST", "reminders.add", json_body=payload,
+            "POST",
+            "reminders.add",
+            json_body=payload,
         )
         r = body.get("reminder", {})
         return Reminder(
@@ -1293,7 +1313,9 @@ class Slack(BaseConnector):
             reminder_id: The reminder ID.
         """
         await self._request(
-            "POST", "reminders.delete", json_body={"reminder": reminder_id},
+            "POST",
+            "reminders.delete",
+            json_body={"reminder": reminder_id},
         )
 
     # ======================================================================
@@ -1312,9 +1334,13 @@ class Slack(BaseConnector):
         result: list[CustomEmoji] = []
         for name, url in emoji_map.items():
             if url.startswith("alias:"):
-                result.append(CustomEmoji(
-                    name=name, url="", alias_for=url.removeprefix("alias:"),
-                ))
+                result.append(
+                    CustomEmoji(
+                        name=name,
+                        url="",
+                        alias_for=url.removeprefix("alias:"),
+                    )
+                )
             else:
                 result.append(CustomEmoji(name=name, url=url))
         return result
@@ -1434,7 +1460,9 @@ class Slack(BaseConnector):
             payload["channels"] = channels
 
         body = await self._request(
-            "POST", "usergroups.create", json_body=payload,
+            "POST",
+            "usergroups.create",
+            json_body=payload,
         )
         ug = body.get("usergroup", {})
         return SlackUserGroup(
@@ -1536,7 +1564,9 @@ class Slack(BaseConnector):
             payload["channels"] = channels
 
         body = await self._request(
-            "POST", "usergroups.update", json_body=payload,
+            "POST",
+            "usergroups.update",
+            json_body=payload,
         )
         ug = body.get("usergroup", {})
         return SlackUserGroup(

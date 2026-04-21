@@ -20,15 +20,14 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.errors import APIError, NotFoundError
-
-from toolsconnector.connectors._aws.signing import sign_v4
 
 from .types import (
     SMSecret,
@@ -57,10 +56,7 @@ class SecretsManager(BaseConnector):
     category = ConnectorCategory.SECURITY
     protocol = ProtocolType.REST
     base_url = "https://secretsmanager.us-east-1.amazonaws.com"
-    description = (
-        "Store, rotate, and retrieve database credentials, API keys, "
-        "and other secrets."
-    )
+    description = "Store, rotate, and retrieve database credentials, API keys, and other secrets."
     _rate_limit_config = RateLimitSpec(rate=50, period=1, burst=100)
 
     # ------------------------------------------------------------------
@@ -147,10 +143,7 @@ class SecretsManager(BaseConnector):
 
             err_type = err_body.get("__type", "")
             err_msg = err_body.get("message", err_body.get("Message", ""))
-            full_msg = (
-                f"SecretsManager {target_action} error: "
-                f"{err_type} - {err_msg}"
-            )
+            full_msg = f"SecretsManager {target_action} error: {err_type} - {err_msg}"
 
             if "ResourceNotFoundException" in err_type or "NotFound" in err_type:
                 raise NotFoundError(
@@ -197,9 +190,7 @@ class SecretsManager(BaseConnector):
                 str(data["LastAccessedDate"]) if data.get("LastAccessedDate") else None
             ),
             tags=tags,
-            created_date=(
-                str(data["CreatedDate"]) if data.get("CreatedDate") else None
-            ),
+            created_date=(str(data["CreatedDate"]) if data.get("CreatedDate") else None),
         )
 
     # ------------------------------------------------------------------
@@ -231,18 +222,14 @@ class SecretsManager(BaseConnector):
         if description:
             payload["Description"] = description
         if tags:
-            payload["Tags"] = [
-                {"Key": k, "Value": v} for k, v in tags.items()
-            ]
+            payload["Tags"] = [{"Key": k, "Value": v} for k, v in tags.items()]
 
         body = await self._sm_request("CreateSecret", payload)
         return SMSecret(
             arn=body.get("ARN", ""),
             name=body.get("Name", ""),
             description=description,
-            created_date=(
-                str(body["CreatedDate"]) if body.get("CreatedDate") else None
-            ),
+            created_date=(str(body["CreatedDate"]) if body.get("CreatedDate") else None),
         )
 
     @action("Get the value of a secret")
@@ -276,9 +263,7 @@ class SecretsManager(BaseConnector):
             secret_string=body.get("SecretString", ""),
             secret_binary=body.get("SecretBinary"),
             version_stages=body.get("VersionStages", []),
-            created_date=(
-                str(body["CreatedDate"]) if body.get("CreatedDate") else None
-            ),
+            created_date=(str(body["CreatedDate"]) if body.get("CreatedDate") else None),
         )
 
     @action("Update the value of a secret")
@@ -366,9 +351,7 @@ class SecretsManager(BaseConnector):
         return {
             "arn": body.get("ARN", ""),
             "name": body.get("Name", ""),
-            "deletion_date": (
-                str(body["DeletionDate"]) if body.get("DeletionDate") else None
-            ),
+            "deletion_date": (str(body["DeletionDate"]) if body.get("DeletionDate") else None),
         }
 
     @action("Restore a deleted secret")

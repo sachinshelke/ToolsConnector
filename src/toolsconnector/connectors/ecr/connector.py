@@ -20,15 +20,14 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.errors import APIError, NotFoundError
-
-from toolsconnector.connectors._aws.signing import sign_v4
 
 from .types import (
     ECRAuthorizationData,
@@ -60,8 +59,7 @@ class ECR(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://api.ecr.us-east-1.amazonaws.com"
     description = (
-        "Manage container image repositories, push/pull authorization, "
-        "and lifecycle policies."
+        "Manage container image repositories, push/pull authorization, and lifecycle policies."
     )
     _rate_limit_config = RateLimitSpec(rate=100, period=1, burst=200)
 
@@ -327,8 +325,7 @@ class ECR(BaseConnector):
                 image_digest=d.get("imageDigest", ""),
                 image_tags=d.get("imageTags", []),
                 image_pushed_at=(
-                    str(d.get("imagePushedAt", ""))
-                    if d.get("imagePushedAt") else None
+                    str(d.get("imagePushedAt", "")) if d.get("imagePushedAt") else None
                 ),
                 image_size_in_bytes=d.get("imageSizeInBytes"),
                 image_manifest_media_type=d.get("imageManifestMediaType"),
@@ -383,10 +380,7 @@ class ECR(BaseConnector):
         first = auth_data[0] if auth_data else {}
         return ECRAuthorizationData(
             authorization_token=first.get("authorizationToken", ""),
-            expires_at=(
-                str(first.get("expiresAt", ""))
-                if first.get("expiresAt") else None
-            ),
+            expires_at=(str(first.get("expiresAt", "")) if first.get("expiresAt") else None),
             proxy_endpoint=first.get("proxyEndpoint", ""),
         )
 

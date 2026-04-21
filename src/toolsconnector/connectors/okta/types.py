@@ -9,7 +9,6 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ---------------------------------------------------------------------------
 # Embedded models
 # ---------------------------------------------------------------------------
@@ -63,9 +62,7 @@ class OktaGroup(BaseModel):
     id: str = ""
     created: Optional[str] = None
     last_updated: Optional[str] = Field(None, alias="lastUpdated")
-    last_membership_updated: Optional[str] = Field(
-        None, alias="lastMembershipUpdated"
-    )
+    last_membership_updated: Optional[str] = Field(None, alias="lastMembershipUpdated")
     type: str = ""
     name: str = ""
     description: str = ""
@@ -106,6 +103,4 @@ class OktaLogEvent(BaseModel):
     target: list[dict[str, Any]] = Field(default_factory=list)
     transaction: Optional[dict[str, Any]] = None
     debug_context: Optional[dict[str, Any]] = Field(None, alias="debugContext")
-    authentication_context: Optional[dict[str, Any]] = Field(
-        None, alias="authenticationContext"
-    )
+    authentication_context: Optional[dict[str, Any]] = Field(None, alias="authenticationContext")

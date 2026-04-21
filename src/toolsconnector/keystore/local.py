@@ -23,7 +23,6 @@ import os
 from pathlib import Path
 from typing import Optional
 
-
 # Default location for the encrypted key file
 _DEFAULT_PATH = Path.home() / ".toolsconnector" / "keys.enc"
 
@@ -54,9 +53,7 @@ class LocalFileKeyStore:
     ) -> None:
         self._path = Path(path) if path else _DEFAULT_PATH
         self._password = (
-            password
-            or os.environ.get("TC_KEYSTORE_PASSWORD")
-            or self._machine_default_password()
+            password or os.environ.get("TC_KEYSTORE_PASSWORD") or self._machine_default_password()
         )
         self._data: dict[str, str] = {}
         self._key = self._derive_key(self._password)
@@ -89,6 +86,7 @@ class LocalFileKeyStore:
         """
         import getpass
         import platform
+
         return f"tc-dev-{platform.node()}-{getpass.getuser()}"
 
     def _encrypt(self, plaintext: str) -> bytes:
@@ -159,9 +157,7 @@ class LocalFileKeyStore:
         """
         return self._data.get(key)
 
-    async def set(
-        self, key: str, value: str, ttl: Optional[int] = None
-    ) -> None:
+    async def set(self, key: str, value: str, ttl: Optional[int] = None) -> None:
         """Store a credential.
 
         Args:

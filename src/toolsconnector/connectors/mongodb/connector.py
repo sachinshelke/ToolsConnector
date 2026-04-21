@@ -108,7 +108,9 @@ class MongoDB(BaseConnector):
         return resp
 
     def _base_body(
-        self, collection: str, database: str,
+        self,
+        collection: str,
+        database: str,
     ) -> dict[str, Any]:
         """Build the common body fields for a Data API request.
 
@@ -585,9 +587,12 @@ class MongoDB(BaseConnector):
         # Try the dedicated endpoint if available (some Atlas plans expose
         # it); fall back to an empty list on 4xx.
         try:
-            resp = await self._client.post("/action/listDatabases", json={
-                "dataSource": "Cluster0",
-            })
+            resp = await self._client.post(
+                "/action/listDatabases",
+                json={
+                    "dataSource": "Cluster0",
+                },
+            )
             resp.raise_for_status()
             data = resp.json()
             return [db.get("name", "") for db in data.get("databases", [])]
@@ -613,10 +618,13 @@ class MongoDB(BaseConnector):
         """
         # Try the dedicated endpoint first
         try:
-            resp = await self._client.post("/action/listCollections", json={
-                "dataSource": "Cluster0",
-                "database": database,
-            })
+            resp = await self._client.post(
+                "/action/listCollections",
+                json={
+                    "dataSource": "Cluster0",
+                    "database": database,
+                },
+            )
             resp.raise_for_status()
             data = resp.json()
             return [c.get("name", "") for c in data.get("collections", [])]

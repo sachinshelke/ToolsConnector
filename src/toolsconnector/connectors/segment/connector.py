@@ -98,9 +98,7 @@ class Segment(BaseConnector):
         Returns:
             Dict with Authorization header and content type.
         """
-        encoded = base64.b64encode(
-            f"{self._write_key}:".encode()
-        ).decode("ascii")
+        encoded = base64.b64encode(f"{self._write_key}:".encode()).decode("ascii")
         return {
             "Authorization": f"Basic {encoded}",
             "Content-Type": "application/json",
@@ -449,7 +447,9 @@ class Segment(BaseConnector):
 
     @action("Create a new Segment source", dangerous=True)
     async def create_source(
-        self, name: str, catalog_name: str,
+        self,
+        name: str,
+        catalog_name: str,
     ) -> SegmentSource:
         """Create a new Segment source.
 
@@ -467,7 +467,9 @@ class Segment(BaseConnector):
             },
         }
         resp = await self._config_request(
-            "POST", "/sources", json_body=payload,
+            "POST",
+            "/sources",
+            json_body=payload,
         )
         data = resp.json()
         s = data.get("data", {}).get("source", {})
@@ -494,7 +496,8 @@ class Segment(BaseConnector):
             True if the source was deleted.
         """
         resp = await self._config_request(
-            "DELETE", f"/sources/{source_id}",
+            "DELETE",
+            f"/sources/{source_id}",
         )
         return resp.status_code in (200, 204)
 
@@ -593,10 +596,7 @@ class Segment(BaseConnector):
         Returns:
             SegmentTrackResult indicating batch success.
         """
-        batch = [
-            {**u, "type": "identify"}
-            for u in users
-        ]
+        batch = [{**u, "type": "identify"} for u in users]
         payload: dict[str, Any] = {"batch": batch}
         data = await self._tracking_request("/batch", payload)
         return SegmentTrackResult(

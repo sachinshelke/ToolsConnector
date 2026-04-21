@@ -46,12 +46,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         default="stdio",
         help="Transport: stdio|sse|streamable-http",
     )
-    mcp_parser.add_argument(
-        "--port", type=int, default=3000, help="Port for HTTP transports"
-    )
-    mcp_parser.add_argument(
-        "--name", default="toolsconnector", help="Server name"
-    )
+    mcp_parser.add_argument("--port", type=int, default=3000, help="Port for HTTP transports")
+    mcp_parser.add_argument("--name", default="toolsconnector", help="Server name")
 
     # tc serve rest
     rest_parser = serve_sub.add_parser("rest", help="Start REST server")
@@ -64,6 +60,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     effective_argv = argv if argv is not None else sys.argv[1:]
     if effective_argv and effective_argv[0] not in ("list", "serve", "-h", "--help"):
         from toolsconnector.serve._discovery import list_connectors as _lc
+
         if effective_argv[0] in _lc():
             return _handle_connector_command(list(effective_argv))
 
@@ -94,7 +91,7 @@ def _cmd_list() -> int:
     Returns:
         Exit code.
     """
-    from toolsconnector.serve._discovery import list_connectors, get_connector_class
+    from toolsconnector.serve._discovery import get_connector_class, list_connectors
 
     connectors = list_connectors()
     print(f"\nAvailable connectors ({len(connectors)}):\n")
@@ -157,8 +154,7 @@ def _cmd_serve_rest(args: argparse.Namespace) -> int:
         import uvicorn
     except ImportError:
         print(
-            "REST server requires uvicorn. "
-            'Install with: pip install "toolsconnector[rest]"',
+            'REST server requires uvicorn. Install with: pip install "toolsconnector[rest]"',
             file=sys.stderr,
         )
         return 1
@@ -168,10 +164,7 @@ def _cmd_serve_rest(args: argparse.Namespace) -> int:
     try:
         kit = ToolKit(args.connectors)
         app = kit.create_rest_app(prefix=args.prefix)
-        print(
-            f"Starting REST server with {len(kit.list_tools())} tools "
-            f"on port {args.port}..."
-        )
+        print(f"Starting REST server with {len(kit.list_tools())} tools on port {args.port}...")
         uvicorn.run(app, host="0.0.0.0", port=args.port)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -279,9 +272,7 @@ def _show_spec(connector_name: str, extra_args: list[str]) -> int:
     return 0
 
 
-def _execute_action(
-    connector_name: str, action_name: str, args_list: list[str]
-) -> int:
+def _execute_action(connector_name: str, action_name: str, args_list: list[str]) -> int:
     """Execute a connector action from CLI args.
 
     Parses ``--key value`` pairs from the argument list, coercing values

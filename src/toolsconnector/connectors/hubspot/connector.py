@@ -45,8 +45,7 @@ class HubSpot(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://api.hubapi.com"
     description = (
-        "Connect to HubSpot CRM to manage contacts, deals, "
-        "companies, tickets, and pipelines."
+        "Connect to HubSpot CRM to manage contacts, deals, companies, tickets, and pipelines."
     )
     _rate_limit_config = RateLimitSpec(rate=100, period=10, burst=20)
 
@@ -131,9 +130,7 @@ class HubSpot(BaseConnector):
         if after:
             params["after"] = after
 
-        data = await self._request(
-            "GET", "/crm/v3/objects/contacts", params=params
-        )
+        data = await self._request("GET", "/crm/v3/objects/contacts", params=params)
 
         contacts = [parse_contact(c) for c in data.get("results", [])]
         next_cursor = extract_cursor(data)
@@ -156,9 +153,7 @@ class HubSpot(BaseConnector):
         Returns:
             The requested HubSpotContact.
         """
-        data = await self._request(
-            "GET", f"/crm/v3/objects/contacts/{contact_id}"
-        )
+        data = await self._request("GET", f"/crm/v3/objects/contacts/{contact_id}")
         return parse_contact(data)
 
     @action("Create a new contact", dangerous=True)
@@ -193,9 +188,7 @@ class HubSpot(BaseConnector):
             properties["company"] = company
 
         body: dict[str, Any] = {"properties": properties}
-        data = await self._request(
-            "POST", "/crm/v3/objects/contacts", json=body
-        )
+        data = await self._request("POST", "/crm/v3/objects/contacts", json=body)
         return parse_contact(data)
 
     @action("Update an existing contact")
@@ -214,9 +207,7 @@ class HubSpot(BaseConnector):
             The updated HubSpotContact.
         """
         body: dict[str, Any] = {"properties": properties}
-        data = await self._request(
-            "PATCH", f"/crm/v3/objects/contacts/{contact_id}", json=body
-        )
+        data = await self._request("PATCH", f"/crm/v3/objects/contacts/{contact_id}", json=body)
         return parse_contact(data)
 
     @action("Delete a contact", dangerous=True)
@@ -229,9 +220,7 @@ class HubSpot(BaseConnector):
         Args:
             contact_id: The HubSpot contact ID to delete.
         """
-        await self._request(
-            "DELETE", f"/crm/v3/objects/contacts/{contact_id}"
-        )
+        await self._request("DELETE", f"/crm/v3/objects/contacts/{contact_id}")
 
     @action("Search contacts by query")
     async def search_contacts(
@@ -252,9 +241,7 @@ class HubSpot(BaseConnector):
             "query": query,
             "limit": min(limit, 100),
         }
-        data = await self._request(
-            "POST", "/crm/v3/objects/contacts/search", json=body
-        )
+        data = await self._request("POST", "/crm/v3/objects/contacts/search", json=body)
 
         contacts = [parse_contact(c) for c in data.get("results", [])]
         next_cursor = extract_cursor(data)
@@ -291,9 +278,7 @@ class HubSpot(BaseConnector):
         if after:
             params["after"] = after
 
-        data = await self._request(
-            "GET", "/crm/v3/objects/deals", params=params
-        )
+        data = await self._request("GET", "/crm/v3/objects/deals", params=params)
 
         deals = [parse_deal(d) for d in data.get("results", [])]
         next_cursor = extract_cursor(data)
@@ -316,9 +301,7 @@ class HubSpot(BaseConnector):
         Returns:
             The requested HubSpotDeal.
         """
-        data = await self._request(
-            "GET", f"/crm/v3/objects/deals/{deal_id}"
-        )
+        data = await self._request("GET", f"/crm/v3/objects/deals/{deal_id}")
         return parse_deal(data)
 
     @action("Create a new deal", dangerous=True)
@@ -349,9 +332,7 @@ class HubSpot(BaseConnector):
             properties["amount"] = str(amount)
 
         body: dict[str, Any] = {"properties": properties}
-        data = await self._request(
-            "POST", "/crm/v3/objects/deals", json=body
-        )
+        data = await self._request("POST", "/crm/v3/objects/deals", json=body)
         return parse_deal(data)
 
     # ------------------------------------------------------------------
@@ -377,9 +358,7 @@ class HubSpot(BaseConnector):
         if after:
             params["after"] = after
 
-        data = await self._request(
-            "GET", "/crm/v3/objects/companies", params=params
-        )
+        data = await self._request("GET", "/crm/v3/objects/companies", params=params)
 
         companies = [parse_company(c) for c in data.get("results", [])]
         next_cursor = extract_cursor(data)
@@ -402,9 +381,7 @@ class HubSpot(BaseConnector):
         Returns:
             The requested HubSpotCompany.
         """
-        data = await self._request(
-            "GET", f"/crm/v3/objects/companies/{company_id}"
-        )
+        data = await self._request("GET", f"/crm/v3/objects/companies/{company_id}")
         return parse_company(data)
 
     @action("Create a new company", dangerous=True)
@@ -431,9 +408,7 @@ class HubSpot(BaseConnector):
             props.update(properties)
 
         body: dict[str, Any] = {"properties": props}
-        data = await self._request(
-            "POST", "/crm/v3/objects/companies", json=body
-        )
+        data = await self._request("POST", "/crm/v3/objects/companies", json=body)
         return parse_company(data)
 
     # ------------------------------------------------------------------
@@ -459,9 +434,7 @@ class HubSpot(BaseConnector):
         if after:
             params["after"] = after
 
-        data = await self._request(
-            "GET", "/crm/v3/objects/tickets", params=params
-        )
+        data = await self._request("GET", "/crm/v3/objects/tickets", params=params)
 
         tickets = [parse_ticket(t) for t in data.get("results", [])]
         next_cursor = extract_cursor(data)
@@ -502,9 +475,7 @@ class HubSpot(BaseConnector):
             properties["hs_ticket_priority"] = priority
 
         body: dict[str, Any] = {"properties": properties}
-        data = await self._request(
-            "POST", "/crm/v3/objects/tickets", json=body
-        )
+        data = await self._request("POST", "/crm/v3/objects/tickets", json=body)
         return parse_ticket(data)
 
     @action("Get a single ticket by ID")
@@ -517,9 +488,7 @@ class HubSpot(BaseConnector):
         Returns:
             The requested HubSpotTicket.
         """
-        data = await self._request(
-            "GET", f"/crm/v3/objects/tickets/{ticket_id}"
-        )
+        data = await self._request("GET", f"/crm/v3/objects/tickets/{ticket_id}")
         return parse_ticket(data)
 
     @action("Update an existing deal")
@@ -538,9 +507,7 @@ class HubSpot(BaseConnector):
             The updated HubSpotDeal.
         """
         body: dict[str, Any] = {"properties": properties}
-        data = await self._request(
-            "PATCH", f"/crm/v3/objects/deals/{deal_id}", json=body
-        )
+        data = await self._request("PATCH", f"/crm/v3/objects/deals/{deal_id}", json=body)
         return parse_deal(data)
 
     @action("Update an existing ticket")
@@ -559,9 +526,7 @@ class HubSpot(BaseConnector):
             The updated HubSpotTicket.
         """
         body: dict[str, Any] = {"properties": properties}
-        data = await self._request(
-            "PATCH", f"/crm/v3/objects/tickets/{ticket_id}", json=body
-        )
+        data = await self._request("PATCH", f"/crm/v3/objects/tickets/{ticket_id}", json=body)
         return parse_ticket(data)
 
     @action("Delete a deal", dangerous=True)
@@ -574,9 +539,7 @@ class HubSpot(BaseConnector):
         Args:
             deal_id: The HubSpot deal ID to delete.
         """
-        await self._request(
-            "DELETE", f"/crm/v3/objects/deals/{deal_id}"
-        )
+        await self._request("DELETE", f"/crm/v3/objects/deals/{deal_id}")
 
     # ------------------------------------------------------------------
     # Actions -- Pipelines
@@ -596,7 +559,5 @@ class HubSpot(BaseConnector):
         Returns:
             List of HubSpotPipeline objects with their stages.
         """
-        data = await self._request(
-            "GET", f"/crm/v3/pipelines/{object_type}"
-        )
+        data = await self._request("GET", f"/crm/v3/pipelines/{object_type}")
         return [parse_pipeline(p) for p in data.get("results", [])]

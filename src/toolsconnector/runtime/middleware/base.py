@@ -7,8 +7,8 @@ composition pattern.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Protocol
 from collections.abc import Awaitable
+from typing import Any, Callable, Protocol
 
 from toolsconnector.runtime.context import ActionContext
 

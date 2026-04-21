@@ -43,8 +43,7 @@ class Freshdesk(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://{domain}.freshdesk.com/api/v2"
     description = (
-        "Connect to Freshdesk helpdesk to manage support tickets, "
-        "contacts, and conversations."
+        "Connect to Freshdesk helpdesk to manage support tickets, contacts, and conversations."
     )
     _rate_limit_config = RateLimitSpec(rate=50, period=60, burst=10)
 
@@ -60,9 +59,7 @@ class Freshdesk(BaseConnector):
         """
         creds = str(self._credentials)
         if ":" not in creds:
-            raise ValueError(
-                "Freshdesk credentials must be 'api_key:domain' format"
-            )
+            raise ValueError("Freshdesk credentials must be 'api_key:domain' format")
         api_key, domain = creds.split(":", 1)
         return api_key.strip(), domain.strip()
 
@@ -115,9 +112,7 @@ class Freshdesk(BaseConnector):
         Raises:
             httpx.HTTPStatusError: On non-2xx responses.
         """
-        response = await self._client.request(
-            method, path, json=json, params=params
-        )
+        response = await self._client.request(method, path, json=json, params=params)
         response.raise_for_status()
         if response.status_code == 204:
             return {}
@@ -294,9 +289,7 @@ class Freshdesk(BaseConnector):
         if priority is not None:
             body["priority"] = priority
 
-        data = await self._request(
-            "PUT", f"/tickets/{ticket_id}", json=body
-        )
+        data = await self._request("PUT", f"/tickets/{ticket_id}", json=body)
         return self._parse_ticket(data)
 
     @action("Reply to a ticket", dangerous=True)
@@ -315,9 +308,7 @@ class Freshdesk(BaseConnector):
             The created FreshdeskReply.
         """
         payload: dict[str, Any] = {"body": body}
-        data = await self._request(
-            "POST", f"/tickets/{ticket_id}/reply", json=payload
-        )
+        data = await self._request("POST", f"/tickets/{ticket_id}/reply", json=payload)
         return self._parse_reply(data)
 
     # ------------------------------------------------------------------
@@ -345,10 +336,7 @@ class Freshdesk(BaseConnector):
         }
         data = await self._request("GET", "/contacts", params=params)
 
-        contacts = [
-            self._parse_contact(c)
-            for c in (data if isinstance(data, list) else [])
-        ]
+        contacts = [self._parse_contact(c) for c in (data if isinstance(data, list) else [])]
         has_more = len(contacts) >= min(limit, 100)
 
         return PaginatedList(
@@ -393,9 +381,7 @@ class Freshdesk(BaseConnector):
             Paginated list of matching FreshdeskTicket objects.
         """
         params: dict[str, Any] = {"query": f'"{query}"'}
-        data = await self._request(
-            "GET", "/search/tickets", params=params
-        )
+        data = await self._request("GET", "/search/tickets", params=params)
 
         results = data.get("results", []) if isinstance(data, dict) else []
         tickets = [self._parse_ticket(t) for t in results]
@@ -426,7 +412,9 @@ class Freshdesk(BaseConnector):
 
     @action("Add a note to a ticket")
     async def add_note(
-        self, ticket_id: int, body: str,
+        self,
+        ticket_id: int,
+        body: str,
     ) -> FreshdeskNote:
         """Add a private note to a ticket.
 
@@ -439,7 +427,9 @@ class Freshdesk(BaseConnector):
         """
         payload: dict[str, Any] = {"body": body, "private": True}
         data = await self._request(
-            "POST", f"/tickets/{ticket_id}/notes", json=payload,
+            "POST",
+            f"/tickets/{ticket_id}/notes",
+            json=payload,
         )
         return FreshdeskNote(
             id=data.get("id", 0),
@@ -472,7 +462,9 @@ class Freshdesk(BaseConnector):
             "ticket_ids": secondary_ids,
         }
         await self._request(
-            "POST", "/tickets/merge", json=payload,
+            "POST",
+            "/tickets/merge",
+            json=payload,
         )
         return True
 
@@ -482,7 +474,8 @@ class Freshdesk(BaseConnector):
 
     @action("List agents in Freshdesk")
     async def list_agents(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[FreshdeskAgent]:
         """List all agents in the helpdesk.
 
@@ -496,7 +489,9 @@ class Freshdesk(BaseConnector):
         if limit is not None:
             params["per_page"] = min(limit, 100)
         data = await self._request(
-            "GET", "/agents", params=params or None,
+            "GET",
+            "/agents",
+            params=params or None,
         )
         agents_list = data if isinstance(data, list) else []
         return [
@@ -564,7 +559,9 @@ class Freshdesk(BaseConnector):
             payload["email"] = email
 
         data = await self._request(
-            "PUT", f"/contacts/{contact_id}", json=payload,
+            "PUT",
+            f"/contacts/{contact_id}",
+            json=payload,
         )
         return self._parse_contact(data)
 
@@ -651,10 +648,7 @@ class Freshdesk(BaseConnector):
         }
         data = await self._request("GET", "/companies", params=params)
 
-        companies = [
-            self._parse_company(c)
-            for c in (data if isinstance(data, list) else [])
-        ]
+        companies = [self._parse_company(c) for c in (data if isinstance(data, list) else [])]
         has_more = len(companies) >= min(limit, 100)
 
         return PaginatedList(
@@ -761,7 +755,9 @@ class Freshdesk(BaseConnector):
             "page": page,
         }
         data = await self._request(
-            "GET", "/surveys/satisfaction_ratings", params=params,
+            "GET",
+            "/surveys/satisfaction_ratings",
+            params=params,
         )
         ratings = data if isinstance(data, list) else []
         has_more = len(ratings) >= min(limit, 100)

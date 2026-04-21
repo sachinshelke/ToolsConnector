@@ -57,9 +57,7 @@ class LinkedInPost(BaseModel):
     author: str = ""  # Author URN (urn:li:person:... or urn:li:organization:...)
     commentary: str = ""
     visibility: str = ""  # "PUBLIC" | "CONNECTIONS" | "LOGGED_IN"
-    lifecycle_state: str = Field(
-        "", alias="lifecycleState"
-    )  # "PUBLISHED" | "DRAFT" | "PROCESSING"
+    lifecycle_state: str = Field("", alias="lifecycleState")  # "PUBLISHED" | "DRAFT" | "PROCESSING"
     created_at: Optional[int] = Field(None, alias="createdAt")  # Unix epoch ms
     published_at: Optional[int] = Field(None, alias="publishedAt")  # Unix epoch ms
     content: dict[str, Any] = Field(default_factory=dict)

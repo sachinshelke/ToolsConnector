@@ -19,15 +19,14 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.errors import APIError, NotFoundError
-
-from toolsconnector.connectors._aws.signing import sign_v4
 
 from .types import (
     ECSCluster,
@@ -58,9 +57,7 @@ class ECS(BaseConnector):
     category = ConnectorCategory.COMPUTE
     protocol = ProtocolType.REST
     base_url = "https://ecs.us-east-1.amazonaws.com"
-    description = (
-        "Deploy and manage containerized applications with ECS and Fargate."
-    )
+    description = "Deploy and manage containerized applications with ECS and Fargate."
     _rate_limit_config = RateLimitSpec(rate=20, period=1, burst=40)
 
     # ------------------------------------------------------------------
@@ -175,9 +172,7 @@ class ECS(BaseConnector):
             cluster_arn=data.get("clusterArn", ""),
             cluster_name=data.get("clusterName", ""),
             status=data.get("status", ""),
-            registered_container_instances_count=data.get(
-                "registeredContainerInstancesCount", 0
-            ),
+            registered_container_instances_count=data.get("registeredContainerInstancesCount", 0),
             running_tasks_count=data.get("runningTasksCount", 0),
             pending_tasks_count=data.get("pendingTasksCount", 0),
             active_services_count=data.get("activeServicesCount", 0),
@@ -308,12 +303,13 @@ class ECS(BaseConnector):
         Returns:
             List of ECSCluster objects.
         """
-        body = await self._ecs_request("DescribeClusters", {
-            "clusters": clusters,
-        })
-        return [
-            self._parse_cluster(c) for c in body.get("clusters", [])
-        ]
+        body = await self._ecs_request(
+            "DescribeClusters",
+            {
+                "clusters": clusters,
+            },
+        )
+        return [self._parse_cluster(c) for c in body.get("clusters", [])]
 
     # ==================================================================
     # Actions -- Services
@@ -436,13 +432,14 @@ class ECS(BaseConnector):
         Returns:
             List of ECSService objects.
         """
-        body = await self._ecs_request("DescribeServices", {
-            "cluster": cluster,
-            "services": services,
-        })
-        return [
-            self._parse_service(s) for s in body.get("services", [])
-        ]
+        body = await self._ecs_request(
+            "DescribeServices",
+            {
+                "cluster": cluster,
+                "services": services,
+            },
+        )
+        return [self._parse_service(s) for s in body.get("services", [])]
 
     @action("List ECS services in a cluster")
     async def list_services(
@@ -527,9 +524,12 @@ class ECS(BaseConnector):
         Returns:
             The ECSTaskDefinition.
         """
-        body = await self._ecs_request("DescribeTaskDefinition", {
-            "taskDefinition": task_definition,
-        })
+        body = await self._ecs_request(
+            "DescribeTaskDefinition",
+            {
+                "taskDefinition": task_definition,
+            },
+        )
         return self._parse_task_definition(body.get("taskDefinition", {}))
 
     @action("List task definition families")
@@ -594,9 +594,12 @@ class ECS(BaseConnector):
         Returns:
             The deregistered ECSTaskDefinition.
         """
-        body = await self._ecs_request("DeregisterTaskDefinition", {
-            "taskDefinition": task_definition,
-        })
+        body = await self._ecs_request(
+            "DeregisterTaskDefinition",
+            {
+                "taskDefinition": task_definition,
+            },
+        )
         return self._parse_task_definition(body.get("taskDefinition", {}))
 
     # ==================================================================
@@ -705,10 +708,13 @@ class ECS(BaseConnector):
         Returns:
             List of ECSTask objects.
         """
-        body = await self._ecs_request("DescribeTasks", {
-            "cluster": cluster,
-            "tasks": tasks,
-        })
+        body = await self._ecs_request(
+            "DescribeTasks",
+            {
+                "cluster": cluster,
+                "tasks": tasks,
+            },
+        )
         return [self._parse_task(t) for t in body.get("tasks", [])]
 
     # ==================================================================
@@ -730,10 +736,13 @@ class ECS(BaseConnector):
         Returns:
             The updated ECSCluster.
         """
-        body = await self._ecs_request("UpdateClusterSettings", {
-            "cluster": cluster,
-            "settings": settings,
-        })
+        body = await self._ecs_request(
+            "UpdateClusterSettings",
+            {
+                "cluster": cluster,
+                "settings": settings,
+            },
+        )
         return self._parse_cluster(body.get("cluster", {}))
 
     @action("Put cluster capacity providers")
@@ -753,11 +762,14 @@ class ECS(BaseConnector):
         Returns:
             The updated ECSCluster.
         """
-        body = await self._ecs_request("PutClusterCapacityProviders", {
-            "cluster": cluster,
-            "capacityProviders": capacity_providers,
-            "defaultCapacityProviderStrategy": default_capacity_provider_strategy,
-        })
+        body = await self._ecs_request(
+            "PutClusterCapacityProviders",
+            {
+                "cluster": cluster,
+                "capacityProviders": capacity_providers,
+                "defaultCapacityProviderStrategy": default_capacity_provider_strategy,
+            },
+        )
         return self._parse_cluster(body.get("cluster", {}))
 
     # ==================================================================
@@ -779,10 +791,13 @@ class ECS(BaseConnector):
         Returns:
             Empty dict on success.
         """
-        await self._ecs_request("TagResource", {
-            "resourceArn": resource_arn,
-            "tags": tags,
-        })
+        await self._ecs_request(
+            "TagResource",
+            {
+                "resourceArn": resource_arn,
+                "tags": tags,
+            },
+        )
         return {}
 
     @action("List tags for an ECS resource")
@@ -798,9 +813,12 @@ class ECS(BaseConnector):
         Returns:
             List of tag dicts with 'key' and 'value'.
         """
-        body = await self._ecs_request("ListTagsForResource", {
-            "resourceArn": resource_arn,
-        })
+        body = await self._ecs_request(
+            "ListTagsForResource",
+            {
+                "resourceArn": resource_arn,
+            },
+        )
         return body.get("tags", [])
 
     # ==================================================================
@@ -869,8 +887,11 @@ class ECS(BaseConnector):
         Returns:
             List of container instance detail dicts.
         """
-        body = await self._ecs_request("DescribeContainerInstances", {
-            "cluster": cluster,
-            "containerInstances": container_instances,
-        })
+        body = await self._ecs_request(
+            "DescribeContainerInstances",
+            {
+                "cluster": cluster,
+                "containerInstances": container_instances,
+            },
+        )
         return body.get("containerInstances", [])

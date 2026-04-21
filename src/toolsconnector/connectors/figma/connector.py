@@ -116,7 +116,10 @@ class Figma(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, json=json_body,
+            method,
+            path,
+            params=params,
+            json=json_body,
         )
         resp.raise_for_status()
         return resp
@@ -158,7 +161,9 @@ class Figma(BaseConnector):
             params["page_size"] = limit
 
         resp = await self._request(
-            "GET", f"/files/{file_key}/versions", params=params,
+            "GET",
+            f"/files/{file_key}/versions",
+            params=params,
         )
         body = resp.json()
         versions_raw = body.get("versions") or []
@@ -220,7 +225,8 @@ class Figma(BaseConnector):
             payload["client_meta"] = client_meta
 
         resp = await self._request(
-            "POST", f"/files/{file_key}/comments",
+            "POST",
+            f"/files/{file_key}/comments",
             json_body=payload,
         )
         return parse_comment(resp.json())
@@ -231,7 +237,8 @@ class Figma(BaseConnector):
 
     @action("List projects for a Figma team")
     async def list_projects(
-        self, team_id: str,
+        self,
+        team_id: str,
     ) -> PaginatedList[FigmaProject]:
         """List all projects in a Figma team.
 
@@ -253,7 +260,8 @@ class Figma(BaseConnector):
 
     @action("List files in a Figma project")
     async def list_project_files(
-        self, project_id: str,
+        self,
+        project_id: str,
     ) -> PaginatedList[FigmaProjectFile]:
         """List all files in a Figma project.
 
@@ -299,16 +307,15 @@ class Figma(BaseConnector):
             params["format"] = format
 
         resp = await self._request(
-            "GET", f"/images/{file_key}", params=params,
+            "GET",
+            f"/images/{file_key}",
+            params=params,
         )
         body = resp.json()
         images_map = body.get("images") or {}
         err = body.get("err")
 
-        items = [
-            parse_image(node_id, url, err)
-            for node_id, url in images_map.items()
-        ]
+        items = [parse_image(node_id, url, err) for node_id, url in images_map.items()]
 
         return PaginatedList(
             items=items,
@@ -321,7 +328,8 @@ class Figma(BaseConnector):
 
     @action("List components in a Figma file")
     async def list_components(
-        self, file_key: str,
+        self,
+        file_key: str,
     ) -> PaginatedList[FigmaComponent]:
         """List all published components in a Figma file.
 
@@ -332,7 +340,8 @@ class Figma(BaseConnector):
             List of FigmaComponent objects.
         """
         resp = await self._request(
-            "GET", f"/files/{file_key}/components",
+            "GET",
+            f"/files/{file_key}/components",
         )
         body = resp.json()
         meta = body.get("meta") or {}
@@ -364,7 +373,8 @@ class Figma(BaseConnector):
             Dict with node data keyed by node ID.
         """
         resp = await self._request(
-            "GET", f"/files/{file_key}/nodes",
+            "GET",
+            f"/files/{file_key}/nodes",
             params={"ids": ",".join(ids)},
         )
         body = resp.json()
@@ -376,7 +386,9 @@ class Figma(BaseConnector):
 
     @action("Delete a comment from a Figma file", dangerous=True)
     async def delete_comment(
-        self, file_key: str, comment_id: str,
+        self,
+        file_key: str,
+        comment_id: str,
     ) -> bool:
         """Delete a comment from a Figma file.
 
@@ -388,7 +400,8 @@ class Figma(BaseConnector):
             True if the comment was deleted.
         """
         resp = await self._request(
-            "DELETE", f"/files/{file_key}/comments/{comment_id}",
+            "DELETE",
+            f"/files/{file_key}/comments/{comment_id}",
         )
         return resp.status_code in (200, 204)
 
@@ -416,7 +429,8 @@ class Figma(BaseConnector):
             FigmaComponent object.
         """
         resp = await self._request(
-            "GET", f"/files/{file_key}/nodes",
+            "GET",
+            f"/files/{file_key}/nodes",
             params={"ids": component_id},
         )
         body = resp.json()
@@ -437,7 +451,8 @@ class Figma(BaseConnector):
 
     @action("List styles in a Figma file")
     async def get_file_styles(
-        self, file_key: str,
+        self,
+        file_key: str,
     ) -> list[FigmaStyle]:
         """List all published styles (colors, text, effects) in a file.
 
@@ -448,7 +463,8 @@ class Figma(BaseConnector):
             List of FigmaStyle objects.
         """
         resp = await self._request(
-            "GET", f"/files/{file_key}/styles",
+            "GET",
+            f"/files/{file_key}/styles",
         )
         body = resp.json()
         meta = body.get("meta", {})
@@ -460,7 +476,8 @@ class Figma(BaseConnector):
 
     @action("Get pages in a Figma file")
     async def get_file_pages(
-        self, file_key: str,
+        self,
+        file_key: str,
     ) -> list[FigmaPage]:
         """Get the page structure (top-level canvases) of a Figma file.
 
@@ -474,7 +491,8 @@ class Figma(BaseConnector):
             List of FigmaPage objects.
         """
         resp = await self._request(
-            "GET", f"/files/{file_key}",
+            "GET",
+            f"/files/{file_key}",
             params={"depth": "1"},
         )
         body = resp.json()
@@ -498,7 +516,8 @@ class Figma(BaseConnector):
             List of FigmaProject objects.
         """
         resp = await self._request(
-            "GET", f"/teams/{team_id}/projects",
+            "GET",
+            f"/teams/{team_id}/projects",
         )
         body = resp.json()
         projects = [parse_project(p) for p in body.get("projects", [])]
@@ -537,7 +556,9 @@ class Figma(BaseConnector):
             params["after"] = cursor
 
         resp = await self._request(
-            "GET", f"/teams/{team_id}/components", params=params,
+            "GET",
+            f"/teams/{team_id}/components",
+            params=params,
         )
         body = resp.json()
         meta = body.get("meta", {})
@@ -580,7 +601,9 @@ class Figma(BaseConnector):
             params["after"] = cursor
 
         resp = await self._request(
-            "GET", f"/teams/{team_id}/styles", params=params,
+            "GET",
+            f"/teams/{team_id}/styles",
+            params=params,
         )
         body = resp.json()
         meta = body.get("meta", {})
@@ -614,7 +637,8 @@ class Figma(BaseConnector):
             List of FigmaComponentSet objects.
         """
         resp = await self._request(
-            "GET", f"/files/{file_key}/component_sets",
+            "GET",
+            f"/files/{file_key}/component_sets",
         )
         body = resp.json()
         meta = body.get("meta", {})

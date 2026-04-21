@@ -114,12 +114,12 @@ _EXPIRED_TOKEN_MARKERS = (
 # will return 400 if sent — omitted here.
 # Source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/reactions-api
 _REACTION_TYPES = {
-    "LIKE",          # "Like"
-    "PRAISE",        # "Celebrate"
-    "EMPATHY",       # "Love"
-    "INTEREST",      # "Insightful"
+    "LIKE",  # "Like"
+    "PRAISE",  # "Celebrate"
+    "EMPATHY",  # "Love"
+    "INTEREST",  # "Insightful"
     "APPRECIATION",  # "Support"
-    "ENTERTAINMENT", # "Funny"
+    "ENTERTAINMENT",  # "Funny"
 }
 
 
@@ -253,9 +253,7 @@ class LinkedIn(BaseConnector):
         if 200 <= status < 300:
             # LinkedIn 201 responses include the created URN in the
             # 'x-restli-id' header. Surface it so create_* actions can use it.
-            urn = response.headers.get("x-restli-id") or response.headers.get(
-                "X-RestLi-Id"
-            )
+            urn = response.headers.get("x-restli-id") or response.headers.get("X-RestLi-Id")
             if status == 201 and urn and isinstance(body, dict):
                 body = dict(body)  # mutate a copy
                 body.setdefault("id", urn)
@@ -265,9 +263,7 @@ class LinkedIn(BaseConnector):
         #   v2:    {"message": "...", "status": 401, "code": "..."}
         #   /rest: {"message": "...", "status": 401, "serviceErrorCode": ...}
         error_msg = (
-            body.get("message")
-            if isinstance(body, dict)
-            else None
+            body.get("message") if isinstance(body, dict) else None
         ) or f"LinkedIn API error (HTTP {status})"
         raw_text = response.text or ""
         details = {"linkedin_response": body, "http_status": status}
@@ -552,10 +548,7 @@ class LinkedIn(BaseConnector):
         # also exposes a paging.total when available.
         paging = (body.get("paging") or {}) if isinstance(body, dict) else {}
         total = paging.get("total")
-        has_more = (
-            (total is not None and (start + len(items)) < total)
-            or len(items) >= count
-        )
+        has_more = (total is not None and (start + len(items)) < total) or len(items) >= count
         return PaginatedList(
             items=items,
             page_state=PageState(
@@ -650,10 +643,7 @@ class LinkedIn(BaseConnector):
         items = [LinkedInComment.model_validate(c) for c in elements]
         paging = (body.get("paging") or {}) if isinstance(body, dict) else {}
         total = paging.get("total")
-        has_more = (
-            (total is not None and (start + len(items)) < total)
-            or len(items) >= count
-        )
+        has_more = (total is not None and (start + len(items)) < total) or len(items) >= count
         return PaginatedList(
             items=items,
             page_state=PageState(

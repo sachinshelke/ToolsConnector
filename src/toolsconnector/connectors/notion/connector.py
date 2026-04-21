@@ -23,7 +23,6 @@ from .types import (
     NotionUser,
 )
 
-
 _NOTION_VERSION = "2022-06-28"
 
 
@@ -40,8 +39,7 @@ class Notion(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://api.notion.com/v1"
     description = (
-        "Connect to Notion to search, create, and manage pages, "
-        "databases, and content blocks."
+        "Connect to Notion to search, create, and manage pages, databases, and content blocks."
     )
     _rate_limit_config = RateLimitSpec(rate=3, period=1, burst=3)
 
@@ -173,14 +171,10 @@ class Notion(BaseConnector):
             body["parent"] = {"database_id": parent_id}
             body["properties"] = properties
             if "title" not in properties and "Name" not in properties:
-                body["properties"]["title"] = {
-                    "title": [{"text": {"content": title}}]
-                }
+                body["properties"]["title"] = {"title": [{"text": {"content": title}}]}
         else:
             body["parent"] = {"page_id": parent_id}
-            body["properties"] = {
-                "title": {"title": [{"text": {"content": title}}]}
-            }
+            body["properties"] = {"title": {"title": [{"text": {"content": title}}]}}
 
         if children:
             body["children"] = children
@@ -254,9 +248,7 @@ class Notion(BaseConnector):
         if cursor:
             body["start_cursor"] = cursor
 
-        data = await self._request(
-            "POST", f"/databases/{database_id}/query", json=body
-        )
+        data = await self._request("POST", f"/databases/{database_id}/query", json=body)
 
         pages = [parse_page(r) for r in data.get("results", [])]
         has_more = data.get("has_more", False)
@@ -324,9 +316,7 @@ class Notion(BaseConnector):
         if cursor:
             params["start_cursor"] = cursor
 
-        data = await self._request(
-            "GET", f"/blocks/{block_id}/children", params=params
-        )
+        data = await self._request("GET", f"/blocks/{block_id}/children", params=params)
 
         blocks = [parse_block(b) for b in data.get("results", [])]
         has_more = data.get("has_more", False)
@@ -359,9 +349,7 @@ class Notion(BaseConnector):
             List of newly created NotionBlock objects.
         """
         body: dict[str, Any] = {"children": children}
-        data = await self._request(
-            "PATCH", f"/blocks/{block_id}/children", json=body
-        )
+        data = await self._request("PATCH", f"/blocks/{block_id}/children", json=body)
 
         return [parse_block(b) for b in data.get("results", [])]
 
@@ -398,9 +386,7 @@ class Notion(BaseConnector):
         Returns:
             The updated NotionBlock.
         """
-        data = await self._request(
-            "PATCH", f"/blocks/{block_id}", json=content
-        )
+        data = await self._request("PATCH", f"/blocks/{block_id}", json=content)
         return parse_block(data)
 
     # ------------------------------------------------------------------
@@ -473,9 +459,7 @@ class Notion(BaseConnector):
 
         data = await self._request("GET", "/comments", params=params)
 
-        comments = [
-            parse_comment(c) for c in data.get("results", [])
-        ]
+        comments = [parse_comment(c) for c in data.get("results", [])]
         has_more = data.get("has_more", False)
         next_cursor = data.get("next_cursor")
 
@@ -545,9 +529,7 @@ class Notion(BaseConnector):
         if properties is not None:
             body["properties"] = properties
 
-        data = await self._request(
-            "PATCH", f"/databases/{database_id}", json=body
-        )
+        data = await self._request("PATCH", f"/databases/{database_id}", json=body)
         return parse_database(data)
 
     # ------------------------------------------------------------------
@@ -628,7 +610,5 @@ class Notion(BaseConnector):
             Raw property value dict from the Notion API.  The shape
             depends on the property type.
         """
-        data = await self._request(
-            "GET", f"/pages/{page_id}/properties/{property_id}"
-        )
+        data = await self._request("GET", f"/pages/{page_id}/properties/{property_id}")
         return data

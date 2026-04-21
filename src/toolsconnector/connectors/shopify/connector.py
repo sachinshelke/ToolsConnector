@@ -57,8 +57,7 @@ class Shopify(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://{store}.myshopify.com/admin/api/2024-01"
     description = (
-        "Connect to Shopify to manage products, orders, "
-        "and customers via the REST Admin API."
+        "Connect to Shopify to manage products, orders, and customers via the REST Admin API."
     )
     _rate_limit_config = RateLimitSpec(rate=40, period=1, burst=10)
 
@@ -77,10 +76,7 @@ class Shopify(BaseConnector):
         access_token = parts[0]
         store = parts[1] if len(parts) > 1 else ""
 
-        resolved_url = (
-            self._base_url
-            or self.__class__.base_url.format(store=store)
-        )
+        resolved_url = self._base_url or self.__class__.base_url.format(store=store)
 
         headers: dict[str, str] = {
             "X-Shopify-Access-Token": access_token,
@@ -126,7 +122,10 @@ class Shopify(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, json=json_body,
+            method,
+            path,
+            params=params,
+            json=json_body,
         )
 
         call_limit = resp.headers.get("X-Shopify-Shop-Api-Call-Limit")
@@ -181,12 +180,15 @@ class Shopify(BaseConnector):
         result = PaginatedList(items=items, page_state=page_state)
         result._fetch_next = (
             (lambda: self._list_products_cursor(limit, page_state.cursor))
-            if page_state.has_more else None
+            if page_state.has_more
+            else None
         )
         return result
 
     async def _list_products_cursor(
-        self, limit: int, page_info: Optional[str],
+        self,
+        limit: int,
+        page_info: Optional[str],
     ) -> PaginatedList[ShopifyProduct]:
         """Fetch the next page of products using page_info cursor.
 
@@ -206,8 +208,7 @@ class Shopify(BaseConnector):
 
         result = PaginatedList(items=items, page_state=ps)
         result._fetch_next = (
-            (lambda: self._list_products_cursor(limit, ps.cursor))
-            if ps.has_more else None
+            (lambda: self._list_products_cursor(limit, ps.cursor)) if ps.has_more else None
         )
         return result
 
@@ -256,7 +257,8 @@ class Shopify(BaseConnector):
             product_data["variants"] = variants
 
         resp = await self._request(
-            "PUT", "/products.json",
+            "PUT",
+            "/products.json",
             json_body={"product": product_data},
         )
         return parse_product(resp.json()["product"])
@@ -285,7 +287,8 @@ class Shopify(BaseConnector):
             product_data["body_html"] = body_html
 
         resp = await self._request(
-            "PUT", f"/products/{product_id}.json",
+            "PUT",
+            f"/products/{product_id}.json",
             json_body={"product": product_data},
         )
         return parse_product(resp.json()["product"])
@@ -326,12 +329,16 @@ class Shopify(BaseConnector):
         result = PaginatedList(items=items, page_state=page_state)
         result._fetch_next = (
             (lambda: self._list_orders_cursor(status, limit, page_state.cursor))
-            if page_state.has_more else None
+            if page_state.has_more
+            else None
         )
         return result
 
     async def _list_orders_cursor(
-        self, status: Optional[str], limit: int, page_info: Optional[str],
+        self,
+        status: Optional[str],
+        limit: int,
+        page_info: Optional[str],
     ) -> PaginatedList[ShopifyOrder]:
         """Fetch next page of orders via cursor.
 
@@ -355,8 +362,7 @@ class Shopify(BaseConnector):
 
         result = PaginatedList(items=items, page_state=ps)
         result._fetch_next = (
-            (lambda: self._list_orders_cursor(status, limit, ps.cursor))
-            if ps.has_more else None
+            (lambda: self._list_orders_cursor(status, limit, ps.cursor)) if ps.has_more else None
         )
         return result
 
@@ -405,12 +411,15 @@ class Shopify(BaseConnector):
         result = PaginatedList(items=items, page_state=page_state)
         result._fetch_next = (
             (lambda: self._list_customers_cursor(limit, page_state.cursor))
-            if page_state.has_more else None
+            if page_state.has_more
+            else None
         )
         return result
 
     async def _list_customers_cursor(
-        self, limit: int, page_info: Optional[str],
+        self,
+        limit: int,
+        page_info: Optional[str],
     ) -> PaginatedList[ShopifyCustomer]:
         """Fetch next page of customers via cursor.
 
@@ -430,8 +439,7 @@ class Shopify(BaseConnector):
 
         result = PaginatedList(items=items, page_state=ps)
         result._fetch_next = (
-            (lambda: self._list_customers_cursor(limit, ps.cursor))
-            if ps.has_more else None
+            (lambda: self._list_customers_cursor(limit, ps.cursor)) if ps.has_more else None
         )
         return result
 
@@ -471,7 +479,8 @@ class Shopify(BaseConnector):
         if note is not None:
             order_data["note"] = note
         resp = await self._request(
-            "PUT", f"/orders/{order_id}.json",
+            "PUT",
+            f"/orders/{order_id}.json",
             json_body={"order": order_data},
         )
         return parse_order(resp.json()["order"])
@@ -487,7 +496,8 @@ class Shopify(BaseConnector):
             The cancelled ShopifyOrder.
         """
         resp = await self._request(
-            "POST", f"/orders/{order_id}/cancel.json",
+            "POST",
+            f"/orders/{order_id}/cancel.json",
         )
         return parse_order(resp.json()["order"])
 
@@ -525,7 +535,9 @@ class Shopify(BaseConnector):
             },
         }
         resp = await self._request(
-            "POST", "/price_rules.json", json_body=payload,
+            "POST",
+            "/price_rules.json",
+            json_body=payload,
         )
         return resp.json().get("price_rule", {})
 
@@ -535,7 +547,8 @@ class Shopify(BaseConnector):
 
     @action("List collections from your Shopify store")
     async def list_collections(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[dict[str, Any]]:
         """List custom collections.
 
@@ -549,7 +562,9 @@ class Shopify(BaseConnector):
         if limit is not None:
             params["limit"] = min(limit, 250)
         resp = await self._request(
-            "GET", "/custom_collections.json", params=params or None,
+            "GET",
+            "/custom_collections.json",
+            params=params or None,
         )
         return resp.json().get("custom_collections", [])
 
@@ -559,7 +574,8 @@ class Shopify(BaseConnector):
 
     @action("List inventory levels by location")
     async def list_inventory_levels(
-        self, location_id: Optional[int] = None,
+        self,
+        location_id: Optional[int] = None,
     ) -> list[dict[str, Any]]:
         """List inventory levels, optionally filtered by location.
 
@@ -573,7 +589,9 @@ class Shopify(BaseConnector):
         if location_id is not None:
             params["location_ids"] = location_id
         resp = await self._request(
-            "GET", "/inventory_levels.json", params=params or None,
+            "GET",
+            "/inventory_levels.json",
+            params=params or None,
         )
         return resp.json().get("inventory_levels", [])
 
@@ -605,7 +623,8 @@ class Shopify(BaseConnector):
             customer_data["last_name"] = last_name
 
         resp = await self._request(
-            "POST", "/customers.json",
+            "POST",
+            "/customers.json",
             json_body={"customer": customer_data},
         )
         return parse_customer(resp.json()["customer"])
@@ -616,7 +635,8 @@ class Shopify(BaseConnector):
 
     @action("List fulfillments for an order")
     async def list_fulfillments(
-        self, order_id: int,
+        self,
+        order_id: int,
     ) -> list[dict[str, Any]]:
         """List all fulfillments for a specific order.
 
@@ -627,7 +647,8 @@ class Shopify(BaseConnector):
             List of fulfillment dicts with tracking info and line items.
         """
         resp = await self._request(
-            "GET", f"/orders/{order_id}/fulfillments.json",
+            "GET",
+            f"/orders/{order_id}/fulfillments.json",
         )
         return resp.json().get("fulfillments", [])
 
@@ -660,7 +681,8 @@ class Shopify(BaseConnector):
             fulfillment_data["tracking_company"] = tracking_company
 
         resp = await self._request(
-            "POST", f"/orders/{order_id}/fulfillments.json",
+            "POST",
+            f"/orders/{order_id}/fulfillments.json",
             json_body={"fulfillment": fulfillment_data},
         )
         return resp.json().get("fulfillment", {})
@@ -685,7 +707,9 @@ class Shopify(BaseConnector):
             "available": available,
         }
         resp = await self._request(
-            "POST", "/inventory_levels/set.json", json_body=payload,
+            "POST",
+            "/inventory_levels/set.json",
+            json_body=payload,
         )
         return resp.json().get("inventory_level", {})
 
@@ -704,7 +728,8 @@ class Shopify(BaseConnector):
             True if the product was deleted successfully.
         """
         resp = await self._request(
-            "DELETE", f"/products/{product_id}.json",
+            "DELETE",
+            f"/products/{product_id}.json",
         )
         return resp.status_code == 200
 
@@ -714,7 +739,8 @@ class Shopify(BaseConnector):
 
     @action("List variants for a product")
     async def list_product_variants(
-        self, product_id: int,
+        self,
+        product_id: int,
     ) -> list[ShopifyVariant]:
         """List all variants for a product.
 
@@ -725,7 +751,8 @@ class Shopify(BaseConnector):
             List of ShopifyVariant objects.
         """
         resp = await self._request(
-            "GET", f"/products/{product_id}/variants.json",
+            "GET",
+            f"/products/{product_id}/variants.json",
         )
         body = resp.json()
         return [parse_variant(v) for v in body.get("variants", [])]
@@ -757,7 +784,8 @@ class Shopify(BaseConnector):
             variant_data["sku"] = sku
 
         resp = await self._request(
-            "POST", f"/products/{product_id}/variants.json",
+            "POST",
+            f"/products/{product_id}/variants.json",
             json_body={"variant": variant_data},
         )
         return parse_variant(resp.json()["variant"])
@@ -786,26 +814,31 @@ class Shopify(BaseConnector):
             params["since_id"] = since_id
 
         resp = await self._request(
-            "GET", "/draft_orders.json", params=params,
+            "GET",
+            "/draft_orders.json",
+            params=params,
         )
         body = resp.json()
-        items = [
-            parse_draft_order(d)
-            for d in body.get("draft_orders", [])
-        ]
+        items = [parse_draft_order(d) for d in body.get("draft_orders", [])]
         page_state = self._build_page_state(resp)
 
         result = PaginatedList(items=items, page_state=page_state)
         result._fetch_next = (
-            (lambda: self._list_draft_orders_cursor(
-                limit, page_state.cursor,
-            ))
-            if page_state.has_more else None
+            (
+                lambda: self._list_draft_orders_cursor(
+                    limit,
+                    page_state.cursor,
+                )
+            )
+            if page_state.has_more
+            else None
         )
         return result
 
     async def _list_draft_orders_cursor(
-        self, limit: int, page_info: Optional[str],
+        self,
+        limit: int,
+        page_info: Optional[str],
     ) -> PaginatedList[ShopifyDraftOrder]:
         """Fetch next page of draft orders via cursor.
 
@@ -817,22 +850,21 @@ class Shopify(BaseConnector):
             Next paginated list of ShopifyDraftOrder objects.
         """
         params: dict[str, Any] = {
-            "limit": limit, "page_info": page_info,
+            "limit": limit,
+            "page_info": page_info,
         }
         resp = await self._request(
-            "GET", "/draft_orders.json", params=params,
+            "GET",
+            "/draft_orders.json",
+            params=params,
         )
         body = resp.json()
-        items = [
-            parse_draft_order(d)
-            for d in body.get("draft_orders", [])
-        ]
+        items = [parse_draft_order(d) for d in body.get("draft_orders", [])]
         ps = self._build_page_state(resp)
 
         result = PaginatedList(items=items, page_state=ps)
         result._fetch_next = (
-            (lambda: self._list_draft_orders_cursor(limit, ps.cursor))
-            if ps.has_more else None
+            (lambda: self._list_draft_orders_cursor(limit, ps.cursor)) if ps.has_more else None
         )
         return result
 
@@ -866,14 +898,16 @@ class Shopify(BaseConnector):
             draft_data["note"] = note
 
         resp = await self._request(
-            "POST", "/draft_orders.json",
+            "POST",
+            "/draft_orders.json",
             json_body={"draft_order": draft_data},
         )
         return parse_draft_order(resp.json()["draft_order"])
 
     @action("Complete a draft order", dangerous=True)
     async def complete_draft_order(
-        self, draft_order_id: int,
+        self,
+        draft_order_id: int,
     ) -> ShopifyDraftOrder:
         """Complete a draft order and convert it to a regular order.
 
@@ -884,7 +918,8 @@ class Shopify(BaseConnector):
             The completed ShopifyDraftOrder object.
         """
         resp = await self._request(
-            "PUT", f"/draft_orders/{draft_order_id}/complete.json",
+            "PUT",
+            f"/draft_orders/{draft_order_id}/complete.json",
         )
         return parse_draft_order(resp.json()["draft_order"])
 
@@ -894,7 +929,8 @@ class Shopify(BaseConnector):
 
     @action("List webhooks from your Shopify store")
     async def list_webhooks(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[ShopifyWebhook]:
         """List webhook subscriptions.
 
@@ -909,7 +945,9 @@ class Shopify(BaseConnector):
             params["limit"] = min(limit, 250)
 
         resp = await self._request(
-            "GET", "/webhooks.json", params=params or None,
+            "GET",
+            "/webhooks.json",
+            params=params or None,
         )
         body = resp.json()
         return [parse_webhook(w) for w in body.get("webhooks", [])]
@@ -938,7 +976,8 @@ class Shopify(BaseConnector):
             "format": format_,
         }
         resp = await self._request(
-            "POST", "/webhooks.json",
+            "POST",
+            "/webhooks.json",
             json_body={"webhook": webhook_data},
         )
         return parse_webhook(resp.json()["webhook"])

@@ -106,9 +106,7 @@ class GraphQLAdapter:
 
         # Surface GraphQL-level errors as a ValidationError.
         if "errors" in result and result["errors"]:
-            error_msgs = "; ".join(
-                e.get("message", "Unknown") for e in result["errors"]
-            )
+            error_msgs = "; ".join(e.get("message", "Unknown") for e in result["errors"])
             raise ValidationError(
                 f"GraphQL error: {error_msgs}",
                 details={"graphql_errors": result["errors"]},

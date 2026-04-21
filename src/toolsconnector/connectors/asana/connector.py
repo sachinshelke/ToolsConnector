@@ -389,9 +389,7 @@ class Asana(BaseConnector):
                 "due_on,start_on,public,current_status"
             ),
         }
-        data = await self._request(
-            "GET", f"/projects/{project_gid}", params=params
-        )
+        data = await self._request("GET", f"/projects/{project_gid}", params=params)
         return self._parse_project(data.get("data", {}))
 
     @action("Add a comment to a task", dangerous=True)
@@ -410,9 +408,7 @@ class Asana(BaseConnector):
             The created AsanaComment.
         """
         body: dict[str, Any] = {"data": {"text": text}}
-        data = await self._request(
-            "POST", f"/tasks/{task_gid}/stories", json=body
-        )
+        data = await self._request("POST", f"/tasks/{task_gid}/stories", json=body)
         return self._parse_comment(data.get("data", {}))
 
     @action("List workspaces accessible to the user")
@@ -468,13 +464,17 @@ class Asana(BaseConnector):
             ),
         }
         data = await self._request(
-            "GET", f"/tasks/{task_gid}/subtasks", params=params,
+            "GET",
+            f"/tasks/{task_gid}/subtasks",
+            params=params,
         )
         return [self._parse_task(t) for t in data.get("data", [])]
 
     @action("Create a subtask under a parent task", dangerous=True)
     async def create_subtask(
-        self, task_gid: str, name: str,
+        self,
+        task_gid: str,
+        name: str,
     ) -> AsanaTask:
         """Create a subtask under a parent task.
 
@@ -487,7 +487,9 @@ class Asana(BaseConnector):
         """
         body: dict[str, Any] = {"data": {"name": name}}
         data = await self._request(
-            "POST", f"/tasks/{task_gid}/subtasks", json=body,
+            "POST",
+            f"/tasks/{task_gid}/subtasks",
+            json=body,
         )
         return self._parse_task(data.get("data", {}))
 
@@ -508,7 +510,9 @@ class Asana(BaseConnector):
         """
         body: dict[str, Any] = {"data": {"tag": tag_gid}}
         await self._request(
-            "POST", f"/tasks/{task_gid}/addTag", json=body,
+            "POST",
+            f"/tasks/{task_gid}/addTag",
+            json=body,
         )
         return True
 
@@ -544,7 +548,8 @@ class Asana(BaseConnector):
 
     @action("List sections in a project")
     async def list_sections(
-        self, project_gid: str,
+        self,
+        project_gid: str,
     ) -> list[AsanaSection]:
         """List all sections in an Asana project.
 
@@ -558,7 +563,9 @@ class Asana(BaseConnector):
             "opt_fields": "name,created_at,project,project.name",
         }
         data = await self._request(
-            "GET", f"/projects/{project_gid}/sections", params=params,
+            "GET",
+            f"/projects/{project_gid}/sections",
+            params=params,
         )
         return [
             AsanaSection(
@@ -589,7 +596,9 @@ class Asana(BaseConnector):
         """
         body: dict[str, Any] = {"data": {"name": name}}
         data = await self._request(
-            "POST", f"/projects/{project_gid}/sections", json=body,
+            "POST",
+            f"/projects/{project_gid}/sections",
+            json=body,
         )
         return data.get("data", {})
 
@@ -607,7 +616,9 @@ class Asana(BaseConnector):
         """
         body: dict[str, Any] = {"data": {"task": task_gid}}
         await self._request(
-            "POST", f"/sections/{section_gid}/addTask", json=body,
+            "POST",
+            f"/sections/{section_gid}/addTask",
+            json=body,
         )
 
     # ------------------------------------------------------------------
@@ -616,7 +627,8 @@ class Asana(BaseConnector):
 
     @action("List stories (activity) on a task")
     async def list_stories(
-        self, task_gid: str,
+        self,
+        task_gid: str,
     ) -> list[AsanaStory]:
         """List all stories (activity entries and comments) on a task.
 
@@ -633,7 +645,9 @@ class Asana(BaseConnector):
             ),
         }
         data = await self._request(
-            "GET", f"/tasks/{task_gid}/stories", params=params,
+            "GET",
+            f"/tasks/{task_gid}/stories",
+            params=params,
         )
         return [
             AsanaStory(
@@ -682,7 +696,9 @@ class Asana(BaseConnector):
 
         body: dict[str, Any] = {"data": project_data}
         data = await self._request(
-            "PUT", f"/projects/{project_gid}", json=body,
+            "PUT",
+            f"/projects/{project_gid}",
+            json=body,
         )
         return self._parse_project(data.get("data", {}))
 
@@ -720,7 +736,8 @@ class Asana(BaseConnector):
 
     @action("List teams in a workspace")
     async def list_teams(
-        self, workspace_gid: str,
+        self,
+        workspace_gid: str,
     ) -> list[AsanaTeam]:
         """List all teams in an Asana workspace/organization.
 
@@ -734,7 +751,9 @@ class Asana(BaseConnector):
             "opt_fields": "name,description,organization,organization.name",
         }
         data = await self._request(
-            "GET", f"/organizations/{workspace_gid}/teams", params=params,
+            "GET",
+            f"/organizations/{workspace_gid}/teams",
+            params=params,
         )
         return [
             AsanaTeam(
@@ -753,7 +772,8 @@ class Asana(BaseConnector):
 
     @action("Get a workspace by GID")
     async def get_workspace(
-        self, workspace_gid: str,
+        self,
+        workspace_gid: str,
     ) -> AsanaWorkspace:
         """Retrieve a single Asana workspace by its GID.
 
@@ -767,7 +787,9 @@ class Asana(BaseConnector):
             "opt_fields": "name,is_organization",
         }
         data = await self._request(
-            "GET", f"/workspaces/{workspace_gid}", params=params,
+            "GET",
+            f"/workspaces/{workspace_gid}",
+            params=params,
         )
         ws = data.get("data", {})
         return AsanaWorkspace(
@@ -812,7 +834,9 @@ class Asana(BaseConnector):
         if offset:
             params["offset"] = offset
         data = await self._request(
-            "GET", f"/workspaces/{workspace_gid}/users", params=params,
+            "GET",
+            f"/workspaces/{workspace_gid}/users",
+            params=params,
         )
         users = data.get("data", [])
         next_page = data.get("next_page")
@@ -874,7 +898,9 @@ class Asana(BaseConnector):
         if is_subtask is not None:
             params["is_subtask"] = str(is_subtask).lower()
         data = await self._request(
-            "GET", f"/workspaces/{workspace_gid}/tasks/search", params=params,
+            "GET",
+            f"/workspaces/{workspace_gid}/tasks/search",
+            params=params,
         )
         return data.get("data", [])
 
@@ -907,7 +933,8 @@ class Asana(BaseConnector):
         if include:
             payload["include"] = ",".join(include)
         data = await self._request(
-            "POST", f"/tasks/{task_gid}/duplicate",
+            "POST",
+            f"/tasks/{task_gid}/duplicate",
             json={"data": payload},
         )
         return data.get("data", data)
@@ -928,7 +955,8 @@ class Asana(BaseConnector):
             Updated task dict.
         """
         data = await self._request(
-            "POST", f"/tasks/{task_gid}/setParent",
+            "POST",
+            f"/tasks/{task_gid}/setParent",
             json={"data": {"parent": parent or None}},
         )
         return data.get("data", data)
@@ -949,7 +977,8 @@ class Asana(BaseConnector):
             Updated task dict.
         """
         data = await self._request(
-            "POST", f"/tasks/{task_gid}/addFollowers",
+            "POST",
+            f"/tasks/{task_gid}/addFollowers",
             json={"data": {"followers": followers}},
         )
         return data.get("data", data)
@@ -970,7 +999,8 @@ class Asana(BaseConnector):
             Empty dict on success.
         """
         data = await self._request(
-            "POST", f"/tasks/{task_gid}/addDependencies",
+            "POST",
+            f"/tasks/{task_gid}/addDependencies",
             json={"data": {"dependencies": dependencies}},
         )
         return data.get("data", {})
@@ -999,7 +1029,8 @@ class Asana(BaseConnector):
             Dict with num_tasks, num_incomplete_tasks, num_completed_tasks.
         """
         data = await self._request(
-            "GET", f"/projects/{project_gid}/task_counts",
+            "GET",
+            f"/projects/{project_gid}/task_counts",
         )
         return data.get("data", data)
 
@@ -1054,7 +1085,9 @@ class Asana(BaseConnector):
             List of attachment dicts with gid, name, resource_type.
         """
         data = await self._request(
-            "GET", "/attachments", params={"parent": task_gid},
+            "GET",
+            "/attachments",
+            params={"parent": task_gid},
         )
         return data.get("data", [])
 
@@ -1076,7 +1109,9 @@ class Asana(BaseConnector):
             List of webhook dicts.
         """
         data = await self._request(
-            "GET", "/webhooks", params={"workspace": workspace_gid},
+            "GET",
+            "/webhooks",
+            params={"workspace": workspace_gid},
         )
         return data.get("data", [])
 
@@ -1096,7 +1131,8 @@ class Asana(BaseConnector):
             Created webhook dict.
         """
         data = await self._request(
-            "POST", "/webhooks",
+            "POST",
+            "/webhooks",
             json={"data": {"resource": resource, "target": target}},
         )
         return data.get("data", data)
@@ -1130,7 +1166,8 @@ class Asana(BaseConnector):
             List of custom field dicts.
         """
         data = await self._request(
-            "GET", f"/workspaces/{workspace_gid}/custom_fields",
+            "GET",
+            f"/workspaces/{workspace_gid}/custom_fields",
             params={"limit": limit},
         )
         return data.get("data", [])

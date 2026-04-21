@@ -305,9 +305,7 @@ class Medium(BaseConnector):
         if license_type:
             payload["license"] = license_type
 
-        data = await self._request(
-            "POST", f"/users/{user_id}/posts", json_body=payload
-        )
+        data = await self._request("POST", f"/users/{user_id}/posts", json_body=payload)
         return MediumPost.model_validate(data)
 
     @action(

@@ -68,7 +68,7 @@ class RateLimitSpec(BaseModel):
         default=10,
         description="Maximum burst above steady-state rate.",
     )
-    per_action: dict[str, "RateLimitSpec"] = Field(
+    per_action: dict[str, RateLimitSpec] = Field(
         default_factory=dict,
         description="Per-action rate limit overrides.",
     )

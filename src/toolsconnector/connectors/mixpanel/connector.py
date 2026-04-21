@@ -323,8 +323,7 @@ class Mixpanel(BaseConnector):
                     counts = cohort_data.get("counts", [])
                     first_count = counts[0] if counts else 0
                     percentages = [
-                        (c / first_count * 100.0) if first_count > 0 else 0.0
-                        for c in counts
+                        (c / first_count * 100.0) if first_count > 0 else 0.0 for c in counts
                     ]
                     cohorts.append(
                         RetentionCohort(
@@ -403,8 +402,7 @@ class Mixpanel(BaseConnector):
 
         names = data if isinstance(data, list) else []
         return [
-            MixpanelEventName(name=name if isinstance(name, str) else str(name))
-            for name in names
+            MixpanelEventName(name=name if isinstance(name, str) else str(name)) for name in names
         ]
 
     @action("Get top events by volume", idempotent=True)
@@ -484,7 +482,8 @@ class Mixpanel(BaseConnector):
 
     @action("Delete a user profile", dangerous=True)
     async def delete_profile(
-        self, distinct_id: str,
+        self,
+        distinct_id: str,
     ) -> bool:
         """Delete a user profile from Mixpanel.
 
@@ -547,7 +546,9 @@ class Mixpanel(BaseConnector):
         if segment_property:
             params["on"] = f'properties["{segment_property}"]'
         resp = await self._data_request(
-            "GET", "/segmentation", params=params,
+            "GET",
+            "/segmentation",
+            params=params,
         )
         return resp.json()
 

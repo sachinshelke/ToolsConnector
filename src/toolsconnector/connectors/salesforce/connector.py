@@ -206,9 +206,7 @@ class Salesforce(BaseConnector):
         Returns:
             The requested SalesforceRecord.
         """
-        data = await self._request(
-            "GET", f"/sobjects/{sobject}/{record_id}"
-        )
+        data = await self._request("GET", f"/sobjects/{sobject}/{record_id}")
         return parse_record(data)
 
     @action("Create a new sObject record", dangerous=True)
@@ -226,9 +224,7 @@ class Salesforce(BaseConnector):
         Returns:
             A SalesforceRecordId with the new record's ID.
         """
-        data = await self._request(
-            "POST", f"/sobjects/{sobject}", json=fields
-        )
+        data = await self._request("POST", f"/sobjects/{sobject}", json=fields)
         return SalesforceRecordId(
             id=data.get("id", ""),
             success=data.get("success", True),
@@ -249,9 +245,7 @@ class Salesforce(BaseConnector):
             record_id: The Salesforce record ID.
             fields: Dict of field API names to new values.
         """
-        await self._request(
-            "PATCH", f"/sobjects/{sobject}/{record_id}", json=fields
-        )
+        await self._request("PATCH", f"/sobjects/{sobject}/{record_id}", json=fields)
 
     @action("Delete an sObject record", dangerous=True)
     async def delete_record(
@@ -268,9 +262,7 @@ class Salesforce(BaseConnector):
             sobject: sObject API name (e.g., ``"Account"``).
             record_id: The Salesforce record ID to delete.
         """
-        await self._request(
-            "DELETE", f"/sobjects/{sobject}/{record_id}"
-        )
+        await self._request("DELETE", f"/sobjects/{sobject}/{record_id}")
 
     @action("Upsert a record using an external ID", dangerous=True)
     async def upsert_record(
@@ -607,7 +599,8 @@ class Salesforce(BaseConnector):
             List of report summary dicts with Id, Name, and metadata.
         """
         data = await self._request(
-            "GET", "/analytics/reports",
+            "GET",
+            "/analytics/reports",
         )
         return data if isinstance(data, list) else []
 
@@ -622,6 +615,7 @@ class Salesforce(BaseConnector):
             Dict containing report metadata and tabular results.
         """
         data = await self._request(
-            "POST", f"/analytics/reports/{report_id}",
+            "POST",
+            f"/analytics/reports/{report_id}",
         )
         return data

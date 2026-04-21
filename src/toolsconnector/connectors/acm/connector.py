@@ -199,7 +199,8 @@ class ACM(BaseConnector):
 
     @action("Describe a certificate")
     async def describe_certificate(
-        self, certificate_arn: str,
+        self,
+        certificate_arn: str,
     ) -> ACMCertificateDetail:
         """Retrieve detailed information about an ACM certificate.
 
@@ -221,18 +222,9 @@ class ACM(BaseConnector):
             status=cert.get("Status", ""),
             type=cert.get("Type", ""),
             issuer=cert.get("Issuer", ""),
-            created_at=(
-                str(cert.get("CreatedAt", ""))
-                if cert.get("CreatedAt") else None
-            ),
-            not_before=(
-                str(cert.get("NotBefore", ""))
-                if cert.get("NotBefore") else None
-            ),
-            not_after=(
-                str(cert.get("NotAfter", ""))
-                if cert.get("NotAfter") else None
-            ),
+            created_at=(str(cert.get("CreatedAt", "")) if cert.get("CreatedAt") else None),
+            not_before=(str(cert.get("NotBefore", "")) if cert.get("NotBefore") else None),
+            not_after=(str(cert.get("NotAfter", "")) if cert.get("NotAfter") else None),
             subject_alternative_names=cert.get("SubjectAlternativeNames", []),
             domain_validation_options=cert.get("DomainValidationOptions", []),
             in_use_by=cert.get("InUseBy", []),
@@ -273,7 +265,8 @@ class ACM(BaseConnector):
 
     @action("Delete a certificate", dangerous=True)
     async def delete_certificate(
-        self, certificate_arn: str,
+        self,
+        certificate_arn: str,
     ) -> dict:
         """Delete an ACM certificate.
 
@@ -294,7 +287,8 @@ class ACM(BaseConnector):
 
     @action("Get the certificate PEM and chain")
     async def get_certificate(
-        self, certificate_arn: str,
+        self,
+        certificate_arn: str,
     ) -> dict:
         """Get the PEM-encoded certificate and certificate chain.
 

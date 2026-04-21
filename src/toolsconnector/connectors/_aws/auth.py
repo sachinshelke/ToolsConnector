@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-
 # Keys we accept as aliases for ``access_key_id`` in dict credentials.
 _AK_KEYS = ("access_key_id", "access_key", "aws_access_key_id")
 # Keys we accept as aliases for ``secret_access_key`` in dict credentials.
@@ -97,10 +96,7 @@ def _parse_profile(profile_name: str) -> AWSCredentials:
     """Read credentials from the ``~/.aws/credentials`` INI file."""
     creds_path = Path.home() / ".aws" / "credentials"
     if not creds_path.exists():
-        raise ValueError(
-            f"Cannot read profile '{profile_name}': "
-            f"{creds_path} does not exist."
-        )
+        raise ValueError(f"Cannot read profile '{profile_name}': {creds_path} does not exist.")
 
     config = configparser.ConfigParser()
     config.read(creds_path)
@@ -123,10 +119,7 @@ def _parse_profile(profile_name: str) -> AWSCredentials:
             cfg = configparser.ConfigParser()
             cfg.read(cfg_path)
             # In config file, non-default profiles are [profile name].
-            cfg_section = (
-                "default" if profile_name == "default"
-                else f"profile {profile_name}"
-            )
+            cfg_section = "default" if profile_name == "default" else f"profile {profile_name}"
             if cfg_section in cfg:
                 rg = cfg[cfg_section].get("region", "")
 
@@ -206,7 +199,7 @@ def parse_credentials(
 
     # 4. Profile reference
     if text.lower().startswith("profile:"):
-        profile_name = text[len("profile:"):].strip()
+        profile_name = text[len("profile:") :].strip()
         return _parse_profile(profile_name)
 
     # 5. Colon-separated "key:secret:region"

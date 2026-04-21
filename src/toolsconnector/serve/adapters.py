@@ -6,13 +6,13 @@ and gets a real result, no manual wiring needed.
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from toolsconnector.serve.toolkit import ToolKit
 
 
-def _make_sync_func(toolkit: "ToolKit", tool_name: str, description: str) -> Any:
+def _make_sync_func(toolkit: ToolKit, tool_name: str, description: str) -> Any:
     """Return a sync callable with a clean ``**kwargs``-only signature.
 
     Using a factory prevents ``tool_name`` from appearing as a positional
@@ -27,6 +27,7 @@ def _make_sync_func(toolkit: "ToolKit", tool_name: str, description: str) -> Any
     Returns:
         A sync callable ``(**kwargs) -> str``.
     """
+
     def func(**kwargs: Any) -> str:
         return toolkit.execute(tool_name, kwargs)
 
@@ -35,7 +36,7 @@ def _make_sync_func(toolkit: "ToolKit", tool_name: str, description: str) -> Any
     return func
 
 
-def _make_async_func(toolkit: "ToolKit", tool_name: str, description: str) -> Any:
+def _make_async_func(toolkit: ToolKit, tool_name: str, description: str) -> Any:
     """Return an async callable with a clean ``**kwargs``-only signature.
 
     Using a factory prevents ``tool_name`` from appearing as a positional
@@ -50,6 +51,7 @@ def _make_async_func(toolkit: "ToolKit", tool_name: str, description: str) -> An
     Returns:
         An async callable ``(**kwargs) -> str``.
     """
+
     async def afunc(**kwargs: Any) -> str:
         return await toolkit.aexecute(tool_name, kwargs)
 
@@ -58,7 +60,7 @@ def _make_async_func(toolkit: "ToolKit", tool_name: str, description: str) -> An
     return afunc
 
 
-def to_langchain_tools(toolkit: "ToolKit") -> list:
+def to_langchain_tools(toolkit: ToolKit) -> list:
     """Generate LangChain StructuredTool objects with built-in execution.
 
     Each tool wraps a ToolKit action so LangChain agents can call
@@ -79,8 +81,7 @@ def to_langchain_tools(toolkit: "ToolKit") -> list:
         from langchain_core.tools import StructuredTool
     except ImportError:
         raise ImportError(
-            "LangChain adapter requires 'langchain-core'. "
-            "Install with: pip install langchain-core"
+            "LangChain adapter requires 'langchain-core'. Install with: pip install langchain-core"
         )
 
     tools: list = []
@@ -101,7 +102,7 @@ def to_langchain_tools(toolkit: "ToolKit") -> list:
     return tools
 
 
-def to_crewai_tools(toolkit: "ToolKit") -> list:
+def to_crewai_tools(toolkit: ToolKit) -> list:
     """Generate CrewAI-compatible tools.
 
     CrewAI uses a similar tool interface to LangChain.

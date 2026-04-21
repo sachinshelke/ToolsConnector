@@ -9,7 +9,6 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ---------------------------------------------------------------------------
 # Shared / embedded models
 # ---------------------------------------------------------------------------
@@ -171,22 +170,14 @@ class PullRequest(BaseModel):
             user=GitHubUser(**data["user"]) if data.get("user") else None,
             labels=[GitHubLabel(**lb) for lb in data.get("labels", [])],
             assignees=[GitHubUser(**a) for a in data.get("assignees", [])],
-            milestone=(
-                GitHubMilestone(**data["milestone"])
-                if data.get("milestone")
-                else None
-            ),
+            milestone=(GitHubMilestone(**data["milestone"]) if data.get("milestone") else None),
             head_ref=data.get("head", {}).get("ref") if data.get("head") else None,
             base_ref=data.get("base", {}).get("ref") if data.get("base") else None,
             draft=data.get("draft", False),
             merged=data.get("merged", False),
             mergeable=data.get("mergeable"),
             merged_at=data.get("merged_at"),
-            merged_by=(
-                GitHubUser(**data["merged_by"])
-                if data.get("merged_by")
-                else None
-            ),
+            merged_by=(GitHubUser(**data["merged_by"]) if data.get("merged_by") else None),
             comments=data.get("comments", 0),
             review_comments=data.get("review_comments", 0),
             commits=data.get("commits", 0),

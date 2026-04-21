@@ -107,8 +107,22 @@ jobs:
         run: bandit -r src/toolsconnector/ -s B101 --quiet || true
       - name: Check for credential leaks
         run: |
-          if grep -rn "sk-ant\|sk_live\|ghp_\|xoxb-\|AKIA" src/ --include="*.py"; then
-            echo "CREDENTIAL LEAK DETECTED"
+          # Match REAL-length credential patterns, then post-filter lines that
+          # are obviously documentation placeholders (contain '...', 'xxxx',
+          # 'REDACTED', 'example', etc.). Without the post-filter, the scan
+          # matches every docstring that tells users what a token LOOKS LIKE.
+          LEAKS=$(grep -rEn \
+            -e 'ghp_[A-Za-z0-9]{30,}' \
+            -e 'xoxb-[0-9]{8,}-[0-9]{8,}-[A-Za-z0-9]{20,}' \
+            -e 'AKIA[A-Z0-9]{16}([^A-Za-z0-9]|$)' \
+            -e 'sk-ant-api03-[A-Za-z0-9_-]{80,}' \
+            -e 'sk_live_[A-Za-z0-9]{20,}' \
+            src/ --include='*.py' \
+            | grep -viE 'xxxx|\.\.\.|redacted|<redacted>|example|placeholder|your[_-]?(token|key)' \
+            || true)
+          if [ -n "$LEAKS" ]; then
+            echo "CREDENTIAL LEAK DETECTED:"
+            echo "$LEAKS"
             exit 1
           fi
-          echo "No credentials found in source"
+          echo "No real credentials found in source (documentation placeholders ignored)"

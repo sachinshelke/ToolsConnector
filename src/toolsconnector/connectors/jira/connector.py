@@ -57,8 +57,7 @@ class Jira(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://your-domain.atlassian.net/rest/api/3"
     description = (
-        "Connect to Jira to search, create, and manage issues, "
-        "projects, and workflow transitions."
+        "Connect to Jira to search, create, and manage issues, projects, and workflow transitions."
     )
     _rate_limit_config = RateLimitSpec(rate=100, period=60, burst=20)
 
@@ -136,6 +135,7 @@ class Jira(BaseConnector):
                 return base[: -len(suffix)] + "/rest/agile/1.0"
         # Fallback: append agile path to domain root
         from urllib.parse import urlparse
+
         parsed = urlparse(base)
         return f"{parsed.scheme}://{parsed.netloc}/rest/agile/1.0"
 
@@ -276,9 +276,7 @@ class Jira(BaseConnector):
                 "content": [
                     {
                         "type": "paragraph",
-                        "content": [
-                            {"type": "text", "text": description}
-                        ],
+                        "content": [{"type": "text", "text": description}],
                     }
                 ],
             }
@@ -343,9 +341,7 @@ class Jira(BaseConnector):
                 ],
             }
         }
-        data = await self._request(
-            "POST", f"/issue/{issue_key}/comment", json=adf_body
-        )
+        data = await self._request("POST", f"/issue/{issue_key}/comment", json=adf_body)
         return self._parse_comment(data)
 
     @action("Transition an issue to a new status", dangerous=True)
@@ -361,12 +357,8 @@ class Jira(BaseConnector):
             transition_id: The ID of the transition to execute. Use
                 ``get_transitions`` to discover available transitions.
         """
-        body: dict[str, Any] = {
-            "transition": {"id": transition_id}
-        }
-        await self._request(
-            "POST", f"/issue/{issue_key}/transitions", json=body
-        )
+        body: dict[str, Any] = {"transition": {"id": transition_id}}
+        await self._request("POST", f"/issue/{issue_key}/transitions", json=body)
 
     @action("List projects accessible to the user")
     async def list_projects(
@@ -389,9 +381,7 @@ class Jira(BaseConnector):
         }
         data = await self._request("GET", "/project/search", params=params)
 
-        projects = [
-            self._parse_project(p) for p in data.get("values", [])
-        ]
+        projects = [self._parse_project(p) for p in data.get("values", [])]
         total = data.get("total", 0)
         returned = len(projects)
         next_offset = start_at + returned
@@ -419,9 +409,7 @@ class Jira(BaseConnector):
         Returns:
             List of available JiraTransition objects.
         """
-        data = await self._request(
-            "GET", f"/issue/{issue_key}/transitions"
-        )
+        data = await self._request("GET", f"/issue/{issue_key}/transitions")
 
         transitions: list[JiraTransition] = []
         for t in data.get("transitions", []):
@@ -479,13 +467,8 @@ class Jira(BaseConnector):
         Returns:
             List of JiraComment objects.
         """
-        data = await self._request(
-            "GET", f"/issue/{issue_key}/comment"
-        )
-        return [
-            self._parse_comment(c)
-            for c in data.get("comments", [])
-        ]
+        data = await self._request("GET", f"/issue/{issue_key}/comment")
+        return [self._parse_comment(c) for c in data.get("comments", [])]
 
     @action("Delete a comment from an issue", dangerous=True)
     async def delete_comment(
@@ -502,9 +485,7 @@ class Jira(BaseConnector):
         Warning:
             This permanently deletes the comment.
         """
-        await self._request(
-            "DELETE", f"/issue/{issue_key}/comment/{comment_id}"
-        )
+        await self._request("DELETE", f"/issue/{issue_key}/comment/{comment_id}")
 
     @action("Add a watcher to an issue")
     async def add_watcher(
@@ -561,7 +542,9 @@ class Jira(BaseConnector):
             params["state"] = state
 
         data = await self._agile_request(
-            "GET", f"/board/{board_id}/sprint", params=params,
+            "GET",
+            f"/board/{board_id}/sprint",
+            params=params,
         )
 
         sprints: list[JiraSprint] = []
@@ -639,7 +622,9 @@ class Jira(BaseConnector):
             params["projectKeyOrId"] = project_key
 
         data = await self._agile_request(
-            "GET", "/board", params=params,
+            "GET",
+            "/board",
+            params=params,
         )
 
         boards: list[JiraBoard] = []
@@ -776,9 +761,7 @@ class Jira(BaseConnector):
         }
         data = await self._request("POST", "/project", json=body)
         # Jira returns minimal data; fetch the full project.
-        return self._parse_project(
-            await self._request("GET", f"/project/{data.get('key', key)}")
-        )
+        return self._parse_project(await self._request("GET", f"/project/{data.get('key', key)}"))
 
     # ------------------------------------------------------------------
     # Actions — Issue types & metadata
@@ -869,9 +852,7 @@ class Jira(BaseConnector):
                 ],
             }
 
-        data = await self._request(
-            "POST", f"/issue/{issue_key}/worklog", json=body
-        )
+        data = await self._request("POST", f"/issue/{issue_key}/worklog", json=body)
         return parse_worklog(data)
 
     @action("List worklog entries on an issue")
@@ -884,12 +865,8 @@ class Jira(BaseConnector):
         Returns:
             List of JiraWorklog entries.
         """
-        data = await self._request(
-            "GET", f"/issue/{issue_key}/worklog"
-        )
-        return [
-            parse_worklog(w) for w in data.get("worklogs", [])
-        ]
+        data = await self._request("GET", f"/issue/{issue_key}/worklog")
+        return [parse_worklog(w) for w in data.get("worklogs", [])]
 
     # ------------------------------------------------------------------
     # Actions — Watchers (extended)
@@ -905,9 +882,7 @@ class Jira(BaseConnector):
         Returns:
             List of JiraUser objects watching the issue.
         """
-        data = await self._request(
-            "GET", f"/issue/{issue_key}/watchers"
-        )
+        data = await self._request("GET", f"/issue/{issue_key}/watchers")
         watchers: list[JiraUser] = []
         for w in data.get("watchers", []):
             user = self._parse_user(w)

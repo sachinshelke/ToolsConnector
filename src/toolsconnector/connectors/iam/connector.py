@@ -28,15 +28,14 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.errors import APIError, NotFoundError
-
-from toolsconnector.connectors._aws.signing import sign_v4
 
 from .types import (
     IAMAccessKey,
@@ -137,9 +136,7 @@ class IAM(BaseConnector):
     category = ConnectorCategory.SECURITY
     protocol = ProtocolType.REST
     base_url = "https://iam.amazonaws.com"
-    description = (
-        "Manage IAM roles, policies, instance profiles, and access keys."
-    )
+    description = "Manage IAM roles, policies, instance profiles, and access keys."
     _rate_limit_config = RateLimitSpec(rate=15, period=1, burst=30)
 
     # ------------------------------------------------------------------
@@ -422,7 +419,8 @@ class IAM(BaseConnector):
         params: dict[str, str] = {
             "RoleName": role_name,
             "AssumeRolePolicyDocument": urllib.parse.quote(
-                assume_role_policy_document, safe="",
+                assume_role_policy_document,
+                safe="",
             ),
             "Path": path,
         }
@@ -528,10 +526,13 @@ class IAM(BaseConnector):
         Returns:
             Confirmation dict.
         """
-        await self._iam_request("AttachRolePolicy", {
-            "RoleName": role_name,
-            "PolicyArn": policy_arn,
-        })
+        await self._iam_request(
+            "AttachRolePolicy",
+            {
+                "RoleName": role_name,
+                "PolicyArn": policy_arn,
+            },
+        )
         return {
             "role_name": role_name,
             "policy_arn": policy_arn,
@@ -553,10 +554,13 @@ class IAM(BaseConnector):
         Returns:
             Confirmation dict.
         """
-        await self._iam_request("DetachRolePolicy", {
-            "RoleName": role_name,
-            "PolicyArn": policy_arn,
-        })
+        await self._iam_request(
+            "DetachRolePolicy",
+            {
+                "RoleName": role_name,
+                "PolicyArn": policy_arn,
+            },
+        )
         return {
             "role_name": role_name,
             "policy_arn": policy_arn,
@@ -770,10 +774,13 @@ class IAM(BaseConnector):
         Returns:
             Confirmation dict.
         """
-        await self._iam_request("AddRoleToInstanceProfile", {
-            "InstanceProfileName": instance_profile_name,
-            "RoleName": role_name,
-        })
+        await self._iam_request(
+            "AddRoleToInstanceProfile",
+            {
+                "InstanceProfileName": instance_profile_name,
+                "RoleName": role_name,
+            },
+        )
         return {
             "instance_profile_name": instance_profile_name,
             "role_name": role_name,
@@ -795,10 +802,13 @@ class IAM(BaseConnector):
         Returns:
             Confirmation dict.
         """
-        await self._iam_request("RemoveRoleFromInstanceProfile", {
-            "InstanceProfileName": instance_profile_name,
-            "RoleName": role_name,
-        })
+        await self._iam_request(
+            "RemoveRoleFromInstanceProfile",
+            {
+                "InstanceProfileName": instance_profile_name,
+                "RoleName": role_name,
+            },
+        )
         return {
             "instance_profile_name": instance_profile_name,
             "role_name": role_name,

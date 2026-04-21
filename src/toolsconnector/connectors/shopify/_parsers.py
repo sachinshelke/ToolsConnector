@@ -23,7 +23,7 @@ from .types import (
 )
 
 _LINK_RE = re.compile(r'<([^>]+)>;\s*rel="(\w+)"')
-_PAGE_INFO_RE = re.compile(r'[?&]page_info=([^&>]+)')
+_PAGE_INFO_RE = re.compile(r"[?&]page_info=([^&>]+)")
 
 
 def parse_link_header(header: Optional[str]) -> dict[str, str]:

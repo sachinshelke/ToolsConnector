@@ -53,10 +53,7 @@ def validate_arguments(
         # Check enum
         enum_values = properties[field].get("enum")
         if enum_values and value not in enum_values:
-            errors.append(
-                f"Parameter '{field}' must be one of {enum_values}, "
-                f"got {repr(value)}"
-            )
+            errors.append(f"Parameter '{field}' must be one of {enum_values}, got {repr(value)}")
 
     return errors
 

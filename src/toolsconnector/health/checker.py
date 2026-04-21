@@ -82,10 +82,7 @@ class HealthChecker:
         """
         report = SystemHealthReport(total=len(self._connector_names))
 
-        tasks = [
-            self._check_one(name, credentials, timeout)
-            for name in self._connector_names
-        ]
+        tasks = [self._check_one(name, credentials, timeout) for name in self._connector_names]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for result in results:
@@ -169,9 +166,7 @@ class HealthChecker:
             try:
                 instance = cls(credentials=cred)
                 await asyncio.wait_for(instance._setup(), timeout=timeout)
-                health = await asyncio.wait_for(
-                    instance._health_check(), timeout=timeout
-                )
+                health = await asyncio.wait_for(instance._health_check(), timeout=timeout)
                 latency = (time.monotonic() - start) * 1000
                 await instance._teardown()
 

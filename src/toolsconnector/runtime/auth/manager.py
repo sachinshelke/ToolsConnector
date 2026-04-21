@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
 from collections.abc import Sequence
+from typing import Optional
 
 from toolsconnector.errors import AuthError, RefreshFailedError
 from toolsconnector.keystore.base import KeyStore
@@ -171,8 +171,7 @@ class AuthManager:
         provider = self._providers.get(auth_type_value)
         if provider is None:
             logger.warning(
-                "No registered auth provider for auth_type=%r. "
-                "Available: %s",
+                "No registered auth provider for auth_type=%r. Available: %s",
                 auth_type_value,
                 list(self._providers.keys()),
             )

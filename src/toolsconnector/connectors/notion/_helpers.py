@@ -53,9 +53,7 @@ def parse_block(data: dict[str, Any]) -> NotionBlock:
 
 def parse_comment(data: dict[str, Any]) -> NotionComment:
     """Parse a raw Notion comment JSON into a NotionComment model."""
-    rich_text = [
-        NotionRichText(**rt) for rt in data.get("rich_text", [])
-    ]
+    rich_text = [NotionRichText(**rt) for rt in data.get("rich_text", [])]
     created_by_data = data.get("created_by")
     created_by = (
         NotionUser(
@@ -81,12 +79,8 @@ def parse_comment(data: dict[str, Any]) -> NotionComment:
 
 def parse_database(data: dict[str, Any]) -> NotionDatabase:
     """Parse a raw Notion database JSON into a NotionDatabase model."""
-    title_items = [
-        NotionRichText(**t) for t in data.get("title", [])
-    ]
-    desc_items = [
-        NotionRichText(**d) for d in data.get("description", [])
-    ]
+    title_items = [NotionRichText(**t) for t in data.get("title", [])]
+    desc_items = [NotionRichText(**d) for d in data.get("description", [])]
     return NotionDatabase(
         id=data["id"],
         object=data.get("object", "database"),

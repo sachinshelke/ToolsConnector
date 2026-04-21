@@ -48,7 +48,8 @@ class ConnectorNotConfiguredError(ConnectorError):
         code: str = "CONNECTOR_NOT_CONFIGURED",
         retry_eligible: bool = False,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "Provide the required credentials or configuration before using this connector.",
+        suggestion: str
+        | None = "Provide the required credentials or configuration before using this connector.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = None,
     ) -> None:
@@ -77,7 +78,8 @@ class ConnectorInitError(ConnectorError):
         code: str = "CONNECTOR_INIT_FAILED",
         retry_eligible: bool = False,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "Check that all required dependencies are installed and credentials are valid.",
+        suggestion: str
+        | None = "Check that all required dependencies are installed and credentials are valid.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = None,
     ) -> None:
@@ -106,7 +108,8 @@ class ActionNotFoundError(ConnectorError):
         code: str = "CONNECTOR_ACTION_NOT_FOUND",
         retry_eligible: bool = False,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "Verify the action name. Use connector.list_actions() to see available actions.",
+        suggestion: str
+        | None = "Verify the action name. Use connector.list_actions() to see available actions.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = None,
     ) -> None:

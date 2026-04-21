@@ -21,7 +21,14 @@ from toolsconnector.spec.connector import (
 from toolsconnector.types import PageState, PaginatedList
 
 from ._parsers import parse_search_result, parse_ticket, parse_user
-from .types import ZendeskComment, ZendeskGroup, ZendeskOrganization, ZendeskSearchResult, ZendeskTicket, ZendeskUser
+from .types import (
+    ZendeskComment,
+    ZendeskGroup,
+    ZendeskOrganization,
+    ZendeskSearchResult,
+    ZendeskTicket,
+    ZendeskUser,
+)
 
 logger = logging.getLogger("toolsconnector.zendesk")
 
@@ -40,8 +47,7 @@ class Zendesk(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://{subdomain}.zendesk.com/api/v2"
     description = (
-        "Connect to Zendesk to manage support tickets, users, "
-        "and search across your help desk."
+        "Connect to Zendesk to manage support tickets, users, and search across your help desk."
     )
     _rate_limit_config = RateLimitSpec(rate=400, period=60, burst=50)
 
@@ -64,10 +70,7 @@ class Zendesk(BaseConnector):
         auth_string = f"{email}/token:{api_token}"
         token = base64.b64encode(auth_string.encode()).decode()
 
-        resolved_url = (
-            self._base_url
-            or self.__class__.base_url.format(subdomain=subdomain)
-        )
+        resolved_url = self._base_url or self.__class__.base_url.format(subdomain=subdomain)
 
         headers: dict[str, str] = {
             "Authorization": f"Basic {token}",
@@ -113,7 +116,10 @@ class Zendesk(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, json=json_body,
+            method,
+            path,
+            params=params,
+            json=json_body,
         )
 
         remaining = resp.headers.get("X-Rate-Limit-Remaining")
@@ -180,11 +186,15 @@ class Zendesk(BaseConnector):
             total_count=body.get("count"),
         )
         result._fetch_next = (
-            (lambda: self.list_tickets(
-                status=status, limit=limit,
-                page=(page or 1) + 1,
-            ))
-            if has_more else None
+            (
+                lambda: self.list_tickets(
+                    status=status,
+                    limit=limit,
+                    page=(page or 1) + 1,
+                )
+            )
+            if has_more
+            else None
         )
         return result
 
@@ -231,7 +241,8 @@ class Zendesk(BaseConnector):
             ticket_data["requester"] = {"email": requester_email}
 
         resp = await self._request(
-            "POST", "/tickets.json",
+            "POST",
+            "/tickets.json",
             json_body={"ticket": ticket_data},
         )
         return parse_ticket(resp.json()["ticket"])
@@ -264,7 +275,8 @@ class Zendesk(BaseConnector):
             ticket_data["comment"] = {"body": comment, "public": True}
 
         resp = await self._request(
-            "PUT", f"/tickets/{ticket_id}.json",
+            "PUT",
+            f"/tickets/{ticket_id}.json",
             json_body={"ticket": ticket_data},
         )
         return parse_ticket(resp.json()["ticket"])
@@ -295,7 +307,8 @@ class Zendesk(BaseConnector):
         }
 
         resp = await self._request(
-            "PUT", f"/tickets/{ticket_id}.json",
+            "PUT",
+            f"/tickets/{ticket_id}.json",
             json_body={"ticket": ticket_data},
         )
         return parse_ticket(resp.json()["ticket"])
@@ -338,10 +351,14 @@ class Zendesk(BaseConnector):
             total_count=body.get("count"),
         )
         result._fetch_next = (
-            (lambda: self.list_users(
-                limit=limit, page=(page or 1) + 1,
-            ))
-            if has_more else None
+            (
+                lambda: self.list_users(
+                    limit=limit,
+                    page=(page or 1) + 1,
+                )
+            )
+            if has_more
+            else None
         )
         return result
 
@@ -420,7 +437,9 @@ class Zendesk(BaseConnector):
 
     @action("Assign a ticket to an agent")
     async def assign_ticket(
-        self, ticket_id: int, assignee_id: int,
+        self,
+        ticket_id: int,
+        assignee_id: int,
     ) -> ZendeskTicket:
         """Assign a ticket to a specific agent.
 
@@ -432,7 +451,8 @@ class Zendesk(BaseConnector):
             The updated ZendeskTicket.
         """
         resp = await self._request(
-            "PUT", f"/tickets/{ticket_id}.json",
+            "PUT",
+            f"/tickets/{ticket_id}.json",
             json_body={"ticket": {"assignee_id": assignee_id}},
         )
         return parse_ticket(resp.json()["ticket"])
@@ -443,7 +463,8 @@ class Zendesk(BaseConnector):
 
     @action("List agent groups in Zendesk")
     async def list_groups(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[ZendeskGroup]:
         """List all agent groups.
 
@@ -457,7 +478,9 @@ class Zendesk(BaseConnector):
         if limit is not None:
             params["per_page"] = min(limit, 100)
         resp = await self._request(
-            "GET", "/groups.json", params=params or None,
+            "GET",
+            "/groups.json",
+            params=params or None,
         )
         body = resp.json()
         return [
@@ -512,7 +535,8 @@ class Zendesk(BaseConnector):
             "email": email,
         }
         resp = await self._request(
-            "POST", "/users.json",
+            "POST",
+            "/users.json",
             json_body={"user": user_data},
         )
         return parse_user(resp.json()["user"])
@@ -541,7 +565,8 @@ class Zendesk(BaseConnector):
             user_data["email"] = email
 
         resp = await self._request(
-            "PUT", f"/users/{user_id}.json",
+            "PUT",
+            f"/users/{user_id}.json",
             json_body={"user": user_data},
         )
         return parse_user(resp.json()["user"])
@@ -552,7 +577,8 @@ class Zendesk(BaseConnector):
 
     @action("List comments on a Zendesk ticket")
     async def list_ticket_comments(
-        self, ticket_id: int,
+        self,
+        ticket_id: int,
     ) -> list[ZendeskComment]:
         """List all comments (conversation) on a ticket.
 
@@ -563,7 +589,8 @@ class Zendesk(BaseConnector):
             List of ZendeskComment objects.
         """
         resp = await self._request(
-            "GET", f"/tickets/{ticket_id}/comments.json",
+            "GET",
+            f"/tickets/{ticket_id}/comments.json",
         )
         body = resp.json()
         return [
@@ -604,7 +631,9 @@ class Zendesk(BaseConnector):
             params["page"] = page
 
         resp = await self._request(
-            "GET", "/organizations.json", params=params,
+            "GET",
+            "/organizations.json",
+            params=params,
         )
         body = resp.json()
 

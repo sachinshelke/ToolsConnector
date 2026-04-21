@@ -47,8 +47,7 @@ class Linear(BaseConnector):
     protocol = ProtocolType.GRAPHQL
     base_url = "https://api.linear.app"
     description = (
-        "Connect to Linear to search, create, and manage issues, "
-        "projects, and teams via GraphQL."
+        "Connect to Linear to search, create, and manage issues, projects, and teams via GraphQL."
     )
     _rate_limit_config = RateLimitSpec(rate=250, period=60, burst=50)
 
@@ -88,15 +87,15 @@ class Linear(BaseConnector):
 
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(
-                url, headers=self._headers(), json=payload,
+                url,
+                headers=self._headers(),
+                json=payload,
             )
             response.raise_for_status()
             result = response.json()
 
         if "errors" in result and result["errors"]:
-            messages = "; ".join(
-                e.get("message", str(e)) for e in result["errors"]
-            )
+            messages = "; ".join(e.get("message", str(e)) for e in result["errors"])
             raise ValueError(f"Linear GraphQL errors: {messages}")
 
         return result.get("data", {})
@@ -390,9 +389,13 @@ class Linear(BaseConnector):
         data = await self._graphql(query)
         return [
             LinearTeam(
-                id=t["id"], name=t.get("name", ""), key=t.get("key", ""),
-                description=t.get("description"), icon=t.get("icon"),
-                color=t.get("color"), private=t.get("private", False),
+                id=t["id"],
+                name=t.get("name", ""),
+                key=t.get("key", ""),
+                description=t.get("description"),
+                icon=t.get("icon"),
+                color=t.get("color"),
+                private=t.get("private", False),
             )
             for t in data.get("teams", {}).get("nodes", [])
         ]
@@ -523,7 +526,8 @@ class Linear(BaseConnector):
 
     @action("List issue labels, optionally filtered by team")
     async def list_labels(
-        self, team_id: Optional[str] = None,
+        self,
+        team_id: Optional[str] = None,
     ) -> list[LinearLabel]:
         """List issue labels in the workspace or for a specific team.
 
@@ -582,7 +586,9 @@ class Linear(BaseConnector):
             raise ValueError("Linear label creation failed")
         lbl = result["issueLabel"]
         return LinearLabel(
-            id=lbl["id"], name=lbl.get("name", ""), color=lbl.get("color"),
+            id=lbl["id"],
+            name=lbl.get("name", ""),
+            color=lbl.get("color"),
         )
 
     # ------------------------------------------------------------------
@@ -642,9 +648,7 @@ class Linear(BaseConnector):
         """
         filter_arg = ""
         if team_id:
-            filter_arg = (
-                f'filter: {{ team: {{ id: {{ eq: "{team_id}" }} }} }},'
-            )
+            filter_arg = f'filter: {{ team: {{ id: {{ eq: "{team_id}" }} }} }},'
         after_arg = f', after: "{cursor}"' if cursor else ""
 
         query = f"""
@@ -659,10 +663,7 @@ class Linear(BaseConnector):
         page_info = cycles_data.get("pageInfo", {})
 
         return PaginatedList(
-            items=[
-                self._parse_cycle(n)
-                for n in cycles_data.get("nodes", [])
-            ],
+            items=[self._parse_cycle(n) for n in cycles_data.get("nodes", [])],
             page_state=PageState(
                 cursor=page_info.get("endCursor"),
                 has_more=page_info.get("hasNextPage", False),
@@ -691,7 +692,8 @@ class Linear(BaseConnector):
 
     @action("List comments on an issue")
     async def list_issue_comments(
-        self, issue_id: str,
+        self,
+        issue_id: str,
     ) -> list[LinearComment]:
         """List all comments on a Linear issue.
 
@@ -707,11 +709,7 @@ class Linear(BaseConnector):
         }} }}
         """
         data = await self._graphql(query, variables={"id": issue_id})
-        comments_data = (
-            data.get("issue", {})
-            .get("comments", {})
-            .get("nodes", [])
-        )
+        comments_data = data.get("issue", {}).get("comments", {}).get("nodes", [])
         return [self._parse_comment(c) for c in comments_data]
 
     # ------------------------------------------------------------------
@@ -809,11 +807,7 @@ class Linear(BaseConnector):
         page_info = users_data.get("pageInfo", {})
 
         return PaginatedList(
-            items=[
-                self._parse_user(n)
-                for n in users_data.get("nodes", [])
-                if n is not None
-            ],
+            items=[self._parse_user(n) for n in users_data.get("nodes", []) if n is not None],
             page_state=PageState(
                 cursor=page_info.get("endCursor"),
                 has_more=page_info.get("hasNextPage", False),

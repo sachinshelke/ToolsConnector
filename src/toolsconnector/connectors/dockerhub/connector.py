@@ -140,8 +140,7 @@ class DockerHub(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://hub.docker.com/v2"
     description = (
-        "Connect to Docker Hub to search repositories, list tags, "
-        "view users and organisations."
+        "Connect to Docker Hub to search repositories, list tags, view users and organisations."
     )
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=30)
 
@@ -229,7 +228,10 @@ class DockerHub(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, json=json,
+            method,
+            path,
+            params=params,
+            json=json,
         )
         resp.raise_for_status()
         return resp
@@ -299,7 +301,9 @@ class DockerHub(BaseConnector):
         }
 
         resp = await self._get_page(
-            "/search/repositories/", params=params, cursor=page,
+            "/search/repositories/",
+            params=params,
+            cursor=page,
         )
         body = resp.json()
         items = [_parse_repo(r) for r in body.get("results", [])]
@@ -312,7 +316,9 @@ class DockerHub(BaseConnector):
         )
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.search_repos(
-                query=query, limit=capped_limit, page=c,
+                query=query,
+                limit=capped_limit,
+                page=c,
             )
         return result
 
@@ -322,7 +328,9 @@ class DockerHub(BaseConnector):
 
     @action("Get a Docker Hub repository")
     async def get_repo(
-        self, namespace: str, repo: str,
+        self,
+        namespace: str,
+        repo: str,
     ) -> DockerRepo:
         """Retrieve a single repository.
 
@@ -334,7 +342,8 @@ class DockerHub(BaseConnector):
             DockerRepo object.
         """
         resp = await self._request(
-            "GET", f"/repositories/{namespace}/{repo}/",
+            "GET",
+            f"/repositories/{namespace}/{repo}/",
         )
         return _parse_repo(resp.json())
 
@@ -359,7 +368,9 @@ class DockerHub(BaseConnector):
         params: dict[str, Any] = {"page_size": capped_limit}
 
         resp = await self._get_page(
-            f"/repositories/{namespace}/", params=params, cursor=page,
+            f"/repositories/{namespace}/",
+            params=params,
+            cursor=page,
         )
         body = resp.json()
         items = [_parse_repo(r) for r in body.get("results", [])]
@@ -372,7 +383,9 @@ class DockerHub(BaseConnector):
         )
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.list_repos(
-                namespace=namespace, limit=capped_limit, page=c,
+                namespace=namespace,
+                limit=capped_limit,
+                page=c,
             )
         return result
 
@@ -418,13 +431,19 @@ class DockerHub(BaseConnector):
         )
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.list_tags(
-                namespace=namespace, repo=repo, limit=capped_limit, page=c,
+                namespace=namespace,
+                repo=repo,
+                limit=capped_limit,
+                page=c,
             )
         return result
 
     @action("Get a single Docker Hub repository tag")
     async def get_tag(
-        self, namespace: str, repo: str, tag: str,
+        self,
+        namespace: str,
+        repo: str,
+        tag: str,
     ) -> DockerTag:
         """Retrieve a single tag for a repository.
 
@@ -437,7 +456,8 @@ class DockerHub(BaseConnector):
             DockerTag object.
         """
         resp = await self._request(
-            "GET", f"/repositories/{namespace}/{repo}/tags/{tag}/",
+            "GET",
+            f"/repositories/{namespace}/{repo}/tags/{tag}/",
         )
         return _parse_tag(resp.json())
 
@@ -488,7 +508,10 @@ class DockerHub(BaseConnector):
 
     @action("Delete a repository tag", dangerous=True)
     async def delete_tag(
-        self, namespace: str, repo: str, tag: str,
+        self,
+        namespace: str,
+        repo: str,
+        tag: str,
     ) -> bool:
         """Delete a specific tag from a repository.
 
@@ -501,7 +524,8 @@ class DockerHub(BaseConnector):
             True if the tag was deleted.
         """
         resp = await self._request(
-            "DELETE", f"/repositories/{namespace}/{repo}/tags/{tag}/",
+            "DELETE",
+            f"/repositories/{namespace}/{repo}/tags/{tag}/",
         )
         return resp.status_code in (200, 204)
 
@@ -511,7 +535,9 @@ class DockerHub(BaseConnector):
 
     @action("List collaborators of a repository")
     async def list_collaborators(
-        self, namespace: str, repo: str,
+        self,
+        namespace: str,
+        repo: str,
     ) -> list[dict[str, Any]]:
         """List all collaborators on a repository.
 
@@ -523,7 +549,8 @@ class DockerHub(BaseConnector):
             List of collaborator dicts with user and permission info.
         """
         resp = await self._request(
-            "GET", f"/repositories/{namespace}/{repo}/collaborators/",
+            "GET",
+            f"/repositories/{namespace}/{repo}/collaborators/",
         )
         body = resp.json()
         return body.get("results", [])
@@ -534,7 +561,9 @@ class DockerHub(BaseConnector):
 
     @action("Get build history for a repository")
     async def get_build_history(
-        self, namespace: str, repo: str,
+        self,
+        namespace: str,
+        repo: str,
     ) -> list[dict[str, Any]]:
         """Get the automated build history of a repository.
 
@@ -546,7 +575,8 @@ class DockerHub(BaseConnector):
             List of build history entry dicts.
         """
         resp = await self._request(
-            "GET", f"/repositories/{namespace}/{repo}/buildhistory/",
+            "GET",
+            f"/repositories/{namespace}/{repo}/buildhistory/",
         )
         body = resp.json()
         return body.get("results", [])
@@ -584,7 +614,8 @@ class DockerHub(BaseConnector):
             payload["is_private"] = is_private
 
         resp = await self._request(
-            "POST", f"/repositories/{namespace}/",
+            "POST",
+            f"/repositories/{namespace}/",
             json=payload,
         )
         return _parse_repo(resp.json())
@@ -611,14 +642,17 @@ class DockerHub(BaseConnector):
             payload["description"] = description
 
         resp = await self._request(
-            "PATCH", f"/repositories/{namespace}/{repo}/",
+            "PATCH",
+            f"/repositories/{namespace}/{repo}/",
             json=payload,
         )
         return _parse_repo(resp.json())
 
     @action("List build triggers for a repository")
     async def list_build_triggers(
-        self, namespace: str, repo: str,
+        self,
+        namespace: str,
+        repo: str,
     ) -> list[dict[str, Any]]:
         """List automated build triggers (build links/hooks) for a repository.
 
@@ -630,7 +664,8 @@ class DockerHub(BaseConnector):
             List of build trigger dicts.
         """
         resp = await self._request(
-            "GET", f"/repositories/{namespace}/{repo}/autobuild/",
+            "GET",
+            f"/repositories/{namespace}/{repo}/autobuild/",
         )
         body = resp.json()
         return body.get("build_tags", body.get("results", []))

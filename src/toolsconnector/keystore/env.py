@@ -67,8 +67,7 @@ class EnvironmentKeyStore:
             NotImplementedError: Always.
         """
         raise NotImplementedError(
-            "EnvironmentKeyStore is read-only. "
-            "Set credentials via environment variables instead."
+            "EnvironmentKeyStore is read-only. Set credentials via environment variables instead."
         )
 
     async def delete(self, key: str) -> None:
@@ -78,8 +77,7 @@ class EnvironmentKeyStore:
             NotImplementedError: Always.
         """
         raise NotImplementedError(
-            "EnvironmentKeyStore is read-only. "
-            "Unset environment variables directly instead."
+            "EnvironmentKeyStore is read-only. Unset environment variables directly instead."
         )
 
     async def exists(self, key: str) -> bool:

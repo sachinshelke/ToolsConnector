@@ -133,8 +133,7 @@ class X(BaseConnector):
                 "Authorization": f"Bearer {self._credentials}",
                 "Content-Type": "application/json",
                 "User-Agent": (
-                    "ToolsConnector/0.3.0 "
-                    "(+https://github.com/sachinshelke/ToolsConnector)"
+                    "ToolsConnector/0.3.0 (+https://github.com/sachinshelke/ToolsConnector)"
                 ),
             },
             timeout=self._timeout,
@@ -535,9 +534,7 @@ class X(BaseConnector):
         if pagination_token:
             params["pagination_token"] = pagination_token
 
-        body = await self._request(
-            "GET", f"/users/{user_id}/mentions", params=params
-        )
+        body = await self._request("GET", f"/users/{user_id}/mentions", params=params)
         items = [Tweet.model_validate(t) for t in body.get("data", [])]
         meta = body.get("meta", {}) or {}
         next_token = meta.get("next_token")

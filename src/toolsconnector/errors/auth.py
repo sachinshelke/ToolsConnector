@@ -48,7 +48,8 @@ class TokenExpiredError(AuthError):
         code: str = "AUTH_TOKEN_EXPIRED",
         retry_eligible: bool = True,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "Re-authenticate or refresh the token to obtain a new access token.",
+        suggestion: str
+        | None = "Re-authenticate or refresh the token to obtain a new access token.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = 401,
     ) -> None:
@@ -77,7 +78,8 @@ class InvalidCredentialsError(AuthError):
         code: str = "AUTH_INVALID_CREDENTIALS",
         retry_eligible: bool = False,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "Verify that the API key or credentials are correct and have not been revoked.",
+        suggestion: str
+        | None = "Verify that the API key or credentials are correct and have not been revoked.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = 401,
     ) -> None:
@@ -135,7 +137,8 @@ class RefreshFailedError(AuthError):
         code: str = "AUTH_REFRESH_FAILED",
         retry_eligible: bool = False,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "The refresh token may be expired or revoked. Re-authenticate from scratch.",
+        suggestion: str
+        | None = "The refresh token may be expired or revoked. Re-authenticate from scratch.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = None,
     ) -> None:

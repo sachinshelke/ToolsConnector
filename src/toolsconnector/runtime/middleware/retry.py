@@ -116,10 +116,7 @@ class RetryMiddleware:
         exp_delay = self._base_delay * (2 ** (attempt - 1))
 
         # Honour retry_after_seconds from rate-limit responses.
-        if (
-            isinstance(error, RateLimitError)
-            and error.retry_after_seconds is not None
-        ):
+        if isinstance(error, RateLimitError) and error.retry_after_seconds is not None:
             exp_delay = max(exp_delay, error.retry_after_seconds)
 
         # Cap at max_delay.

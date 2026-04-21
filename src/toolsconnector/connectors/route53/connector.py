@@ -138,7 +138,8 @@ class Route53(BaseConnector):
         qs = ""
         if params:
             qs = "?" + urllib.parse.urlencode(
-                params, quote_via=urllib.parse.quote,
+                params,
+                quote_via=urllib.parse.quote,
             )
         full_url = f"https://{self._host}/{_API_PREFIX}/{path}{qs}"
 
@@ -155,7 +156,10 @@ class Route53(BaseConnector):
         )
 
         resp = await self._client.request(
-            method, full_url, headers=headers, content=body,
+            method,
+            full_url,
+            headers=headers,
+            content=body,
         )
         if resp.status_code >= 400:
             _raise_r53_error(resp)
@@ -177,7 +181,7 @@ class Route53(BaseConnector):
         zone_id = find_text(elem, "Id", _R53_NS) or ""
         # Strip the /hostedzone/ prefix that AWS returns.
         if zone_id.startswith("/hostedzone/"):
-            zone_id = zone_id[len("/hostedzone/"):]
+            zone_id = zone_id[len("/hostedzone/") :]
 
         config: dict[str, Any] = {}
         config_elem = elem.find(f"{{{_R53_NS}}}Config")
@@ -229,16 +233,27 @@ class Route53(BaseConnector):
         if alias_elem is None:
             alias_elem = elem.find("AliasTarget")
         if alias_elem is not None:
-            eth_text = find_text(
-                alias_elem, "EvaluateTargetHealth", _R53_NS,
-            ) or "false"
+            eth_text = (
+                find_text(
+                    alias_elem,
+                    "EvaluateTargetHealth",
+                    _R53_NS,
+                )
+                or "false"
+            )
             alias_target = {
                 "hosted_zone_id": find_text(
-                    alias_elem, "HostedZoneId", _R53_NS,
-                ) or "",
+                    alias_elem,
+                    "HostedZoneId",
+                    _R53_NS,
+                )
+                or "",
                 "dns_name": find_text(
-                    alias_elem, "DNSName", _R53_NS,
-                ) or "",
+                    alias_elem,
+                    "DNSName",
+                    _R53_NS,
+                )
+                or "",
                 "evaluate_target_health": eth_text.lower() == "true",
             }
 
@@ -261,7 +276,7 @@ class Route53(BaseConnector):
         """
         change_id = find_text(elem, "Id", _R53_NS) or ""
         if change_id.startswith("/change/"):
-            change_id = change_id[len("/change/"):]
+            change_id = change_id[len("/change/") :]
 
         return R53ChangeInfo(
             id=change_id,
@@ -287,7 +302,7 @@ class Route53(BaseConnector):
                 tag = child.tag
                 # Strip namespace from tag.
                 if tag.startswith(f"{{{_R53_NS}}}"):
-                    tag = tag[len(f"{{{_R53_NS}}}"):]
+                    tag = tag[len(f"{{{_R53_NS}}}") :]
                 if child.text:
                     hc_config[tag] = child.text
 
@@ -322,7 +337,8 @@ class Route53(BaseConnector):
 
     @action("Get a hosted zone")
     async def get_hosted_zone(
-        self, hosted_zone_id: str,
+        self,
+        hosted_zone_id: str,
     ) -> R53HostedZone:
         """Retrieve a single hosted zone by its ID.
 
@@ -333,7 +349,8 @@ class Route53(BaseConnector):
             R53HostedZone object with full details.
         """
         resp = await self._r53_request(
-            "GET", f"hostedzone/{hosted_zone_id}",
+            "GET",
+            f"hostedzone/{hosted_zone_id}",
         )
         root = ET.fromstring(resp.text)
 
@@ -369,9 +386,7 @@ class Route53(BaseConnector):
         comment_xml = ""
         if comment:
             comment_xml = (
-                "<HostedZoneConfig>"
-                f"<Comment>{_xml_escape(comment)}</Comment>"
-                "</HostedZoneConfig>"
+                f"<HostedZoneConfig><Comment>{_xml_escape(comment)}</Comment></HostedZoneConfig>"
             )
 
         body_xml = (
@@ -400,7 +415,8 @@ class Route53(BaseConnector):
 
     @action("Delete a hosted zone", dangerous=True)
     async def delete_hosted_zone(
-        self, hosted_zone_id: str,
+        self,
+        hosted_zone_id: str,
     ) -> R53ChangeInfo:
         """Delete a Route 53 hosted zone.
 
@@ -414,7 +430,8 @@ class Route53(BaseConnector):
             R53ChangeInfo with the deletion status.
         """
         resp = await self._r53_request(
-            "DELETE", f"hostedzone/{hosted_zone_id}",
+            "DELETE",
+            f"hostedzone/{hosted_zone_id}",
         )
         root = ET.fromstring(resp.text)
 
@@ -496,8 +513,13 @@ class Route53(BaseConnector):
             R53ChangeInfo with the change status.
         """
         return await self._change_record(
-            hosted_zone_id, "UPSERT", name, record_type,
-            ttl=ttl, values=values, alias_target=alias_target,
+            hosted_zone_id,
+            "UPSERT",
+            name,
+            record_type,
+            ttl=ttl,
+            values=values,
+            alias_target=alias_target,
         )
 
     @action("Delete a DNS record", dangerous=True)
@@ -525,8 +547,12 @@ class Route53(BaseConnector):
             R53ChangeInfo with the change status.
         """
         return await self._change_record(
-            hosted_zone_id, "DELETE", name, record_type,
-            ttl=ttl, values=values,
+            hosted_zone_id,
+            "DELETE",
+            name,
+            record_type,
+            ttl=ttl,
+            values=values,
         )
 
     async def _change_record(
@@ -568,7 +594,7 @@ class Route53(BaseConnector):
             )
         else:
             rr_items = ""
-            for v in (values or []):
+            for v in values or []:
                 rr_items += f"<ResourceRecord><Value>{_xml_escape(v)}</Value></ResourceRecord>"
             rrset_xml = (
                 f"<Name>{_xml_escape(name)}</Name>"
@@ -686,7 +712,8 @@ class Route53(BaseConnector):
 
     @action("Get a health check")
     async def get_health_check(
-        self, health_check_id: str,
+        self,
+        health_check_id: str,
     ) -> R53HealthCheck:
         """Retrieve a single health check by its ID.
 
@@ -697,7 +724,8 @@ class Route53(BaseConnector):
             R53HealthCheck with full details.
         """
         resp = await self._r53_request(
-            "GET", f"healthcheck/{health_check_id}",
+            "GET",
+            f"healthcheck/{health_check_id}",
         )
         root = ET.fromstring(resp.text)
 
@@ -710,7 +738,8 @@ class Route53(BaseConnector):
 
     @action("Delete a health check", dangerous=True)
     async def delete_health_check(
-        self, health_check_id: str,
+        self,
+        health_check_id: str,
     ) -> dict:
         """Delete a Route 53 health check.
 
@@ -721,7 +750,8 @@ class Route53(BaseConnector):
             Dict with ``deleted`` status.
         """
         await self._r53_request(
-            "DELETE", f"healthcheck/{health_check_id}",
+            "DELETE",
+            f"healthcheck/{health_check_id}",
         )
         return {"deleted": True, "health_check_id": health_check_id}
 
@@ -836,10 +866,7 @@ class Route53(BaseConnector):
             tag_items = ""
             for k, v in add_tags.items():
                 tag_items += (
-                    f"<Tag>"
-                    f"<Key>{_xml_escape(k)}</Key>"
-                    f"<Value>{_xml_escape(str(v))}</Value>"
-                    f"</Tag>"
+                    f"<Tag><Key>{_xml_escape(k)}</Key><Value>{_xml_escape(str(v))}</Value></Tag>"
                 )
             add_xml = f"<AddTags>{tag_items}</AddTags>"
 
@@ -898,8 +925,7 @@ def _xml_escape(text: str) -> str:
         XML-safe string.
     """
     return (
-        text
-        .replace("&", "&amp;")
+        text.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")

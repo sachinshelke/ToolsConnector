@@ -163,7 +163,10 @@ class SendGrid(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, json=json,
+            method,
+            path,
+            params=params,
+            json=json,
         )
         resp.raise_for_status()
         return resp
@@ -277,7 +280,9 @@ class SendGrid(BaseConnector):
         """
         payload: dict[str, Any] = {"contacts": contacts}
         resp = await self._request(
-            "PUT", "/marketing/contacts", json=payload,
+            "PUT",
+            "/marketing/contacts",
+            json=payload,
         )
         body = resp.json()
         return SendGridJobId(job_id=body["job_id"])
@@ -299,7 +304,9 @@ class SendGrid(BaseConnector):
         """
         payload: dict[str, Any] = {"query": query}
         resp = await self._request(
-            "POST", "/marketing/contacts/search", json=payload,
+            "POST",
+            "/marketing/contacts/search",
+            json=payload,
         )
         body = resp.json()
 
@@ -332,7 +339,8 @@ class SendGrid(BaseConnector):
                 name=lst.get("name"),
                 contact_count=lst.get("contact_count", 0),
                 sample_contacts=lst.get("_metadata", {}).get(
-                    "sample_contacts", [],
+                    "sample_contacts",
+                    [],
                 ),
                 created_at=lst.get("created_at"),
                 updated_at=lst.get("updated_at"),
@@ -439,7 +447,8 @@ class SendGrid(BaseConnector):
             True if the delete request was accepted.
         """
         resp = await self._request(
-            "DELETE", "/marketing/contacts",
+            "DELETE",
+            "/marketing/contacts",
             params={"ids": contact_id},
         )
         return resp.status_code in (200, 202, 204)
@@ -459,7 +468,8 @@ class SendGrid(BaseConnector):
             The created SendGridList object.
         """
         resp = await self._request(
-            "POST", "/marketing/lists",
+            "POST",
+            "/marketing/lists",
             json_body={"name": name},
         )
         data = resp.json()
@@ -477,7 +487,8 @@ class SendGrid(BaseConnector):
 
     @action("Get bounced email addresses")
     async def get_bounces(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[SendGridBounce]:
         """Retrieve bounced email addresses.
 
@@ -491,7 +502,9 @@ class SendGrid(BaseConnector):
         if limit is not None:
             params["limit"] = limit
         resp = await self._request(
-            "GET", "/suppression/bounces", params=params or None,
+            "GET",
+            "/suppression/bounces",
+            params=params or None,
         )
         return [
             SendGridBounce(
@@ -505,7 +518,8 @@ class SendGrid(BaseConnector):
 
     @action("Get spam report records")
     async def get_spam_reports(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[SendGridSpamReport]:
         """Retrieve spam report records.
 
@@ -519,7 +533,9 @@ class SendGrid(BaseConnector):
         if limit is not None:
             params["limit"] = limit
         resp = await self._request(
-            "GET", "/suppression/spam_reports", params=params or None,
+            "GET",
+            "/suppression/spam_reports",
+            params=params or None,
         )
         return [
             SendGridSpamReport(
@@ -620,7 +636,8 @@ class SendGrid(BaseConnector):
             List of suppression dicts with email and creation timestamp.
         """
         resp = await self._request(
-            "GET", "/suppression/unsubscribes",
+            "GET",
+            "/suppression/unsubscribes",
         )
         return resp.json() if isinstance(resp.json(), list) else []
 
@@ -648,7 +665,8 @@ class SendGrid(BaseConnector):
         if offset is not None:
             params["offset"] = offset
         resp = await self._request(
-            "GET", "/suppression/unsubscribes",
+            "GET",
+            "/suppression/unsubscribes",
             params=params or None,
         )
         data = resp.json()
@@ -681,7 +699,9 @@ class SendGrid(BaseConnector):
             "recipient_emails": emails,
         }
         resp = await self._request(
-            "POST", "/asm/suppressions/global", json=payload,
+            "POST",
+            "/asm/suppressions/global",
+            json=payload,
         )
         return resp.status_code in (200, 201, 202)
 
@@ -702,7 +722,8 @@ class SendGrid(BaseConnector):
             True if the email was removed from global suppression.
         """
         resp = await self._request(
-            "DELETE", f"/asm/suppressions/global/{email}",
+            "DELETE",
+            f"/asm/suppressions/global/{email}",
         )
         return resp.status_code in (200, 204)
 
@@ -760,7 +781,9 @@ class SendGrid(BaseConnector):
             params["limit"] = limit
 
         resp = await self._request(
-            "GET", "/messages", params=params or None,
+            "GET",
+            "/messages",
+            params=params or None,
         )
         body = resp.json()
         return body.get("messages", [])

@@ -133,7 +133,10 @@ class GitLab(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, json=json,
+            method,
+            path,
+            params=params,
+            json=json,
         )
 
         remaining = resp.headers.get("RateLimit-Remaining")
@@ -144,7 +147,9 @@ class GitLab(BaseConnector):
         return resp
 
     def _build_page_state(
-        self, resp: httpx.Response, current_page: int,
+        self,
+        resp: httpx.Response,
+        current_page: int,
     ) -> PageState:
         """Build a PageState from GitLab pagination headers.
 
@@ -213,12 +218,17 @@ class GitLab(BaseConnector):
         ps = self._build_page_state(resp, page)
 
         result = PaginatedList(
-            items=items, page_state=ps, total_count=ps.total_count,
+            items=items,
+            page_state=ps,
+            total_count=ps.total_count,
         )
         if ps.has_more and ps.page_number is not None:
             np = ps.page_number
             result._fetch_next = lambda pg=np: self.alist_projects(
-                owned=owned, search=search, limit=limit, page=pg,
+                owned=owned,
+                search=search,
+                limit=limit,
+                page=pg,
             )
         return result
 
@@ -270,19 +280,26 @@ class GitLab(BaseConnector):
             params["labels"] = labels
 
         resp = await self._request(
-            "GET", f"/projects/{encoded}/issues", params=params,
+            "GET",
+            f"/projects/{encoded}/issues",
+            params=params,
         )
         items = [parse_issue(i) for i in resp.json()]
         ps = self._build_page_state(resp, page)
 
         result = PaginatedList(
-            items=items, page_state=ps, total_count=ps.total_count,
+            items=items,
+            page_state=ps,
+            total_count=ps.total_count,
         )
         if ps.has_more and ps.page_number is not None:
             np = ps.page_number
             result._fetch_next = lambda pg=np: self.alist_issues(
-                project_id=project_id, state=state, labels=labels,
-                limit=limit, page=pg,
+                project_id=project_id,
+                state=state,
+                labels=labels,
+                limit=limit,
+                page=pg,
             )
         return result
 
@@ -313,7 +330,9 @@ class GitLab(BaseConnector):
             payload["labels"] = labels
 
         resp = await self._request(
-            "POST", f"/projects/{encoded}/issues", json=payload,
+            "POST",
+            f"/projects/{encoded}/issues",
+            json=payload,
         )
         return parse_issue(resp.json())
 
@@ -347,18 +366,25 @@ class GitLab(BaseConnector):
             params["state"] = state
 
         resp = await self._request(
-            "GET", f"/projects/{encoded}/merge_requests", params=params,
+            "GET",
+            f"/projects/{encoded}/merge_requests",
+            params=params,
         )
         items = [parse_merge_request(mr) for mr in resp.json()]
         ps = self._build_page_state(resp, page)
 
         result = PaginatedList(
-            items=items, page_state=ps, total_count=ps.total_count,
+            items=items,
+            page_state=ps,
+            total_count=ps.total_count,
         )
         if ps.has_more and ps.page_number is not None:
             np = ps.page_number
             result._fetch_next = lambda pg=np: self.alist_merge_requests(
-                project_id=project_id, state=state, limit=limit, page=pg,
+                project_id=project_id,
+                state=state,
+                limit=limit,
+                page=pg,
             )
         return result
 
@@ -393,7 +419,9 @@ class GitLab(BaseConnector):
             payload["description"] = description
 
         resp = await self._request(
-            "POST", f"/projects/{encoded}/merge_requests", json=payload,
+            "POST",
+            f"/projects/{encoded}/merge_requests",
+            json=payload,
         )
         return parse_merge_request(resp.json())
 
@@ -428,24 +456,33 @@ class GitLab(BaseConnector):
             params["status"] = status
 
         resp = await self._request(
-            "GET", f"/projects/{encoded}/pipelines", params=params,
+            "GET",
+            f"/projects/{encoded}/pipelines",
+            params=params,
         )
         items = [parse_pipeline(p) for p in resp.json()]
         ps = self._build_page_state(resp, page)
 
         result = PaginatedList(
-            items=items, page_state=ps, total_count=ps.total_count,
+            items=items,
+            page_state=ps,
+            total_count=ps.total_count,
         )
         if ps.has_more and ps.page_number is not None:
             np = ps.page_number
             result._fetch_next = lambda pg=np: self.alist_pipelines(
-                project_id=project_id, status=status, limit=limit, page=pg,
+                project_id=project_id,
+                status=status,
+                limit=limit,
+                page=pg,
             )
         return result
 
     @action("Get a single pipeline by ID")
     async def get_pipeline(
-        self, project_id: str, pipeline_id: int,
+        self,
+        project_id: str,
+        pipeline_id: int,
     ) -> Pipeline:
         """Retrieve a single pipeline with full details.
 
@@ -458,7 +495,8 @@ class GitLab(BaseConnector):
         """
         encoded = _encode_project_id(project_id)
         resp = await self._request(
-            "GET", f"/projects/{encoded}/pipelines/{pipeline_id}",
+            "GET",
+            f"/projects/{encoded}/pipelines/{pipeline_id}",
         )
         return parse_pipeline(resp.json())
 
@@ -483,7 +521,8 @@ class GitLab(BaseConnector):
         """
         encoded = _encode_project_id(project_id)
         resp = await self._request(
-            "GET", f"/projects/{encoded}/merge_requests/{mr_iid}",
+            "GET",
+            f"/projects/{encoded}/merge_requests/{mr_iid}",
         )
         return parse_merge_request(resp.json())
 
@@ -718,18 +757,25 @@ class GitLab(BaseConnector):
             params["query"] = query
 
         resp = await self._request(
-            "GET", f"/projects/{encoded}/members", params=params,
+            "GET",
+            f"/projects/{encoded}/members",
+            params=params,
         )
         items = [parse_member(m) for m in resp.json()]
         ps = self._build_page_state(resp, page)
 
         result = PaginatedList(
-            items=items, page_state=ps, total_count=ps.total_count,
+            items=items,
+            page_state=ps,
+            total_count=ps.total_count,
         )
         if ps.has_more and ps.page_number is not None:
             np = ps.page_number
             result._fetch_next = lambda pg=np: self.list_project_members(
-                project_id=project_id, query=query, limit=limit, page=pg,
+                project_id=project_id,
+                query=query,
+                limit=limit,
+                page=pg,
             )
         return result
 
@@ -762,7 +808,9 @@ class GitLab(BaseConnector):
             params["search"] = search
 
         resp = await self._request(
-            "GET", f"/projects/{encoded}/labels", params=params,
+            "GET",
+            f"/projects/{encoded}/labels",
+            params=params,
         )
         return [parse_label(lb) for lb in resp.json()]
 
@@ -791,7 +839,9 @@ class GitLab(BaseConnector):
             payload["description"] = description
 
         resp = await self._request(
-            "POST", f"/projects/{encoded}/labels", json=payload,
+            "POST",
+            f"/projects/{encoded}/labels",
+            json=payload,
         )
         return parse_label(resp.json())
 
@@ -824,7 +874,9 @@ class GitLab(BaseConnector):
             params["state"] = state
 
         resp = await self._request(
-            "GET", f"/projects/{encoded}/milestones", params=params,
+            "GET",
+            f"/projects/{encoded}/milestones",
+            params=params,
         )
         return [parse_milestone(m) for m in resp.json()]
 
@@ -859,6 +911,8 @@ class GitLab(BaseConnector):
             payload["start_date"] = start_date
 
         resp = await self._request(
-            "POST", f"/projects/{encoded}/milestones", json=payload,
+            "POST",
+            f"/projects/{encoded}/milestones",
+            json=payload,
         )
         return parse_milestone(resp.json())

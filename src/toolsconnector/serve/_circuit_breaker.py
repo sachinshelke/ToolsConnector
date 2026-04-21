@@ -102,5 +102,7 @@ class CircuitBreaker:
             "last_error": self._last_error,
             "recovery_in_seconds": max(
                 0, self._recovery_timeout - (time.monotonic() - self._last_failure_time)
-            ) if self._state == CircuitState.OPEN else None,
+            )
+            if self._state == CircuitState.OPEN
+            else None,
         }
