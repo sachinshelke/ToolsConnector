@@ -183,14 +183,14 @@ footer a { color: #94a3b8; }
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>create_comment ⚠</code></td><td class="desc">Post a comment on a LinkedIn post</td><td><span class="req">post_urn, actor, text</span></td><td><code>LinkedInComment</code></td></tr>
+        <tr><td><code>create_comment ⚠</code></td><td class="desc">Post a comment on a LinkedIn post (PARTNER APPROVAL REQUIRED)</td><td><span class="req">post_urn, actor, text</span></td><td><code>LinkedInComment</code></td></tr>
 <tr><td><code>create_post ⚠</code></td><td class="desc">Publish a post to the authenticated user&#39;s LinkedIn feed</td><td><span class="req">author, commentary</span> &nbsp;<span class="opt">[visibility, lifecycle_state, content]</span></td><td><code>LinkedInPost</code></td></tr>
 <tr><td><code>delete_post ⚠</code></td><td class="desc">Delete a LinkedIn post you authored</td><td><span class="req">urn</span></td><td><code>NoneType</code></td></tr>
 <tr><td><code>get_post</code></td><td class="desc">Get a single LinkedIn post by URN (RESTRICTED scope)</td><td><span class="req">urn</span></td><td><code>LinkedInPost</code></td></tr>
 <tr><td><code>get_profile</code></td><td class="desc">Get the authenticated LinkedIn user&#39;s profile (OIDC userinfo)</td><td><span class="opt">—</span></td><td><code>LinkedInProfile</code></td></tr>
 <tr><td><code>list_comments</code></td><td class="desc">List comments on a LinkedIn post (RESTRICTED scope)</td><td><span class="req">post_urn</span> &nbsp;<span class="opt">[count, start]</span></td><td><code>PaginatedList[LinkedInComment]</code></td></tr>
 <tr><td><code>list_my_posts</code></td><td class="desc">List the authenticated user&#39;s recent posts (RESTRICTED scope)</td><td><span class="req">author</span> &nbsp;<span class="opt">[count, start]</span></td><td><code>PaginatedList[LinkedInPost]</code></td></tr>
-<tr><td><code>react_to_post ⚠</code></td><td class="desc">React to a LinkedIn post (LIKE / PRAISE / EMPATHY / INTEREST / APPRECIATION / ENTERTAINMENT)</td><td><span class="req">post_urn, actor</span> &nbsp;<span class="opt">[reaction_type]</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>react_to_post ⚠</code></td><td class="desc">React to a LinkedIn post (PARTNER APPROVAL REQUIRED) — LIKE / PRAISE / EMPATHY / INTEREST / APPRECIATION / ENTERTAINMENT</td><td><span class="req">post_urn, actor</span> &nbsp;<span class="opt">[reaction_type]</span></td><td><code>NoneType</code></td></tr>
       </tbody>
     </table>
   </div>
