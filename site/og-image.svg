@@ -53,13 +53,13 @@
   <!-- Stats row -->
   <g transform="translate(100, 430)">
     <!-- Stat 1 -->
-    <text x="0" y="0" font-family="system-ui, sans-serif" font-weight="800" font-size="42" fill="#60a5fa">53</text>
+    <text x="0" y="0" font-family="system-ui, sans-serif" font-weight="800" font-size="42" fill="#60a5fa">68</text>
     <text x="0" y="30" font-family="system-ui, sans-serif" font-weight="500" font-size="16" fill="#64748b">Connectors</text>
     <!-- Stat 2 -->
-    <text x="160" y="0" font-family="system-ui, sans-serif" font-weight="800" font-size="42" fill="#a78bfa">1,137</text>
+    <text x="160" y="0" font-family="system-ui, sans-serif" font-weight="800" font-size="42" fill="#a78bfa">1,370</text>
     <text x="160" y="30" font-family="system-ui, sans-serif" font-weight="500" font-size="16" fill="#64748b">Actions</text>
     <!-- Stat 3 -->
-    <text x="370" y="0" font-family="system-ui, sans-serif" font-weight="800" font-size="42" fill="#34d399">17</text>
+    <text x="370" y="0" font-family="system-ui, sans-serif" font-weight="800" font-size="42" fill="#34d399">20</text>
     <text x="370" y="30" font-family="system-ui, sans-serif" font-weight="500" font-size="16" fill="#64748b">Categories</text>
   </g>
 
