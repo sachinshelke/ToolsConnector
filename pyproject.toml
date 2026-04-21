@@ -31,9 +31,9 @@ dependencies = [
 [project.urls]
 Homepage = "https://toolsconnector.github.io"
 Documentation = "https://toolsconnector.github.io"
-Repository = "https://github.com/ToolsConnector/ToolsConnector"
-Issues = "https://github.com/ToolsConnector/ToolsConnector/issues"
-Changelog = "https://github.com/ToolsConnector/ToolsConnector/blob/main/CHANGELOG.md"
+Repository = "https://github.com/sachinshelke/ToolsConnector"
+Issues = "https://github.com/sachinshelke/ToolsConnector/issues"
+Changelog = "https://github.com/sachinshelke/ToolsConnector/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 # --- Connectors: Communication ---
