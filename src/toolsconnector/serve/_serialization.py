@@ -71,7 +71,10 @@ def serialize_error(error: Exception) -> str:
     if hasattr(error, "to_dict"):
         return json.dumps(error.to_dict(), indent=2, default=str)
 
-    return json.dumps({
-        "error": type(error).__name__,
-        "message": str(error),
-    }, indent=2)
+    return json.dumps(
+        {
+            "error": type(error).__name__,
+            "message": str(error),
+        },
+        indent=2,
+    )

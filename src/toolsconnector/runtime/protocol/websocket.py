@@ -98,11 +98,7 @@ class WebSocketAdapter:
         response_raw = await self._connection.recv()
 
         data = self._parse_frame(response_raw)
-        raw_bytes = (
-            response_raw.encode("utf-8")
-            if isinstance(response_raw, str)
-            else response_raw
-        )
+        raw_bytes = response_raw.encode("utf-8") if isinstance(response_raw, str) else response_raw
 
         return ProtocolResponse(
             data=data,
@@ -142,9 +138,7 @@ class WebSocketAdapter:
 
         raw = await self._connection.recv()
         data = self._parse_frame(raw)
-        raw_bytes = (
-            raw.encode("utf-8") if isinstance(raw, str) else raw
-        )
+        raw_bytes = raw.encode("utf-8") if isinstance(raw, str) else raw
 
         return ProtocolResponse(
             data=data,

@@ -181,8 +181,7 @@ class OAuth2Provider:
 
         if response.status_code != 200:
             raise RefreshFailedError(
-                f"Token endpoint returned HTTP {response.status_code}: "
-                f"{response.text}",
+                f"Token endpoint returned HTTP {response.status_code}: {response.text}",
             )
 
         data = response.json()
@@ -251,9 +250,7 @@ class OAuth2Provider:
         if self._state.access_token:
             ttl: Optional[int] = None
             if self._state.token_expiry is not None:
-                remaining = (
-                    self._state.token_expiry - datetime.now(timezone.utc)
-                ).total_seconds()
+                remaining = (self._state.token_expiry - datetime.now(timezone.utc)).total_seconds()
                 if remaining > 0:
                     ttl = int(remaining)
             await self._keystore.set(

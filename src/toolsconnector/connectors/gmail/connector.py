@@ -19,10 +19,20 @@ from toolsconnector.types import PageState, PaginatedList
 
 from ._helpers import (
     parse_draft as _parse_draft,
+)
+from ._helpers import (
     parse_history_record as _parse_history_record,
+)
+from ._helpers import (
     parse_label as _parse_label,
+)
+from ._helpers import (
     parse_message as _parse_message,
+)
+from ._helpers import (
     parse_thread as _parse_thread,
+)
+from ._helpers import (
     parse_vacation_settings as _parse_vacation_settings,
 )
 from .types import (
@@ -242,8 +252,12 @@ class Gmail(BaseConnector):
             MessageId with the sent message's ID and thread ID.
         """
         raw = self._build_rfc2822(
-            to=to, subject=subject, body=body,
-            cc=cc, bcc=bcc, reply_to=reply_to,
+            to=to,
+            subject=subject,
+            body=body,
+            cc=cc,
+            bcc=bcc,
+            reply_to=reply_to,
         )
 
         data = await self._request(
@@ -1096,9 +1110,7 @@ class Gmail(BaseConnector):
         """
         import base64
 
-        encoded = base64.urlsafe_b64encode(
-            raw_rfc2822.encode("utf-8")
-        ).decode("ascii")
+        encoded = base64.urlsafe_b64encode(raw_rfc2822.encode("utf-8")).decode("ascii")
 
         payload: dict[str, Any] = {"raw": encoded}
         if label_ids:
@@ -1139,9 +1151,7 @@ class Gmail(BaseConnector):
         """
         import base64
 
-        encoded = base64.urlsafe_b64encode(
-            raw_rfc2822.encode("utf-8")
-        ).decode("ascii")
+        encoded = base64.urlsafe_b64encode(raw_rfc2822.encode("utf-8")).decode("ascii")
 
         payload: dict[str, Any] = {"raw": encoded}
         if label_ids:

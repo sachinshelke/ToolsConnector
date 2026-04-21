@@ -37,24 +37,22 @@ import time
 import uuid
 from typing import Any, Optional
 
-from toolsconnector.serve._discovery import resolve_connectors
-from toolsconnector.serve._credentials import resolve_credentials
-from toolsconnector.serve._filtering import build_tool_list, ToolEntry
-from toolsconnector.serve._validation import validate_arguments
-from toolsconnector.serve._circuit_breaker import CircuitBreaker
-from toolsconnector.serve._serialization import serialize_result
-
-from toolsconnector.runtime.base import BaseConnector
-from toolsconnector.runtime._sync import run_sync
 from toolsconnector.errors import (
-    ToolsConnectorError,
-    ValidationError,
-    TokenExpiredError,
     ConnectorNotConfiguredError,
     ServerError,
+    TokenExpiredError,
+    ToolsConnectorError,
+    ValidationError,
 )
 from toolsconnector.errors import TimeoutError as TCTimeoutError
-
+from toolsconnector.runtime._sync import run_sync
+from toolsconnector.runtime.base import BaseConnector
+from toolsconnector.serve._circuit_breaker import CircuitBreaker
+from toolsconnector.serve._credentials import resolve_credentials
+from toolsconnector.serve._discovery import resolve_connectors
+from toolsconnector.serve._filtering import ToolEntry, build_tool_list
+from toolsconnector.serve._serialization import serialize_result
+from toolsconnector.serve._validation import validate_arguments
 
 # ---------------------------------------------------------------------------
 # Schema format helpers
@@ -63,6 +61,7 @@ from toolsconnector.errors import TimeoutError as TCTimeoutError
 # defined separately and may not exist yet.  The ToolKit methods delegate
 # to a lazy import so the file is self-contained at import time.
 # ---------------------------------------------------------------------------
+
 
 def _to_openai_schema(entry: ToolEntry) -> dict[str, Any]:
     """Convert a ToolEntry to an OpenAI function-calling tool definition.
@@ -131,6 +130,7 @@ def _to_gemini_schema(entry: ToolEntry) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # ToolKit
 # ---------------------------------------------------------------------------
+
 
 class ToolKit:
     """Configured container for connectors with schema generation + execution.
@@ -210,9 +210,7 @@ class ToolKit:
         )
 
         # Index by tool_name for O(1) lookup during execution
-        self._tool_entries: dict[str, ToolEntry] = {
-            e.tool_name: e for e in self._tool_entries_list
-        }
+        self._tool_entries: dict[str, ToolEntry] = {e.tool_name: e for e in self._tool_entries_list}
 
         # -- Instance cache (lazy, one per connector) --
         self._instances: dict[str, BaseConnector] = {}
@@ -254,6 +252,7 @@ class ToolKit:
         """
         try:
             from toolsconnector.serve.schema import to_openai_schema
+
             return [to_openai_schema(e) for e in self._tool_entries_list]
         except ImportError:
             return [_to_openai_schema(e) for e in self._tool_entries_list]
@@ -267,6 +266,7 @@ class ToolKit:
         """
         try:
             from toolsconnector.serve.schema import to_anthropic_schema
+
             return [to_anthropic_schema(e) for e in self._tool_entries_list]
         except ImportError:
             return [_to_anthropic_schema(e) for e in self._tool_entries_list]
@@ -280,6 +280,7 @@ class ToolKit:
         """
         try:
             from toolsconnector.serve.schema import to_gemini_schema
+
             return [to_gemini_schema(e) for e in self._tool_entries_list]
         except ImportError:
             return [_to_gemini_schema(e) for e in self._tool_entries_list]
@@ -290,11 +291,13 @@ class ToolKit:
         Requires langchain-core: pip install langchain-core
         """
         from toolsconnector.serve.adapters import to_langchain_tools
+
         return to_langchain_tools(self)
 
     def to_crewai_tools(self) -> list:
         """Generate CrewAI-compatible tools."""
         from toolsconnector.serve.adapters import to_crewai_tools
+
         return to_crewai_tools(self)
 
     # ------------------------------------------------------------------
@@ -342,10 +345,7 @@ class ToolKit:
             raise ConnectorNotConfiguredError(
                 f"Unknown tool '{tool_name}'.",
                 connector="",
-                suggestion=(
-                    f"Available tools: {available}..."
-                    f" Use list_tools() for full list."
-                ),
+                suggestion=(f"Available tools: {available}... Use list_tools() for full list."),
             )
 
         connector_name = entry.connector_name
@@ -363,15 +363,15 @@ class ToolKit:
 
         # 2. Dry-run check for dangerous actions
         if dry_run and entry.dangerous:
-            return serialize_result({
-                "dry_run": True,
-                "tool": tool_name,
-                "would_execute": entry.description,
-                "arguments": arguments,
-                "warning": (
-                    "Destructive action. Set dry_run=False to execute."
-                ),
-            })
+            return serialize_result(
+                {
+                    "dry_run": True,
+                    "tool": tool_name,
+                    "would_execute": entry.description,
+                    "arguments": arguments,
+                    "warning": ("Destructive action. Set dry_run=False to execute."),
+                }
+            )
 
         # 3. Pre-validate arguments
         errors = validate_arguments(entry.input_schema, arguments)
@@ -381,8 +381,7 @@ class ToolKit:
                 connector=connector_name,
                 action=action_name,
                 suggestion=(
-                    "Expected parameters: "
-                    f"{list(entry.input_schema.get('properties', {}).keys())}"
+                    f"Expected parameters: {list(entry.input_schema.get('properties', {}).keys())}"
                 ),
                 details={"validation_errors": errors},
             )
@@ -392,8 +391,7 @@ class ToolKit:
         if cb and cb.is_open:
             recovery_secs = cb.status_dict().get("recovery_in_seconds", 60)
             raise ServerError(
-                f"Connector '{connector_name}' is temporarily unavailable"
-                " (circuit open).",
+                f"Connector '{connector_name}' is temporarily unavailable (circuit open).",
                 connector=connector_name,
                 action=action_name,
                 retry_eligible=True,
@@ -407,7 +405,10 @@ class ToolKit:
         # 5. Execute with timeout budget + auto-retry
         try:
             result = await self._execute_with_budget(
-                connector_name, action_name, arguments, request_id,
+                connector_name,
+                action_name,
+                arguments,
+                request_id,
             )
 
             # Record success on the circuit breaker
@@ -467,9 +468,7 @@ class ToolKit:
         Returns:
             Serialized result string (JSON).
         """
-        return run_sync(
-            self.aexecute(tool_name, arguments, dry_run=dry_run)
-        )
+        return run_sync(self.aexecute(tool_name, arguments, dry_run=dry_run))
 
     # ------------------------------------------------------------------
     # Internal execution
@@ -545,7 +544,7 @@ class ToolKit:
                 if not exc.retry_eligible or time.monotonic() >= deadline:
                     raise
                 wait = min(
-                    exc.retry_after_seconds or (2 ** attempt),
+                    exc.retry_after_seconds or (2**attempt),
                     remaining - 0.5,
                 )
                 if wait <= 0:
@@ -563,8 +562,7 @@ class ToolKit:
 
             except asyncio.TimeoutError:
                 last_error = TCTimeoutError(
-                    f"Action '{action_name}' timed out after"
-                    f" {self._action_timeout}s",
+                    f"Action '{action_name}' timed out after {self._action_timeout}s",
                     connector=connector_name,
                     action=action_name,
                 )
@@ -667,9 +665,7 @@ class ToolKit:
         return [
             {
                 **entry.to_dict(),
-                "status": self._connector_status.get(
-                    entry.connector_name, "unknown"
-                ),
+                "status": self._connector_status.get(entry.connector_name, "unknown"),
             }
             for entry in self._tool_entries_list
         ]
@@ -736,7 +732,10 @@ class ToolKit:
         from toolsconnector.serve.mcp import create_and_run_mcp_server
 
         create_and_run_mcp_server(
-            self, transport=transport, name=name, port=port,
+            self,
+            transport=transport,
+            name=name,
+            port=port,
         )
 
     def create_rest_app(self, *, prefix: str = "/api/v1") -> Any:
@@ -769,9 +768,7 @@ class ToolKit:
                 health = await instance._health_check()
                 if health.healthy:
                     self._connector_status[name] = "healthy"
-                    latency = (
-                        f"{health.latency_ms}ms" if health.latency_ms else "?"
-                    )
+                    latency = f"{health.latency_ms}ms" if health.latency_ms else "?"
                     self._logger.info(
                         "connector.verify.healthy",
                         extra={
@@ -869,6 +866,7 @@ class ToolKit:
 # ---------------------------------------------------------------------------
 # ToolKitFactory — multi-tenant ToolKit management
 # ---------------------------------------------------------------------------
+
 
 class ToolKitFactory:
     """Factory for creating per-tenant ToolKit instances.

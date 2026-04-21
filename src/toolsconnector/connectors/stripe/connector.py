@@ -141,7 +141,10 @@ class Stripe(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, data=data,
+            method,
+            path,
+            params=params,
+            data=data,
         )
 
         remaining = resp.headers.get("RateLimit-Remaining")
@@ -179,9 +182,11 @@ class Stripe(BaseConnector):
 
         items = [parse_customer(c) for c in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_customers(
-                limit=limit, starting_after=cursor,
+                limit=limit,
+                starting_after=cursor,
             ),
         )
 
@@ -262,9 +267,12 @@ class Stripe(BaseConnector):
 
         items = [parse_charge(c) for c in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_charges(
-                customer=customer, limit=limit, starting_after=cursor,
+                customer=customer,
+                limit=limit,
+                starting_after=cursor,
             ),
         )
 
@@ -348,9 +356,12 @@ class Stripe(BaseConnector):
 
         items = [parse_invoice(inv) for inv in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_invoices(
-                customer=customer, limit=limit, starting_after=cursor,
+                customer=customer,
+                limit=limit,
+                starting_after=cursor,
             ),
         )
 
@@ -542,9 +553,12 @@ class Stripe(BaseConnector):
 
         items = [parse_refund(r) for r in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_refunds(
-                charge=charge, limit=limit, starting_after=cursor,
+                charge=charge,
+                limit=limit,
+                starting_after=cursor,
             ),
         )
 
@@ -601,11 +615,14 @@ class Stripe(BaseConnector):
         if at_period_end:
             form_data: dict[str, Any] = {"cancel_at_period_end": "true"}
             resp = await self._request(
-                "POST", f"/subscriptions/{subscription_id}", data=form_data,
+                "POST",
+                f"/subscriptions/{subscription_id}",
+                data=form_data,
             )
         else:
             resp = await self._request(
-                "DELETE", f"/subscriptions/{subscription_id}",
+                "DELETE",
+                f"/subscriptions/{subscription_id}",
             )
         return parse_subscription(resp.json())
 
@@ -642,9 +659,12 @@ class Stripe(BaseConnector):
 
         items = [parse_subscription(s) for s in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_subscriptions(
-                customer=customer, status=status, limit=limit,
+                customer=customer,
+                status=status,
+                limit=limit,
                 starting_after=cursor,
             ),
         )
@@ -716,9 +736,11 @@ class Stripe(BaseConnector):
 
         items = [parse_product(p) for p in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_products(
-                limit=limit, starting_after=cursor,
+                limit=limit,
+                starting_after=cursor,
             ),
         )
 
@@ -785,9 +807,12 @@ class Stripe(BaseConnector):
 
         items = [parse_price(p) for p in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_prices(
-                product=product, limit=limit, starting_after=cursor,
+                product=product,
+                limit=limit,
+                starting_after=cursor,
             ),
         )
 
@@ -865,9 +890,12 @@ class Stripe(BaseConnector):
 
         items = [parse_payment_method(pm) for pm in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_payment_methods(
-                customer=customer, type=type, limit=limit,
+                customer=customer,
+                type=type,
+                limit=limit,
                 starting_after=cursor,
             ),
         )
@@ -912,7 +940,8 @@ class Stripe(BaseConnector):
 
     @action("Retrieve a single Stripe PaymentIntent by ID")
     async def get_payment_intent(
-        self, payment_intent_id: str,
+        self,
+        payment_intent_id: str,
     ) -> PaymentIntent:
         """Retrieve a single PaymentIntent.
 
@@ -924,7 +953,8 @@ class Stripe(BaseConnector):
             PaymentIntent object.
         """
         resp = await self._request(
-            "GET", f"/payment_intents/{payment_intent_id}",
+            "GET",
+            f"/payment_intents/{payment_intent_id}",
         )
         return parse_payment_intent(resp.json())
 
@@ -956,9 +986,12 @@ class Stripe(BaseConnector):
 
         items = [parse_payment_intent(pi) for pi in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_payment_intents(
-                customer=customer, limit=limit, starting_after=cursor,
+                customer=customer,
+                limit=limit,
+                starting_after=cursor,
             ),
         )
 
@@ -995,7 +1028,8 @@ class Stripe(BaseConnector):
 
     @action("Cancel a Stripe PaymentIntent")
     async def cancel_payment_intent(
-        self, payment_intent_id: str,
+        self,
+        payment_intent_id: str,
     ) -> PaymentIntent:
         """Cancel a PaymentIntent that has not been captured.
 
@@ -1006,7 +1040,8 @@ class Stripe(BaseConnector):
             The cancelled PaymentIntent object.
         """
         resp = await self._request(
-            "POST", f"/payment_intents/{payment_intent_id}/cancel",
+            "POST",
+            f"/payment_intents/{payment_intent_id}/cancel",
         )
         return parse_payment_intent(resp.json())
 
@@ -1069,9 +1104,11 @@ class Stripe(BaseConnector):
 
         items = [parse_dispute(d) for d in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_disputes(
-                limit=limit, starting_after=cursor,
+                limit=limit,
+                starting_after=cursor,
             ),
         )
 
@@ -1103,7 +1140,8 @@ class Stripe(BaseConnector):
             amount will not be returned to your account.
         """
         resp = await self._request(
-            "POST", f"/disputes/{dispute_id}/close",
+            "POST",
+            f"/disputes/{dispute_id}/close",
         )
         return parse_dispute(resp.json())
 
@@ -1135,9 +1173,11 @@ class Stripe(BaseConnector):
 
         items = [parse_payout(p) for p in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_payouts(
-                limit=limit, starting_after=cursor,
+                limit=limit,
+                starting_after=cursor,
             ),
         )
 
@@ -1215,9 +1255,12 @@ class Stripe(BaseConnector):
 
         items = [parse_event(e) for e in body.get("data", [])]
         return build_paginated_result(
-            items, body,
+            items,
+            body,
             lambda cursor: self.alist_events(
-                type=type, limit=limit, starting_after=cursor,
+                type=type,
+                limit=limit,
+                starting_after=cursor,
             ),
         )
 
@@ -1268,7 +1311,8 @@ class Stripe(BaseConnector):
 
     @action("Retrieve a single Stripe SetupIntent by ID")
     async def get_setup_intent(
-        self, setup_intent_id: str,
+        self,
+        setup_intent_id: str,
     ) -> StripeSetupIntent:
         """Retrieve a single SetupIntent.
 
@@ -1280,6 +1324,7 @@ class Stripe(BaseConnector):
             StripeSetupIntent object.
         """
         resp = await self._request(
-            "GET", f"/setup_intents/{setup_intent_id}",
+            "GET",
+            f"/setup_intents/{setup_intent_id}",
         )
         return parse_setup_intent(resp.json())

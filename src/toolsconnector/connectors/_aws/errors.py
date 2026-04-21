@@ -12,7 +12,6 @@ from typing import Optional
 
 from .xml_helpers import parse_xml_error
 
-
 # ---------------------------------------------------------------------------
 # IAM permission hints
 # ---------------------------------------------------------------------------
@@ -107,16 +106,14 @@ def format_access_denied_hint(service: str, action: str) -> Optional[str]:
 
     # Fallback: construct a best-guess permission.
     if action:
-        return (
-            f"Ensure your IAM policy includes: "
-            f"{service}:{action}"
-        )
+        return f"Ensure your IAM policy includes: {service}:{action}"
     return None
 
 
 # ---------------------------------------------------------------------------
 # Error class
 # ---------------------------------------------------------------------------
+
 
 class AWSError(Exception):
     """Exception raised for AWS API errors.
@@ -153,6 +150,7 @@ class AWSError(Exception):
 # Response parsing
 # ---------------------------------------------------------------------------
 
+
 def parse_aws_error(
     response_text: str,
     content_type: str,
@@ -176,16 +174,8 @@ def parse_aws_error(
         except json.JSONDecodeError:
             return {"code": None, "message": response_text}
 
-        code = (
-            body.get("__type")
-            or body.get("Error", {}).get("Code")
-            or body.get("code")
-        )
-        message = (
-            body.get("message")
-            or body.get("Message")
-            or body.get("Error", {}).get("Message")
-        )
+        code = body.get("__type") or body.get("Error", {}).get("Code") or body.get("code")
+        message = body.get("message") or body.get("Message") or body.get("Error", {}).get("Message")
         return {"code": code, "message": message}
 
     # XML errors (used by S3, EC2, IAM, ALB, Route 53, etc.)

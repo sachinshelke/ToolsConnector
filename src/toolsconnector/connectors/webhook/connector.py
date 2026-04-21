@@ -205,9 +205,7 @@ class Webhook(BaseConnector):
         merged.setdefault("Content-Type", "application/json")
         start = time.monotonic()
         try:
-            response = await self._client.post(
-                url, json=data, headers=merged
-            )
+            response = await self._client.post(url, json=data, headers=merged)
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
         except Exception as exc:
@@ -233,9 +231,7 @@ class Webhook(BaseConnector):
         merged = self._merge_headers(headers)
         start = time.monotonic()
         try:
-            response = await self._client.post(
-                url, data=data, headers=merged
-            )
+            response = await self._client.post(url, data=data, headers=merged)
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
         except Exception as exc:
@@ -279,9 +275,7 @@ class Webhook(BaseConnector):
         }
         start = time.monotonic()
         try:
-            response = await self._client.post(
-                url, content=body_bytes, headers=headers
-            )
+            response = await self._client.post(url, content=body_bytes, headers=headers)
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
         except Exception as exc:
@@ -375,9 +369,7 @@ class Webhook(BaseConnector):
 
         start = time.monotonic()
         try:
-            response = await self._client.post(
-                url, content=xml_payload.encode(), headers=merged
-            )
+            response = await self._client.post(url, content=xml_payload.encode(), headers=merged)
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
         except Exception as exc:
@@ -415,9 +407,7 @@ class Webhook(BaseConnector):
 
         start = time.monotonic()
         try:
-            response = await self._client.post(
-                url, json=body, headers=merged
-            )
+            response = await self._client.post(url, json=body, headers=merged)
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
         except Exception as exc:
@@ -456,7 +446,7 @@ class Webhook(BaseConnector):
             if result.success:
                 return result
             if attempt < retries:
-                await asyncio.sleep(wait * (2 ** attempt))
+                await asyncio.sleep(wait * (2**attempt))
 
         return last_result  # type: ignore[return-value]
 
@@ -481,9 +471,7 @@ class Webhook(BaseConnector):
         """
         import base64 as b64
 
-        auth_str = b64.b64encode(
-            f"{username}:{password}".encode()
-        ).decode()
+        auth_str = b64.b64encode(f"{username}:{password}".encode()).decode()
         headers: dict[str, str] = {
             "Authorization": f"Basic {auth_str}",
             "Content-Type": "application/json",
@@ -491,7 +479,9 @@ class Webhook(BaseConnector):
         start = time.monotonic()
         try:
             response = await self._client.post(
-                url, json=payload, headers=headers,
+                url,
+                json=payload,
+                headers=headers,
             )
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
@@ -526,7 +516,9 @@ class Webhook(BaseConnector):
         start = time.monotonic()
         try:
             response = await self._client.post(
-                url, json=payload, headers=headers,
+                url,
+                json=payload,
+                headers=headers,
             )
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
@@ -552,13 +544,14 @@ class Webhook(BaseConnector):
             A WebhookResponse with delivery status.
         """
         multipart_files = {
-            name: (fname, content, ctype)
-            for name, (fname, content, ctype) in files.items()
+            name: (fname, content, ctype) for name, (fname, content, ctype) in files.items()
         }
         start = time.monotonic()
         try:
             response = await self._client.post(
-                url, files=multipart_files, data=data or {},
+                url,
+                files=multipart_files,
+                data=data or {},
             )
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)

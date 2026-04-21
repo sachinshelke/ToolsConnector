@@ -6,8 +6,8 @@ import fnmatch
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from toolsconnector.spec.connector import ConnectorSpec
 from toolsconnector.spec.action import ActionSpec
+from toolsconnector.spec.connector import ConnectorSpec
 
 
 @dataclass(frozen=True)
@@ -118,19 +118,21 @@ def build_tool_list(
             tool_name = f"{spec.name}_{action_name}"
             description = _build_description(spec, action_spec)
 
-            entries.append(ToolEntry(
-                connector_name=spec.name,
-                connector_display_name=spec.display_name,
-                action_name=action_name,
-                tool_name=tool_name,
-                description=description,
-                input_schema=action_spec.input_schema,
-                output_schema=action_spec.output_schema,
-                dangerous=action_spec.dangerous,
-                idempotent=action_spec.idempotent,
-                requires_scope=action_spec.requires_scope,
-                tags=action_spec.tags,
-                rate_limit_weight=action_spec.rate_limit_weight,
-            ))
+            entries.append(
+                ToolEntry(
+                    connector_name=spec.name,
+                    connector_display_name=spec.display_name,
+                    action_name=action_name,
+                    tool_name=tool_name,
+                    description=description,
+                    input_schema=action_spec.input_schema,
+                    output_schema=action_spec.output_schema,
+                    dangerous=action_spec.dangerous,
+                    idempotent=action_spec.idempotent,
+                    requires_scope=action_spec.requires_scope,
+                    tags=action_spec.tags,
+                    rate_limit_weight=action_spec.rate_limit_weight,
+                )
+            )
 
     return entries

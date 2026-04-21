@@ -20,15 +20,14 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.errors import APIError, NotFoundError
-
-from toolsconnector.connectors._aws.signing import sign_v4
 
 from .types import (
     ALBListener,
@@ -65,10 +64,7 @@ class ALB(BaseConnector):
     category = ConnectorCategory.NETWORKING
     protocol = ProtocolType.REST
     base_url = "https://elasticloadbalancing.us-east-1.amazonaws.com"
-    description = (
-        "Manage Application Load Balancers, target groups, listeners, "
-        "and routing rules."
-    )
+    description = "Manage Application Load Balancers, target groups, listeners, and routing rules."
     _rate_limit_config = RateLimitSpec(rate=100, period=1, burst=200)
 
     # ------------------------------------------------------------------
@@ -84,9 +80,7 @@ class ALB(BaseConnector):
         self._secret_key = creds.secret_access_key
         self._region = creds.region
         self._session_token = creds.session_token
-        self._base_url = (
-            f"https://elasticloadbalancing.{self._region}.amazonaws.com"
-        )
+        self._base_url = f"https://elasticloadbalancing.{self._region}.amazonaws.com"
 
         self._client = httpx.AsyncClient(timeout=self._timeout)
 
@@ -156,12 +150,8 @@ class ALB(BaseConnector):
         """
         params: dict[str, str] = {}
         for i, item in enumerate(items, 1):
-            params[f"{prefix}.member.{i}.{key_field}"] = str(
-                item[key_field]
-            )
-            params[f"{prefix}.member.{i}.{value_field}"] = str(
-                item[value_field]
-            )
+            params[f"{prefix}.member.{i}.{key_field}"] = str(item[key_field])
+            params[f"{prefix}.member.{i}.{value_field}"] = str(item[value_field])
         return params
 
     def _parse_xml(self, text: str) -> ET.Element:
@@ -272,8 +262,12 @@ class ALB(BaseConnector):
             err_code = ""
             try:
                 err_root = self._parse_xml(response.text)
-                err_el = err_root.find(".//{http://elasticloadbalancing.amazonaws.com/doc/2015-12-01/}Message")
-                code_el = err_root.find(".//{http://elasticloadbalancing.amazonaws.com/doc/2015-12-01/}Code")
+                err_el = err_root.find(
+                    ".//{http://elasticloadbalancing.amazonaws.com/doc/2015-12-01/}Message"
+                )
+                code_el = err_root.find(
+                    ".//{http://elasticloadbalancing.amazonaws.com/doc/2015-12-01/}Code"
+                )
                 if err_el is None:
                     # Try without namespace for generic AWS error format.
                     err_el = err_root.find(".//Message")
@@ -312,9 +306,7 @@ class ALB(BaseConnector):
         """Parse an XML LoadBalancer element into an ALBLoadBalancer model."""
         # Parse availability zones.
         azs: list[dict[str, Any]] = []
-        for az_el in self._find_all(
-            el, "ns:AvailabilityZones/ns:member"
-        ):
+        for az_el in self._find_all(el, "ns:AvailabilityZones/ns:member"):
             az: dict[str, Any] = {
                 "ZoneName": self._find_text(az_el, "ns:ZoneName"),
                 "SubnetId": self._find_text(az_el, "ns:SubnetId"),
@@ -323,9 +315,7 @@ class ALB(BaseConnector):
 
         # Parse security groups.
         sgs: list[str] = []
-        for sg_el in self._find_all(
-            el, "ns:SecurityGroups/ns:member"
-        ):
+        for sg_el in self._find_all(el, "ns:SecurityGroups/ns:member"):
             if sg_el.text:
                 sgs.append(sg_el.text)
 
@@ -348,15 +338,9 @@ class ALB(BaseConnector):
     def _parse_target_group(self, el: ET.Element) -> ALBTargetGroup:
         """Parse an XML TargetGroup element into an ALBTargetGroup model."""
         port_text = self._find_text(el, "ns:Port", "0")
-        hc_interval_text = self._find_text(
-            el, "ns:HealthCheckIntervalSeconds", "30"
-        )
-        healthy_text = self._find_text(
-            el, "ns:HealthyThresholdCount", "5"
-        )
-        unhealthy_text = self._find_text(
-            el, "ns:UnhealthyThresholdCount", "2"
-        )
+        hc_interval_text = self._find_text(el, "ns:HealthCheckIntervalSeconds", "30")
+        healthy_text = self._find_text(el, "ns:HealthyThresholdCount", "5")
+        unhealthy_text = self._find_text(el, "ns:UnhealthyThresholdCount", "2")
 
         return ALBTargetGroup(
             target_group_arn=self._find_text(el, "ns:TargetGroupArn"),
@@ -364,9 +348,7 @@ class ALB(BaseConnector):
             protocol=self._find_text(el, "ns:Protocol"),
             port=int(port_text),
             vpc_id=self._find_text(el, "ns:VpcId"),
-            health_check_protocol=self._find_text(
-                el, "ns:HealthCheckProtocol"
-            ),
+            health_check_protocol=self._find_text(el, "ns:HealthCheckProtocol"),
             health_check_path=self._find_text(el, "ns:HealthCheckPath"),
             health_check_interval_seconds=int(hc_interval_text),
             healthy_threshold_count=int(healthy_text),
@@ -381,11 +363,11 @@ class ALB(BaseConnector):
         # Parse certificates.
         certs: list[dict[str, Any]] = []
         for cert_el in self._find_all(el, "ns:Certificates/ns:member"):
-            certs.append({
-                "CertificateArn": self._find_text(
-                    cert_el, "ns:CertificateArn"
-                ),
-            })
+            certs.append(
+                {
+                    "CertificateArn": self._find_text(cert_el, "ns:CertificateArn"),
+                }
+            )
 
         # Parse default actions.
         actions: list[dict[str, Any]] = []
@@ -505,9 +487,7 @@ class ALB(BaseConnector):
         }
         params.update(self._encode_members("Subnets", subnets))
         if security_groups:
-            params.update(
-                self._encode_members("SecurityGroups", security_groups)
-            )
+            params.update(self._encode_members("SecurityGroups", security_groups))
 
         root = await self._alb_request("CreateLoadBalancer", params)
         lbs = self._find_all(
@@ -541,16 +521,12 @@ class ALB(BaseConnector):
         if names:
             params.update(self._encode_members("Names", names))
         if arns:
-            params.update(
-                self._encode_members("LoadBalancerArns", arns)
-            )
+            params.update(self._encode_members("LoadBalancerArns", arns))
 
         root = await self._alb_request("DescribeLoadBalancers", params)
         return [
             self._parse_load_balancer(el)
-            for el in self._find_all(
-                root, ".//ns:LoadBalancers/ns:member"
-            )
+            for el in self._find_all(root, ".//ns:LoadBalancers/ns:member")
         ]
 
     @action("Delete a load balancer", dangerous=True)
@@ -591,22 +567,18 @@ class ALB(BaseConnector):
         params: dict[str, str] = {
             "LoadBalancerArn": load_balancer_arn,
         }
-        attr_list = [
-            {"Key": k, "Value": str(v)} for k, v in attributes.items()
-        ]
-        params.update(
-            self._encode_key_value_members("Attributes", attr_list)
-        )
+        attr_list = [{"Key": k, "Value": str(v)} for k, v in attributes.items()]
+        params.update(self._encode_key_value_members("Attributes", attr_list))
 
-        root = await self._alb_request(
-            "ModifyLoadBalancerAttributes", params
-        )
+        root = await self._alb_request("ModifyLoadBalancerAttributes", params)
         result_attrs: list[dict[str, str]] = []
         for el in self._find_all(root, ".//ns:Attributes/ns:member"):
-            result_attrs.append({
-                "Key": self._find_text(el, "ns:Key"),
-                "Value": self._find_text(el, "ns:Value"),
-            })
+            result_attrs.append(
+                {
+                    "Key": self._find_text(el, "ns:Key"),
+                    "Value": self._find_text(el, "ns:Value"),
+                }
+            )
         return {"attributes": result_attrs}
 
     # ==================================================================
@@ -647,9 +619,7 @@ class ALB(BaseConnector):
             params["VpcId"] = vpc_id
 
         root = await self._alb_request("CreateTargetGroup", params)
-        tgs = self._find_all(
-            root, ".//ns:TargetGroups/ns:member"
-        )
+        tgs = self._find_all(root, ".//ns:TargetGroups/ns:member")
         if not tgs:
             raise APIError(
                 "CreateTargetGroup returned no target groups",
@@ -677,16 +647,12 @@ class ALB(BaseConnector):
         if names:
             params.update(self._encode_members("Names", names))
         if arns:
-            params.update(
-                self._encode_members("TargetGroupArns", arns)
-            )
+            params.update(self._encode_members("TargetGroupArns", arns))
 
         root = await self._alb_request("DescribeTargetGroups", params)
         return [
             self._parse_target_group(el)
-            for el in self._find_all(
-                root, ".//ns:TargetGroups/ns:member"
-            )
+            for el in self._find_all(root, ".//ns:TargetGroups/ns:member")
         ]
 
     @action("Delete a target group", dangerous=True)
@@ -815,18 +781,12 @@ class ALB(BaseConnector):
             "DefaultActions.member.1.Type": default_action_type,
         }
         if target_group_arn:
-            params["DefaultActions.member.1.TargetGroupArn"] = (
-                target_group_arn
-            )
+            params["DefaultActions.member.1.TargetGroupArn"] = target_group_arn
         if certificate_arn:
-            params["Certificates.member.1.CertificateArn"] = (
-                certificate_arn
-            )
+            params["Certificates.member.1.CertificateArn"] = certificate_arn
 
         root = await self._alb_request("CreateListener", params)
-        listeners = self._find_all(
-            root, ".//ns:Listeners/ns:member"
-        )
+        listeners = self._find_all(root, ".//ns:Listeners/ns:member")
         if not listeners:
             raise APIError(
                 "CreateListener returned no listeners",
@@ -853,10 +813,7 @@ class ALB(BaseConnector):
             {"LoadBalancerArn": load_balancer_arn},
         )
         return [
-            self._parse_listener(el)
-            for el in self._find_all(
-                root, ".//ns:Listeners/ns:member"
-            )
+            self._parse_listener(el) for el in self._find_all(root, ".//ns:Listeners/ns:member")
         ]
 
     @action("Delete a listener", dangerous=True)
@@ -910,18 +867,12 @@ class ALB(BaseConnector):
         if protocol is not None:
             params["Protocol"] = protocol
         if target_group_arn:
-            params["DefaultActions.member.1.TargetGroupArn"] = (
-                target_group_arn
-            )
+            params["DefaultActions.member.1.TargetGroupArn"] = target_group_arn
         if certificate_arn:
-            params["Certificates.member.1.CertificateArn"] = (
-                certificate_arn
-            )
+            params["Certificates.member.1.CertificateArn"] = certificate_arn
 
         root = await self._alb_request("ModifyListener", params)
-        listeners = self._find_all(
-            root, ".//ns:Listeners/ns:member"
-        )
+        listeners = self._find_all(root, ".//ns:Listeners/ns:member")
         if not listeners:
             raise APIError(
                 "ModifyListener returned no listeners",
@@ -966,9 +917,7 @@ class ALB(BaseConnector):
 
         # Encode conditions.
         for i, cond in enumerate(conditions, 1):
-            params[f"Conditions.member.{i}.Field"] = cond.get(
-                "Field", ""
-            )
+            params[f"Conditions.member.{i}.Field"] = cond.get("Field", "")
             for j, val in enumerate(cond.get("Values", []), 1):
                 params[f"Conditions.member.{i}.Values.member.{j}"] = val
 
@@ -999,10 +948,7 @@ class ALB(BaseConnector):
             "DescribeRules",
             {"ListenerArn": listener_arn},
         )
-        return [
-            self._parse_rule(el)
-            for el in self._find_all(root, ".//ns:Rules/ns:member")
-        ]
+        return [self._parse_rule(el) for el in self._find_all(root, ".//ns:Rules/ns:member")]
 
     @action("Delete a routing rule", dangerous=True)
     async def delete_rule(
@@ -1052,13 +998,9 @@ class ALB(BaseConnector):
 
         if conditions is not None:
             for i, cond in enumerate(conditions, 1):
-                params[f"Conditions.member.{i}.Field"] = cond.get(
-                    "Field", ""
-                )
+                params[f"Conditions.member.{i}.Field"] = cond.get("Field", "")
                 for j, val in enumerate(cond.get("Values", []), 1):
-                    params[
-                        f"Conditions.member.{i}.Values.member.{j}"
-                    ] = val
+                    params[f"Conditions.member.{i}.Values.member.{j}"] = val
 
         root = await self._alb_request("ModifyRule", params)
         rules = self._find_all(root, ".//ns:Rules/ns:member")

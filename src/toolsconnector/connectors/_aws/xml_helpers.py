@@ -8,8 +8,8 @@ S3-specific ``find_text`` in ``s3/_helpers.py``.
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from typing import Optional
 from collections.abc import Iterator
+from typing import Optional
 
 
 def find_text(

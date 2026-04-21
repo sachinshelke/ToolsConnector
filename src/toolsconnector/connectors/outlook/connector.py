@@ -16,6 +16,30 @@ from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
+from ._helpers import (
+    parse_attachment as _parse_attachment,
+)
+from ._helpers import (
+    parse_calendar_event as _parse_calendar_event,
+)
+from ._helpers import (
+    parse_category as _parse_category,
+)
+from ._helpers import (
+    parse_contact as _parse_contact,
+)
+from ._helpers import (
+    parse_folder as _parse_folder,
+)
+from ._helpers import (
+    parse_mail_rule as _parse_mail_rule,
+)
+from ._helpers import (
+    parse_mail_tip as _parse_mail_tip,
+)
+from ._helpers import (
+    parse_message as _parse_message,
+)
 from .types import (
     MailFolder,
     MailRule,
@@ -26,17 +50,6 @@ from .types import (
     OutlookContact,
     OutlookMessage,
     OutlookMessageId,
-)
-
-from ._helpers import (
-    parse_attachment as _parse_attachment,
-    parse_calendar_event as _parse_calendar_event,
-    parse_category as _parse_category,
-    parse_contact as _parse_contact,
-    parse_folder as _parse_folder,
-    parse_mail_rule as _parse_mail_rule,
-    parse_mail_tip as _parse_mail_tip,
-    parse_message as _parse_message,
 )
 
 logger = logging.getLogger("toolsconnector.outlook")
@@ -226,12 +239,8 @@ class Outlook(BaseConnector):
         Returns:
             OutlookMessageId with the sent message's ID.
         """
-        to_recipients = [
-            {"emailAddress": {"address": addr}} for addr in to
-        ]
-        cc_recipients = [
-            {"emailAddress": {"address": addr}} for addr in (cc or [])
-        ]
+        to_recipients = [{"emailAddress": {"address": addr}} for addr in to]
+        cc_recipients = [{"emailAddress": {"address": addr}} for addr in (cc or [])]
 
         payload: dict[str, Any] = {
             "message": {
@@ -329,9 +338,7 @@ class Outlook(BaseConnector):
         Returns:
             OutlookMessageId with the created draft's ID.
         """
-        to_recipients = [
-            {"emailAddress": {"address": addr}} for addr in to
-        ]
+        to_recipients = [{"emailAddress": {"address": addr}} for addr in to]
 
         payload: dict[str, Any] = {
             "subject": subject,
@@ -496,7 +503,9 @@ class Outlook(BaseConnector):
                 "$orderby": "start/dateTime",
             }
             data = await self._request(
-                "GET", "/me/calendarView", params=params,
+                "GET",
+                "/me/calendarView",
+                params=params,
             )
         else:
             params = {
@@ -623,9 +632,7 @@ class Outlook(BaseConnector):
             to: List of recipient email addresses to forward to.
             comment: Optional comment to include with the forwarded message.
         """
-        to_recipients = [
-            {"emailAddress": {"address": addr}} for addr in to
-        ]
+        to_recipients = [{"emailAddress": {"address": addr}} for addr in to]
         payload: dict[str, Any] = {
             "toRecipients": to_recipients,
         }

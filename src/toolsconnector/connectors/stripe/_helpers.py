@@ -5,8 +5,8 @@ Extracted to keep connector.py focused on action definitions.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional, TypeVar
 from collections.abc import Coroutine
+from typing import Any, Callable, Optional, TypeVar
 
 from toolsconnector.types import PageState, PaginatedList
 
@@ -31,9 +31,7 @@ def build_page_state(body: dict[str, Any]) -> PageState:
 def build_paginated_result(
     items: list[T],
     body: dict[str, Any],
-    fetch_next_factory: Optional[
-        Callable[[str], Coroutine[Any, Any, PaginatedList[T]]]
-    ] = None,
+    fetch_next_factory: Optional[Callable[[str], Coroutine[Any, Any, PaginatedList[T]]]] = None,
 ) -> PaginatedList[T]:
     """Construct a PaginatedList from parsed items and the raw Stripe response.
 
@@ -57,9 +55,7 @@ def build_paginated_result(
     )
 
     if page_state.has_more and fetch_next_factory is not None:
-        result._fetch_next = (
-            lambda cursor=page_state.cursor: fetch_next_factory(cursor)
-        )
+        result._fetch_next = lambda cursor=page_state.cursor: fetch_next_factory(cursor)
     else:
         result._fetch_next = None
 

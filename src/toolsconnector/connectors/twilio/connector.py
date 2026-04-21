@@ -74,9 +74,7 @@ class Twilio(BaseConnector):
         self._account_sid = parts[0]
         auth_token = parts[1] if len(parts) > 1 else ""
 
-        token = base64.b64encode(
-            f"{self._account_sid}:{auth_token}".encode()
-        ).decode()
+        token = base64.b64encode(f"{self._account_sid}:{auth_token}".encode()).decode()
 
         form_headers: dict[str, str] = {
             "Authorization": f"Basic {token}",
@@ -110,8 +108,7 @@ class Twilio(BaseConnector):
 
     async def _teardown(self) -> None:
         """Close all httpx clients."""
-        for attr in ("_client", "_verify_client", "_lookup_client",
-                     "_conversations_client"):
+        for attr in ("_client", "_verify_client", "_lookup_client", "_conversations_client"):
             client = getattr(self, attr, None)
             if client is not None:
                 await client.aclose()
@@ -132,7 +129,10 @@ class Twilio(BaseConnector):
         return f"/Accounts/{self._account_sid}/{resource}"
 
     async def _request(
-        self, method: str, path: str, *,
+        self,
+        method: str,
+        path: str,
+        *,
         params: Optional[dict[str, Any]] = None,
         data: Optional[dict[str, Any]] = None,
     ) -> httpx.Response:
@@ -151,7 +151,10 @@ class Twilio(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, data=data,
+            method,
+            path,
+            params=params,
+            data=data,
         )
         resp.raise_for_status()
         return resp
@@ -174,7 +177,10 @@ class Twilio(BaseConnector):
 
     @action("Send an SMS or MMS message via Twilio", dangerous=True)
     async def send_sms(
-        self, to: str, from_: str, body: str,
+        self,
+        to: str,
+        from_: str,
+        body: str,
     ) -> TwilioMessage:
         """Send an SMS message.
 
@@ -188,7 +194,9 @@ class Twilio(BaseConnector):
         """
         form_data = {"To": to, "From": from_, "Body": body}
         resp = await self._request(
-            "POST", self._acct("Messages.json"), data=form_data,
+            "POST",
+            self._acct("Messages.json"),
+            data=form_data,
         )
         return parse_message(resp.json())
 
@@ -216,17 +224,16 @@ class Twilio(BaseConnector):
             params["From"] = from_
 
         resp = await self._request(
-            "GET", self._acct("Messages.json"), params=params,
+            "GET",
+            self._acct("Messages.json"),
+            params=params,
         )
         body = resp.json()
         items = [parse_message(m) for m in body.get("messages", [])]
         ps = self._page_state(body)
 
         result = PaginatedList(items=items, page_state=ps)
-        result._fetch_next = (
-            (lambda c=ps.cursor: self._fetch_msgs(c))
-            if ps.has_more else None
-        )
+        result._fetch_next = (lambda c=ps.cursor: self._fetch_msgs(c)) if ps.has_more else None
         return result
 
     async def _fetch_msgs(self, uri: str) -> PaginatedList[TwilioMessage]:
@@ -244,10 +251,7 @@ class Twilio(BaseConnector):
         items = [parse_message(m) for m in body.get("messages", [])]
         ps = self._page_state(body)
         result = PaginatedList(items=items, page_state=ps)
-        result._fetch_next = (
-            (lambda c=ps.cursor: self._fetch_msgs(c))
-            if ps.has_more else None
-        )
+        result._fetch_next = (lambda c=ps.cursor: self._fetch_msgs(c)) if ps.has_more else None
         return result
 
     @action("Retrieve a single Twilio message by SID")
@@ -292,17 +296,16 @@ class Twilio(BaseConnector):
             params["From"] = from_
 
         resp = await self._request(
-            "GET", self._acct("Calls.json"), params=params,
+            "GET",
+            self._acct("Calls.json"),
+            params=params,
         )
         body = resp.json()
         items = [parse_call(c) for c in body.get("calls", [])]
         ps = self._page_state(body)
 
         result = PaginatedList(items=items, page_state=ps)
-        result._fetch_next = (
-            (lambda c=ps.cursor: self._fetch_calls(c))
-            if ps.has_more else None
-        )
+        result._fetch_next = (lambda c=ps.cursor: self._fetch_calls(c)) if ps.has_more else None
         return result
 
     async def _fetch_calls(self, uri: str) -> PaginatedList[TwilioCall]:
@@ -320,15 +323,15 @@ class Twilio(BaseConnector):
         items = [parse_call(c) for c in body.get("calls", [])]
         ps = self._page_state(body)
         result = PaginatedList(items=items, page_state=ps)
-        result._fetch_next = (
-            (lambda c=ps.cursor: self._fetch_calls(c))
-            if ps.has_more else None
-        )
+        result._fetch_next = (lambda c=ps.cursor: self._fetch_calls(c)) if ps.has_more else None
         return result
 
     @action("Initiate a voice call via Twilio", dangerous=True)
     async def make_call(
-        self, to: str, from_: str, url: str,
+        self,
+        to: str,
+        from_: str,
+        url: str,
     ) -> TwilioCall:
         """Initiate an outbound voice call.
 
@@ -342,7 +345,9 @@ class Twilio(BaseConnector):
         """
         form_data = {"To": to, "From": from_, "Url": url}
         resp = await self._request(
-            "POST", self._acct("Calls.json"), data=form_data,
+            "POST",
+            self._acct("Calls.json"),
+            data=form_data,
         )
         return parse_call(resp.json())
 
@@ -374,10 +379,7 @@ class Twilio(BaseConnector):
         path = self._acct("IncomingPhoneNumbers.json")
         resp = await self._request("GET", path)
         body = resp.json()
-        return [
-            parse_phone_number(p)
-            for p in body.get("incoming_phone_numbers", [])
-        ]
+        return [parse_phone_number(p) for p in body.get("incoming_phone_numbers", [])]
 
     # ------------------------------------------------------------------
     # Actions — Account
@@ -391,7 +393,8 @@ class Twilio(BaseConnector):
             TwilioAccount object with account details.
         """
         resp = await self._request(
-            "GET", f"/Accounts/{self._account_sid}.json",
+            "GET",
+            f"/Accounts/{self._account_sid}.json",
         )
         data = resp.json()
         return TwilioAccount(
@@ -442,7 +445,8 @@ class Twilio(BaseConnector):
 
     @action("List call recordings from your Twilio account")
     async def list_recordings(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[TwilioRecording]:
         """List call recordings.
 
@@ -496,7 +500,11 @@ class Twilio(BaseConnector):
 
     @action("Send an MMS message with media via Twilio", dangerous=True)
     async def send_mms(
-        self, to: str, from_: str, body: str, media_url: str,
+        self,
+        to: str,
+        from_: str,
+        body: str,
+        media_url: str,
     ) -> TwilioMessage:
         """Send an MMS message with a media attachment.
 
@@ -516,7 +524,9 @@ class Twilio(BaseConnector):
             "MediaUrl": media_url,
         }
         resp = await self._request(
-            "POST", self._acct("Messages.json"), data=form_data,
+            "POST",
+            self._acct("Messages.json"),
+            data=form_data,
         )
         return parse_message(resp.json())
 
@@ -565,7 +575,8 @@ class Twilio(BaseConnector):
 
     @action("Create a Twilio Verify service", dangerous=True)
     async def create_verify_service(
-        self, friendly_name: str,
+        self,
+        friendly_name: str,
     ) -> TwilioVerifyService:
         """Create a new Verify service for sending verification tokens.
 
@@ -579,7 +590,8 @@ class Twilio(BaseConnector):
             The created TwilioVerifyService object.
         """
         resp = await self._verify_client.post(
-            "/Services", data={"FriendlyName": friendly_name},
+            "/Services",
+            data={"FriendlyName": friendly_name},
         )
         resp.raise_for_status()
         data = resp.json()
@@ -718,7 +730,8 @@ class Twilio(BaseConnector):
 
     @action("List conversations from your Twilio account")
     async def list_conversations(
-        self, limit: int = 20,
+        self,
+        limit: int = 20,
     ) -> list[TwilioConversation]:
         """List conversations in the default Conversations service.
 
@@ -730,7 +743,8 @@ class Twilio(BaseConnector):
         """
         params: dict[str, Any] = {"PageSize": min(limit, 1000)}
         resp = await self._conversations_client.get(
-            "/Conversations", params=params,
+            "/Conversations",
+            params=params,
         )
         resp.raise_for_status()
         body = resp.json()
@@ -752,7 +766,8 @@ class Twilio(BaseConnector):
 
     @action("Create a new Twilio conversation", dangerous=True)
     async def create_conversation(
-        self, friendly_name: str,
+        self,
+        friendly_name: str,
     ) -> TwilioConversation:
         """Create a new conversation in the default Conversations service.
 

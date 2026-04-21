@@ -20,9 +20,7 @@ class ParameterSpec(BaseModel):
     description: str = Field(default="", description="Human-readable description.")
     required: bool = Field(default=True, description="Whether this parameter is required.")
     default: Any = Field(default=None, description="Default value if not required.")
-    enum: Optional[list[Any]] = Field(
-        default=None, description="Allowed values (enum constraint)."
-    )
+    enum: Optional[list[Any]] = Field(default=None, description="Allowed values (enum constraint).")
     format: Optional[str] = Field(
         default=None, description="Format hint (e.g., 'email', 'date-time', 'uri')."
     )

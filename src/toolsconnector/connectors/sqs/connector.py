@@ -19,16 +19,15 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.types import PaginatedList, PageState
-from toolsconnector.errors import APIError, NotFoundError
-
-from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.types import PageState, PaginatedList
 
 from .types import (
     SQSBatchResult,
@@ -71,6 +70,7 @@ class SQS(BaseConnector):
     async def _setup(self) -> None:
         """Parse credentials and initialise the HTTP client."""
         from toolsconnector.connectors._aws.auth import parse_credentials
+
         creds = parse_credentials(self._credentials)
         self._access_key = creds.access_key_id
         self._secret_key = creds.secret_access_key
@@ -250,10 +250,13 @@ class SQS(BaseConnector):
             queue_url: The URL of the SQS queue.
             receipt_handle: The receipt handle of the message to delete.
         """
-        await self._sqs_request("DeleteMessage", {
-            "QueueUrl": queue_url,
-            "ReceiptHandle": receipt_handle,
-        })
+        await self._sqs_request(
+            "DeleteMessage",
+            {
+                "QueueUrl": queue_url,
+                "ReceiptHandle": receipt_handle,
+            },
+        )
 
     @action("List SQS queues in the account")
     async def list_queues(
@@ -293,16 +296,17 @@ class SQS(BaseConnector):
         Returns:
             SQSQueueAttributes with queue metadata.
         """
-        body = await self._sqs_request("GetQueueAttributes", {
-            "QueueUrl": queue_url,
-            "AttributeNames": ["All"],
-        })
+        body = await self._sqs_request(
+            "GetQueueAttributes",
+            {
+                "QueueUrl": queue_url,
+                "AttributeNames": ["All"],
+            },
+        )
         attrs = body.get("Attributes", {})
         return SQSQueueAttributes(
             queue_arn=attrs.get("QueueArn", ""),
-            approximate_number_of_messages=int(
-                attrs.get("ApproximateNumberOfMessages", "0")
-            ),
+            approximate_number_of_messages=int(attrs.get("ApproximateNumberOfMessages", "0")),
             approximate_number_of_messages_not_visible=int(
                 attrs.get("ApproximateNumberOfMessagesNotVisible", "0")
             ),
@@ -315,9 +319,7 @@ class SQS(BaseConnector):
             maximum_message_size=attrs.get("MaximumMessageSize", ""),
             message_retention_period=attrs.get("MessageRetentionPeriod", ""),
             delay_seconds=attrs.get("DelaySeconds", ""),
-            receive_message_wait_time_seconds=attrs.get(
-                "ReceiveMessageWaitTimeSeconds", ""
-            ),
+            receive_message_wait_time_seconds=attrs.get("ReceiveMessageWaitTimeSeconds", ""),
             raw_attributes=attrs,
         )
 
@@ -368,10 +370,13 @@ class SQS(BaseConnector):
         Returns:
             SQSBatchResult with successful and failed entries.
         """
-        body = await self._sqs_request("SendMessageBatch", {
-            "QueueUrl": queue_url,
-            "Entries": entries,
-        })
+        body = await self._sqs_request(
+            "SendMessageBatch",
+            {
+                "QueueUrl": queue_url,
+                "Entries": entries,
+            },
+        )
         successful = [
             SQSBatchResultEntry(
                 id=e.get("Id", ""),
@@ -417,10 +422,13 @@ class SQS(BaseConnector):
         Returns:
             True if attributes were set.
         """
-        await self._sqs_request("SetQueueAttributes", {
-            "QueueUrl": queue_url,
-            "Attributes": attributes,
-        })
+        await self._sqs_request(
+            "SetQueueAttributes",
+            {
+                "QueueUrl": queue_url,
+                "Attributes": attributes,
+            },
+        )
         return True
 
     @action("Add tags to a queue")
@@ -438,10 +446,13 @@ class SQS(BaseConnector):
         Returns:
             True if tags were added.
         """
-        await self._sqs_request("TagQueue", {
-            "QueueUrl": queue_url,
-            "Tags": tags,
-        })
+        await self._sqs_request(
+            "TagQueue",
+            {
+                "QueueUrl": queue_url,
+                "Tags": tags,
+            },
+        )
         return True
 
     # ------------------------------------------------------------------
@@ -458,9 +469,12 @@ class SQS(BaseConnector):
         Returns:
             The full queue URL string.
         """
-        body = await self._sqs_request("GetQueueUrl", {
-            "QueueName": queue_name,
-        })
+        body = await self._sqs_request(
+            "GetQueueUrl",
+            {
+                "QueueName": queue_name,
+            },
+        )
         return body.get("QueueUrl", "")
 
     # ------------------------------------------------------------------
@@ -480,9 +494,12 @@ class SQS(BaseConnector):
         Returns:
             List of source queue URLs that send to this DLQ.
         """
-        body = await self._sqs_request("ListDeadLetterSourceQueues", {
-            "QueueUrl": source_queue_arn,
-        })
+        body = await self._sqs_request(
+            "ListDeadLetterSourceQueues",
+            {
+                "QueueUrl": source_queue_arn,
+            },
+        )
         return body.get("queueUrls", [])
 
     # ------------------------------------------------------------------
@@ -509,11 +526,14 @@ class SQS(BaseConnector):
         Returns:
             True if the visibility timeout was changed.
         """
-        await self._sqs_request("ChangeMessageVisibility", {
-            "QueueUrl": queue_url,
-            "ReceiptHandle": receipt_handle,
-            "VisibilityTimeout": timeout,
-        })
+        await self._sqs_request(
+            "ChangeMessageVisibility",
+            {
+                "QueueUrl": queue_url,
+                "ReceiptHandle": receipt_handle,
+                "VisibilityTimeout": timeout,
+            },
+        )
         return True
 
     # ------------------------------------------------------------------
@@ -547,12 +567,15 @@ class SQS(BaseConnector):
         Returns:
             True if the permission was added.
         """
-        await self._sqs_request("AddPermission", {
-            "QueueUrl": queue_url,
-            "Label": label,
-            "AWSAccountIds": aws_account_ids,
-            "Actions": actions,
-        })
+        await self._sqs_request(
+            "AddPermission",
+            {
+                "QueueUrl": queue_url,
+                "Label": label,
+                "AWSAccountIds": aws_account_ids,
+                "Actions": actions,
+            },
+        )
         return True
 
     @action("Remove permission from a queue", dangerous=True)
@@ -573,8 +596,11 @@ class SQS(BaseConnector):
         Returns:
             True if the permission was removed.
         """
-        await self._sqs_request("RemovePermission", {
-            "QueueUrl": queue_url,
-            "Label": label,
-        })
+        await self._sqs_request(
+            "RemovePermission",
+            {
+                "QueueUrl": queue_url,
+                "Label": label,
+            },
+        )
         return True

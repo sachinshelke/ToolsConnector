@@ -47,7 +47,8 @@ def get_signing_key(
         Derived signing key bytes.
     """
     k_date = hmac_sha256(
-        f"AWS4{secret_access_key}".encode(), date_stamp,
+        f"AWS4{secret_access_key}".encode(),
+        date_stamp,
     )
     k_region = hmac_sha256(k_date, region)
     k_service = hmac_sha256(k_region, service)
@@ -98,20 +99,20 @@ def sign_v4(
 
     # Parse and sort query string parameters.
     query_parts = urllib.parse.parse_qsl(
-        parsed.query, keep_blank_values=True,
+        parsed.query,
+        keep_blank_values=True,
     )
     sorted_qs = sorted(query_parts, key=lambda x: (x[0], x[1]))
     canonical_querystring = urllib.parse.urlencode(
-        sorted_qs, quote_via=urllib.parse.quote,
+        sorted_qs,
+        quote_via=urllib.parse.quote,
     )
 
     amz_date = headers["x-amz-date"]
     date_stamp = amz_date[:8]
 
     # Build canonical headers (sorted, lowercased keys).
-    signed_header_keys = sorted(
-        k.lower() for k in headers if k.lower() != "authorization"
-    )
+    signed_header_keys = sorted(k.lower() for k in headers if k.lower() != "authorization")
     canonical_headers = ""
     for k in signed_header_keys:
         for orig_k, v in headers.items():
@@ -135,16 +136,14 @@ def sign_v4(
     canonical_hash = hashlib.sha256(
         canonical_request.encode("utf-8"),
     ).hexdigest()
-    string_to_sign = (
-        f"AWS4-HMAC-SHA256\n"
-        f"{amz_date}\n"
-        f"{credential_scope}\n"
-        f"{canonical_hash}"
-    )
+    string_to_sign = f"AWS4-HMAC-SHA256\n{amz_date}\n{credential_scope}\n{canonical_hash}"
 
     # Signing key and final signature.
     signing_key = get_signing_key(
-        secret_access_key, date_stamp, region, service,
+        secret_access_key,
+        date_stamp,
+        region,
+        service,
     )
     signature = hmac.new(
         signing_key,

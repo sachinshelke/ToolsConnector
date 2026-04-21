@@ -146,8 +146,7 @@ class Datadog(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://api.datadoghq.com/api"
     description = (
-        "Connect to Datadog to manage monitors, query metrics, "
-        "create events, and list dashboards."
+        "Connect to Datadog to manage monitors, query metrics, create events, and list dashboards."
     )
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=30)
 
@@ -210,7 +209,10 @@ class Datadog(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, json=json,
+            method,
+            path,
+            params=params,
+            json=json,
         )
         resp.raise_for_status()
         return resp
@@ -430,7 +432,8 @@ class Datadog(BaseConnector):
 
     @action("Get metadata for a metric")
     async def get_metric_metadata(
-        self, metric_name: str,
+        self,
+        metric_name: str,
     ) -> dict[str, Any]:
         """Retrieve metadata for a specific metric.
 
@@ -441,7 +444,8 @@ class Datadog(BaseConnector):
             Dict with metric metadata (type, unit, description, etc.).
         """
         resp = await self._request(
-            "GET", f"/v1/metrics/{metric_name}",
+            "GET",
+            f"/v1/metrics/{metric_name}",
         )
         return resp.json()
 
@@ -451,7 +455,8 @@ class Datadog(BaseConnector):
 
     @action("List hosts reporting to Datadog")
     async def list_hosts(
-        self, filter: Optional[str] = None,
+        self,
+        filter: Optional[str] = None,
     ) -> list[DatadogHost]:
         """List hosts, optionally filtered by a search query.
 
@@ -465,7 +470,9 @@ class Datadog(BaseConnector):
         if filter:
             params["filter"] = filter
         resp = await self._request(
-            "GET", "/v1/hosts", params=params or None,
+            "GET",
+            "/v1/hosts",
+            params=params or None,
         )
         body = resp.json()
         return [
@@ -509,7 +516,9 @@ class Datadog(BaseConnector):
         if end is not None:
             payload["end"] = end
         resp = await self._request(
-            "POST", "/v1/downtime", json_body=payload,
+            "POST",
+            "/v1/downtime",
+            json_body=payload,
         )
         data = resp.json()
         return DatadogDowntime(
@@ -630,7 +639,8 @@ class Datadog(BaseConnector):
             List of log event dicts.
         """
         data = await self._request(
-            "POST", "/v2/logs/events/search",
+            "POST",
+            "/v2/logs/events/search",
             json={
                 "filter": {"query": query, "from": time_from, "to": time_to},
                 "page": {"limit": limit},
@@ -656,7 +666,8 @@ class Datadog(BaseConnector):
             List of incident dicts.
         """
         data = await self._request(
-            "GET", "/v2/incidents",
+            "GET",
+            "/v2/incidents",
             params={"page[size]": limit},
         )
         return data.get("data", [])
@@ -685,7 +696,8 @@ class Datadog(BaseConnector):
         if customer_impact_scope:
             attrs["customer_impact_scope"] = customer_impact_scope
         data = await self._request(
-            "POST", "/v2/incidents",
+            "POST",
+            "/v2/incidents",
             json={"data": {"type": "incidents", "attributes": attrs}},
         )
         return data.get("data", {})

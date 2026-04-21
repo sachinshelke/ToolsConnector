@@ -160,7 +160,7 @@ class BaseConnector(ABC):
         """
         return HealthStatus(healthy=True, message="No health check implemented")
 
-    async def __aenter__(self) -> "BaseConnector":
+    async def __aenter__(self) -> BaseConnector:
         """Async context manager entry."""
         await self._setup()
         self._is_setup = True
@@ -176,7 +176,7 @@ class BaseConnector(ABC):
         await self._teardown()
         self._is_setup = False
 
-    def __enter__(self) -> "BaseConnector":
+    def __enter__(self) -> BaseConnector:
         """Sync context manager entry."""
         run_sync(self._setup())
         self._is_setup = True

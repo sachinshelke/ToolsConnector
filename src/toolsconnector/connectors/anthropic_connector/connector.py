@@ -265,7 +265,8 @@ class Anthropic(BaseConnector):
             The created AnthropicBatch.
         """
         data = await self._request(
-            "POST", "/messages/batches",
+            "POST",
+            "/messages/batches",
             json={"requests": requests},
         )
         return AnthropicBatch(
@@ -319,7 +320,9 @@ class Anthropic(BaseConnector):
             params["limit"] = limit
 
         data = await self._request(
-            "GET", "/messages/batches", params=params or None,
+            "GET",
+            "/messages/batches",
+            params=params or None,
         )
         return [
             AnthropicBatch(
@@ -348,7 +351,8 @@ class Anthropic(BaseConnector):
             AnthropicBatch with updated status reflecting cancellation.
         """
         data = await self._request(
-            "POST", f"/messages/batches/{batch_id}/cancel",
+            "POST",
+            f"/messages/batches/{batch_id}/cancel",
         )
         return AnthropicBatch(
             id=data.get("id", ""),
@@ -428,6 +432,7 @@ class Anthropic(BaseConnector):
             Dict with file id, filename, media_type, size_bytes.
         """
         import base64
+
         encoded = base64.standard_b64encode(content.encode("utf-8")).decode("ascii")
         data = await self._request(
             "POST",

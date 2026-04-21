@@ -27,7 +27,7 @@ from toolsconnector.spec.connector import (
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.types import PaginatedList, PageState
+from toolsconnector.types import PageState, PaginatedList
 
 from .types import Auth0Connection, Auth0Role, Auth0User
 
@@ -65,9 +65,7 @@ class Auth0(BaseConnector):
         creds = str(self._credentials)
         parts = creds.split(":", 2)
         if len(parts) < 3:
-            raise ValueError(
-                "Auth0 credentials must be 'client_id:client_secret:domain'"
-            )
+            raise ValueError("Auth0 credentials must be 'client_id:client_secret:domain'")
 
         self._client_id = parts[0]
         self._client_secret = parts[1]
@@ -88,8 +86,7 @@ class Auth0(BaseConnector):
             )
             if token_resp.status_code >= 400:
                 raise APIError(
-                    f"Auth0 token exchange failed ({token_resp.status_code}): "
-                    f"{token_resp.text}",
+                    f"Auth0 token exchange failed ({token_resp.status_code}): {token_resp.text}",
                     connector="auth0",
                     action="_setup",
                     upstream_status=token_resp.status_code,
@@ -160,9 +157,7 @@ class Auth0(BaseConnector):
             err_msg_str = err_body.get(
                 "message", err_body.get("error_description", "Unknown error")
             )
-            err_msg = (
-                f"Auth0 API error ({response.status_code}): {err_msg_str}"
-            )
+            err_msg = f"Auth0 API error ({response.status_code}): {err_msg_str}"
 
             if response.status_code == 404:
                 raise NotFoundError(
@@ -172,9 +167,7 @@ class Auth0(BaseConnector):
                     details=err_body,
                 )
             if response.status_code == 429:
-                retry_after = float(
-                    response.headers.get("x-ratelimit-reset", "60")
-                )
+                retry_after = float(response.headers.get("x-ratelimit-reset", "60"))
                 raise RateLimitError(
                     err_msg,
                     connector="auth0",
@@ -313,11 +306,15 @@ class Auth0(BaseConnector):
         Returns:
             The created Auth0User.
         """
-        data = await self._request("POST", "/users", json_body={
-            "email": email,
-            "password": password,
-            "connection": connection,
-        })
+        data = await self._request(
+            "POST",
+            "/users",
+            json_body={
+                "email": email,
+                "password": password,
+                "connection": connection,
+            },
+        )
         return Auth0User(
             user_id=data.get("user_id", ""),
             email=data.get("email", ""),
@@ -345,7 +342,9 @@ class Auth0(BaseConnector):
             The updated Auth0User.
         """
         data = await self._request(
-            "PATCH", f"/users/{user_id}", json_body=fields,
+            "PATCH",
+            f"/users/{user_id}",
+            json_body=fields,
         )
         return Auth0User(
             user_id=data.get("user_id", ""),
@@ -471,7 +470,8 @@ class Auth0(BaseConnector):
             The updated Auth0User with blocked=True.
         """
         data = await self._request(
-            "PATCH", f"/users/{user_id}",
+            "PATCH",
+            f"/users/{user_id}",
             json_body={"blocked": True},
         )
         return Auth0User(
@@ -495,7 +495,8 @@ class Auth0(BaseConnector):
             The updated Auth0User with blocked=False.
         """
         data = await self._request(
-            "PATCH", f"/users/{user_id}",
+            "PATCH",
+            f"/users/{user_id}",
             json_body={"blocked": False},
         )
         return Auth0User(
@@ -510,7 +511,8 @@ class Auth0(BaseConnector):
 
     @action("List roles assigned to a user")
     async def list_user_roles(
-        self, user_id: str,
+        self,
+        user_id: str,
     ) -> list[Auth0Role]:
         """List all roles assigned to a user.
 
@@ -521,7 +523,8 @@ class Auth0(BaseConnector):
             List of Auth0Role objects.
         """
         data = await self._request(
-            "GET", f"/users/{user_id}/roles",
+            "GET",
+            f"/users/{user_id}/roles",
         )
         roles_data = data if isinstance(data, list) else data.get("roles", [])
         return [
@@ -535,7 +538,8 @@ class Auth0(BaseConnector):
 
     @action("List organizations in the tenant")
     async def list_organizations(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[dict[str, Any]]:
         """List organizations in the Auth0 tenant.
 
@@ -549,7 +553,9 @@ class Auth0(BaseConnector):
         if limit is not None:
             params["per_page"] = min(limit, 100)
         data = await self._request(
-            "GET", "/organizations", params=params or None,
+            "GET",
+            "/organizations",
+            params=params or None,
         )
         return data.get("organizations", data if isinstance(data, list) else [])
 
@@ -559,7 +565,8 @@ class Auth0(BaseConnector):
 
     @action("Get permissions assigned to a user")
     async def get_user_permissions(
-        self, user_id: str,
+        self,
+        user_id: str,
     ) -> list[dict[str, Any]]:
         """List all permissions directly assigned to a user.
 
@@ -571,7 +578,8 @@ class Auth0(BaseConnector):
             and resource_server_identifier.
         """
         data = await self._request(
-            "GET", f"/users/{user_id}/permissions",
+            "GET",
+            f"/users/{user_id}/permissions",
         )
         perms = data if isinstance(data, list) else data.get("permissions", [])
         return perms
@@ -616,7 +624,9 @@ class Auth0(BaseConnector):
         """
         params: dict[str, Any] = {"per_page": min(limit, 100)}
         data = await self._request(
-            "GET", "/clients", params=params,
+            "GET",
+            "/clients",
+            params=params,
         )
         return data if isinstance(data, list) else data.get("clients", [])
 
@@ -704,7 +714,8 @@ class Auth0(BaseConnector):
             List of user dicts assigned to this role.
         """
         data = await self._request(
-            "GET", f"/roles/{role_id}/users",
+            "GET",
+            f"/roles/{role_id}/users",
             params={"per_page": limit},
         )
         return data if isinstance(data, list) else []
@@ -841,7 +852,8 @@ class Auth0(BaseConnector):
             List of daily stat dicts with date and logins.
         """
         data = await self._request(
-            "GET", "/stats/daily",
+            "GET",
+            "/stats/daily",
             params={"from": from_date, "to": to_date},
         )
         return data if isinstance(data, list) else []

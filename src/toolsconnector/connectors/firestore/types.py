@@ -13,7 +13,6 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ---------------------------------------------------------------------------
 # Response models
 # ---------------------------------------------------------------------------

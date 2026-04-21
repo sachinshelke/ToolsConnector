@@ -206,22 +206,10 @@ def parse_history_record(data: dict[str, Any]) -> HistoryRecord:
     Returns:
         Populated HistoryRecord instance.
     """
-    messages_added = [
-        m.get("message", {}).get("id", "")
-        for m in data.get("messagesAdded", [])
-    ]
-    messages_deleted = [
-        m.get("message", {}).get("id", "")
-        for m in data.get("messagesDeleted", [])
-    ]
-    labels_added = [
-        m.get("message", {}).get("id", "")
-        for m in data.get("labelsAdded", [])
-    ]
-    labels_removed = [
-        m.get("message", {}).get("id", "")
-        for m in data.get("labelsRemoved", [])
-    ]
+    messages_added = [m.get("message", {}).get("id", "") for m in data.get("messagesAdded", [])]
+    messages_deleted = [m.get("message", {}).get("id", "") for m in data.get("messagesDeleted", [])]
+    labels_added = [m.get("message", {}).get("id", "") for m in data.get("labelsAdded", [])]
+    labels_removed = [m.get("message", {}).get("id", "") for m in data.get("labelsRemoved", [])]
     return HistoryRecord(
         id=str(data.get("id", "")),
         messages_added=messages_added,

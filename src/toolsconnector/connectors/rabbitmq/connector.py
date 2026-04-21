@@ -20,7 +20,7 @@ from toolsconnector.spec.connector import (
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.types import PaginatedList, PageState
+from toolsconnector.types import PageState, PaginatedList
 
 from .types import (
     RabbitChannel,
@@ -62,15 +62,11 @@ class RabbitMQ(BaseConnector):
         creds = str(self._credentials)
         parts = creds.split(":", 1)
         if len(parts) < 2:
-            raise ValueError(
-                "RabbitMQ credentials must be 'username:password'"
-            )
+            raise ValueError("RabbitMQ credentials must be 'username:password'")
         self._username = parts[0]
         self._password = parts[1]
 
-        auth_str = base64.b64encode(
-            f"{self._username}:{self._password}".encode()
-        ).decode()
+        auth_str = base64.b64encode(f"{self._username}:{self._password}".encode()).decode()
 
         self._client = httpx.AsyncClient(
             base_url=self._base_url or self.__class__.base_url,
@@ -212,10 +208,7 @@ class RabbitMQ(BaseConnector):
         Returns:
             RabbitQueue with full details.
         """
-        path = (
-            f"/queues/{self._encode_vhost(vhost)}"
-            f"/{urllib.parse.quote(queue_name, safe='')}"
-        )
+        path = f"/queues/{self._encode_vhost(vhost)}/{urllib.parse.quote(queue_name, safe='')}"
         data = await self._request("GET", path)
         return RabbitQueue(**data)
 
@@ -382,13 +375,17 @@ class RabbitMQ(BaseConnector):
         if durable is not None:
             body["durable"] = durable
         await self._request(
-            "PUT", f"/queues/{vhost}/{queue_name}", json_body=body,
+            "PUT",
+            f"/queues/{vhost}/{queue_name}",
+            json_body=body,
         )
         return True
 
     @action("Delete a queue", dangerous=True)
     async def delete_queue(
-        self, vhost: str, queue_name: str,
+        self,
+        vhost: str,
+        queue_name: str,
     ) -> bool:
         """Delete a queue from a vhost.
 
@@ -400,7 +397,8 @@ class RabbitMQ(BaseConnector):
             True if the queue was deleted.
         """
         await self._request(
-            "DELETE", f"/queues/{vhost}/{queue_name}",
+            "DELETE",
+            f"/queues/{vhost}/{queue_name}",
         )
         return True
 
@@ -427,13 +425,17 @@ class RabbitMQ(BaseConnector):
         """
         body: dict[str, Any] = {"type": type, "durable": True}
         await self._request(
-            "PUT", f"/exchanges/{vhost}/{name}", json_body=body,
+            "PUT",
+            f"/exchanges/{vhost}/{name}",
+            json_body=body,
         )
         return True
 
     @action("Delete an exchange", dangerous=True)
     async def delete_exchange(
-        self, vhost: str, name: str,
+        self,
+        vhost: str,
+        name: str,
     ) -> bool:
         """Delete an exchange from a vhost.
 
@@ -445,7 +447,8 @@ class RabbitMQ(BaseConnector):
             True if the exchange was deleted.
         """
         await self._request(
-            "DELETE", f"/exchanges/{vhost}/{name}",
+            "DELETE",
+            f"/exchanges/{vhost}/{name}",
         )
         return True
 
@@ -496,7 +499,8 @@ class RabbitMQ(BaseConnector):
         """
         encoded_vhost = self._encode_vhost(vhost)
         data = await self._request(
-            "GET", f"/bindings/{encoded_vhost}",
+            "GET",
+            f"/bindings/{encoded_vhost}",
         )
         return data if isinstance(data, list) else []
 
@@ -600,10 +604,7 @@ class RabbitMQ(BaseConnector):
         encoded_vhost = self._encode_vhost(vhost)
         encoded_exchange = urllib.parse.quote(exchange, safe="")
         encoded_queue = urllib.parse.quote(queue, safe="")
-        path = (
-            f"/bindings/{encoded_vhost}"
-            f"/e/{encoded_exchange}/q/{encoded_queue}"
-        )
+        path = f"/bindings/{encoded_vhost}/e/{encoded_exchange}/q/{encoded_queue}"
 
         body: dict[str, Any] = {}
         if routing_key is not None:

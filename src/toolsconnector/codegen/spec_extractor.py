@@ -96,9 +96,7 @@ def export_to_yaml(
     try:
         import yaml
     except ImportError:
-        raise ImportError(
-            "YAML export requires pyyaml. Install with: pip install pyyaml"
-        )
+        raise ImportError("YAML export requires pyyaml. Install with: pip install pyyaml")
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -107,9 +105,7 @@ def export_to_yaml(
     written: list[str] = []
     for name, spec in specs.items():
         path = out / f"{name}.connector.yaml"
-        path.write_text(
-            yaml.dump(spec, default_flow_style=False, sort_keys=False)
-        )
+        path.write_text(yaml.dump(spec, default_flow_style=False, sort_keys=False))
         written.append(str(path))
     return written
 
@@ -146,11 +142,7 @@ def generate_openapi(
                     "operationId": f"{conn_name}_{action_name}",
                     "tags": [spec.get("display_name", conn_name)],
                     "requestBody": {
-                        "content": {
-                            "application/json": {
-                                "schema": action.get("input_schema", {})
-                            }
-                        }
+                        "content": {"application/json": {"schema": action.get("input_schema", {})}}
                     },
                     "responses": {
                         "200": {"description": "Successful response"},

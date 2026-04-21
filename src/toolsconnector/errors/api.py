@@ -135,7 +135,8 @@ class ConflictError(APIError):
         code: str = "API_CONFLICT",
         retry_eligible: bool = False,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "The resource may have been modified concurrently. Fetch the latest version and retry.",
+        suggestion: str
+        | None = "The resource may have been modified concurrently. Fetch the latest version and retry.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = 409,
     ) -> None:
@@ -164,7 +165,8 @@ class PermissionDeniedError(APIError):
         code: str = "API_PERMISSION_DENIED",
         retry_eligible: bool = False,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "Ensure the authenticated user has permission to perform this action on the resource.",
+        suggestion: str
+        | None = "Ensure the authenticated user has permission to perform this action on the resource.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = 403,
     ) -> None:
@@ -193,7 +195,8 @@ class ServerError(APIError):
         code: str = "API_SERVER_ERROR",
         retry_eligible: bool = True,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "The upstream service may be experiencing issues. Retry after a short delay.",
+        suggestion: str
+        | None = "The upstream service may be experiencing issues. Retry after a short delay.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = 500,
     ) -> None:

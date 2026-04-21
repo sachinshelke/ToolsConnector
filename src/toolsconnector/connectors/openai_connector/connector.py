@@ -22,8 +22,8 @@ from toolsconnector.types import PageState, PaginatedList
 from .types import (
     Assistant,
     AudioTranscription,
-    ChatCompletion,
     ChatChoice,
+    ChatCompletion,
     ChatMessage,
     Embedding,
     EmbeddingData,
@@ -373,10 +373,7 @@ class OpenAI(BaseConnector):
                 description=a.get("description"),
                 model=a.get("model", ""),
                 instructions=a.get("instructions"),
-                tools=[
-                    ToolDefinition(type=t.get("type", ""))
-                    for t in a.get("tools", [])
-                ],
+                tools=[ToolDefinition(type=t.get("type", "")) for t in a.get("tools", [])],
                 metadata=a.get("metadata", {}),
             )
             for a in data.get("data", [])
@@ -438,10 +435,7 @@ class OpenAI(BaseConnector):
             description=data.get("description"),
             model=data.get("model", ""),
             instructions=data.get("instructions"),
-            tools=[
-                ToolDefinition(type=t.get("type", ""))
-                for t in data.get("tools", [])
-            ],
+            tools=[ToolDefinition(type=t.get("type", "")) for t in data.get("tools", [])],
             metadata=data.get("metadata", {}),
         )
 
@@ -569,7 +563,9 @@ class OpenAI(BaseConnector):
             params["limit"] = limit
 
         data = await self._request(
-            "GET", "/fine_tuning/jobs", params=params or None,
+            "GET",
+            "/fine_tuning/jobs",
+            params=params or None,
         )
         return [
             FineTuningJob(
@@ -698,7 +694,8 @@ class OpenAI(BaseConnector):
             ModerationResult with categories and scores.
         """
         data = await self._request(
-            "POST", "/moderations",
+            "POST",
+            "/moderations",
             json={"input": input},
         )
         results = data.get("results", [{}])
@@ -744,10 +741,7 @@ class OpenAI(BaseConnector):
             description=data.get("description"),
             model=data.get("model", ""),
             instructions=data.get("instructions"),
-            tools=[
-                ToolDefinition(type=t.get("type", ""))
-                for t in data.get("tools", [])
-            ],
+            tools=[ToolDefinition(type=t.get("type", "")) for t in data.get("tools", [])],
             metadata=data.get("metadata", {}),
         )
 
@@ -798,10 +792,7 @@ class OpenAI(BaseConnector):
             description=data.get("description"),
             model=data.get("model", ""),
             instructions=data.get("instructions"),
-            tools=[
-                ToolDefinition(type=t.get("type", ""))
-                for t in data.get("tools", [])
-            ],
+            tools=[ToolDefinition(type=t.get("type", "")) for t in data.get("tools", [])],
             metadata=data.get("metadata", {}),
         )
 
@@ -964,10 +955,7 @@ class OpenAI(BaseConnector):
             status=data.get("status", "queued"),
             model=data.get("model", ""),
             instructions=data.get("instructions"),
-            tools=[
-                ToolDefinition(type=t.get("type", ""))
-                for t in data.get("tools", [])
-            ],
+            tools=[ToolDefinition(type=t.get("type", "")) for t in data.get("tools", [])],
             usage=usage,
             started_at=data.get("started_at"),
             completed_at=data.get("completed_at"),
@@ -1023,10 +1011,7 @@ class OpenAI(BaseConnector):
             status=data.get("status", "queued"),
             model=data.get("model", ""),
             instructions=data.get("instructions"),
-            tools=[
-                ToolDefinition(type=t.get("type", ""))
-                for t in data.get("tools", [])
-            ],
+            tools=[ToolDefinition(type=t.get("type", "")) for t in data.get("tools", [])],
             usage=usage,
             started_at=data.get("started_at"),
             completed_at=data.get("completed_at"),

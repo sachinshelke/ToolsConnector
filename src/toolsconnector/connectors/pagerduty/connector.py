@@ -204,13 +204,19 @@ class PagerDuty(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, json=json,
+            method,
+            path,
+            params=params,
+            json=json,
         )
         resp.raise_for_status()
         return resp
 
     def _build_page_state(
-        self, body: dict[str, Any], offset: int, limit: int,
+        self,
+        body: dict[str, Any],
+        offset: int,
+        limit: int,
     ) -> PageState:
         """Build a PageState from PagerDuty offset pagination.
 
@@ -262,7 +268,9 @@ class PagerDuty(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.list_incidents(
-                status=status, limit=capped_limit, page=c,
+                status=status,
+                limit=capped_limit,
+                page=c,
             )
         return result
 
@@ -320,7 +328,9 @@ class PagerDuty(BaseConnector):
 
     @action("Update a PagerDuty incident status", dangerous=True)
     async def update_incident(
-        self, incident_id: str, status: str,
+        self,
+        incident_id: str,
+        status: str,
     ) -> PDIncident:
         """Update an incident's status.
 
@@ -338,13 +348,16 @@ class PagerDuty(BaseConnector):
             },
         }
         resp = await self._request(
-            "PUT", f"/incidents/{incident_id}", json=payload,
+            "PUT",
+            f"/incidents/{incident_id}",
+            json=payload,
         )
         return _parse_incident(resp.json().get("incident", {}))
 
     @action("Acknowledge a PagerDuty incident", dangerous=True)
     async def acknowledge_incident(
-        self, incident_id: str,
+        self,
+        incident_id: str,
     ) -> PDIncident:
         """Acknowledge an incident (shorthand for updating status).
 
@@ -387,7 +400,8 @@ class PagerDuty(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.list_services(
-                limit=capped_limit, page=c,
+                limit=capped_limit,
+                page=c,
             )
         return result
 
@@ -439,7 +453,8 @@ class PagerDuty(BaseConnector):
 
     @action("Resolve an incident")
     async def resolve_incident(
-        self, incident_id: str,
+        self,
+        incident_id: str,
     ) -> PDIncident:
         """Resolve a PagerDuty incident.
 
@@ -456,14 +471,18 @@ class PagerDuty(BaseConnector):
             },
         }
         resp = await self._request(
-            "PUT", f"/incidents/{incident_id}", json=payload,
+            "PUT",
+            f"/incidents/{incident_id}",
+            json=payload,
         )
         data = resp.json()
         return _parse_incident(data.get("incident", {}))
 
     @action("Add a note to an incident")
     async def add_note(
-        self, incident_id: str, content: str,
+        self,
+        incident_id: str,
+        content: str,
     ) -> dict[str, Any]:
         """Add a note to a PagerDuty incident.
 
@@ -478,7 +497,9 @@ class PagerDuty(BaseConnector):
             "note": {"content": content},
         }
         resp = await self._request(
-            "POST", f"/incidents/{incident_id}/notes", json=payload,
+            "POST",
+            f"/incidents/{incident_id}/notes",
+            json=payload,
         )
         return resp.json().get("note", {})
 
@@ -488,7 +509,8 @@ class PagerDuty(BaseConnector):
 
     @action("List PagerDuty users")
     async def list_users(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[PDUser]:
         """List users in the PagerDuty account.
 
@@ -502,7 +524,9 @@ class PagerDuty(BaseConnector):
         if limit is not None:
             params["limit"] = min(limit, 100)
         resp = await self._request(
-            "GET", "/users", params=params or None,
+            "GET",
+            "/users",
+            params=params or None,
         )
         body = resp.json()
         return [_parse_user(u) for u in body.get("users", [])]
@@ -537,7 +561,9 @@ class PagerDuty(BaseConnector):
             },
         }
         resp = await self._request(
-            "POST", "/services", json=payload,
+            "POST",
+            "/services",
+            json=payload,
         )
         return _parse_service(resp.json().get("service", {}))
 
@@ -564,13 +590,12 @@ class PagerDuty(BaseConnector):
             The merged target PDIncident.
         """
         payload: dict[str, Any] = {
-            "source_incidents": [
-                {"id": sid, "type": "incident_reference"}
-                for sid in source_ids
-            ],
+            "source_incidents": [{"id": sid, "type": "incident_reference"} for sid in source_ids],
         }
         resp = await self._request(
-            "PUT", f"/incidents/{target_id}/merge", json=payload,
+            "PUT",
+            f"/incidents/{target_id}/merge",
+            json=payload,
         )
         return _parse_incident(resp.json().get("incident", {}))
 
@@ -593,7 +618,9 @@ class PagerDuty(BaseConnector):
         """
         params: dict[str, Any] = {"limit": min(limit, 100)}
         resp = await self._request(
-            "GET", "/escalation_policies", params=params,
+            "GET",
+            "/escalation_policies",
+            params=params,
         )
         body = resp.json()
         items = [
@@ -619,7 +646,8 @@ class PagerDuty(BaseConnector):
 
     @action("Get a single escalation policy by ID")
     async def get_escalation_policy(
-        self, policy_id: str,
+        self,
+        policy_id: str,
     ) -> PDEscalationPolicy:
         """Retrieve a single escalation policy by its ID.
 
@@ -630,7 +658,8 @@ class PagerDuty(BaseConnector):
             PDEscalationPolicy object.
         """
         resp = await self._request(
-            "GET", f"/escalation_policies/{policy_id}",
+            "GET",
+            f"/escalation_policies/{policy_id}",
         )
         ep = resp.json().get("escalation_policy", {})
         return PDEscalationPolicy(
@@ -666,7 +695,9 @@ class PagerDuty(BaseConnector):
         """
         params: dict[str, Any] = {"limit": min(limit, 100)}
         resp = await self._request(
-            "GET", "/schedules", params=params,
+            "GET",
+            "/schedules",
+            params=params,
         )
         body = resp.json()
         items = [

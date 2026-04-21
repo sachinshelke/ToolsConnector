@@ -11,10 +11,10 @@ from typing import Optional
 from .types import (
     Branch,
     CodeSearchResult,
+    Comment,
     Commit,
     CommitAuthor,
     CommitDetail,
-    Comment,
     FileContent,
     GitHubGist,
     GitHubLabel,
@@ -182,9 +182,7 @@ def parse_code_search_result(item: dict) -> CodeSearchResult:
         path=item["path"],
         sha=item["sha"],
         html_url=item.get("html_url"),
-        repository=(
-            parse_repo(item["repository"]) if item.get("repository") else None
-        ),
+        repository=(parse_repo(item["repository"]) if item.get("repository") else None),
         score=item.get("score", 0.0),
         text_matches=item.get("text_matches", []),
     )
@@ -278,4 +276,3 @@ def parse_gist(data: dict) -> GitHubGist:
         updated_at=data.get("updated_at"),
         comments=data.get("comments", 0),
     )
-

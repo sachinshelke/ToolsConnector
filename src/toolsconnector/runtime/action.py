@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import functools
 import inspect
-from dataclasses import dataclass, field
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from typing import (
     Any,
     Callable,

@@ -48,10 +48,7 @@ class Mailchimp(BaseConnector):
     category = ConnectorCategory.MARKETING
     protocol = ProtocolType.REST
     base_url = "https://{dc}.api.mailchimp.com/3.0"
-    description = (
-        "Connect to Mailchimp to manage audience lists, "
-        "subscribers, and email campaigns."
-    )
+    description = "Connect to Mailchimp to manage audience lists, subscribers, and email campaigns."
     _rate_limit_config = RateLimitSpec(rate=10, period=1, burst=5)
 
     # ------------------------------------------------------------------
@@ -73,10 +70,7 @@ class Mailchimp(BaseConnector):
         else:
             dc = "us1"
 
-        resolved_url = (
-            self._base_url
-            or self.__class__.base_url.format(dc=dc)
-        )
+        resolved_url = self._base_url or self.__class__.base_url.format(dc=dc)
 
         auth_string = f"anystring:{api_key}"
         token = base64.b64encode(auth_string.encode()).decode()
@@ -125,7 +119,10 @@ class Mailchimp(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, json=json_body,
+            method,
+            path,
+            params=params,
+            json=json_body,
         )
         resp.raise_for_status()
         return resp
@@ -202,10 +199,14 @@ class Mailchimp(BaseConnector):
             total_count=body.get("total_items"),
         )
         result._fetch_next = (
-            (lambda next_off=offset + limit: self.list_lists(
-                limit=limit, offset=next_off,
-            ))
-            if page_state.has_more else None
+            (
+                lambda next_off=offset + limit: self.list_lists(
+                    limit=limit,
+                    offset=next_off,
+                )
+            )
+            if page_state.has_more
+            else None
         )
         return result
 
@@ -253,7 +254,9 @@ class Mailchimp(BaseConnector):
             params["status"] = status
 
         resp = await self._request(
-            "GET", f"/lists/{list_id}/members", params=params,
+            "GET",
+            f"/lists/{list_id}/members",
+            params=params,
         )
         body = resp.json()
 
@@ -266,11 +269,16 @@ class Mailchimp(BaseConnector):
             total_count=body.get("total_items"),
         )
         result._fetch_next = (
-            (lambda next_off=offset + limit: self.list_members(
-                list_id=list_id, status=status,
-                limit=limit, offset=next_off,
-            ))
-            if page_state.has_more else None
+            (
+                lambda next_off=offset + limit: self.list_members(
+                    list_id=list_id,
+                    status=status,
+                    limit=limit,
+                    offset=next_off,
+                )
+            )
+            if page_state.has_more
+            else None
         )
         return result
 
@@ -302,7 +310,8 @@ class Mailchimp(BaseConnector):
             member_data["merge_fields"] = merge_fields
 
         resp = await self._request(
-            "POST", f"/lists/{list_id}/members",
+            "POST",
+            f"/lists/{list_id}/members",
             json_body=member_data,
         )
         return parse_member(resp.json())
@@ -384,10 +393,15 @@ class Mailchimp(BaseConnector):
             total_count=body.get("total_items"),
         )
         result._fetch_next = (
-            (lambda next_off=offset + limit: self.list_campaigns(
-                status=status, limit=limit, offset=next_off,
-            ))
-            if page_state.has_more else None
+            (
+                lambda next_off=offset + limit: self.list_campaigns(
+                    status=status,
+                    limit=limit,
+                    offset=next_off,
+                )
+            )
+            if page_state.has_more
+            else None
         )
         return result
 
@@ -418,7 +432,8 @@ class Mailchimp(BaseConnector):
             Empty dict on success (Mailchimp returns 204 No Content).
         """
         resp = await self._request(
-            "POST", f"/campaigns/{campaign_id}/actions/send",
+            "POST",
+            f"/campaigns/{campaign_id}/actions/send",
         )
         # Mailchimp returns 204 on success with no body
         if resp.status_code == 204:
@@ -431,7 +446,9 @@ class Mailchimp(BaseConnector):
 
     @action("Delete a member from a list", dangerous=True)
     async def delete_member(
-        self, list_id: str, email: str,
+        self,
+        list_id: str,
+        email: str,
     ) -> bool:
         """Permanently delete a member from a list.
 
@@ -442,9 +459,7 @@ class Mailchimp(BaseConnector):
         Returns:
             True if the member was deleted successfully.
         """
-        subscriber_hash = hashlib.md5(
-            email.lower().encode()
-        ).hexdigest()
+        subscriber_hash = hashlib.md5(email.lower().encode()).hexdigest()
         resp = await self._request(
             "DELETE",
             f"/lists/{list_id}/members/{subscriber_hash}/actions/delete-permanent",
@@ -457,7 +472,8 @@ class Mailchimp(BaseConnector):
 
     @action("List segments for an audience list")
     async def list_segments(
-        self, list_id: str,
+        self,
+        list_id: str,
     ) -> list[MailchimpSegment]:
         """List all saved segments for an audience list.
 
@@ -468,7 +484,8 @@ class Mailchimp(BaseConnector):
             List of MailchimpSegment objects.
         """
         resp = await self._request(
-            "GET", f"/lists/{list_id}/segments",
+            "GET",
+            f"/lists/{list_id}/segments",
         )
         body = resp.json()
         return [
@@ -509,7 +526,8 @@ class Mailchimp(BaseConnector):
             },
         }
         resp = await self._request(
-            "POST", f"/lists/{list_id}/segments",
+            "POST",
+            f"/lists/{list_id}/segments",
             json_body=payload,
         )
         data = resp.json()
@@ -529,7 +547,8 @@ class Mailchimp(BaseConnector):
 
     @action("Get a campaign performance report")
     async def get_campaign_report(
-        self, campaign_id: str,
+        self,
+        campaign_id: str,
     ) -> MailchimpCampaignReport:
         """Get performance report for a sent campaign.
 
@@ -540,7 +559,8 @@ class Mailchimp(BaseConnector):
             MailchimpCampaignReport with performance metrics.
         """
         resp = await self._request(
-            "GET", f"/reports/{campaign_id}",
+            "GET",
+            f"/reports/{campaign_id}",
         )
         data = resp.json()
         return MailchimpCampaignReport(
@@ -580,7 +600,8 @@ class Mailchimp(BaseConnector):
         """
         subscriber_hash = self._subscriber_hash(email)
         resp = await self._request(
-            "GET", f"/lists/{list_id}/members/{subscriber_hash}",
+            "GET",
+            f"/lists/{list_id}/members/{subscriber_hash}",
         )
         return parse_member(resp.json())
 
@@ -606,7 +627,8 @@ class Mailchimp(BaseConnector):
         """
         payload: dict[str, Any] = {"settings": settings}
         resp = await self._request(
-            "PATCH", f"/campaigns/{campaign_id}",
+            "PATCH",
+            f"/campaigns/{campaign_id}",
             json_body=payload,
         )
         return parse_campaign(resp.json())
@@ -632,7 +654,8 @@ class Mailchimp(BaseConnector):
 
     @action("Get list growth history")
     async def get_list_growth(
-        self, list_id: str,
+        self,
+        list_id: str,
     ) -> list[dict[str, Any]]:
         """Get growth history (subscriber counts over time) for a list.
 
@@ -644,7 +667,8 @@ class Mailchimp(BaseConnector):
             imports, opt-ins, etc.
         """
         resp = await self._request(
-            "GET", f"/lists/{list_id}/growth-history",
+            "GET",
+            f"/lists/{list_id}/growth-history",
         )
         body = resp.json()
         return body.get("history", [])
@@ -699,7 +723,8 @@ class Mailchimp(BaseConnector):
             List of tag dicts with ``id`` and ``name``.
         """
         resp = await self._request(
-            "GET", f"/lists/{list_id}/tag-search",
+            "GET",
+            f"/lists/{list_id}/tag-search",
         )
         body = resp.json()
         return body.get("tags", [])
@@ -723,7 +748,8 @@ class Mailchimp(BaseConnector):
             and template content fields.
         """
         resp = await self._request(
-            "GET", f"/campaigns/{campaign_id}/content",
+            "GET",
+            f"/campaigns/{campaign_id}/content",
         )
         return resp.json()
 
@@ -763,7 +789,9 @@ class Mailchimp(BaseConnector):
             },
         }
         resp = await self._request(
-            "POST", "/campaigns", json_body=payload,
+            "POST",
+            "/campaigns",
+            json_body=payload,
         )
         return parse_campaign(resp.json())
 
@@ -842,10 +870,14 @@ class Mailchimp(BaseConnector):
             total_count=body.get("total_items"),
         )
         result._fetch_next = (
-            (lambda next_off=offset + limit: self.list_templates(
-                limit=limit, offset=next_off,
-            ))
-            if page_state.has_more else None
+            (
+                lambda next_off=offset + limit: self.list_templates(
+                    limit=limit,
+                    offset=next_off,
+                )
+            )
+            if page_state.has_more
+            else None
         )
         return result
 

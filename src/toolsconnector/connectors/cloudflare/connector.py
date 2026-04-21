@@ -92,8 +92,7 @@ class Cloudflare(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://api.cloudflare.com/client/v4"
     description = (
-        "Connect to Cloudflare to manage zones, DNS records, "
-        "purge cache, and view analytics."
+        "Connect to Cloudflare to manage zones, DNS records, purge cache, and view analytics."
     )
     _rate_limit_config = RateLimitSpec(rate=1200, period=300, burst=50)
 
@@ -149,16 +148,21 @@ class Cloudflare(BaseConnector):
             RuntimeError: When Cloudflare returns ``success: false``.
         """
         resp = await self._client.request(
-            method, path, params=params, json=json,
+            method,
+            path,
+            params=params,
+            json=json,
         )
         resp.raise_for_status()
         body = resp.json()
 
         if not body.get("success", False):
             errors = body.get("errors", [])
-            msg = "; ".join(
-                e.get("message", str(e)) for e in errors
-            ) if errors else "Unknown Cloudflare API error"
+            msg = (
+                "; ".join(e.get("message", str(e)) for e in errors)
+                if errors
+                else "Unknown Cloudflare API error"
+            )
             raise RuntimeError(f"Cloudflare API error: {msg}")
 
         return body
@@ -210,7 +214,8 @@ class Cloudflare(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.list_zones(
-                limit=capped_limit, page=c,
+                limit=capped_limit,
+                page=c,
             )
         return result
 
@@ -259,7 +264,9 @@ class Cloudflare(BaseConnector):
             params["page"] = int(page)
 
         body = await self._request(
-            "GET", f"/zones/{zone_id}/dns_records", params=params,
+            "GET",
+            f"/zones/{zone_id}/dns_records",
+            params=params,
         )
         items = [_parse_dns_record(r) for r in body.get("result", [])]
         ps = self._build_page_state(body)
@@ -267,7 +274,10 @@ class Cloudflare(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.list_dns_records(
-                zone_id=zone_id, type=type, name=name, page=c,
+                zone_id=zone_id,
+                type=type,
+                name=name,
+                page=c,
             )
         return result
 
@@ -301,7 +311,9 @@ class Cloudflare(BaseConnector):
             payload["ttl"] = ttl
 
         body = await self._request(
-            "POST", f"/zones/{zone_id}/dns_records", json=payload,
+            "POST",
+            f"/zones/{zone_id}/dns_records",
+            json=payload,
         )
         return _parse_dns_record(body.get("result", {}))
 
@@ -340,7 +352,9 @@ class Cloudflare(BaseConnector):
 
     @action("Delete a DNS record from a Cloudflare zone", dangerous=True)
     async def delete_dns_record(
-        self, zone_id: str, record_id: str,
+        self,
+        zone_id: str,
+        record_id: str,
     ) -> dict[str, Any]:
         """Delete a DNS record. This action is irreversible.
 
@@ -385,7 +399,9 @@ class Cloudflare(BaseConnector):
             payload = {"purge_everything": True}
 
         body = await self._request(
-            "POST", f"/zones/{zone_id}/purge_cache", json=payload,
+            "POST",
+            f"/zones/{zone_id}/purge_cache",
+            json=payload,
         )
         result = body.get("result", {})
         return CFPurgeResult(id=result.get("id"))
@@ -439,7 +455,8 @@ class Cloudflare(BaseConnector):
 
     @action("List Workers scripts for an account")
     async def list_workers(
-        self, account_id: str,
+        self,
+        account_id: str,
     ) -> list[CFWorker]:
         """List all Worker scripts in the account.
 
@@ -450,7 +467,8 @@ class Cloudflare(BaseConnector):
             List of CFWorker objects.
         """
         body = await self._cf_request(
-            "GET", f"/accounts/{account_id}/workers/scripts",
+            "GET",
+            f"/accounts/{account_id}/workers/scripts",
         )
         return [
             CFWorker(
@@ -465,7 +483,9 @@ class Cloudflare(BaseConnector):
 
     @action("Get a Worker script by name")
     async def get_worker(
-        self, account_id: str, script_name: str,
+        self,
+        account_id: str,
+        script_name: str,
     ) -> CFWorker:
         """Get metadata for a specific Worker script.
 
@@ -477,7 +497,8 @@ class Cloudflare(BaseConnector):
             CFWorker with script details.
         """
         body = await self._cf_request(
-            "GET", f"/accounts/{account_id}/workers/scripts/{script_name}",
+            "GET",
+            f"/accounts/{account_id}/workers/scripts/{script_name}",
         )
         result = body.get("result", {})
         return CFWorker(
@@ -515,7 +536,9 @@ class Cloudflare(BaseConnector):
             "status": "active",
         }
         body = await self._cf_request(
-            "POST", f"/zones/{zone_id}/pagerules", json_body=payload,
+            "POST",
+            f"/zones/{zone_id}/pagerules",
+            json_body=payload,
         )
         r = body.get("result", {})
         return CFPageRule(
@@ -543,7 +566,8 @@ class Cloudflare(BaseConnector):
             True if the zone was deleted.
         """
         body = await self._cf_request(
-            "DELETE", f"/zones/{zone_id}",
+            "DELETE",
+            f"/zones/{zone_id}",
         )
         return body.get("success", False)
 
@@ -553,7 +577,8 @@ class Cloudflare(BaseConnector):
 
     @action("List firewall rules for a zone")
     async def list_firewall_rules(
-        self, zone_id: str,
+        self,
+        zone_id: str,
     ) -> list[dict[str, Any]]:
         """List all firewall rules configured for a zone.
 
@@ -564,13 +589,15 @@ class Cloudflare(BaseConnector):
             List of firewall rule dicts.
         """
         body = await self._request(
-            "GET", f"/zones/{zone_id}/firewall/rules",
+            "GET",
+            f"/zones/{zone_id}/firewall/rules",
         )
         return body.get("result", [])
 
     @action("Get zone settings")
     async def get_zone_settings(
-        self, zone_id: str,
+        self,
+        zone_id: str,
     ) -> list[dict[str, Any]]:
         """Retrieve all settings for a Cloudflare zone.
 
@@ -584,7 +611,8 @@ class Cloudflare(BaseConnector):
             List of setting dicts with id, value, and metadata.
         """
         body = await self._request(
-            "GET", f"/zones/{zone_id}/settings",
+            "GET",
+            f"/zones/{zone_id}/settings",
         )
         return body.get("result", [])
 
@@ -630,7 +658,8 @@ class Cloudflare(BaseConnector):
             Dict with SSL setting value (off, flexible, full, strict).
         """
         body = await self._request(
-            "GET", f"/zones/{zone_id}/settings/ssl",
+            "GET",
+            f"/zones/{zone_id}/settings/ssl",
         )
         return body.get("result", {})
 
@@ -646,7 +675,8 @@ class Cloudflare(BaseConnector):
             Updated setting dict.
         """
         body = await self._request(
-            "PATCH", f"/zones/{zone_id}/settings/ssl",
+            "PATCH",
+            f"/zones/{zone_id}/settings/ssl",
             json={"value": value},
         )
         return body.get("result", {})
@@ -664,7 +694,8 @@ class Cloudflare(BaseConnector):
             Created zone dict with id, name, status.
         """
         body = await self._request(
-            "POST", "/zones",
+            "POST",
+            "/zones",
             json={"name": name, "account": {"id": account_id}, "type": type},
         )
         return body.get("result", {})
@@ -706,7 +737,9 @@ class Cloudflare(BaseConnector):
         return body.get("result", [])
 
     @action("Deploy a worker script", dangerous=True)
-    async def deploy_worker(self, account_id: str, script_name: str, script_content: str) -> dict[str, Any]:
+    async def deploy_worker(
+        self, account_id: str, script_name: str, script_content: str
+    ) -> dict[str, Any]:
         """Upload and deploy a Cloudflare Worker script.
 
         Args:
@@ -718,7 +751,8 @@ class Cloudflare(BaseConnector):
             Deployed worker dict.
         """
         body = await self._request(
-            "PUT", f"/accounts/{account_id}/workers/scripts/{script_name}",
+            "PUT",
+            f"/accounts/{account_id}/workers/scripts/{script_name}",
             content=script_content.encode("utf-8"),
             headers={"Content-Type": "application/javascript"},
         )
@@ -733,5 +767,6 @@ class Cloudflare(BaseConnector):
             script_name: Name of the worker script to delete.
         """
         await self._request(
-            "DELETE", f"/accounts/{account_id}/workers/scripts/{script_name}",
+            "DELETE",
+            f"/accounts/{account_id}/workers/scripts/{script_name}",
         )

@@ -44,11 +44,7 @@ def extract_user_metadata(headers: dict[str, str]) -> dict[str, str]:
         Dict of user metadata key-value pairs.
     """
     prefix = "x-amz-meta-"
-    return {
-        k[len(prefix):]: v
-        for k, v in headers.items()
-        if k.lower().startswith(prefix)
-    }
+    return {k[len(prefix) :]: v for k, v in headers.items() if k.lower().startswith(prefix)}
 
 
 def build_presigned_url(
@@ -97,13 +93,10 @@ def build_presigned_url(
     )
 
     canonical_request = (
-        f"{method}\n/{enc_key}\n{canonical_qs}\n"
-        f"host:{host}\n\nhost\nUNSIGNED-PAYLOAD"
+        f"{method}\n/{enc_key}\n{canonical_qs}\nhost:{host}\n\nhost\nUNSIGNED-PAYLOAD"
     )
     cr_hash = hashlib.sha256(canonical_request.encode("utf-8")).hexdigest()
-    string_to_sign = (
-        f"AWS4-HMAC-SHA256\n{amz_date}\n{credential_scope}\n{cr_hash}"
-    )
+    string_to_sign = f"AWS4-HMAC-SHA256\n{amz_date}\n{credential_scope}\n{cr_hash}"
 
     def _sign(k: bytes, msg: str) -> bytes:
         return hmac.new(k, msg.encode("utf-8"), hashlib.sha256).digest()
@@ -119,10 +112,7 @@ def build_presigned_url(
         hashlib.sha256,
     ).hexdigest()
 
-    signed_url = (
-        f"https://{host}/{enc_key}?{canonical_qs}"
-        f"&X-Amz-Signature={signature}"
-    )
+    signed_url = f"https://{host}/{enc_key}?{canonical_qs}&X-Amz-Signature={signature}"
 
     return S3PresignedUrl(
         bucket=bucket,
@@ -143,15 +133,8 @@ def build_tagging_xml(tags: dict[str, str], namespace: str) -> bytes:
     Returns:
         UTF-8 encoded XML bytes.
     """
-    tag_elements = "".join(
-        f"<Tag><Key>{k}</Key><Value>{v}</Value></Tag>"
-        for k, v in tags.items()
-    )
-    return (
-        f'<Tagging xmlns="{namespace}">'
-        f"<TagSet>{tag_elements}</TagSet>"
-        f"</Tagging>"
-    ).encode()
+    tag_elements = "".join(f"<Tag><Key>{k}</Key><Value>{v}</Value></Tag>" for k, v in tags.items())
+    return (f'<Tagging xmlns="{namespace}"><TagSet>{tag_elements}</TagSet></Tagging>').encode()
 
 
 def compute_content_md5(body: bytes) -> str:

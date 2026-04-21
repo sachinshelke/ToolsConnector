@@ -159,12 +159,14 @@ class Airtable(BaseConnector):
                 )
                 for f in t.get("fields", [])
             ]
-            tables.append(AirtableTable(
-                id=t.get("id"),
-                name=t.get("name", ""),
-                description=t.get("description"),
-                fields=fields,
-            ))
+            tables.append(
+                AirtableTable(
+                    id=t.get("id"),
+                    name=t.get("name", ""),
+                    description=t.get("description"),
+                    fields=fields,
+                )
+            )
 
         return tables
 
@@ -213,7 +215,9 @@ class Airtable(BaseConnector):
             params["offset"] = offset
 
         resp = await self._request(
-            "GET", f"/{base_id}/{table_name}", params=params,
+            "GET",
+            f"/{base_id}/{table_name}",
+            params=params,
         )
         data = resp.json()
 
@@ -232,18 +236,28 @@ class Airtable(BaseConnector):
 
         result = PaginatedList(items=items, page_state=page_state)
         result._fetch_next = (
-            (lambda o=next_offset: self.alist_records(
-                base_id=base_id, table_name=table_name, fields=fields,
-                filter_formula=filter_formula, sort=sort, limit=limit,
-                offset=o,
-            ))
-            if has_more else None
+            (
+                lambda o=next_offset: self.alist_records(
+                    base_id=base_id,
+                    table_name=table_name,
+                    fields=fields,
+                    filter_formula=filter_formula,
+                    sort=sort,
+                    limit=limit,
+                    offset=o,
+                )
+            )
+            if has_more
+            else None
         )
         return result
 
     @action("Get a single record from an Airtable table")
     async def get_record(
-        self, base_id: str, table_name: str, record_id: str,
+        self,
+        base_id: str,
+        table_name: str,
+        record_id: str,
     ) -> AirtableRecord:
         """Retrieve a single record by ID.
 
@@ -256,7 +270,8 @@ class Airtable(BaseConnector):
             AirtableRecord with the record data.
         """
         resp = await self._request(
-            "GET", f"/{base_id}/{table_name}/{record_id}",
+            "GET",
+            f"/{base_id}/{table_name}/{record_id}",
         )
         r = resp.json()
 
@@ -289,7 +304,9 @@ class Airtable(BaseConnector):
         """
         body = {"fields": fields}
         resp = await self._request(
-            "POST", f"/{base_id}/{table_name}", json_body=body,
+            "POST",
+            f"/{base_id}/{table_name}",
+            json_body=body,
         )
         r = resp.json()
 
@@ -320,7 +337,9 @@ class Airtable(BaseConnector):
             "records": [{"fields": r} for r in records[:10]],
         }
         resp = await self._request(
-            "POST", f"/{base_id}/{table_name}", json_body=body,
+            "POST",
+            f"/{base_id}/{table_name}",
+            json_body=body,
         )
         data = resp.json()
 
@@ -354,7 +373,9 @@ class Airtable(BaseConnector):
         """
         body = {"fields": fields}
         resp = await self._request(
-            "PATCH", f"/{base_id}/{table_name}/{record_id}", json_body=body,
+            "PATCH",
+            f"/{base_id}/{table_name}/{record_id}",
+            json_body=body,
         )
         r = resp.json()
 
@@ -366,7 +387,10 @@ class Airtable(BaseConnector):
 
     @action("Delete a record from an Airtable table", dangerous=True)
     async def delete_record(
-        self, base_id: str, table_name: str, record_id: str,
+        self,
+        base_id: str,
+        table_name: str,
+        record_id: str,
     ) -> None:
         """Delete a single record by ID.
 
@@ -376,7 +400,8 @@ class Airtable(BaseConnector):
             record_id: Record ID to delete.
         """
         await self._request(
-            "DELETE", f"/{base_id}/{table_name}/{record_id}",
+            "DELETE",
+            f"/{base_id}/{table_name}/{record_id}",
         )
 
     # ------------------------------------------------------------------
@@ -404,7 +429,8 @@ class Airtable(BaseConnector):
         # ?records[]=id1&records[]=id2... (max 10 per call).
         query_parts = "&".join(f"records[]={rid}" for rid in record_ids[:10])
         resp = await self._request(
-            "DELETE", f"/{base_id}/{table_name}?{query_parts}",
+            "DELETE",
+            f"/{base_id}/{table_name}?{query_parts}",
         )
         return resp.status_code == 200
 
@@ -427,7 +453,9 @@ class Airtable(BaseConnector):
         """
         body: dict[str, Any] = {"records": records}
         resp = await self._request(
-            "PATCH", f"/{base_id}/{table_name}", json_body=body,
+            "PATCH",
+            f"/{base_id}/{table_name}",
+            json_body=body,
         )
         data = resp.json()
         return [
@@ -445,7 +473,8 @@ class Airtable(BaseConnector):
 
     @action("List webhooks for a base")
     async def list_webhooks(
-        self, base_id: str,
+        self,
+        base_id: str,
     ) -> list[AirtableWebhook]:
         """List all webhook subscriptions for a base.
 
@@ -456,7 +485,8 @@ class Airtable(BaseConnector):
             List of AirtableWebhook objects.
         """
         resp = await self._request(
-            "GET", f"/bases/{base_id}/webhooks",
+            "GET",
+            f"/bases/{base_id}/webhooks",
         )
         data = resp.json()
         return [
@@ -477,7 +507,8 @@ class Airtable(BaseConnector):
 
     @action("Get all tables in an Airtable base")
     async def get_base_tables(
-        self, base_id: str,
+        self,
+        base_id: str,
     ) -> list[AirtableTable]:
         """Retrieve all tables and their fields from a base.
 
@@ -506,12 +537,14 @@ class Airtable(BaseConnector):
                 )
                 for f in t.get("fields", [])
             ]
-            tables.append(AirtableTable(
-                id=t.get("id"),
-                name=t.get("name", ""),
-                description=t.get("description"),
-                fields=fields,
-            ))
+            tables.append(
+                AirtableTable(
+                    id=t.get("id"),
+                    name=t.get("name", ""),
+                    description=t.get("description"),
+                    fields=fields,
+                )
+            )
 
         return tables
 
@@ -597,7 +630,8 @@ class Airtable(BaseConnector):
 
     @action("List collaborators on an Airtable base")
     async def list_collaborators(
-        self, base_id: str,
+        self,
+        base_id: str,
     ) -> list[dict[str, Any]]:
         """List all collaborators who have access to a base.
 
@@ -689,7 +723,8 @@ class Airtable(BaseConnector):
             List of view dicts with id, name, type.
         """
         data = await self._request(
-            "GET", f"/meta/bases/{base_id}/tables/{table_id}/views",
+            "GET",
+            f"/meta/bases/{base_id}/tables/{table_id}/views",
         )
         return data.get("views", [])
 

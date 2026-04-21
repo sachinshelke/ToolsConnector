@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Callable, Generic, TypeVar
 from collections.abc import Awaitable, Iterator
+from typing import Any, Callable, Generic, TypeVar
 
 from pydantic import BaseModel, Field, PrivateAttr
 

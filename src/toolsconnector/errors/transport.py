@@ -81,7 +81,8 @@ class ConnectionError(TransportError):
         code: str = "TRANSPORT_CONNECTION_FAILED",
         retry_eligible: bool = True,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "Verify the host is reachable and that no firewall is blocking the connection.",
+        suggestion: str
+        | None = "Verify the host is reachable and that no firewall is blocking the connection.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = None,
     ) -> None:

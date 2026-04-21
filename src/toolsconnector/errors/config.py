@@ -48,7 +48,8 @@ class InvalidConfigError(ConfigError):
         code: str = "CONFIG_INVALID",
         retry_eligible: bool = False,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "Check that the configuration values match the expected types and formats.",
+        suggestion: str
+        | None = "Check that the configuration values match the expected types and formats.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = None,
     ) -> None:
@@ -77,7 +78,8 @@ class MissingConfigError(ConfigError):
         code: str = "CONFIG_MISSING_REQUIRED",
         retry_eligible: bool = False,
         retry_after_seconds: float | None = None,
-        suggestion: str | None = "Provide all required configuration keys before initializing the connector.",
+        suggestion: str
+        | None = "Provide all required configuration keys before initializing the connector.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = None,
     ) -> None:

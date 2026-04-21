@@ -56,10 +56,7 @@ class Trello(BaseConnector):
     category = ConnectorCategory.PROJECT_MANAGEMENT
     protocol = ProtocolType.REST
     base_url = "https://api.trello.com/1"
-    description = (
-        "Connect to Trello to manage boards, lists, "
-        "cards, and comments."
-    )
+    description = "Connect to Trello to manage boards, lists, cards, and comments."
     _rate_limit_config = RateLimitSpec(rate=100, period=10, burst=30)
 
     # ------------------------------------------------------------------
@@ -127,7 +124,10 @@ class Trello(BaseConnector):
         merged_params = {**self._auth_params(), **(params or {})}
 
         resp = await self._client.request(
-            method, path, params=merged_params, json=json_body,
+            method,
+            path,
+            params=merged_params,
+            json=json_body,
         )
         resp.raise_for_status()
         return resp
@@ -150,7 +150,8 @@ class Trello(BaseConnector):
             List of TrelloBoard objects (no pagination required).
         """
         resp = await self._request(
-            "GET", f"/members/{member}/boards",
+            "GET",
+            f"/members/{member}/boards",
             params={"fields": "all"},
         )
         items = [parse_board(b) for b in resp.json()]
@@ -282,7 +283,9 @@ class Trello(BaseConnector):
             params["idList"] = list_id
 
         resp = await self._request(
-            "PUT", f"/cards/{card_id}", params=params,
+            "PUT",
+            f"/cards/{card_id}",
+            params=params,
         )
         return parse_card(resp.json())
 
@@ -302,7 +305,8 @@ class Trello(BaseConnector):
             The created TrelloComment action.
         """
         resp = await self._request(
-            "POST", f"/cards/{card_id}/actions/comments",
+            "POST",
+            f"/cards/{card_id}/actions/comments",
             params={"text": text},
         )
         return parse_comment(resp.json())
@@ -336,7 +340,8 @@ class Trello(BaseConnector):
             True if the label was added successfully.
         """
         await self._request(
-            "POST", f"/cards/{card_id}/idLabels",
+            "POST",
+            f"/cards/{card_id}/idLabels",
             params={"value": label_id},
         )
         return True
@@ -374,7 +379,9 @@ class Trello(BaseConnector):
 
     @action("Create a new list on a Trello board", dangerous=True)
     async def create_list(
-        self, board_id: str, name: str,
+        self,
+        board_id: str,
+        name: str,
     ) -> TrelloList:
         """Create a new list on a board.
 
@@ -386,7 +393,8 @@ class Trello(BaseConnector):
             The created TrelloList object.
         """
         resp = await self._request(
-            "POST", "/lists",
+            "POST",
+            "/lists",
             params={"name": name, "idBoard": board_id},
         )
         return parse_list(resp.json())
@@ -397,7 +405,8 @@ class Trello(BaseConnector):
 
     @action("List all labels on a Trello board")
     async def list_labels(
-        self, board_id: str,
+        self,
+        board_id: str,
     ) -> list[TrelloLabel]:
         """List all labels defined on a board.
 
@@ -459,7 +468,8 @@ class Trello(BaseConnector):
             The updated TrelloCard object in its new list.
         """
         resp = await self._request(
-            "PUT", f"/cards/{card_id}",
+            "PUT",
+            f"/cards/{card_id}",
             params={"idList": list_id},
         )
         return parse_card(resp.json())
@@ -470,7 +480,8 @@ class Trello(BaseConnector):
 
     @action("List attachments on a Trello card")
     async def list_attachments(
-        self, card_id: str,
+        self,
+        card_id: str,
     ) -> list[TrelloAttachment]:
         """List all attachments on a card.
 
@@ -481,7 +492,8 @@ class Trello(BaseConnector):
             List of TrelloAttachment objects.
         """
         resp = await self._request(
-            "GET", f"/cards/{card_id}/attachments",
+            "GET",
+            f"/cards/{card_id}/attachments",
         )
         return [parse_attachment(a) for a in resp.json()]
 
@@ -509,7 +521,8 @@ class Trello(BaseConnector):
             params["name"] = name
 
         resp = await self._request(
-            "POST", f"/cards/{card_id}/attachments",
+            "POST",
+            f"/cards/{card_id}/attachments",
             params=params,
         )
         return resp.json()
@@ -520,7 +533,8 @@ class Trello(BaseConnector):
 
     @action("List members of a Trello board")
     async def list_board_members(
-        self, board_id: str,
+        self,
+        board_id: str,
     ) -> list[TrelloMember]:
         """List all members of a board.
 
@@ -534,7 +548,8 @@ class Trello(BaseConnector):
             List of TrelloMember objects.
         """
         resp = await self._request(
-            "GET", f"/boards/{board_id}/members",
+            "GET",
+            f"/boards/{board_id}/members",
         )
         return [parse_member(m) for m in resp.json()]
 
@@ -568,7 +583,8 @@ class Trello(BaseConnector):
             The archived TrelloList object.
         """
         resp = await self._request(
-            "PUT", f"/lists/{list_id}/closed",
+            "PUT",
+            f"/lists/{list_id}/closed",
             params={"value": "true"},
         )
         return parse_list(resp.json())
@@ -579,7 +595,8 @@ class Trello(BaseConnector):
 
     @action("List actions (activity log) on a Trello card")
     async def list_card_actions(
-        self, card_id: str,
+        self,
+        card_id: str,
     ) -> list[TrelloAction]:
         """List the action history (activity log) for a card.
 
@@ -592,7 +609,8 @@ class Trello(BaseConnector):
             List of TrelloAction objects.
         """
         resp = await self._request(
-            "GET", f"/cards/{card_id}/actions",
+            "GET",
+            f"/cards/{card_id}/actions",
         )
         return [parse_action(a) for a in resp.json()]
 
@@ -613,7 +631,8 @@ class Trello(BaseConnector):
             The archived TrelloCard object.
         """
         resp = await self._request(
-            "PUT", f"/cards/{card_id}",
+            "PUT",
+            f"/cards/{card_id}",
             params={"closed": "true"},
         )
         return parse_card(resp.json())
@@ -629,7 +648,8 @@ class Trello(BaseConnector):
             The unarchived TrelloCard object.
         """
         resp = await self._request(
-            "PUT", f"/cards/{card_id}",
+            "PUT",
+            f"/cards/{card_id}",
             params={"closed": "false"},
         )
         return parse_card(resp.json())
@@ -640,7 +660,8 @@ class Trello(BaseConnector):
 
     @action("List checklists on a Trello card")
     async def list_checklists(
-        self, card_id: str,
+        self,
+        card_id: str,
     ) -> list[dict[str, Any]]:
         """List all checklists on a card.
 
@@ -651,7 +672,8 @@ class Trello(BaseConnector):
             List of checklist dicts with id, name, checkItems, etc.
         """
         resp = await self._request(
-            "GET", f"/cards/{card_id}/checklists",
+            "GET",
+            f"/cards/{card_id}/checklists",
         )
         return resp.json() if isinstance(resp.json(), list) else []
 
@@ -671,7 +693,8 @@ class Trello(BaseConnector):
             Dict with the created checklist details.
         """
         resp = await self._request(
-            "POST", "/checklists",
+            "POST",
+            "/checklists",
             params={"idCard": card_id, "name": name},
         )
         return resp.json()

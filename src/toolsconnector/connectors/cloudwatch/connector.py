@@ -30,15 +30,14 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.errors import APIError, NotFoundError
-
-from toolsconnector.connectors._aws.signing import sign_v4
 
 from .types import (
     CWDashboard,
@@ -78,10 +77,7 @@ class CloudWatch(BaseConnector):
     category = ConnectorCategory.DEVOPS
     protocol = ProtocolType.REST
     base_url = "https://monitoring.us-east-1.amazonaws.com"
-    description = (
-        "Monitor AWS resources with metrics, alarms, dashboards, "
-        "and log management."
-    )
+    description = "Monitor AWS resources with metrics, alarms, dashboards, and log management."
     _rate_limit_config = RateLimitSpec(rate=50, period=1, burst=100)
 
     # ------------------------------------------------------------------
@@ -595,10 +591,7 @@ class CloudWatch(BaseConnector):
             CWDashboard(
                 dashboard_name=d.get("DashboardName", ""),
                 dashboard_arn=d.get("DashboardArn", ""),
-                last_modified=(
-                    str(d.get("LastModified", ""))
-                    if d.get("LastModified") else None
-                ),
+                last_modified=(str(d.get("LastModified", "")) if d.get("LastModified") else None),
                 size=d.get("Size", 0),
             )
             for d in entries
@@ -650,9 +643,7 @@ class CloudWatch(BaseConnector):
 
         body = await self._cw_request("PutDashboard", payload)
         return {
-            "dashboard_validation_messages": body.get(
-                "DashboardValidationMessages", []
-            ),
+            "dashboard_validation_messages": body.get("DashboardValidationMessages", []),
         }
 
     @action("Delete CloudWatch dashboards", dangerous=True)

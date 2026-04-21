@@ -161,10 +161,7 @@ def _doc_path(project: str, collection: str, document_id: str) -> str:
     Returns:
         Full resource path string.
     """
-    return (
-        f"/projects/{project}/databases/(default)/documents"
-        f"/{collection}/{document_id}"
-    )
+    return f"/projects/{project}/databases/(default)/documents/{collection}/{document_id}"
 
 
 def _collection_path(project: str, collection: str) -> str:
@@ -177,9 +174,7 @@ def _collection_path(project: str, collection: str) -> str:
     Returns:
         Full resource path string.
     """
-    return (
-        f"/projects/{project}/databases/(default)/documents/{collection}"
-    )
+    return f"/projects/{project}/databases/(default)/documents/{collection}"
 
 
 class Firestore(BaseConnector):
@@ -265,7 +260,10 @@ class Firestore(BaseConnector):
 
     @action("Get a Firestore document by ID")
     async def get_document(
-        self, project: str, collection: str, document_id: str,
+        self,
+        project: str,
+        collection: str,
+        document_id: str,
     ) -> FirestoreDocument:
         """Retrieve a single document from a collection.
 
@@ -317,17 +315,23 @@ class Firestore(BaseConnector):
 
         result = PaginatedList(items=items, page_state=page_state)
         result._fetch_next = (
-            (lambda t=next_token: self.alist_documents(
-                project=project, collection=collection,
-                limit=limit, page_token=t,
-            ))
-            if has_more else None
+            (
+                lambda t=next_token: self.alist_documents(
+                    project=project,
+                    collection=collection,
+                    limit=limit,
+                    page_token=t,
+                )
+            )
+            if has_more
+            else None
         )
         return result
 
     @action("List collections in a Firestore project")
     async def list_collections(
-        self, project: str,
+        self,
+        project: str,
     ) -> list[FirestoreCollection]:
         """List root-level collection IDs in a project.
 
@@ -337,17 +341,11 @@ class Firestore(BaseConnector):
         Returns:
             List of FirestoreCollection objects.
         """
-        path = (
-            f"/projects/{project}/databases/(default)/documents"
-            ":listCollectionIds"
-        )
+        path = f"/projects/{project}/databases/(default)/documents:listCollectionIds"
         resp = await self._request("POST", path, json_body={})
         data = resp.json()
 
-        return [
-            FirestoreCollection(collection_id=cid)
-            for cid in data.get("collectionIds", [])
-        ]
+        return [FirestoreCollection(collection_id=cid) for cid in data.get("collectionIds", [])]
 
     # ------------------------------------------------------------------
     # Actions -- Write
@@ -379,7 +377,10 @@ class Firestore(BaseConnector):
 
         body = {"fields": _encode_fields(fields)}
         resp = await self._request(
-            "POST", path, params=params, json_body=body,
+            "POST",
+            path,
+            params=params,
+            json_body=body,
         )
         return _parse_document(resp.json())
 
@@ -418,13 +419,19 @@ class Firestore(BaseConnector):
 
         body = {"fields": encoded}
         resp = await self._request(
-            "PATCH", path, params=params, json_body=body,
+            "PATCH",
+            path,
+            params=params,
+            json_body=body,
         )
         return _parse_document(resp.json())
 
     @action("Delete a Firestore document", dangerous=True)
     async def delete_document(
-        self, project: str, collection: str, document_id: str,
+        self,
+        project: str,
+        collection: str,
+        document_id: str,
     ) -> None:
         """Delete a document from a collection.
 
@@ -471,13 +478,15 @@ class Firestore(BaseConnector):
         if where:
             filters = []
             for w in where:
-                filters.append({
-                    "fieldFilter": {
-                        "field": {"fieldPath": w["field"]},
-                        "op": w.get("op", "EQUAL"),
-                        "value": _encode_value(w.get("value")),
-                    },
-                })
+                filters.append(
+                    {
+                        "fieldFilter": {
+                            "field": {"fieldPath": w["field"]},
+                            "op": w.get("op", "EQUAL"),
+                            "value": _encode_value(w.get("value")),
+                        },
+                    }
+                )
             if len(filters) == 1:
                 structured_query["where"] = filters[0]
             else:
@@ -500,10 +509,7 @@ class Firestore(BaseConnector):
         if limit is not None:
             structured_query["limit"] = limit
 
-        path = (
-            f"/projects/{project}/databases/(default)/documents"
-            ":runQuery"
-        )
+        path = f"/projects/{project}/databases/(default)/documents:runQuery"
         body = {"structuredQuery": structured_query}
         resp = await self._request("POST", path, json_body=body)
         data = resp.json()
@@ -626,10 +632,7 @@ class Firestore(BaseConnector):
         Returns:
             List of index configuration dicts.
         """
-        path = (
-            f"/projects/{project}/databases/(default)"
-            f"/collectionGroups/{collection}/indexes"
-        )
+        path = f"/projects/{project}/databases/(default)/collectionGroups/{collection}/indexes"
         resp = await self._request("GET", path)
         data = resp.json()
         return data.get("indexes", [])
@@ -649,10 +652,7 @@ class Firestore(BaseConnector):
         Returns:
             List of raw document dicts from the collection.
         """
-        path = (
-            f"/projects/{project}/databases/(default)"
-            f"/documents/{collection}"
-        )
+        path = f"/projects/{project}/databases/(default)/documents/{collection}"
         resp = await self._request("GET", path)
         data = resp.json()
         documents = data.get("documents", [])
@@ -704,7 +704,10 @@ class Firestore(BaseConnector):
 
         body = {"fields": encoded}
         resp = await self._request(
-            "PATCH", path, params=params, json_body=body,
+            "PATCH",
+            path,
+            params=params,
+            json_body=body,
         )
         return _parse_document(resp.json())
 
@@ -736,13 +739,15 @@ class Firestore(BaseConnector):
         if filter:
             filters = []
             for w in filter:
-                filters.append({
-                    "fieldFilter": {
-                        "field": {"fieldPath": w["field"]},
-                        "op": w.get("op", "EQUAL"),
-                        "value": _encode_value(w.get("value")),
-                    },
-                })
+                filters.append(
+                    {
+                        "fieldFilter": {
+                            "field": {"fieldPath": w["field"]},
+                            "op": w.get("op", "EQUAL"),
+                            "value": _encode_value(w.get("value")),
+                        },
+                    }
+                )
             if len(filters) == 1:
                 structured_query["where"] = filters[0]
             else:
@@ -753,10 +758,7 @@ class Firestore(BaseConnector):
                     },
                 }
 
-        path = (
-            f"/projects/{project}/databases/(default)/documents"
-            ":runAggregationQuery"
-        )
+        path = f"/projects/{project}/databases/(default)/documents:runAggregationQuery"
         body: dict[str, Any] = {
             "structuredAggregationQuery": {
                 "structuredQuery": structured_query,
@@ -814,8 +816,7 @@ class Firestore(BaseConnector):
             index_fields.append(entry)
 
         path = (
-            f"/projects/{project}/databases/(default)"
-            f"/collectionGroups/{collection_group}/indexes"
+            f"/projects/{project}/databases/(default)/collectionGroups/{collection_group}/indexes"
         )
         body: dict[str, Any] = {
             "queryScope": "COLLECTION_GROUP",
@@ -905,20 +906,22 @@ class Firestore(BaseConnector):
             json={"documents": doc_names},
         )
         results = []
-        for item in (data if isinstance(data, list) else [data]):
+        for item in data if isinstance(data, list) else [data]:
             found = item.get("found")
             if found:
                 fields = found.get("fields", {})
                 name = found.get("name", "")
                 doc_id = name.rsplit("/", 1)[-1] if "/" in name else name
                 decoded = {k: _decode_value(v) for k, v in fields.items()}
-                results.append(FirestoreDocument(
-                    name=name,
-                    document_id=doc_id,
-                    fields=decoded,
-                    create_time=found.get("createTime"),
-                    update_time=found.get("updateTime"),
-                ))
+                results.append(
+                    FirestoreDocument(
+                        name=name,
+                        document_id=doc_id,
+                        fields=decoded,
+                        create_time=found.get("createTime"),
+                        update_time=found.get("updateTime"),
+                    )
+                )
         return results
 
     # ------------------------------------------------------------------

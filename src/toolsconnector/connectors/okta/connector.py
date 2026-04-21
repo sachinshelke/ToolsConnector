@@ -24,7 +24,7 @@ from toolsconnector.spec.connector import (
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.types import PaginatedList, PageState
+from toolsconnector.types import PageState, PaginatedList
 
 from .types import OktaApplication, OktaGroup, OktaLogEvent, OktaProfile, OktaUser
 
@@ -84,10 +84,7 @@ class Okta(BaseConnector):
 
         self._api_token = parts[0]
         self._domain = parts[1]
-        resolved_url = (
-            self._base_url
-            or f"https://{self._domain}.okta.com/api/v1"
-        )
+        resolved_url = self._base_url or f"https://{self._domain}.okta.com/api/v1"
         # Replace the {domain} placeholder if using the class default
         resolved_url = resolved_url.replace("{domain}", self._domain)
 
@@ -154,12 +151,13 @@ class Okta(BaseConnector):
 
             if response.status_code == 404:
                 raise NotFoundError(
-                    err_msg, connector="okta", action=path, details=err_body,
+                    err_msg,
+                    connector="okta",
+                    action=path,
+                    details=err_body,
                 )
             if response.status_code == 429:
-                retry_after = float(
-                    response.headers.get("x-rate-limit-reset", "60")
-                )
+                retry_after = float(response.headers.get("x-rate-limit-reset", "60"))
                 raise RateLimitError(
                     err_msg,
                     connector="okta",
@@ -168,7 +166,10 @@ class Okta(BaseConnector):
                 )
             if response.status_code in (400, 422):
                 raise ValidationError(
-                    err_msg, connector="okta", action=path, details=err_body,
+                    err_msg,
+                    connector="okta",
+                    action=path,
+                    details=err_body,
                 )
             raise APIError(
                 err_msg,
@@ -217,7 +218,7 @@ class Okta(BaseConnector):
         data, next_url = await self._request("GET", "/users", params=params)
 
         users = []
-        for u in (data or []):
+        for u in data or []:
             profile_data = u.get("profile", {})
             profile = OktaProfile(
                 firstName=profile_data.get("firstName"),
@@ -345,7 +346,9 @@ class Okta(BaseConnector):
             The updated OktaUser.
         """
         data, _ = await self._request(
-            "POST", f"/users/{user_id}", json_body={"profile": profile},
+            "POST",
+            f"/users/{user_id}",
+            json_body={"profile": profile},
         )
         profile_data = data.get("profile", {})
         okta_profile = OktaProfile(
@@ -398,11 +401,13 @@ class Okta(BaseConnector):
             params["q"] = search
 
         data, next_url = await self._request(
-            "GET", "/groups", params=params,
+            "GET",
+            "/groups",
+            params=params,
         )
 
         groups = []
-        for g in (data or []):
+        for g in data or []:
             gp = g.get("profile", {})
             groups.append(
                 OktaGroup(
@@ -439,7 +444,8 @@ class Okta(BaseConnector):
             user_id: The user's Okta ID.
         """
         await self._request(
-            "PUT", f"/groups/{group_id}/users/{user_id}",
+            "PUT",
+            f"/groups/{group_id}/users/{user_id}",
         )
 
     @action("List applications in the Okta organization")
@@ -458,7 +464,9 @@ class Okta(BaseConnector):
         params: dict[str, Any] = {"limit": min(limit, 200)}
 
         data, next_url = await self._request(
-            "GET", "/apps", params=params,
+            "GET",
+            "/apps",
+            params=params,
         )
 
         apps = [
@@ -500,7 +508,8 @@ class Okta(BaseConnector):
             True if the activation was successful.
         """
         await self._request(
-            "POST", f"/users/{user_id}/lifecycle/activate",
+            "POST",
+            f"/users/{user_id}/lifecycle/activate",
             params={"sendEmail": "false"},
         )
         return True
@@ -516,14 +525,16 @@ class Okta(BaseConnector):
             Dict with the reset password URL.
         """
         data, _ = await self._request(
-            "POST", f"/users/{user_id}/lifecycle/reset_password",
+            "POST",
+            f"/users/{user_id}/lifecycle/reset_password",
             params={"sendEmail": "false"},
         )
         return data if isinstance(data, dict) else {}
 
     @action("List groups a user belongs to")
     async def list_user_groups(
-        self, user_id: str,
+        self,
+        user_id: str,
     ) -> list[OktaGroup]:
         """List all groups a user is a member of.
 
@@ -534,25 +545,30 @@ class Okta(BaseConnector):
             List of OktaGroup objects.
         """
         data, _ = await self._request(
-            "GET", f"/users/{user_id}/groups",
+            "GET",
+            f"/users/{user_id}/groups",
         )
         groups: list[OktaGroup] = []
-        for g in (data or []):
+        for g in data or []:
             gp = g.get("profile", {})
-            groups.append(OktaGroup(
-                id=g.get("id", ""),
-                created=g.get("created"),
-                lastUpdated=g.get("lastUpdated"),
-                type=g.get("type", ""),
-                name=gp.get("name", ""),
-                description=gp.get("description", ""),
-                profile=gp,
-            ))
+            groups.append(
+                OktaGroup(
+                    id=g.get("id", ""),
+                    created=g.get("created"),
+                    lastUpdated=g.get("lastUpdated"),
+                    type=g.get("type", ""),
+                    name=gp.get("name", ""),
+                    description=gp.get("description", ""),
+                    profile=gp,
+                )
+            )
         return groups
 
     @action("Remove a user from a group")
     async def remove_user_from_group(
-        self, group_id: str, user_id: str,
+        self,
+        group_id: str,
+        user_id: str,
     ) -> bool:
         """Remove a user from a group.
 
@@ -564,7 +580,8 @@ class Okta(BaseConnector):
             True if the removal was successful.
         """
         await self._request(
-            "DELETE", f"/groups/{group_id}/users/{user_id}",
+            "DELETE",
+            f"/groups/{group_id}/users/{user_id}",
         )
         return True
 
@@ -574,7 +591,8 @@ class Okta(BaseConnector):
 
     @action("List applications assigned to a user")
     async def list_user_apps(
-        self, user_id: str,
+        self,
+        user_id: str,
     ) -> list[OktaApplication]:
         """List all applications assigned to a specific user.
 
@@ -585,7 +603,8 @@ class Okta(BaseConnector):
             List of OktaApplication objects assigned to the user.
         """
         data, _ = await self._request(
-            "GET", f"/users/{user_id}/appLinks",
+            "GET",
+            f"/users/{user_id}/appLinks",
         )
         return [
             OktaApplication(
@@ -617,7 +636,8 @@ class Okta(BaseConnector):
             True if the suspension was successful.
         """
         await self._request(
-            "POST", f"/users/{user_id}/lifecycle/suspend",
+            "POST",
+            f"/users/{user_id}/lifecycle/suspend",
         )
         return True
 
@@ -632,7 +652,8 @@ class Okta(BaseConnector):
             True if the unsuspension was successful.
         """
         await self._request(
-            "POST", f"/users/{user_id}/lifecycle/unsuspend",
+            "POST",
+            f"/users/{user_id}/lifecycle/unsuspend",
         )
         return True
 
@@ -684,11 +705,13 @@ class Okta(BaseConnector):
         """
         params: dict[str, Any] = {"limit": min(limit, 200)}
         data, next_url = await self._request(
-            "GET", f"/groups/{group_id}/users", params=params,
+            "GET",
+            f"/groups/{group_id}/users",
+            params=params,
         )
 
         users: list[OktaUser] = []
-        for u in (data or []):
+        for u in data or []:
             profile_data = u.get("profile", {})
             profile = OktaProfile(
                 firstName=profile_data.get("firstName"),
@@ -702,16 +725,18 @@ class Okta(BaseConnector):
                 department=profile_data.get("department"),
                 organization=profile_data.get("organization"),
             )
-            users.append(OktaUser(
-                id=u.get("id", ""),
-                status=u.get("status", ""),
-                created=u.get("created"),
-                activated=u.get("activated"),
-                lastLogin=u.get("lastLogin"),
-                lastUpdated=u.get("lastUpdated"),
-                statusChanged=u.get("statusChanged"),
-                profile=profile,
-            ))
+            users.append(
+                OktaUser(
+                    id=u.get("id", ""),
+                    status=u.get("status", ""),
+                    created=u.get("created"),
+                    activated=u.get("activated"),
+                    lastLogin=u.get("lastLogin"),
+                    lastUpdated=u.get("lastUpdated"),
+                    statusChanged=u.get("statusChanged"),
+                    profile=profile,
+                )
+            )
 
         has_more = next_url is not None
         return PaginatedList(
@@ -746,7 +771,9 @@ class Okta(BaseConnector):
             profile["description"] = description
 
         data, _ = await self._request(
-            "POST", "/groups", json_body={"profile": profile},
+            "POST",
+            "/groups",
+            json_body={"profile": profile},
         )
         gp = data.get("profile", {})
         return OktaGroup(
@@ -806,7 +833,9 @@ class Okta(BaseConnector):
             body["profile"] = profile
 
         data, _ = await self._request(
-            "POST", f"/apps/{app_id}/users", json_body=body,
+            "POST",
+            f"/apps/{app_id}/users",
+            json_body=body,
         )
         return data if isinstance(data, dict) else {}
 
@@ -851,25 +880,29 @@ class Okta(BaseConnector):
             params["q"] = q
 
         data, next_url = await self._request(
-            "GET", "/logs", params=params,
+            "GET",
+            "/logs",
+            params=params,
         )
 
         events: list[OktaLogEvent] = []
-        for e in (data or []):
-            events.append(OktaLogEvent(
-                uuid=e.get("uuid", ""),
-                published=e.get("published"),
-                eventType=e.get("eventType"),
-                severity=e.get("severity"),
-                displayMessage=e.get("displayMessage"),
-                actor=e.get("actor"),
-                client=e.get("client"),
-                outcome=e.get("outcome"),
-                target=e.get("target") or [],
-                transaction=e.get("transaction"),
-                debugContext=e.get("debugContext"),
-                authenticationContext=e.get("authenticationContext"),
-            ))
+        for e in data or []:
+            events.append(
+                OktaLogEvent(
+                    uuid=e.get("uuid", ""),
+                    published=e.get("published"),
+                    eventType=e.get("eventType"),
+                    severity=e.get("severity"),
+                    displayMessage=e.get("displayMessage"),
+                    actor=e.get("actor"),
+                    client=e.get("client"),
+                    outcome=e.get("outcome"),
+                    target=e.get("target") or [],
+                    transaction=e.get("transaction"),
+                    debugContext=e.get("debugContext"),
+                    authenticationContext=e.get("authenticationContext"),
+                )
+            )
 
         has_more = next_url is not None
         return PaginatedList(

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from toolsconnector.serve.toolkit import ToolKit
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("toolsconnector.serve.rest")
 
 
-def create_rest_app(toolkit: "ToolKit", *, prefix: str = "/api/v1") -> Any:
+def create_rest_app(toolkit: ToolKit, *, prefix: str = "/api/v1") -> Any:
     """Create an ASGI app exposing ToolKit tools as REST endpoints.
 
     Args:
@@ -60,16 +60,20 @@ def create_rest_app(toolkit: "ToolKit", *, prefix: str = "/api/v1") -> Any:
                     "status": t.get("status", "unknown"),
                     "actions": [],
                 }
-            connectors[name]["actions"].append({
-                "name": t["action"],
-                "tool_name": t["name"],
-                "description": t["description"],
-                "dangerous": t.get("dangerous", False),
-            })
-        return JSONResponse({
-            "connectors": list(connectors.values()),
-            "total_tools": len(tools),
-        })
+            connectors[name]["actions"].append(
+                {
+                    "name": t["action"],
+                    "tool_name": t["name"],
+                    "description": t["description"],
+                    "dangerous": t.get("dangerous", False),
+                }
+            )
+        return JSONResponse(
+            {
+                "connectors": list(connectors.values()),
+                "total_tools": len(tools),
+            }
+        )
 
     async def list_actions(request: Request) -> JSONResponse:
         """GET /{connector}/actions — list actions for a connector."""
@@ -130,10 +134,12 @@ def create_rest_app(toolkit: "ToolKit", *, prefix: str = "/api/v1") -> Any:
         """GET /health — health status of all connectors."""
         statuses = toolkit.get_connector_status()
         healthy = all(s == "healthy" for s in statuses.values())
-        return JSONResponse({
-            "status": "healthy" if healthy else "degraded",
-            "connectors": statuses,
-        })
+        return JSONResponse(
+            {
+                "status": "healthy" if healthy else "degraded",
+                "connectors": statuses,
+            }
+        )
 
     routes = [
         Route(f"{prefix}/connectors", list_connectors, methods=["GET"]),

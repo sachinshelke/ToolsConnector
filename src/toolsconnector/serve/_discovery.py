@@ -82,11 +82,9 @@ _KNOWN_CONNECTORS: dict[str, str] = {
 }
 
 # Install hints for when imports fail
-_INSTALL_HINTS: dict[str, str] = {
-    name: f"toolsconnector[{name}]" for name in _KNOWN_CONNECTORS
-}
+_INSTALL_HINTS: dict[str, str] = {name: f"toolsconnector[{name}]" for name in _KNOWN_CONNECTORS}
 
-from toolsconnector.errors import ConnectorNotConfiguredError, ConnectorInitError
+from toolsconnector.errors import ConnectorInitError, ConnectorNotConfiguredError
 
 
 def list_connectors() -> list[str]:
@@ -117,8 +115,7 @@ def get_connector_class(name: str) -> type:
             f"Unknown connector '{name}'.",
             connector=name,
             suggestion=(
-                f"Available connectors: {available}... "
-                f"Use list_connectors() for full list."
+                f"Available connectors: {available}... Use list_connectors() for full list."
             ),
         )
 

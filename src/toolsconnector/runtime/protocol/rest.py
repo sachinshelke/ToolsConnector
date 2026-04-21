@@ -14,11 +14,13 @@ from toolsconnector.runtime.transport.base import Transport
 
 from .base import ProtocolResponse
 
-_JSON_CONTENT_TYPES = frozenset({
-    "application/json",
-    "application/vnd.api+json",
-    "application/problem+json",
-})
+_JSON_CONTENT_TYPES = frozenset(
+    {
+        "application/json",
+        "application/vnd.api+json",
+        "application/problem+json",
+    }
+)
 
 _DEFAULT_METHOD = "GET"
 

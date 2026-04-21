@@ -74,7 +74,8 @@ class Redis(BaseConnector):
     # ------------------------------------------------------------------
 
     async def _request(
-        self, command: list[Any],
+        self,
+        command: list[Any],
     ) -> httpx.Response:
         """Send a Redis command via the Upstash REST API.
 
@@ -195,7 +196,10 @@ class Redis(BaseConnector):
 
     @action("Set a field in a Redis hash")
     async def hset(
-        self, key: str, field: str, value: str,
+        self,
+        key: str,
+        field: str,
+        value: str,
     ) -> RedisResult:
         """Set the value of a hash field.
 
@@ -216,7 +220,9 @@ class Redis(BaseConnector):
 
     @action("Push values onto the head of a Redis list")
     async def lpush(
-        self, key: str, values: list[str],
+        self,
+        key: str,
+        values: list[str],
     ) -> RedisResult:
         """Push one or more values onto the head (left) of a list.
 
@@ -233,7 +239,10 @@ class Redis(BaseConnector):
 
     @action("Get a range of elements from a Redis list")
     async def lrange(
-        self, key: str, start: int, stop: int,
+        self,
+        key: str,
+        start: int,
+        stop: int,
     ) -> RedisResult:
         """Get elements from a list by index range.
 
@@ -340,7 +349,8 @@ class Redis(BaseConnector):
 
     @action("Set multiple Redis keys at once")
     async def mset(
-        self, key_values: dict[str, str],
+        self,
+        key_values: dict[str, str],
     ) -> RedisResult:
         """Set multiple key-value pairs atomically.
 

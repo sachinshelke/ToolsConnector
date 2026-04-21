@@ -167,7 +167,10 @@ class Supabase(BaseConnector):
         }
 
         resp = await self._request(
-            "GET", f"/{table}", params=params, extra_headers=extra_headers,
+            "GET",
+            f"/{table}",
+            params=params,
+            extra_headers=extra_headers,
         )
         rows = resp.json()
 
@@ -187,14 +190,22 @@ class Supabase(BaseConnector):
         )
 
         result = PaginatedList(
-            items=items, page_state=page_state, total_count=total_count,
+            items=items,
+            page_state=page_state,
+            total_count=total_count,
         )
         result._fetch_next = (
-            (lambda o=offset + limit: self.aquery_table(
-                table=table, select=select, filter=filter,
-                limit=limit, offset=o,
-            ))
-            if has_more else None
+            (
+                lambda o=offset + limit: self.aquery_table(
+                    table=table,
+                    select=select,
+                    filter=filter,
+                    limit=limit,
+                    offset=o,
+                )
+            )
+            if has_more
+            else None
         )
         return result
 
@@ -213,7 +224,10 @@ class Supabase(BaseConnector):
         extra_headers = {"Accept": "application/vnd.pgrst.object+json"}
 
         resp = await self._request(
-            "GET", f"/{table}", params=params, extra_headers=extra_headers,
+            "GET",
+            f"/{table}",
+            params=params,
+            extra_headers=extra_headers,
         )
         return SupabaseRecord(data=resp.json())
 
@@ -223,7 +237,9 @@ class Supabase(BaseConnector):
 
     @action("Insert a record into a Supabase table")
     async def insert_record(
-        self, table: str, data: dict[str, Any],
+        self,
+        table: str,
+        data: dict[str, Any],
     ) -> SupabaseRecord:
         """Insert a new record into a table.
 
@@ -241,7 +257,10 @@ class Supabase(BaseConnector):
 
     @action("Update a record in a Supabase table")
     async def update_record(
-        self, table: str, id: str, data: dict[str, Any],
+        self,
+        table: str,
+        id: str,
+        data: dict[str, Any],
     ) -> SupabaseRecord:
         """Update an existing record by primary key.
 
@@ -255,7 +274,10 @@ class Supabase(BaseConnector):
         """
         params: dict[str, str] = {"id": f"eq.{id}"}
         resp = await self._request(
-            "PATCH", f"/{table}", params=params, json_body=data,
+            "PATCH",
+            f"/{table}",
+            params=params,
+            json_body=data,
         )
         rows = resp.json()
         row = rows[0] if isinstance(rows, list) else rows
@@ -263,7 +285,9 @@ class Supabase(BaseConnector):
 
     @action("Upsert a record into a Supabase table")
     async def upsert_record(
-        self, table: str, data: dict[str, Any],
+        self,
+        table: str,
+        data: dict[str, Any],
     ) -> SupabaseRecord:
         """Insert or update a record (upsert).
 
@@ -279,7 +303,10 @@ class Supabase(BaseConnector):
         """
         extra_headers = {"Prefer": "return=representation,resolution=merge-duplicates"}
         resp = await self._request(
-            "POST", f"/{table}", json_body=data, extra_headers=extra_headers,
+            "POST",
+            f"/{table}",
+            json_body=data,
+            extra_headers=extra_headers,
         )
         rows = resp.json()
         row = rows[0] if isinstance(rows, list) else rows
@@ -316,7 +343,9 @@ class Supabase(BaseConnector):
             SupabaseRPCResult with the function return value.
         """
         resp = await self._request(
-            "POST", f"/rpc/{function_name}", json_body=params or {},
+            "POST",
+            f"/rpc/{function_name}",
+            json_body=params or {},
         )
         return SupabaseRPCResult(result=resp.json())
 
@@ -342,11 +371,13 @@ class Supabase(BaseConnector):
         for table_name, table_def in definitions.items():
             props = table_def.get("properties", {})
             columns = list(props.keys())
-            tables.append(SupabaseTable(
-                name=table_name,
-                description=table_def.get("description"),
-                columns=columns,
-            ))
+            tables.append(
+                SupabaseTable(
+                    name=table_name,
+                    description=table_def.get("description"),
+                    columns=columns,
+                )
+            )
 
         return tables
 
@@ -374,7 +405,8 @@ class Supabase(BaseConnector):
             params.update(filter)
 
         resp = await self._request(
-            "GET", f"/rest/v1/{table}",
+            "GET",
+            f"/rest/v1/{table}",
             params=params,
             extra_headers={
                 "Prefer": "count=exact",
@@ -404,7 +436,8 @@ class Supabase(BaseConnector):
             List of upserted SupabaseRecord objects.
         """
         resp = await self._request(
-            "POST", f"/rest/v1/{table}",
+            "POST",
+            f"/rest/v1/{table}",
             json_body=records,
             extra_headers={
                 "Prefer": "resolution=merge-duplicates,return=representation",
@@ -470,7 +503,10 @@ class Supabase(BaseConnector):
         """
         params: dict[str, str] = {filter_column: filter_value}
         resp = await self._request(
-            "PATCH", f"/{table}", params=params, json_body=data,
+            "PATCH",
+            f"/{table}",
+            params=params,
+            json_body=data,
         )
         rows = resp.json()
         return [SupabaseRecord(data=r) for r in (rows if isinstance(rows, list) else [rows])]
@@ -500,7 +536,10 @@ class Supabase(BaseConnector):
 
         extra_headers = {"Range": f"0-{limit - 1}"}
         resp = await self._request(
-            "GET", f"/{table}", params=params, extra_headers=extra_headers,
+            "GET",
+            f"/{table}",
+            params=params,
+            extra_headers=extra_headers,
         )
         rows = resp.json()
         return [SupabaseRecord(data=r) for r in rows]
@@ -529,7 +568,10 @@ class Supabase(BaseConnector):
 
         extra_headers = {"Prefer": "count=exact"}
         resp = await self._request(
-            "HEAD", f"/{table}", params=params, extra_headers=extra_headers,
+            "HEAD",
+            f"/{table}",
+            params=params,
+            extra_headers=extra_headers,
         )
         content_range = resp.headers.get("content-range", "")
         if "/" in content_range:

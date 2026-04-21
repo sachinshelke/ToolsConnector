@@ -139,8 +139,7 @@ class Vercel(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://api.vercel.com"
     description = (
-        "Connect to Vercel to manage deployments, projects, domains, "
-        "and environment variables."
+        "Connect to Vercel to manage deployments, projects, domains, and environment variables."
     )
     _rate_limit_config = RateLimitSpec(rate=500, period=60, burst=50)
 
@@ -194,7 +193,10 @@ class Vercel(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.request(
-            method, path, params=params, json=json,
+            method,
+            path,
+            params=params,
+            json=json,
         )
         resp.raise_for_status()
         return resp
@@ -239,7 +241,9 @@ class Vercel(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.list_deployments(
-                project_id=project_id, limit=capped_limit, page=c,
+                project_id=project_id,
+                limit=capped_limit,
+                page=c,
             )
         return result
 
@@ -254,7 +258,8 @@ class Vercel(BaseConnector):
             VercelDeployment object.
         """
         resp = await self._request(
-            "GET", f"/v13/deployments/{deployment_id}",
+            "GET",
+            f"/v13/deployments/{deployment_id}",
         )
         return _parse_deployment(resp.json())
 
@@ -294,7 +299,8 @@ class Vercel(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.list_projects(
-                limit=capped_limit, page=c,
+                limit=capped_limit,
+                page=c,
             )
         return result
 
@@ -317,7 +323,8 @@ class Vercel(BaseConnector):
 
     @action("List domains for a Vercel project")
     async def list_domains(
-        self, project_id: str,
+        self,
+        project_id: str,
     ) -> list[VercelDomain]:
         """List domains configured for a project.
 
@@ -328,14 +335,17 @@ class Vercel(BaseConnector):
             List of VercelDomain objects.
         """
         resp = await self._request(
-            "GET", f"/v9/projects/{project_id}/domains",
+            "GET",
+            f"/v9/projects/{project_id}/domains",
         )
         body = resp.json()
         return [_parse_domain(d) for d in body.get("domains", [])]
 
     @action("Add a domain to a Vercel project", dangerous=True)
     async def add_domain(
-        self, project_id: str, domain: str,
+        self,
+        project_id: str,
+        domain: str,
     ) -> VercelDomain:
         """Add a domain to a project.
 
@@ -348,7 +358,9 @@ class Vercel(BaseConnector):
         """
         payload: dict[str, Any] = {"name": domain}
         resp = await self._request(
-            "POST", f"/v10/projects/{project_id}/domains", json=payload,
+            "POST",
+            f"/v10/projects/{project_id}/domains",
+            json=payload,
         )
         return _parse_domain(resp.json())
 
@@ -358,7 +370,8 @@ class Vercel(BaseConnector):
 
     @action("List environment variables for a Vercel project")
     async def list_env_vars(
-        self, project_id: str,
+        self,
+        project_id: str,
     ) -> list[VercelEnvVar]:
         """List environment variables configured for a project.
 
@@ -369,7 +382,8 @@ class Vercel(BaseConnector):
             List of VercelEnvVar objects.
         """
         resp = await self._request(
-            "GET", f"/v9/projects/{project_id}/env",
+            "GET",
+            f"/v9/projects/{project_id}/env",
         )
         body = resp.json()
         return [_parse_env_var(e) for e in body.get("envs", [])]
@@ -402,7 +416,9 @@ class Vercel(BaseConnector):
             "type": "encrypted",
         }
         resp = await self._request(
-            "POST", f"/v10/projects/{project_id}/env", json=payload,
+            "POST",
+            f"/v10/projects/{project_id}/env",
+            json=payload,
         )
         return _parse_env_var(resp.json())
 
@@ -412,7 +428,8 @@ class Vercel(BaseConnector):
 
     @action("Delete a deployment", dangerous=True)
     async def delete_deployment(
-        self, deployment_id: str,
+        self,
+        deployment_id: str,
     ) -> bool:
         """Delete a Vercel deployment.
 
@@ -423,13 +440,15 @@ class Vercel(BaseConnector):
             True if the deployment was deleted.
         """
         resp = await self._request(
-            "DELETE", f"/v13/deployments/{deployment_id}",
+            "DELETE",
+            f"/v13/deployments/{deployment_id}",
         )
         return resp.status_code in (200, 204)
 
     @action("Get logs for a deployment")
     async def get_deployment_logs(
-        self, deployment_id: str,
+        self,
+        deployment_id: str,
     ) -> list[dict[str, Any]]:
         """Get build and runtime logs for a deployment.
 
@@ -440,13 +459,15 @@ class Vercel(BaseConnector):
             List of log entry dicts.
         """
         resp = await self._request(
-            "GET", f"/v3/deployments/{deployment_id}/events",
+            "GET",
+            f"/v3/deployments/{deployment_id}/events",
         )
         return resp.json() if isinstance(resp.json(), list) else []
 
     @action("List deployment aliases")
     async def list_aliases(
-        self, project_id: Optional[str] = None,
+        self,
+        project_id: Optional[str] = None,
     ) -> list[VercelAlias]:
         """List aliases, optionally filtered by project.
 
@@ -460,7 +481,9 @@ class Vercel(BaseConnector):
         if project_id:
             params["projectId"] = project_id
         resp = await self._request(
-            "GET", "/v4/aliases", params=params or None,
+            "GET",
+            "/v4/aliases",
+            params=params or None,
         )
         body = resp.json()
         return [
@@ -476,7 +499,8 @@ class Vercel(BaseConnector):
 
     @action("Redeploy an existing deployment")
     async def redeploy(
-        self, deployment_id: str,
+        self,
+        deployment_id: str,
     ) -> VercelDeployment:
         """Create a new deployment from an existing one (redeploy).
 
@@ -487,7 +511,8 @@ class Vercel(BaseConnector):
             The new VercelDeployment.
         """
         resp = await self._request(
-            "POST", "/v13/deployments",
+            "POST",
+            "/v13/deployments",
             json={"deploymentId": deployment_id},
         )
         return _parse_deployment(resp.json())
@@ -498,7 +523,8 @@ class Vercel(BaseConnector):
 
     @action("Get environment variables for a project")
     async def get_project_env_vars(
-        self, project_id: str,
+        self,
+        project_id: str,
     ) -> list[VercelEnvVar]:
         """Retrieve all environment variables for a specific project.
 
@@ -511,7 +537,8 @@ class Vercel(BaseConnector):
             List of VercelEnvVar objects with values.
         """
         resp = await self._request(
-            "GET", f"/v9/projects/{project_id}/env",
+            "GET",
+            f"/v9/projects/{project_id}/env",
             params={"decrypt": "true"},
         )
         body = resp.json()
@@ -536,13 +563,15 @@ class Vercel(BaseConnector):
             True if the variable was deleted.
         """
         resp = await self._request(
-            "DELETE", f"/v9/projects/{project_id}/env/{env_id}",
+            "DELETE",
+            f"/v9/projects/{project_id}/env/{env_id}",
         )
         return resp.status_code in (200, 204)
 
     @action("Trigger a new deployment for a project", dangerous=True)
     async def trigger_deploy(
-        self, project_id: str,
+        self,
+        project_id: str,
     ) -> VercelDeployment:
         """Trigger a new deployment via a Deploy Hook or by creating
         a deployment from the latest production source.
@@ -558,7 +587,9 @@ class Vercel(BaseConnector):
             "target": "production",
         }
         resp = await self._request(
-            "POST", "/v13/deployments", json=payload,
+            "POST",
+            "/v13/deployments",
+            json=payload,
         )
         return _parse_deployment(resp.json())
 
@@ -577,6 +608,7 @@ class Vercel(BaseConnector):
         # Get members for the first (current) team
         team_id = teams[0].get("id", "")
         resp = await self._request(
-            "GET", f"/v2/teams/{team_id}/members",
+            "GET",
+            f"/v2/teams/{team_id}/members",
         )
         return resp.json().get("members", [])

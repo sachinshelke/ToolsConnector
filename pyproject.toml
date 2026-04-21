@@ -235,6 +235,65 @@ target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH"]
+# Rules we deliberately opt out of:
+#
+# PEP 604 migration (Py 3.10+): blocked by our Python 3.9 target.
+#   UP007 / UP045
+#
+# Style-only suggestions (not bugs; keep the rule set focused on correctness):
+#   E501   — long lines; we prefer readable docstrings with full URLs
+#   B904   — `raise X` without `from` inside except; stylistic
+#   SIM108 — ternary vs if/else block; stylistic
+#   SIM102 — collapsible nested if; stylistic
+#   SIM105 — contextlib.suppress vs try/except pass; stylistic
+#   B024   — abstract base class without abstract method
+#            (BaseConnector is intentionally an ABC with optional overrides)
+#   B027   — empty method without @abstractmethod (same reason)
+#   TC001/TC002/TC003 — "move to TYPE_CHECKING block"; minor import-time
+#            savings, not bugs, and fighting ruff here inflates diffs
+#
+# Real bugs we still enforce: F-rules (unused imports/vars, broken f-strings),
+# E-rules (syntax), N-rules (naming except A002 on connectors), UP-rules
+# (other pyupgrade), A-rules (builtin shadowing), B-rules (other bugs),
+# I-rules (import order).
+ignore = [
+    "UP007",  # non-pep604-annotation-union      (Py 3.9 compat)
+    "UP045",  # non-pep604-annotation-optional   (Py 3.9 compat)
+    "E501",   # line-too-long                    (docstring URLs, SQL, XML)
+    "B904",   # raise-without-from-inside-except (stylistic)
+    "SIM108", # if-else-block-instead-of-if-exp  (stylistic)
+    "SIM102", # collapsible-if                   (stylistic)
+    "SIM105", # suppressible-exception           (stylistic)
+    "B024",   # abstract-base-class-without-abstract-method (BaseConnector pattern)
+    "B027",   # empty-method-without-abstract-decorator
+    "TC001",  # typing-only-first-party-import
+    "TC002",  # typing-only-third-party-import
+    "TC003",  # typing-only-standard-library-import
+]
+
+# Per-file carve-outs for things that are legitimately not bugs:
+[tool.ruff.lint.per-file-ignores]
+# Connectors intentionally mirror upstream API argument names (e.g. `type`,
+# `filter`, `format`, `range`) to match the vendor's public contract.
+"src/toolsconnector/connectors/**/*.py" = [
+    "A001",   # module-level variable shadows builtin (API parity)
+    "A002",   # argument shadows builtin            (API parity)
+    "A004",   # import shadows builtin              (API parity)
+    "N815",   # mixedCase class scope var           (mirrors vendor JSON schema)
+]
+
+# The error hierarchy intentionally defines `ConnectionError` and
+# `TimeoutError` classes that shadow the Python builtins. This is the same
+# pattern requests, httpx, and urllib3 use — a typed exception hierarchy
+# with richer context (connector name, retry_eligible, etc.). The shadowing
+# is deliberate; re-exports happen in errors/__init__.py and usage from
+# runtime/transport/http.py.
+"src/toolsconnector/errors/**/*.py" = ["A001", "A004"]
+"src/toolsconnector/runtime/transport/**/*.py" = ["A004"]
+
+# _discovery.py delays the errors import to break a circular dependency
+# (errors → serve → _discovery → errors). The late import is intentional.
+"src/toolsconnector/serve/_discovery.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.9"

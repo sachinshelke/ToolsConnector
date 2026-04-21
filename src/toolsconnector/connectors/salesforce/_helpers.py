@@ -28,11 +28,7 @@ def parse_record(data: dict[str, Any]) -> SalesforceRecord:
     """
     attributes = data.get("attributes", {})
     record_id = data.get("Id") or data.get("id")
-    fields = {
-        k: v
-        for k, v in data.items()
-        if k not in ("attributes", "Id", "id")
-    }
+    fields = {k: v for k, v in data.items() if k not in ("attributes", "Id", "id")}
     return SalesforceRecord(
         id=record_id,
         attributes=attributes,

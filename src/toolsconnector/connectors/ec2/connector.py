@@ -26,15 +26,14 @@ from typing import Any, Optional, Union
 
 import httpx
 
+from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.errors import APIError, NotFoundError
-
-from toolsconnector.connectors._aws.signing import sign_v4
 
 from .types import (
     EC2Address,
@@ -202,10 +201,7 @@ class EC2(BaseConnector):
     category = ConnectorCategory.COMPUTE
     protocol = ProtocolType.REST
     base_url = "https://ec2.us-east-1.amazonaws.com"
-    description = (
-        "Launch and manage EC2 instances, security groups, key pairs, "
-        "and Elastic IPs."
-    )
+    description = "Launch and manage EC2 instances, security groups, key pairs, and Elastic IPs."
     _rate_limit_config = RateLimitSpec(rate=100, period=1, burst=200)
 
     # ------------------------------------------------------------------
@@ -348,10 +344,12 @@ class EC2(BaseConnector):
         sg_set = item.find(f"{{{_NS}}}groupSet")
         if sg_set is not None:
             for sg_item in _findall(sg_set, "item"):
-                sgs.append({
-                    "group_id": _find(sg_item, "groupId"),
-                    "group_name": _find(sg_item, "groupName"),
-                })
+                sgs.append(
+                    {
+                        "group_id": _find(sg_item, "groupId"),
+                        "group_name": _find(sg_item, "groupName"),
+                    }
+                )
 
         # State
         state_elem = item.find(f"{{{_NS}}}instanceState")
@@ -403,6 +401,7 @@ class EC2(BaseConnector):
         Returns:
             EC2SecurityGroup model.
         """
+
         def _parse_ip_perms(parent_tag: str) -> list[dict[str, Any]]:
             perms: list[dict[str, Any]] = []
             perm_set = item.find(f"{{{_NS}}}{parent_tag}")
@@ -415,12 +414,14 @@ class EC2(BaseConnector):
                             cidr = _find(r, "cidrIp")
                             if cidr:
                                 ip_ranges.append(cidr)
-                    perms.append({
-                        "ip_protocol": _find(perm_item, "ipProtocol"),
-                        "from_port": _find(perm_item, "fromPort"),
-                        "to_port": _find(perm_item, "toPort"),
-                        "ip_ranges": ip_ranges,
-                    })
+                    perms.append(
+                        {
+                            "ip_protocol": _find(perm_item, "ipProtocol"),
+                            "from_port": _find(perm_item, "fromPort"),
+                            "to_port": _find(perm_item, "toPort"),
+                            "ip_ranges": ip_ranges,
+                        }
+                    )
             return perms
 
         return EC2SecurityGroup(
@@ -683,11 +684,13 @@ class EC2(BaseConnector):
                 continue
             prev = item.find(f"{{{_NS}}}previousState")
             curr = item.find(f"{{{_NS}}}currentState")
-            results.append({
-                "instance_id": iid,
-                "previous_state": _find(prev, "name") if prev is not None else "",
-                "current_state": _find(curr, "name") if curr is not None else "",
-            })
+            results.append(
+                {
+                    "instance_id": iid,
+                    "previous_state": _find(prev, "name") if prev is not None else "",
+                    "current_state": _find(curr, "name") if curr is not None else "",
+                }
+            )
         return results
 
     @action("Stop running EC2 instances")
@@ -718,11 +721,13 @@ class EC2(BaseConnector):
                 continue
             prev = item.find(f"{{{_NS}}}previousState")
             curr = item.find(f"{{{_NS}}}currentState")
-            results.append({
-                "instance_id": iid,
-                "previous_state": _find(prev, "name") if prev is not None else "",
-                "current_state": _find(curr, "name") if curr is not None else "",
-            })
+            results.append(
+                {
+                    "instance_id": iid,
+                    "previous_state": _find(prev, "name") if prev is not None else "",
+                    "current_state": _find(curr, "name") if curr is not None else "",
+                }
+            )
         return results
 
     @action("Terminate EC2 instances", dangerous=True)
@@ -752,11 +757,13 @@ class EC2(BaseConnector):
                 continue
             prev = item.find(f"{{{_NS}}}previousState")
             curr = item.find(f"{{{_NS}}}currentState")
-            results.append({
-                "instance_id": iid,
-                "previous_state": _find(prev, "name") if prev is not None else "",
-                "current_state": _find(curr, "name") if curr is not None else "",
-            })
+            results.append(
+                {
+                    "instance_id": iid,
+                    "previous_state": _find(prev, "name") if prev is not None else "",
+                    "current_state": _find(curr, "name") if curr is not None else "",
+                }
+            )
         return results
 
     @action("Reboot EC2 instances")
@@ -845,7 +852,8 @@ class EC2(BaseConnector):
             EC2Address for the newly allocated IP.
         """
         root = await self._ec2_request(
-            "AllocateAddress", {"Domain": domain},
+            "AllocateAddress",
+            {"Domain": domain},
         )
         return EC2Address(
             allocation_id=_find(root, "allocationId"),
@@ -868,10 +876,13 @@ class EC2(BaseConnector):
         Returns:
             Dict with the association ID.
         """
-        root = await self._ec2_request("AssociateAddress", {
-            "AllocationId": allocation_id,
-            "InstanceId": instance_id,
-        })
+        root = await self._ec2_request(
+            "AssociateAddress",
+            {
+                "AllocationId": allocation_id,
+                "InstanceId": instance_id,
+            },
+        )
         return {
             "association_id": _find(root, "associationId"),
             "status": "ok",
@@ -888,7 +899,8 @@ class EC2(BaseConnector):
             Dict confirming release.
         """
         await self._ec2_request(
-            "ReleaseAddress", {"AllocationId": allocation_id},
+            "ReleaseAddress",
+            {"AllocationId": allocation_id},
         )
         return {"status": "ok", "allocation_id": allocation_id}
 
@@ -1123,7 +1135,8 @@ class EC2(BaseConnector):
             Dict confirming deletion.
         """
         await self._ec2_request(
-            "DeleteSecurityGroup", {"GroupId": group_id},
+            "DeleteSecurityGroup",
+            {"GroupId": group_id},
         )
         return {"status": "ok", "group_id": group_id}
 
@@ -1205,12 +1218,14 @@ class EC2(BaseConnector):
         zone_set = root.find(f"{{{_NS}}}availabilityZoneInfo")
         if zone_set is not None:
             for item in _findall(zone_set, "item"):
-                zones.append({
-                    "zone_name": _find(item, "zoneName"),
-                    "zone_id": _find(item, "zoneId"),
-                    "state": _find(item, "zoneState"),
-                    "region_name": _find(item, "regionName"),
-                })
+                zones.append(
+                    {
+                        "zone_name": _find(item, "zoneName"),
+                        "zone_id": _find(item, "zoneId"),
+                        "state": _find(item, "zoneState"),
+                        "region_name": _find(item, "regionName"),
+                    }
+                )
         return zones
 
     # ==================================================================
@@ -1264,12 +1279,14 @@ class EC2(BaseConnector):
         tag_set = root.find(f"{{{_NS}}}tagSet")
         if tag_set is not None:
             for item in _findall(tag_set, "item"):
-                tag_list.append({
-                    "resource_id": _find(item, "resourceId"),
-                    "resource_type": _find(item, "resourceType"),
-                    "key": _find(item, "key"),
-                    "value": _find(item, "value"),
-                })
+                tag_list.append(
+                    {
+                        "resource_id": _find(item, "resourceId"),
+                        "resource_type": _find(item, "resourceType"),
+                        "key": _find(item, "key"),
+                        "value": _find(item, "value"),
+                    }
+                )
         return tag_list
 
     # ==================================================================
@@ -1422,7 +1439,8 @@ class EC2(BaseConnector):
             Dict with instance_id, timestamp, and decoded output text.
         """
         root = await self._ec2_request(
-            "GetConsoleOutput", {"InstanceId": instance_id},
+            "GetConsoleOutput",
+            {"InstanceId": instance_id},
         )
 
         output_b64 = _find(root, "output")
@@ -1430,7 +1448,8 @@ class EC2(BaseConnector):
         if output_b64:
             try:
                 output_text = base64.b64decode(output_b64).decode(
-                    "utf-8", errors="replace",
+                    "utf-8",
+                    errors="replace",
                 )
             except Exception:
                 output_text = output_b64

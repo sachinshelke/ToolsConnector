@@ -92,7 +92,4 @@ class ToolsConnectorError(Exception):
 
     def __repr__(self) -> str:
         cls = type(self).__name__
-        return (
-            f"{cls}(message={self.message!r}, code={self.code!r}, "
-            f"connector={self.connector!r})"
-        )
+        return f"{cls}(message={self.message!r}, code={self.code!r}, connector={self.connector!r})"

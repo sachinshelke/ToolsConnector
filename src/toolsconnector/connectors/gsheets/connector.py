@@ -54,10 +54,7 @@ def _parse_spreadsheet(data: dict[str, Any]) -> Spreadsheet:
     """
     props = data.get("properties", {})
     sheets_data = data.get("sheets", [])
-    sheets = [
-        _parse_sheet_properties(s.get("properties", {}))
-        for s in sheets_data
-    ]
+    sheets = [_parse_sheet_properties(s.get("properties", {})) for s in sheets_data]
     return Spreadsheet(
         id=data.get("spreadsheetId", ""),
         title=props.get("title", ""),
@@ -177,9 +174,7 @@ class GoogleSheets(BaseConnector):
             "properties": {"title": title},
         }
         if sheet_names:
-            body["sheets"] = [
-                {"properties": {"title": name}} for name in sheet_names
-            ]
+            body["sheets"] = [{"properties": {"title": name}} for name in sheet_names]
 
         data = await self._request("POST", "/spreadsheets", json=body)
         return _parse_spreadsheet(data)
@@ -199,10 +194,7 @@ class GoogleSheets(BaseConnector):
             f"/spreadsheets/{spreadsheet_id}",
             params={"fields": "sheets.properties"},
         )
-        return [
-            _parse_sheet_properties(s.get("properties", {}))
-            for s in data.get("sheets", [])
-        ]
+        return [_parse_sheet_properties(s.get("properties", {})) for s in data.get("sheets", [])]
 
     # ------------------------------------------------------------------
     # Actions — Values (read)
@@ -402,9 +394,7 @@ class GoogleSheets(BaseConnector):
             f"/spreadsheets/{spreadsheet_id}/values:batchUpdate",
             json=body,
         )
-        responses = [
-            _parse_update_result(r) for r in resp.get("responses", [])
-        ]
+        responses = [_parse_update_result(r) for r in resp.get("responses", [])]
         return BatchUpdateResult(responses=responses)
 
     # ------------------------------------------------------------------
@@ -587,15 +577,17 @@ class GoogleSheets(BaseConnector):
         """
         return await self.abatch_update_spreadsheet(
             spreadsheet_id,
-            [{
-                "updateSheetProperties": {
-                    "properties": {
-                        "sheetId": sheet_id,
-                        "title": new_title,
-                    },
-                    "fields": "title",
+            [
+                {
+                    "updateSheetProperties": {
+                        "properties": {
+                            "sheetId": sheet_id,
+                            "title": new_title,
+                        },
+                        "fields": "title",
+                    }
                 }
-            }],
+            ],
         )
 
     @action("Merge cells in a range", dangerous=True)
@@ -625,18 +617,20 @@ class GoogleSheets(BaseConnector):
         """
         return await self.abatch_update_spreadsheet(
             spreadsheet_id,
-            [{
-                "mergeCells": {
-                    "range": {
-                        "sheetId": sheet_id,
-                        "startRowIndex": start_row,
-                        "endRowIndex": end_row,
-                        "startColumnIndex": start_column,
-                        "endColumnIndex": end_column,
-                    },
-                    "mergeType": merge_type,
+            [
+                {
+                    "mergeCells": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": start_row,
+                            "endRowIndex": end_row,
+                            "startColumnIndex": start_column,
+                            "endColumnIndex": end_column,
+                        },
+                        "mergeType": merge_type,
+                    }
                 }
-            }],
+            ],
         )
 
     @action("Auto-resize columns to fit content")
@@ -660,14 +654,16 @@ class GoogleSheets(BaseConnector):
         """
         return await self.abatch_update_spreadsheet(
             spreadsheet_id,
-            [{
-                "autoResizeDimensions": {
-                    "dimensions": {
-                        "sheetId": sheet_id,
-                        "dimension": "COLUMNS",
-                        "startIndex": start_column,
-                        "endIndex": end_column,
+            [
+                {
+                    "autoResizeDimensions": {
+                        "dimensions": {
+                            "sheetId": sheet_id,
+                            "dimension": "COLUMNS",
+                            "startIndex": start_column,
+                            "endIndex": end_column,
+                        }
                     }
                 }
-            }],
+            ],
         )

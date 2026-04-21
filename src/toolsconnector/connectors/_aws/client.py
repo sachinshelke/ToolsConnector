@@ -116,7 +116,10 @@ class AWSBaseClient:
         )
 
         resp = await self._client.request(
-            method, url, headers=req_headers, content=body,
+            method,
+            url,
+            headers=req_headers,
+            content=body,
         )
         if resp.status_code >= 400:
             await self._handle_error(resp)
@@ -314,10 +317,7 @@ class AWSBaseClient:
         iam_hint: Optional[str] = None
         if error_code and action:
             code_lower = error_code.lower()
-            if any(
-                term in code_lower
-                for term in ("accessdenied", "unauthorized", "forbidden")
-            ):
+            if any(term in code_lower for term in ("accessdenied", "unauthorized", "forbidden")):
                 iam_hint = format_access_denied_hint(self._service, action)
 
         raise AWSError(

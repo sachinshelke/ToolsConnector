@@ -63,10 +63,7 @@ class CloudFront(BaseConnector):
     category = ConnectorCategory.NETWORKING
     protocol = ProtocolType.REST
     base_url = "https://cloudfront.amazonaws.com"
-    description = (
-        "Manage CloudFront CDN distributions, cache invalidations, "
-        "and origin configs."
-    )
+    description = "Manage CloudFront CDN distributions, cache invalidations, and origin configs."
     _rate_limit_config = RateLimitSpec(rate=100, period=1, burst=200)
 
     # ------------------------------------------------------------------
@@ -140,7 +137,8 @@ class CloudFront(BaseConnector):
         qs = ""
         if params:
             qs = "?" + urllib.parse.urlencode(
-                params, quote_via=urllib.parse.quote,
+                params,
+                quote_via=urllib.parse.quote,
             )
         full_url = f"https://{self._host}/{_API_VERSION}/{path}{qs}"
 
@@ -157,7 +155,10 @@ class CloudFront(BaseConnector):
         )
 
         resp = await self._client.request(
-            method, full_url, headers=headers, content=body,
+            method,
+            full_url,
+            headers=headers,
+            content=body,
         )
         if resp.status_code >= 400:
             _raise_cf_error(resp)
@@ -168,7 +169,8 @@ class CloudFront(BaseConnector):
     # ------------------------------------------------------------------
 
     def _parse_distribution_summary(
-        self, elem: ET.Element,
+        self,
+        elem: ET.Element,
     ) -> CFDistributionSummary:
         """Parse a ``<DistributionSummary>`` element.
 
@@ -189,7 +191,8 @@ class CloudFront(BaseConnector):
         )
 
     def _parse_distribution(
-        self, root: ET.Element,
+        self,
+        root: ET.Element,
     ) -> CFDistribution:
         """Parse a ``<Distribution>`` element.
 
@@ -219,15 +222,23 @@ class CloudFront(BaseConnector):
                 origins_elem = config.find("Origins")
             if origins_elem is not None:
                 for origin in iter_elements(origins_elem, "Origin", _CF_NS):
-                    origins_list.append({
-                        "id": find_text(origin, "Id", _CF_NS) or "",
-                        "domain_name": find_text(
-                            origin, "DomainName", _CF_NS,
-                        ) or "",
-                        "origin_path": find_text(
-                            origin, "OriginPath", _CF_NS,
-                        ) or "",
-                    })
+                    origins_list.append(
+                        {
+                            "id": find_text(origin, "Id", _CF_NS) or "",
+                            "domain_name": find_text(
+                                origin,
+                                "DomainName",
+                                _CF_NS,
+                            )
+                            or "",
+                            "origin_path": find_text(
+                                origin,
+                                "OriginPath",
+                                _CF_NS,
+                            )
+                            or "",
+                        }
+                    )
 
             # Parse default cache behavior
             dcb = config.find(f"{{{_CF_NS}}}DefaultCacheBehavior")
@@ -236,11 +247,17 @@ class CloudFront(BaseConnector):
             if dcb is not None:
                 default_cache = {
                     "target_origin_id": find_text(
-                        dcb, "TargetOriginId", _CF_NS,
-                    ) or "",
+                        dcb,
+                        "TargetOriginId",
+                        _CF_NS,
+                    )
+                    or "",
                     "viewer_protocol_policy": find_text(
-                        dcb, "ViewerProtocolPolicy", _CF_NS,
-                    ) or "",
+                        dcb,
+                        "ViewerProtocolPolicy",
+                        _CF_NS,
+                    )
+                    or "",
                 }
 
         return CFDistribution(
@@ -256,7 +273,8 @@ class CloudFront(BaseConnector):
         )
 
     def _parse_invalidation(
-        self, elem: ET.Element,
+        self,
+        elem: ET.Element,
     ) -> CFInvalidation:
         """Parse an ``<Invalidation>`` or ``<InvalidationSummary>`` element.
 
@@ -281,7 +299,9 @@ class CloudFront(BaseConnector):
                         path_items.append(p.text)
                 batch["paths"] = path_items
             caller_ref = find_text(
-                batch_elem, "CallerReference", _CF_NS,
+                batch_elem,
+                "CallerReference",
+                _CF_NS,
             )
             if caller_ref:
                 batch["caller_reference"] = caller_ref
@@ -314,7 +334,8 @@ class CloudFront(BaseConnector):
 
     @action("Get a CloudFront distribution by ID")
     async def get_distribution(
-        self, distribution_id: str,
+        self,
+        distribution_id: str,
     ) -> CFDistribution:
         """Retrieve a single distribution by its ID.
 
@@ -325,14 +346,16 @@ class CloudFront(BaseConnector):
             CFDistribution object with full details.
         """
         resp = await self._cf_request(
-            "GET", f"distribution/{distribution_id}",
+            "GET",
+            f"distribution/{distribution_id}",
         )
         root = ET.fromstring(resp.text)
         return self._parse_distribution(root)
 
     @action("Get the configuration of a CloudFront distribution")
     async def get_distribution_config(
-        self, distribution_id: str,
+        self,
+        distribution_id: str,
     ) -> dict[str, Any]:
         """Retrieve the configuration of a CloudFront distribution.
 
@@ -347,22 +370,27 @@ class CloudFront(BaseConnector):
             (the ETag header for conditional updates).
         """
         resp = await self._cf_request(
-            "GET", f"distribution/{distribution_id}/config",
+            "GET",
+            f"distribution/{distribution_id}/config",
         )
         root = ET.fromstring(resp.text)
         etag = resp.headers.get("etag", "")
 
         config: dict[str, Any] = {
             "caller_reference": find_text(
-                root, "CallerReference", _CF_NS,
-            ) or "",
+                root,
+                "CallerReference",
+                _CF_NS,
+            )
+            or "",
             "comment": find_text(root, "Comment", _CF_NS) or "",
-            "enabled": (
-                find_text(root, "Enabled", _CF_NS) or "false"
-            ).lower() == "true",
+            "enabled": (find_text(root, "Enabled", _CF_NS) or "false").lower() == "true",
             "default_root_object": find_text(
-                root, "DefaultRootObject", _CF_NS,
-            ) or "",
+                root,
+                "DefaultRootObject",
+                _CF_NS,
+            )
+            or "",
         }
 
         return {"config": config, "etag": etag}
@@ -499,9 +527,7 @@ class CloudFront(BaseConnector):
         """
         caller_ref = str(uuid.uuid4())
         quantity = len(paths)
-        path_items = "".join(
-            f"<Path>{_xml_escape(p)}</Path>" for p in paths
-        )
+        path_items = "".join(f"<Path>{_xml_escape(p)}</Path>" for p in paths)
 
         body_xml = (
             f"<InvalidationBatch>"
@@ -565,7 +591,9 @@ class CloudFront(BaseConnector):
 
         items: list[CFInvalidation] = []
         for elem in iter_elements(
-            root, "InvalidationSummary", _CF_NS,
+            root,
+            "InvalidationSummary",
+            _CF_NS,
         ):
             items.append(self._parse_invalidation(elem))
         return items
@@ -595,7 +623,8 @@ class CloudFront(BaseConnector):
         """
         # Step 1: GET current config and ETag.
         config_resp = await self._cf_request(
-            "GET", f"distribution/{distribution_id}/config",
+            "GET",
+            f"distribution/{distribution_id}/config",
         )
         etag = config_resp.headers.get("etag", "")
         config_xml = config_resp.text
@@ -604,7 +633,9 @@ class CloudFront(BaseConnector):
         enabled_str = "true" if enabled else "false"
         # Replace the Enabled element value.
         updated_xml = _replace_xml_value(
-            config_xml, "Enabled", enabled_str,
+            config_xml,
+            "Enabled",
+            enabled_str,
         )
 
         # Step 3: PUT the updated config.
@@ -673,8 +704,7 @@ def _xml_escape(text: str) -> str:
         XML-safe string.
     """
     return (
-        text
-        .replace("&", "&amp;")
+        text.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")

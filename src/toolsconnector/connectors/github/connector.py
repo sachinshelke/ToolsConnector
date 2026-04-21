@@ -39,8 +39,8 @@ from ._parsers import (
 from .types import (
     Branch,
     CodeSearchResult,
-    Commit,
     Comment,
+    Commit,
     FileContent,
     GitHubGist,
     Issue,
@@ -114,7 +114,10 @@ class GitHub(BaseConnector):
     ) -> httpx.Response:
         """Send an authenticated request and handle errors."""
         resp = await self._client.request(
-            method, path, params=params, json=json,
+            method,
+            path,
+            params=params,
+            json=json,
         )
         remaining = resp.headers.get("X-RateLimit-Remaining")
         if remaining is not None:
@@ -173,7 +176,9 @@ class GitHub(BaseConnector):
             path = "/user/repos"
 
         resp = await self._get_page(
-            path, params={"per_page": min(limit, 100)}, cursor=page,
+            path,
+            params={"per_page": min(limit, 100)},
+            cursor=page,
         )
         items = [parse_repo(r) for r in resp.json()]
         ps = self._build_page_state(resp)
@@ -252,7 +257,9 @@ class GitHub(BaseConnector):
             payload["organization"] = organization
 
         resp = await self._request(
-            "POST", f"/repos/{owner}/{repo}/forks", json=payload,
+            "POST",
+            f"/repos/{owner}/{repo}/forks",
+            json=payload,
         )
         return parse_repo(resp.json())
 
@@ -301,7 +308,9 @@ class GitHub(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.alist_issues(
-                owner=owner, repo=repo, page=c,
+                owner=owner,
+                repo=repo,
+                page=c,
             )
         return result
 
@@ -337,13 +346,18 @@ class GitHub(BaseConnector):
             payload["assignees"] = assignees
 
         resp = await self._request(
-            "POST", f"/repos/{owner}/{repo}/issues", json=payload,
+            "POST",
+            f"/repos/{owner}/{repo}/issues",
+            json=payload,
         )
         return parse_issue(resp.json())
 
     @action("Get a single issue by number")
     async def get_issue(
-        self, owner: str, repo: str, issue_number: int,
+        self,
+        owner: str,
+        repo: str,
+        issue_number: int,
     ) -> Issue:
         """Retrieve a single issue.
 
@@ -356,7 +370,8 @@ class GitHub(BaseConnector):
             Issue object.
         """
         resp = await self._request(
-            "GET", f"/repos/{owner}/{repo}/issues/{issue_number}",
+            "GET",
+            f"/repos/{owner}/{repo}/issues/{issue_number}",
         )
         return parse_issue(resp.json())
 
@@ -400,7 +415,9 @@ class GitHub(BaseConnector):
             payload["assignees"] = assignees
 
         resp = await self._request(
-            "PATCH", f"/repos/{owner}/{repo}/issues/{issue_number}", json=payload,
+            "PATCH",
+            f"/repos/{owner}/{repo}/issues/{issue_number}",
+            json=payload,
         )
         return parse_issue(resp.json())
 
@@ -457,7 +474,11 @@ class GitHub(BaseConnector):
 
     @action("Create a comment on an issue or pull request", dangerous=True)
     async def create_comment(
-        self, owner: str, repo: str, issue_number: int, body: str,
+        self,
+        owner: str,
+        repo: str,
+        issue_number: int,
+        body: str,
     ) -> Comment:
         """Create a comment on an issue or PR.
 
@@ -500,14 +521,19 @@ class GitHub(BaseConnector):
         """
         path = f"/repos/{owner}/{repo}/issues/{issue_number}/comments"
         resp = await self._get_page(
-            path, params={"per_page": min(limit, 100)}, cursor=page,
+            path,
+            params={"per_page": min(limit, 100)},
+            cursor=page,
         )
         items = [parse_comment(c) for c in resp.json()]
         ps = self._build_page_state(resp)
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.alist_comments(
-                owner=owner, repo=repo, issue_number=issue_number, page=c,
+                owner=owner,
+                repo=repo,
+                issue_number=issue_number,
+                page=c,
             )
         return result
 
@@ -548,13 +574,18 @@ class GitHub(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.alist_pull_requests(
-                owner=owner, repo=repo, page=c,
+                owner=owner,
+                repo=repo,
+                page=c,
             )
         return result
 
     @action("Get a single pull request by number")
     async def get_pull_request(
-        self, owner: str, repo: str, pr_number: int,
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int,
     ) -> PullRequest:
         """Retrieve a single pull request with full details.
 
@@ -567,7 +598,8 @@ class GitHub(BaseConnector):
             PullRequest object with merge/diff statistics.
         """
         resp = await self._request(
-            "GET", f"/repos/{owner}/{repo}/pulls/{pr_number}",
+            "GET",
+            f"/repos/{owner}/{repo}/pulls/{pr_number}",
         )
         return PullRequest.from_api(resp.json())
 
@@ -606,7 +638,9 @@ class GitHub(BaseConnector):
             payload["body"] = body
 
         resp = await self._request(
-            "POST", f"/repos/{owner}/{repo}/pulls", json=payload,
+            "POST",
+            f"/repos/{owner}/{repo}/pulls",
+            json=payload,
         )
         return PullRequest.from_api(resp.json())
 
@@ -640,7 +674,8 @@ class GitHub(BaseConnector):
             payload["commit_message"] = commit_message
 
         resp = await self._request(
-            "PUT", f"/repos/{owner}/{repo}/pulls/{pr_number}/merge",
+            "PUT",
+            f"/repos/{owner}/{repo}/pulls/{pr_number}/merge",
             json=payload,
         )
         return resp.json()
@@ -690,7 +725,9 @@ class GitHub(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.alist_commits(
-                owner=owner, repo=repo, page=c,
+                owner=owner,
+                repo=repo,
+                page=c,
             )
         return result
 
@@ -727,13 +764,18 @@ class GitHub(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.alist_branches(
-                owner=owner, repo=repo, page=c,
+                owner=owner,
+                repo=repo,
+                page=c,
             )
         return result
 
     @action("Get a single branch")
     async def get_branch(
-        self, owner: str, repo: str, branch: str,
+        self,
+        owner: str,
+        repo: str,
+        branch: str,
     ) -> Branch:
         """Get details for a single branch including protection status.
 
@@ -746,7 +788,8 @@ class GitHub(BaseConnector):
             Branch object.
         """
         resp = await self._request(
-            "GET", f"/repos/{owner}/{repo}/branches/{branch}",
+            "GET",
+            f"/repos/{owner}/{repo}/branches/{branch}",
         )
         return parse_branch(resp.json())
 
@@ -783,13 +826,17 @@ class GitHub(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.alist_releases(
-                owner=owner, repo=repo, page=c,
+                owner=owner,
+                repo=repo,
+                page=c,
             )
         return result
 
     @action("Get the latest release")
     async def get_latest_release(
-        self, owner: str, repo: str,
+        self,
+        owner: str,
+        repo: str,
     ) -> Release:
         """Get the latest published release (excludes drafts and prereleases).
 
@@ -801,7 +848,8 @@ class GitHub(BaseConnector):
             The latest Release object.
         """
         resp = await self._request(
-            "GET", f"/repos/{owner}/{repo}/releases/latest",
+            "GET",
+            f"/repos/{owner}/{repo}/releases/latest",
         )
         return parse_release(resp.json())
 
@@ -846,7 +894,9 @@ class GitHub(BaseConnector):
             payload["target_commitish"] = target_commitish
 
         resp = await self._request(
-            "POST", f"/repos/{owner}/{repo}/releases", json=payload,
+            "POST",
+            f"/repos/{owner}/{repo}/releases",
+            json=payload,
         )
         return parse_release(resp.json())
 
@@ -881,7 +931,9 @@ class GitHub(BaseConnector):
             params["ref"] = ref
 
         resp = await self._request(
-            "GET", f"/repos/{owner}/{repo}/contents/{path}", params=params,
+            "GET",
+            f"/repos/{owner}/{repo}/contents/{path}",
+            params=params,
         )
         return parse_file_content(resp.json())
 
@@ -923,7 +975,9 @@ class GitHub(BaseConnector):
             payload["branch"] = branch
 
         resp = await self._request(
-            "PUT", f"/repos/{owner}/{repo}/contents/{path}", json=payload,
+            "PUT",
+            f"/repos/{owner}/{repo}/contents/{path}",
+            json=payload,
         )
         return resp.json()
 
@@ -958,7 +1012,9 @@ class GitHub(BaseConnector):
             payload["branch"] = branch
 
         resp = await self._request(
-            "DELETE", f"/repos/{owner}/{repo}/contents/{path}", json=payload,
+            "DELETE",
+            f"/repos/{owner}/{repo}/contents/{path}",
+            json=payload,
         )
         return resp.json()
 
@@ -994,12 +1050,15 @@ class GitHub(BaseConnector):
         items = [parse_workflow(w) for w in data.get("workflows", [])]
         ps = self._build_page_state(resp)
         result = PaginatedList(
-            items=items, page_state=ps,
+            items=items,
+            page_state=ps,
             total_count=data.get("total_count", 0),
         )
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.alist_workflows(
-                owner=owner, repo=repo, page=c,
+                owner=owner,
+                repo=repo,
+                page=c,
             )
         return result
 
@@ -1046,12 +1105,15 @@ class GitHub(BaseConnector):
         items = [parse_workflow_run(r) for r in data.get("workflow_runs", [])]
         ps = self._build_page_state(resp)
         result = PaginatedList(
-            items=items, page_state=ps,
+            items=items,
+            page_state=ps,
             total_count=data.get("total_count", 0),
         )
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.alist_workflow_runs(
-                owner=owner, repo=repo, page=c,
+                owner=owner,
+                repo=repo,
+                page=c,
             )
         return result
 
@@ -1103,7 +1165,9 @@ class GitHub(BaseConnector):
             Paginated list of GitHubGist objects.
         """
         resp = await self._get_page(
-            "/gists", params={"per_page": min(limit, 100)}, cursor=page,
+            "/gists",
+            params={"per_page": min(limit, 100)},
+            cursor=page,
         )
         items = [parse_gist(g) for g in resp.json()]
         ps = self._build_page_state(resp)
@@ -1177,7 +1241,8 @@ class GitHub(BaseConnector):
         )
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.asearch_code(
-                query=query, page=c,
+                query=query,
+                page=c,
             )
         return result
 
@@ -1216,12 +1281,14 @@ class GitHub(BaseConnector):
         items = [parse_repo(r) for r in data.get("items", [])]
         ps = self._build_page_state(resp)
         result = PaginatedList(
-            items=items, page_state=ps,
+            items=items,
+            page_state=ps,
             total_count=data.get("total_count", 0),
         )
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.asearch_repos(
-                query=query, page=c,
+                query=query,
+                page=c,
             )
         return result
 
@@ -1256,18 +1323,22 @@ class GitHub(BaseConnector):
             params["sort"] = sort
 
         resp = await self._get_page(
-            "/search/issues", params=params, cursor=page,
+            "/search/issues",
+            params=params,
+            cursor=page,
         )
         data = resp.json()
         items = [parse_issue(i) for i in data.get("items", [])]
         ps = self._build_page_state(resp)
         result = PaginatedList(
-            items=items, page_state=ps,
+            items=items,
+            page_state=ps,
             total_count=data.get("total_count", 0),
         )
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.asearch_issues(
-                query=query, page=c,
+                query=query,
+                page=c,
             )
         return result
 

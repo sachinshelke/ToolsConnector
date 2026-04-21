@@ -44,8 +44,7 @@ class Telegram(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://api.telegram.org"
     description = (
-        "Connect to Telegram Bot API to send messages, photos, "
-        "documents, and receive updates."
+        "Connect to Telegram Bot API to send messages, photos, documents, and receive updates."
     )
     _rate_limit_config = RateLimitSpec(rate=30, period=1, burst=30)
 
@@ -221,7 +220,7 @@ class Telegram(BaseConnector):
 
         result = await self._request("getUpdates", json_body=payload)
         updates = []
-        for u in (result or []):
+        for u in result or []:
             msg_data = u.get("message")
             msg = self._parse_message(msg_data) if msg_data else None
 
@@ -229,9 +228,7 @@ class Telegram(BaseConnector):
             edited = self._parse_message(edited_data) if edited_data else None
 
             channel_data = u.get("channel_post")
-            channel_post = (
-                self._parse_message(channel_data) if channel_data else None
-            )
+            channel_post = self._parse_message(channel_data) if channel_data else None
 
             updates.append(
                 TelegramUpdate(
@@ -255,7 +252,8 @@ class Telegram(BaseConnector):
             TelegramChat with full details.
         """
         result = await self._request(
-            "getChat", json_body={"chat_id": chat_id},
+            "getChat",
+            json_body={"chat_id": chat_id},
         )
         return TelegramChat(**result)
 
@@ -270,7 +268,8 @@ class Telegram(BaseConnector):
             Number of members in the chat.
         """
         result = await self._request(
-            "getChatMemberCount", json_body={"chat_id": chat_id},
+            "getChatMemberCount",
+            json_body={"chat_id": chat_id},
         )
         return int(result)
 
@@ -345,11 +344,14 @@ class Telegram(BaseConnector):
         Returns:
             The edited TelegramMessage.
         """
-        result = await self._request("editMessageText", json_body={
-            "chat_id": chat_id,
-            "message_id": message_id,
-            "text": text,
-        })
+        result = await self._request(
+            "editMessageText",
+            json_body={
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "text": text,
+            },
+        )
         return self._parse_message(result)
 
     @action("Delete a message from a chat", dangerous=True)
@@ -367,10 +369,13 @@ class Telegram(BaseConnector):
         Returns:
             True if the message was deleted successfully.
         """
-        result = await self._request("deleteMessage", json_body={
-            "chat_id": chat_id,
-            "message_id": message_id,
-        })
+        result = await self._request(
+            "deleteMessage",
+            json_body={
+                "chat_id": chat_id,
+                "message_id": message_id,
+            },
+        )
         return bool(result)
 
     # ------------------------------------------------------------------
@@ -388,7 +393,8 @@ class Telegram(BaseConnector):
             True if the webhook was set successfully.
         """
         result = await self._request(
-            "setWebhook", json_body={"url": url},
+            "setWebhook",
+            json_body={"url": url},
         )
         return bool(result)
 
@@ -422,7 +428,9 @@ class Telegram(BaseConnector):
 
     @action("Ban a user from a chat", dangerous=True)
     async def ban_chat_member(
-        self, chat_id: str, user_id: int,
+        self,
+        chat_id: str,
+        user_id: int,
     ) -> bool:
         """Ban a user from a group, supergroup, or channel.
 
@@ -433,15 +441,20 @@ class Telegram(BaseConnector):
         Returns:
             True if the user was banned successfully.
         """
-        result = await self._request("banChatMember", json_body={
-            "chat_id": chat_id,
-            "user_id": user_id,
-        })
+        result = await self._request(
+            "banChatMember",
+            json_body={
+                "chat_id": chat_id,
+                "user_id": user_id,
+            },
+        )
         return bool(result)
 
     @action("Pin a message in a chat")
     async def pin_message(
-        self, chat_id: str, message_id: int,
+        self,
+        chat_id: str,
+        message_id: int,
     ) -> bool:
         """Pin a message in a group, supergroup, or channel.
 
@@ -452,10 +465,13 @@ class Telegram(BaseConnector):
         Returns:
             True if the message was pinned successfully.
         """
-        result = await self._request("pinChatMessage", json_body={
-            "chat_id": chat_id,
-            "message_id": message_id,
-        })
+        result = await self._request(
+            "pinChatMessage",
+            json_body={
+                "chat_id": chat_id,
+                "message_id": message_id,
+            },
+        )
         return bool(result)
 
     @action("Unpin a message in a chat")
@@ -482,7 +498,8 @@ class Telegram(BaseConnector):
             payload["message_id"] = message_id
 
         result = await self._request(
-            "unpinChatMessage", json_body=payload,
+            "unpinChatMessage",
+            json_body=payload,
         )
         return bool(result)
 
@@ -513,13 +530,16 @@ class Telegram(BaseConnector):
             True if the bot left the chat successfully.
         """
         result = await self._request(
-            "leaveChat", json_body={"chat_id": chat_id},
+            "leaveChat",
+            json_body={"chat_id": chat_id},
         )
         return bool(result)
 
     @action("Get information about a chat member")
     async def get_chat_member(
-        self, chat_id: str, user_id: int,
+        self,
+        chat_id: str,
+        user_id: int,
     ) -> TelegramChatMember:
         """Get information about a member of a chat.
 
@@ -530,10 +550,13 @@ class Telegram(BaseConnector):
         Returns:
             TelegramChatMember with the user's membership details.
         """
-        result = await self._request("getChatMember", json_body={
-            "chat_id": chat_id,
-            "user_id": user_id,
-        })
+        result = await self._request(
+            "getChatMember",
+            json_body={
+                "chat_id": chat_id,
+                "user_id": user_id,
+            },
+        )
         user_data = result.get("user")
         user = TelegramUser(**user_data) if user_data else None
         return TelegramChatMember(
@@ -557,7 +580,9 @@ class Telegram(BaseConnector):
 
     @action("Unban a user from a chat")
     async def unban_chat_member(
-        self, chat_id: str, user_id: int,
+        self,
+        chat_id: str,
+        user_id: int,
     ) -> bool:
         """Unban a previously banned user in a supergroup or channel.
 
@@ -571,10 +596,13 @@ class Telegram(BaseConnector):
         Returns:
             True if the user was unbanned successfully.
         """
-        result = await self._request("unbanChatMember", json_body={
-            "chat_id": chat_id,
-            "user_id": user_id,
-        })
+        result = await self._request(
+            "unbanChatMember",
+            json_body={
+                "chat_id": chat_id,
+                "user_id": user_id,
+            },
+        )
         return bool(result)
 
     @action("Send a location to a chat")
@@ -594,11 +622,14 @@ class Telegram(BaseConnector):
         Returns:
             The sent TelegramMessage.
         """
-        result = await self._request("sendLocation", json_body={
-            "chat_id": chat_id,
-            "latitude": latitude,
-            "longitude": longitude,
-        })
+        result = await self._request(
+            "sendLocation",
+            json_body={
+                "chat_id": chat_id,
+                "latitude": latitude,
+                "longitude": longitude,
+            },
+        )
         return self._parse_message(result)
 
     @action("Send a contact to a chat")
@@ -688,13 +719,16 @@ class Telegram(BaseConnector):
             payload["show_alert"] = True
 
         result = await self._request(
-            "answerCallbackQuery", json_body=payload,
+            "answerCallbackQuery",
+            json_body=payload,
         )
         return bool(result)
 
     @action("Set the title of a chat", dangerous=True)
     async def set_chat_title(
-        self, chat_id: str, title: str,
+        self,
+        chat_id: str,
+        title: str,
     ) -> bool:
         """Change the title of a group, supergroup, or channel.
 
@@ -705,15 +739,20 @@ class Telegram(BaseConnector):
         Returns:
             True if the title was changed successfully.
         """
-        result = await self._request("setChatTitle", json_body={
-            "chat_id": chat_id,
-            "title": title,
-        })
+        result = await self._request(
+            "setChatTitle",
+            json_body={
+                "chat_id": chat_id,
+                "title": title,
+            },
+        )
         return bool(result)
 
     @action("Set the description of a chat", dangerous=True)
     async def set_chat_description(
-        self, chat_id: str, description: str,
+        self,
+        chat_id: str,
+        description: str,
     ) -> bool:
         """Change the description of a group, supergroup, or channel.
 
@@ -724,10 +763,13 @@ class Telegram(BaseConnector):
         Returns:
             True if the description was changed successfully.
         """
-        result = await self._request("setChatDescription", json_body={
-            "chat_id": chat_id,
-            "description": description,
-        })
+        result = await self._request(
+            "setChatDescription",
+            json_body={
+                "chat_id": chat_id,
+                "description": description,
+            },
+        )
         return bool(result)
 
     @action("Export an invite link for a chat")
@@ -751,7 +793,8 @@ class Telegram(BaseConnector):
 
     @action("Get the list of administrators in a chat")
     async def get_chat_administrators(
-        self, chat_id: str,
+        self,
+        chat_id: str,
     ) -> list[TelegramChatMember]:
         """Get a list of administrators in a chat.
 
@@ -766,7 +809,7 @@ class Telegram(BaseConnector):
             json_body={"chat_id": chat_id},
         )
         admins: list[TelegramChatMember] = []
-        for member_data in (result or []):
+        for member_data in result or []:
             user_data = member_data.get("user")
             user = TelegramUser(**user_data) if user_data else None
             admins.append(

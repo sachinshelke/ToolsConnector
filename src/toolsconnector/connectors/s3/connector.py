@@ -24,6 +24,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._aws.signing import sign_v4
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -36,10 +37,13 @@ from ._helpers import (
     build_presigned_url,
     build_tagging_xml,
     compute_content_md5,
+)
+from ._helpers import (
     extract_user_metadata as _extract_user_metadata,
+)
+from ._helpers import (
     find_text as _find_text,
 )
-from toolsconnector.connectors._aws.signing import sign_v4
 from .types import (
     S3Bucket,
     S3BucketLocation,
@@ -94,6 +98,7 @@ class S3(BaseConnector):
     async def _setup(self) -> None:
         """Initialise credentials and httpx client."""
         from toolsconnector.connectors._aws.auth import parse_credentials
+
         creds = parse_credentials(self._credentials)
         self._access_key_id = creds.access_key_id
         self._secret_access_key = creds.secret_access_key
@@ -167,18 +172,27 @@ class S3(BaseConnector):
         qs = ""
         if params:
             qs = "?" + urllib.parse.urlencode(
-                params, quote_via=urllib.parse.quote,
+                params,
+                quote_via=urllib.parse.quote,
             )
         full_url = f"https://{resolved_host}{path}{qs}"
 
         sign_v4(
-            method, full_url, headers, payload_hash,
-            self._access_key_id, self._secret_access_key, self._region,
+            method,
+            full_url,
+            headers,
+            payload_hash,
+            self._access_key_id,
+            self._secret_access_key,
+            self._region,
             service="s3",
         )
 
         resp = await self._client.request(
-            method, full_url, headers=headers, content=body,
+            method,
+            full_url,
+            headers=headers,
+            content=body,
         )
         resp.raise_for_status()
         return resp
@@ -208,7 +222,9 @@ class S3(BaseConnector):
 
     @action("Create a new S3 bucket", dangerous=True)
     async def create_bucket(
-        self, bucket: str, region: Optional[str] = None,
+        self,
+        bucket: str,
+        region: Optional[str] = None,
     ) -> S3Bucket:
         """Create a new S3 bucket.
 
@@ -229,7 +245,10 @@ class S3(BaseConnector):
             ).encode()
 
         await self._s3_request(
-            "PUT", "/", host=self._bucket_host(bucket), body=body,
+            "PUT",
+            "/",
+            host=self._bucket_host(bucket),
+            body=body,
         )
         return S3Bucket(name=bucket, region=target_region)
 
@@ -272,13 +291,15 @@ class S3(BaseConnector):
         items: list[S3Object] = []
         for c in root.iter(f"{{{_S3_NS}}}Contents"):
             sz = _find_text(c, "Size")
-            items.append(S3Object(
-                key=_find_text(c, "Key") or "",
-                size=int(sz) if sz else 0,
-                last_modified=_find_text(c, "LastModified"),
-                etag=_find_text(c, "ETag"),
-                storage_class=_find_text(c, "StorageClass"),
-            ))
+            items.append(
+                S3Object(
+                    key=_find_text(c, "Key") or "",
+                    size=int(sz) if sz else 0,
+                    last_modified=_find_text(c, "LastModified"),
+                    etag=_find_text(c, "ETag"),
+                    storage_class=_find_text(c, "StorageClass"),
+                )
+            )
 
         is_truncated = _find_text(root, "IsTruncated") == "true"
         next_token = _find_text(root, "NextContinuationToken")
@@ -286,11 +307,16 @@ class S3(BaseConnector):
 
         result = PaginatedList(items=items, page_state=ps)
         result._fetch_next = (
-            (lambda t=next_token: self.alist_objects(
-                bucket=bucket, prefix=prefix, limit=limit,
-                continuation_token=t,
-            ))
-            if is_truncated else None
+            (
+                lambda t=next_token: self.alist_objects(
+                    bucket=bucket,
+                    prefix=prefix,
+                    limit=limit,
+                    continuation_token=t,
+                )
+            )
+            if is_truncated
+            else None
         )
         return result
 
@@ -307,7 +333,9 @@ class S3(BaseConnector):
         """
         enc_key = urllib.parse.quote(key, safe="/")
         resp = await self._s3_request(
-            "GET", f"/{enc_key}", host=self._bucket_host(bucket),
+            "GET",
+            f"/{enc_key}",
+            host=self._bucket_host(bucket),
         )
         return S3ObjectData(
             key=key,
@@ -344,8 +372,11 @@ class S3(BaseConnector):
             extra["Content-Type"] = content_type
 
         resp = await self._s3_request(
-            "PUT", f"/{enc_key}", host=self._bucket_host(bucket),
-            body=body, extra_headers=extra,
+            "PUT",
+            f"/{enc_key}",
+            host=self._bucket_host(bucket),
+            body=body,
+            extra_headers=extra,
         )
         return S3PutResult(
             key=key,
@@ -363,7 +394,9 @@ class S3(BaseConnector):
         """
         enc_key = urllib.parse.quote(key, safe="/")
         await self._s3_request(
-            "DELETE", f"/{enc_key}", host=self._bucket_host(bucket),
+            "DELETE",
+            f"/{enc_key}",
+            host=self._bucket_host(bucket),
         )
 
     @action("Get object metadata without downloading the content")
@@ -379,7 +412,9 @@ class S3(BaseConnector):
         """
         enc_key = urllib.parse.quote(key, safe="/")
         resp = await self._s3_request(
-            "HEAD", f"/{enc_key}", host=self._bucket_host(bucket),
+            "HEAD",
+            f"/{enc_key}",
+            host=self._bucket_host(bucket),
         )
         cl = resp.headers.get("content-length", "0")
         return S3ObjectMetadata(
@@ -414,11 +449,14 @@ class S3(BaseConnector):
         """
         enc_dest = urllib.parse.quote(dest_key, safe="/")
         enc_src = urllib.parse.quote(
-            f"/{source_bucket}/{source_key}", safe="/",
+            f"/{source_bucket}/{source_key}",
+            safe="/",
         )
 
         resp = await self._s3_request(
-            "PUT", f"/{enc_dest}", host=self._bucket_host(dest_bucket),
+            "PUT",
+            f"/{enc_dest}",
+            host=self._bucket_host(dest_bucket),
             extra_headers={"x-amz-copy-source": enc_src},
         )
 
@@ -445,7 +483,9 @@ class S3(BaseConnector):
             bucket: Bucket name to delete.
         """
         await self._s3_request(
-            "DELETE", "/", host=self._bucket_host(bucket),
+            "DELETE",
+            "/",
+            host=self._bucket_host(bucket),
         )
 
     @action("Get the bucket policy")
@@ -459,7 +499,9 @@ class S3(BaseConnector):
             S3BucketPolicy with the raw JSON policy document.
         """
         resp = await self._s3_request(
-            "GET", "/", host=self._bucket_host(bucket),
+            "GET",
+            "/",
+            host=self._bucket_host(bucket),
             params={"policy": ""},
         )
         return S3BucketPolicy(bucket=bucket, policy=resp.text)
@@ -526,26 +568,30 @@ class S3(BaseConnector):
         # Parse <Version> elements
         for v in root.iter(f"{{{_S3_NS}}}Version"):
             sz = _find_text(v, "Size")
-            items.append(S3ObjectVersion(
-                key=_find_text(v, "Key") or "",
-                version_id=_find_text(v, "VersionId"),
-                is_latest=_find_text(v, "IsLatest") == "true",
-                last_modified=_find_text(v, "LastModified"),
-                etag=_find_text(v, "ETag"),
-                size=int(sz) if sz else 0,
-                storage_class=_find_text(v, "StorageClass"),
-                is_delete_marker=False,
-            ))
+            items.append(
+                S3ObjectVersion(
+                    key=_find_text(v, "Key") or "",
+                    version_id=_find_text(v, "VersionId"),
+                    is_latest=_find_text(v, "IsLatest") == "true",
+                    last_modified=_find_text(v, "LastModified"),
+                    etag=_find_text(v, "ETag"),
+                    size=int(sz) if sz else 0,
+                    storage_class=_find_text(v, "StorageClass"),
+                    is_delete_marker=False,
+                )
+            )
 
         # Parse <DeleteMarker> elements
         for dm in root.iter(f"{{{_S3_NS}}}DeleteMarker"):
-            items.append(S3ObjectVersion(
-                key=_find_text(dm, "Key") or "",
-                version_id=_find_text(dm, "VersionId"),
-                is_latest=_find_text(dm, "IsLatest") == "true",
-                last_modified=_find_text(dm, "LastModified"),
-                is_delete_marker=True,
-            ))
+            items.append(
+                S3ObjectVersion(
+                    key=_find_text(dm, "Key") or "",
+                    version_id=_find_text(dm, "VersionId"),
+                    is_latest=_find_text(dm, "IsLatest") == "true",
+                    last_modified=_find_text(dm, "LastModified"),
+                    is_delete_marker=True,
+                )
+            )
 
         is_truncated = _find_text(root, "IsTruncated") == "true"
         next_key_marker = _find_text(root, "NextKeyMarker")
@@ -554,7 +600,10 @@ class S3(BaseConnector):
         result = PaginatedList(items=items, page_state=ps)
         if is_truncated:
             result._fetch_next = lambda km=next_key_marker: self.alist_object_versions(
-                bucket=bucket, prefix=prefix, limit=limit, key_marker=km,
+                bucket=bucket,
+                prefix=prefix,
+                limit=limit,
+                key_marker=km,
             )
         return result
 
@@ -655,7 +704,9 @@ class S3(BaseConnector):
             params["versionId"] = version_id
 
         resp = await self._s3_request(
-            "GET", f"/{enc_key}", host=self._bucket_host(bucket),
+            "GET",
+            f"/{enc_key}",
+            host=self._bucket_host(bucket),
             params=params,
         )
         root = ET.fromstring(resp.text)
@@ -694,7 +745,9 @@ class S3(BaseConnector):
             params["versionId"] = version_id
 
         await self._s3_request(
-            "DELETE", f"/{enc_key}", host=self._bucket_host(bucket),
+            "DELETE",
+            f"/{enc_key}",
+            host=self._bucket_host(bucket),
             params=params,
         )
 
@@ -714,7 +767,9 @@ class S3(BaseConnector):
             in ``us-east-1`` may return ``None`` as the location.
         """
         resp = await self._s3_request(
-            "GET", "/", host=self._bucket_host(bucket),
+            "GET",
+            "/",
+            host=self._bucket_host(bucket),
             params={"location": ""},
         )
         root = ET.fromstring(resp.text)
@@ -764,19 +819,16 @@ class S3(BaseConnector):
         for u in root.iter(f"{{{_S3_NS}}}Upload"):
             initiator = u.find(f"{{{_S3_NS}}}Initiator")
             owner = u.find(f"{{{_S3_NS}}}Owner")
-            items.append(S3MultipartUpload(
-                key=_find_text(u, "Key") or "",
-                upload_id=_find_text(u, "UploadId") or "",
-                initiated=_find_text(u, "Initiated"),
-                storage_class=_find_text(u, "StorageClass"),
-                owner_id=(
-                    _find_text(owner, "ID") if owner is not None else None
-                ),
-                initiator_id=(
-                    _find_text(initiator, "ID")
-                    if initiator is not None else None
-                ),
-            ))
+            items.append(
+                S3MultipartUpload(
+                    key=_find_text(u, "Key") or "",
+                    upload_id=_find_text(u, "UploadId") or "",
+                    initiated=_find_text(u, "Initiated"),
+                    storage_class=_find_text(u, "StorageClass"),
+                    owner_id=(_find_text(owner, "ID") if owner is not None else None),
+                    initiator_id=(_find_text(initiator, "ID") if initiator is not None else None),
+                )
+            )
 
         is_truncated = _find_text(root, "IsTruncated") == "true"
         next_key_marker = _find_text(root, "NextKeyMarker")
@@ -784,11 +836,11 @@ class S3(BaseConnector):
 
         result = PaginatedList(items=items, page_state=ps)
         if is_truncated:
-            result._fetch_next = (
-                lambda km=next_key_marker: self.alist_multipart_uploads(
-                    bucket=bucket, prefix=prefix, limit=limit,
-                    key_marker=km,
-                )
+            result._fetch_next = lambda km=next_key_marker: self.alist_multipart_uploads(
+                bucket=bucket,
+                prefix=prefix,
+                limit=limit,
+                key_marker=km,
             )
         return result
 
@@ -798,7 +850,8 @@ class S3(BaseConnector):
 
     @action("Get bucket versioning configuration")
     async def get_bucket_versioning(
-        self, bucket: str,
+        self,
+        bucket: str,
     ) -> S3BucketVersioning:
         """Retrieve the versioning state of an S3 bucket.
 
@@ -810,7 +863,9 @@ class S3(BaseConnector):
             or ``None`` if never enabled) and MFA delete state.
         """
         resp = await self._s3_request(
-            "GET", "/", host=self._bucket_host(bucket),
+            "GET",
+            "/",
+            host=self._bucket_host(bucket),
             params={"versioning": ""},
         )
         root = ET.fromstring(resp.text)
@@ -836,9 +891,7 @@ class S3(BaseConnector):
             status: Versioning status — ``"Enabled"`` or ``"Suspended"``.
         """
         if status not in ("Enabled", "Suspended"):
-            raise ValueError(
-                f"status must be 'Enabled' or 'Suspended', got {status!r}"
-            )
+            raise ValueError(f"status must be 'Enabled' or 'Suspended', got {status!r}")
         body = (
             f'<VersioningConfiguration xmlns="{_S3_NS}">'
             f"<Status>{status}</Status>"
@@ -846,7 +899,9 @@ class S3(BaseConnector):
         ).encode()
 
         await self._s3_request(
-            "PUT", "/", host=self._bucket_host(bucket),
+            "PUT",
+            "/",
+            host=self._bucket_host(bucket),
             params={"versioning": ""},
             body=body,
             extra_headers={"Content-Type": "application/xml"},

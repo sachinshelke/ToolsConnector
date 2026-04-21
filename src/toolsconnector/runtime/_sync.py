@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from typing import Any, TypeVar
 from collections.abc import Coroutine
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -85,8 +85,7 @@ def run_sync(coro: Coroutine[Any, Any, T]) -> T:
 
     if running is bg_loop:
         raise RuntimeError(
-            "run_sync() called from inside the background async loop; "
-            "use 'await' directly instead."
+            "run_sync() called from inside the background async loop; use 'await' directly instead."
         )
 
     future = asyncio.run_coroutine_threadsafe(coro, bg_loop)

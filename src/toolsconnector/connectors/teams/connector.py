@@ -83,10 +83,14 @@ def _parse_message(data: dict[str, Any]) -> TeamsMessage:
         Populated TeamsMessage instance.
     """
     body_raw = data.get("body", {})
-    body = TeamsMessageBody(
-        content=body_raw.get("content"),
-        content_type=body_raw.get("contentType", "html"),
-    ) if body_raw else None
+    body = (
+        TeamsMessageBody(
+            content=body_raw.get("content"),
+            content_type=body_raw.get("contentType", "html"),
+        )
+        if body_raw
+        else None
+    )
 
     from_raw = data.get("from", {})
     from_user = None
@@ -450,7 +454,8 @@ class Teams(BaseConnector):
 
     @action("List chats the user is part of")
     async def list_chats(
-        self, limit: Optional[int] = None,
+        self,
+        limit: Optional[int] = None,
     ) -> list[TeamsChat]:
         """List all chats the authenticated user participates in.
 
@@ -478,7 +483,9 @@ class Teams(BaseConnector):
 
     @action("Send a message to a Teams chat", dangerous=True)
     async def send_chat_message(
-        self, chat_id: str, content: str,
+        self,
+        chat_id: str,
+        content: str,
     ) -> TeamsMessage:
         """Send a message to a 1:1 or group chat.
 
@@ -496,7 +503,9 @@ class Teams(BaseConnector):
             },
         }
         data = await self._request(
-            "POST", f"/chats/{chat_id}/messages", json_body=payload,
+            "POST",
+            f"/chats/{chat_id}/messages",
+            json_body=payload,
         )
         return _parse_message(data)
 
@@ -515,7 +524,8 @@ class Teams(BaseConnector):
             TeamsPresence with availability and activity info.
         """
         data = await self._request(
-            "GET", f"/users/{user_id}/presence",
+            "GET",
+            f"/users/{user_id}/presence",
         )
         return TeamsPresence(
             id=data.get("id"),
@@ -649,9 +659,7 @@ class Teams(BaseConnector):
         payload: dict[str, Any] = {
             "@odata.type": "#microsoft.graph.aadUserConversationMember",
             "roles": roles or [],
-            "user@odata.bind": (
-                f"https://graph.microsoft.com/v1.0/users('{user_id}')"
-            ),
+            "user@odata.bind": (f"https://graph.microsoft.com/v1.0/users('{user_id}')"),
         }
         data = await self._request(
             "POST",

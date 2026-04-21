@@ -61,9 +61,7 @@ class Plaid(BaseConnector):
         """
         creds = str(self._credentials)
         if ":" not in creds:
-            raise ValueError(
-                "Plaid credentials must be 'client_id:secret' format"
-            )
+            raise ValueError("Plaid credentials must be 'client_id:secret' format")
         client_id, secret = creds.split(":", 1)
         return client_id.strip(), secret.strip()
 
@@ -222,10 +220,7 @@ class Plaid(BaseConnector):
             json={"access_token": access_token},
         )
 
-        accounts = [
-            self._parse_account(a)
-            for a in data.get("accounts", [])
-        ]
+        accounts = [self._parse_account(a) for a in data.get("accounts", [])]
 
         return PaginatedList(
             items=accounts,
@@ -268,10 +263,7 @@ class Plaid(BaseConnector):
         }
         data = await self._request("/transactions/get", json=body)
 
-        transactions = [
-            self._parse_transaction(t)
-            for t in data.get("transactions", [])
-        ]
+        transactions = [self._parse_transaction(t) for t in data.get("transactions", [])]
         total = data.get("total_transactions", 0)
         fetched = offset + len(transactions)
 
@@ -341,10 +333,7 @@ class Plaid(BaseConnector):
             json={"access_token": access_token},
         )
 
-        accounts = [
-            self._parse_account(a)
-            for a in data.get("accounts", [])
-        ]
+        accounts = [self._parse_account(a) for a in data.get("accounts", [])]
 
         return PaginatedList(
             items=accounts,
@@ -404,10 +393,7 @@ class Plaid(BaseConnector):
             },
         )
 
-        institutions = [
-            self._parse_institution(i)
-            for i in data.get("institutions", [])
-        ]
+        institutions = [self._parse_institution(i) for i in data.get("institutions", [])]
 
         return PaginatedList(
             items=institutions,
@@ -481,7 +467,8 @@ class Plaid(BaseConnector):
 
     @action("Get investment holdings for an access token")
     async def get_investment_holdings(
-        self, access_token: str,
+        self,
+        access_token: str,
     ) -> list[PlaidHolding]:
         """Retrieve investment holdings for the linked accounts.
 
@@ -514,7 +501,8 @@ class Plaid(BaseConnector):
 
     @action("Get liabilities for an access token")
     async def get_liabilities(
-        self, access_token: str,
+        self,
+        access_token: str,
     ) -> dict[str, list[PlaidLiability]]:
         """Retrieve liabilities (credit, student, mortgage) for linked accounts.
 
@@ -727,13 +715,15 @@ class Plaid(BaseConnector):
             },
         }
         data = await self._request(
-            "/investments/transactions/get", json=body,
+            "/investments/transactions/get",
+            json=body,
         )
 
         txns = [
             PlaidInvestmentTransaction(
                 investment_transaction_id=t.get(
-                    "investment_transaction_id", "",
+                    "investment_transaction_id",
+                    "",
                 ),
                 account_id=t.get("account_id", ""),
                 security_id=t.get("security_id"),

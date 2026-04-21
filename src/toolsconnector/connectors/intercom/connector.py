@@ -37,10 +37,7 @@ class Intercom(BaseConnector):
     category = ConnectorCategory.CRM
     protocol = ProtocolType.REST
     base_url = "https://api.intercom.io"
-    description = (
-        "Connect to Intercom to manage contacts, conversations, "
-        "and send messages."
-    )
+    description = "Connect to Intercom to manage contacts, conversations, and send messages."
     _rate_limit_config = RateLimitSpec(rate=100, period=10, burst=20)
 
     # ------------------------------------------------------------------
@@ -91,9 +88,7 @@ class Intercom(BaseConnector):
         Raises:
             httpx.HTTPStatusError: On non-2xx responses.
         """
-        response = await self._client.request(
-            method, path, json=json, params=params
-        )
+        response = await self._client.request(method, path, json=json, params=params)
         response.raise_for_status()
         if response.status_code == 204:
             return {}
@@ -110,7 +105,9 @@ class Intercom(BaseConnector):
             name=data.get("name"),
             phone=data.get("phone"),
             external_id=data.get("external_id"),
-            avatar=data.get("avatar", {}).get("image_url") if isinstance(data.get("avatar"), dict) else None,
+            avatar=data.get("avatar", {}).get("image_url")
+            if isinstance(data.get("avatar"), dict)
+            else None,
             owner_id=data.get("owner_id"),
             signed_up_at=data.get("signed_up_at"),
             last_seen_at=data.get("last_seen_at"),
@@ -320,14 +317,10 @@ class Intercom(BaseConnector):
         if starting_after:
             params["starting_after"] = starting_after
 
-        data = await self._request(
-            "GET", "/conversations", params=params
-        )
+        data = await self._request("GET", "/conversations", params=params)
 
         conversations_data = data.get("conversations", [])
-        conversations = [
-            self._parse_conversation(c) for c in conversations_data
-        ]
+        conversations = [self._parse_conversation(c) for c in conversations_data]
 
         pages = data.get("pages", {})
         next_info = pages.get("next")
@@ -357,9 +350,7 @@ class Intercom(BaseConnector):
         Returns:
             The requested IntercomConversation.
         """
-        data = await self._request(
-            "GET", f"/conversations/{conversation_id}"
-        )
+        data = await self._request("GET", f"/conversations/{conversation_id}")
         return self._parse_conversation(data)
 
     @action("Reply to a conversation", dangerous=True)
@@ -451,7 +442,8 @@ class Intercom(BaseConnector):
                 job_title=a.get("job_title"),
                 has_inbox_seat=a.get("has_inbox_seat", False),
                 avatar=a.get("avatar", {}).get("image_url")
-                if isinstance(a.get("avatar"), dict) else None,
+                if isinstance(a.get("avatar"), dict)
+                else None,
             )
             for a in data.get("admins", [])
         ]
@@ -462,7 +454,8 @@ class Intercom(BaseConnector):
 
     @action("Close a conversation")
     async def close_conversation(
-        self, conversation_id: str,
+        self,
+        conversation_id: str,
     ) -> IntercomConversation:
         """Close an open conversation.
 
@@ -490,7 +483,9 @@ class Intercom(BaseConnector):
 
     @action("Tag a contact", dangerous=True)
     async def tag_contact(
-        self, contact_id: str, tag_name: str,
+        self,
+        contact_id: str,
+        tag_name: str,
     ) -> bool:
         """Apply a tag to a contact.
 
@@ -529,7 +524,9 @@ class Intercom(BaseConnector):
         """
         payload: dict[str, Any] = {"body": body}
         data = await self._request(
-            "POST", f"/contacts/{contact_id}/notes", json=payload,
+            "POST",
+            f"/contacts/{contact_id}/notes",
+            json=payload,
         )
         return data
 
@@ -547,7 +544,8 @@ class Intercom(BaseConnector):
             List of note dicts with id, body, author, etc.
         """
         data = await self._request(
-            "GET", f"/contacts/{contact_id}/notes",
+            "GET",
+            f"/contacts/{contact_id}/notes",
         )
         return data.get("data", [])
 
@@ -574,7 +572,8 @@ class Intercom(BaseConnector):
             job_title=data.get("job_title"),
             has_inbox_seat=data.get("has_inbox_seat", False),
             avatar=data.get("avatar", {}).get("image_url")
-            if isinstance(data.get("avatar"), dict) else None,
+            if isinstance(data.get("avatar"), dict)
+            else None,
         )
 
     # ------------------------------------------------------------------
@@ -605,7 +604,9 @@ class Intercom(BaseConnector):
             body["email"] = email
 
         data = await self._request(
-            "PUT", f"/contacts/{contact_id}", json=body,
+            "PUT",
+            f"/contacts/{contact_id}",
+            json=body,
         )
         return self._parse_contact(data)
 

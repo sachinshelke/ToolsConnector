@@ -397,10 +397,7 @@ class Pinecone(BaseConnector):
 
         data = await self._data_request("GET", "/vectors/list", params=params)
 
-        vectors = [
-            PineconeVectorListItem(id=v.get("id", ""))
-            for v in data.get("vectors", [])
-        ]
+        vectors = [PineconeVectorListItem(id=v.get("id", "")) for v in data.get("vectors", [])]
 
         pagination = data.get("pagination")
         next_token = pagination.get("next") if pagination else None
@@ -535,7 +532,9 @@ class Pinecone(BaseConnector):
             spec["pod_type"] = pod_type
         payload: dict[str, Any] = {"spec": {"pod": spec}}
         data = await self._control_request(
-            "PATCH", f"/indexes/{name}", json=payload,
+            "PATCH",
+            f"/indexes/{name}",
+            json=payload,
         )
         return PineconeIndex(
             name=data.get("name", ""),

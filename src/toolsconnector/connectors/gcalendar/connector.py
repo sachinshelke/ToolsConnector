@@ -481,16 +481,20 @@ class GoogleCalendar(BaseConnector):
             "items": [{"id": cid} for cid in calendar_ids],
         }
         data = await self._request(
-            "POST", "/freeBusy", json=body,
+            "POST",
+            "/freeBusy",
+            json=body,
         )
         calendars_data = data.get("calendars", {})
         results: list[FreeBusyCalendar] = []
         for cal_id, cal_info in calendars_data.items():
-            results.append(FreeBusyCalendar(
-                calendar_id=cal_id,
-                busy=cal_info.get("busy", []),
-                errors=cal_info.get("errors", []),
-            ))
+            results.append(
+                FreeBusyCalendar(
+                    calendar_id=cal_id,
+                    busy=cal_info.get("busy", []),
+                    errors=cal_info.get("errors", []),
+                )
+            )
         return results
 
     @action("List instances of a recurring event")
@@ -626,7 +630,9 @@ class GoogleCalendar(BaseConnector):
             body["timeZone"] = current["timeZone"]
 
         data = await self._request(
-            "PUT", f"/calendars/{calendar_id}", json=body,
+            "PUT",
+            f"/calendars/{calendar_id}",
+            json=body,
         )
         return Calendar(
             id=data.get("id", ""),
@@ -696,7 +702,8 @@ class GoogleCalendar(BaseConnector):
             calendar_id: The ID of the calendar to unsubscribe from.
         """
         await self._request(
-            "DELETE", f"/users/me/calendarList/{calendar_id}",
+            "DELETE",
+            f"/users/me/calendarList/{calendar_id}",
         )
 
     # ------------------------------------------------------------------
@@ -717,7 +724,8 @@ class GoogleCalendar(BaseConnector):
             List of CalendarACL rule entries.
         """
         data = await self._request(
-            "GET", f"/calendars/{calendar_id}/acl",
+            "GET",
+            f"/calendars/{calendar_id}/acl",
         )
         rules: list[CalendarACL] = []
         for item in data.get("items", []):

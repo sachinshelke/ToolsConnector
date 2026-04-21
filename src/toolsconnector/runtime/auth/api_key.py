@@ -70,9 +70,7 @@ class APIKeyProvider:
             headers: Mutable HTTP headers dict.
             params: Mutable query-parameter dict.
         """
-        value = (
-            f"{self._prefix} {self._api_key}" if self._prefix else self._api_key
-        )
+        value = f"{self._prefix} {self._api_key}" if self._prefix else self._api_key
 
         if self._location == "header":
             headers[self._param_name] = value

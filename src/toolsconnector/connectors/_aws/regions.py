@@ -7,14 +7,15 @@ URL patterns (e.g. S3's ``s3.{region}.amazonaws.com``).
 
 from __future__ import annotations
 
-
 # Services that use a single global endpoint (``us-east-1``).
-GLOBAL_SERVICES: frozenset[str] = frozenset({
-    "iam",
-    "route53",
-    "cloudfront",
-    "sts",
-})
+GLOBAL_SERVICES: frozenset[str] = frozenset(
+    {
+        "iam",
+        "route53",
+        "cloudfront",
+        "sts",
+    }
+)
 
 # Services whose endpoint pattern differs from the default
 # ``{service}.{region}.amazonaws.com``.

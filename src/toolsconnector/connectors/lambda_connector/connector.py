@@ -20,15 +20,14 @@ from typing import Any, Optional, Union
 
 import httpx
 
+from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.errors import APIError, NotFoundError
-
-from toolsconnector.connectors._aws.signing import sign_v4
 
 from .types import (
     LambdaAlias,
@@ -49,9 +48,7 @@ def _parse_function(data: dict[str, Any]) -> LambdaFunction:
     env_vars = env.get("Variables", {}) if isinstance(env, dict) else {}
 
     layers_raw = data.get("Layers", [])
-    layer_arns = [
-        layer.get("Arn", "") for layer in layers_raw if isinstance(layer, dict)
-    ]
+    layer_arns = [layer.get("Arn", "") for layer in layers_raw if isinstance(layer, dict)]
 
     return LambdaFunction(
         function_name=data.get("FunctionName", ""),
@@ -201,7 +198,10 @@ class Lambda(BaseConnector):
         )
 
         resp = await self._client.request(
-            method, url, content=body_bytes, headers=headers,
+            method,
+            url,
+            content=body_bytes,
+            headers=headers,
         )
 
         if resp.status_code >= 400:
@@ -294,7 +294,9 @@ class Lambda(BaseConnector):
             payload["Architectures"] = architectures
 
         resp = await self._lambda_request(
-            "POST", f"/{_API_VERSION}/functions", body=payload,
+            "POST",
+            f"/{_API_VERSION}/functions",
+            body=payload,
         )
         return _parse_function(resp.json())
 
@@ -309,7 +311,8 @@ class Lambda(BaseConnector):
             LambdaFunction with the function details.
         """
         resp = await self._lambda_request(
-            "GET", f"/{_API_VERSION}/functions/{function_name}",
+            "GET",
+            f"/{_API_VERSION}/functions/{function_name}",
         )
         data = resp.json()
         # GET function returns {"Configuration": {...}, "Code": {...}, ...}
@@ -327,7 +330,8 @@ class Lambda(BaseConnector):
             List of LambdaFunction objects.
         """
         resp = await self._lambda_request(
-            "GET", f"/{_API_VERSION}/functions?MaxItems={max_items}",
+            "GET",
+            f"/{_API_VERSION}/functions?MaxItems={max_items}",
         )
         data = resp.json()
         functions = data.get("Functions", [])
@@ -434,13 +438,15 @@ class Lambda(BaseConnector):
             Empty dict on success.
         """
         await self._lambda_request(
-            "DELETE", f"/{_API_VERSION}/functions/{function_name}",
+            "DELETE",
+            f"/{_API_VERSION}/functions/{function_name}",
         )
         return {}
 
     @action("Get function configuration")
     async def get_function_configuration(
-        self, function_name: str,
+        self,
+        function_name: str,
     ) -> LambdaFunction:
         """Get the configuration of a Lambda function.
 
@@ -511,7 +517,10 @@ class Lambda(BaseConnector):
         )
 
         resp = await self._client.request(
-            "POST", url, content=body_bytes, headers=headers,
+            "POST",
+            url,
+            content=body_bytes,
+            headers=headers,
         )
 
         if resp.status_code >= 400:
@@ -575,7 +584,8 @@ class Lambda(BaseConnector):
 
     @action("List function versions")
     async def list_versions_by_function(
-        self, function_name: str,
+        self,
+        function_name: str,
     ) -> list[LambdaFunctionVersion]:
         """List all published versions of a Lambda function.
 
@@ -653,7 +663,8 @@ class Lambda(BaseConnector):
 
     @action("List function aliases")
     async def list_aliases(
-        self, function_name: str,
+        self,
+        function_name: str,
     ) -> list[LambdaAlias]:
         """List all aliases for a Lambda function.
 

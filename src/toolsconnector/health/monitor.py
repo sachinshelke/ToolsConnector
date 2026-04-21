@@ -121,8 +121,5 @@ def generate_health_report_markdown(report: Any) -> str:
         error = r.error or "-"
         if len(error) > 50:
             error = error[:47] + "..."
-        lines.append(
-            f"| {r.connector_name} | {status} | {latency} | "
-            f"{r.actions_count} | {error} |"
-        )
+        lines.append(f"| {r.connector_name} | {status} | {latency} | {r.actions_count} | {error} |")
     return "\n".join(lines)

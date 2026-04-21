@@ -460,7 +460,9 @@ class Confluence(BaseConnector):
 
     @action("Add a comment to a page", dangerous=True)
     async def add_comment(
-        self, page_id: str, body: str,
+        self,
+        page_id: str,
+        body: str,
     ) -> ConfluenceComment:
         """Add a comment to a Confluence page.
 
@@ -479,16 +481,22 @@ class Confluence(BaseConnector):
             },
         }
         data = await self._request(
-            "POST", "/footer-comments", json_body=payload,
+            "POST",
+            "/footer-comments",
+            json_body=payload,
         )
         body_raw = data.get("body", {})
         body_val = body_raw.get("storage", {}).get("value") if body_raw else None
         ver_raw = data.get("version")
-        version = ConfluenceVersion(
-            number=ver_raw.get("number", 1),
-            message=ver_raw.get("message"),
-            created_at=ver_raw.get("createdAt"),
-        ) if ver_raw else None
+        version = (
+            ConfluenceVersion(
+                number=ver_raw.get("number", 1),
+                message=ver_raw.get("message"),
+                created_at=ver_raw.get("createdAt"),
+            )
+            if ver_raw
+            else None
+        )
 
         return ConfluenceComment(
             id=data.get("id", ""),
@@ -500,7 +508,8 @@ class Confluence(BaseConnector):
 
     @action("List comments on a page")
     async def list_comments(
-        self, page_id: str,
+        self,
+        page_id: str,
     ) -> list[ConfluenceComment]:
         """List all footer comments on a Confluence page.
 
@@ -511,26 +520,33 @@ class Confluence(BaseConnector):
             List of ConfluenceComment objects.
         """
         data = await self._request(
-            "GET", f"/pages/{page_id}/footer-comments",
+            "GET",
+            f"/pages/{page_id}/footer-comments",
         )
         comments: list[ConfluenceComment] = []
         for c in data.get("results", []):
             body_raw = c.get("body", {})
             body_val = body_raw.get("storage", {}).get("value") if body_raw else None
             ver_raw = c.get("version")
-            version = ConfluenceVersion(
-                number=ver_raw.get("number", 1),
-                message=ver_raw.get("message"),
-                created_at=ver_raw.get("createdAt"),
-            ) if ver_raw else None
+            version = (
+                ConfluenceVersion(
+                    number=ver_raw.get("number", 1),
+                    message=ver_raw.get("message"),
+                    created_at=ver_raw.get("createdAt"),
+                )
+                if ver_raw
+                else None
+            )
 
-            comments.append(ConfluenceComment(
-                id=c.get("id", ""),
-                body_storage=body_val,
-                created_at=c.get("createdAt"),
-                author_id=c.get("authorId"),
-                version=version,
-            ))
+            comments.append(
+                ConfluenceComment(
+                    id=c.get("id", ""),
+                    body_storage=body_val,
+                    created_at=c.get("createdAt"),
+                    author_id=c.get("authorId"),
+                    version=version,
+                )
+            )
         return comments
 
     # ------------------------------------------------------------------
@@ -539,7 +555,8 @@ class Confluence(BaseConnector):
 
     @action("Get version history for a page")
     async def get_page_history(
-        self, page_id: str,
+        self,
+        page_id: str,
     ) -> list[ConfluenceVersion]:
         """Get the version history of a Confluence page.
 
@@ -550,7 +567,8 @@ class Confluence(BaseConnector):
             List of ConfluenceVersion objects representing each version.
         """
         data = await self._request(
-            "GET", f"/pages/{page_id}/versions",
+            "GET",
+            f"/pages/{page_id}/versions",
         )
         return [
             ConfluenceVersion(
@@ -563,7 +581,9 @@ class Confluence(BaseConnector):
 
     @action("Move a page to a new parent")
     async def move_page(
-        self, page_id: str, target_id: str,
+        self,
+        page_id: str,
+        target_id: str,
     ) -> ConfluencePage:
         """Move a page to become a child of another page.
 
@@ -579,7 +599,9 @@ class Confluence(BaseConnector):
             "targetId": target_id,
         }
         data = await self._request(
-            "PUT", f"/pages/{page_id}/move", json_body=payload,
+            "PUT",
+            f"/pages/{page_id}/move",
+            json_body=payload,
         )
         return _parse_page(data)
 
@@ -611,11 +633,14 @@ class Confluence(BaseConnector):
             "limit": 1,
         }
         data = await self._request(
-            "GET", f"/spaces/{space_id}/pages", params=params,
+            "GET",
+            f"/spaces/{space_id}/pages",
+            params=params,
         )
         results = data.get("results", [])
         if not results:
             from toolsconnector.errors import NotFoundError
+
             raise NotFoundError(
                 f"Page titled '{title}' not found in space {space_id}",
                 connector="confluence",
@@ -645,7 +670,9 @@ class Confluence(BaseConnector):
             params["cursor"] = cursor
 
         data = await self._request(
-            "GET", f"/pages/{page_id}/children", params=params,
+            "GET",
+            f"/pages/{page_id}/children",
+            params=params,
         )
 
         pages = [_parse_page(p) for p in data.get("results", [])]
@@ -677,7 +704,8 @@ class Confluence(BaseConnector):
             immediate parent to root.
         """
         data = await self._request(
-            "GET", f"/pages/{page_id}/ancestors",
+            "GET",
+            f"/pages/{page_id}/ancestors",
         )
         return [_parse_page(a) for a in data.get("results", [])]
 
@@ -699,7 +727,8 @@ class Confluence(BaseConnector):
             List of ConfluenceLabel objects.
         """
         data = await self._request(
-            "GET", f"/pages/{page_id}/labels",
+            "GET",
+            f"/pages/{page_id}/labels",
         )
         return [
             ConfluenceLabel(
@@ -729,7 +758,9 @@ class Confluence(BaseConnector):
             "name": name,
         }
         data = await self._request(
-            "POST", f"/pages/{page_id}/labels", json_body=payload,
+            "POST",
+            f"/pages/{page_id}/labels",
+            json_body=payload,
         )
         # v2 API may return the label directly or within a results array
         lbl = data if "name" in data else data.get("results", [{}])[0]
@@ -764,7 +795,9 @@ class Confluence(BaseConnector):
             params["cursor"] = cursor
 
         data = await self._request(
-            "GET", f"/spaces/{space_id}/pages", params=params,
+            "GET",
+            f"/spaces/{space_id}/pages",
+            params=params,
         )
 
         pages = [_parse_page(p) for p in data.get("results", [])]
@@ -802,7 +835,9 @@ class Confluence(BaseConnector):
     # ------------------------------------------------------------------
 
     @action("List blog posts")
-    async def list_blog_posts(self, space_id: Optional[str] = None, limit: int = 25) -> list[dict[str, Any]]:
+    async def list_blog_posts(
+        self, space_id: Optional[str] = None, limit: int = 25
+    ) -> list[dict[str, Any]]:
         """List blog posts, optionally filtered by space.
 
         Args:
@@ -842,10 +877,16 @@ class Confluence(BaseConnector):
         Returns:
             Created blog post dict.
         """
-        return await self._request("POST", "/blogposts", json_body={
-            "spaceId": space_id, "title": title, "status": "current",
-            "body": {"representation": "storage", "value": body},
-        })
+        return await self._request(
+            "POST",
+            "/blogposts",
+            json_body={
+                "spaceId": space_id,
+                "title": title,
+                "status": "current",
+                "body": {"representation": "storage", "value": body},
+            },
+        )
 
     # ------------------------------------------------------------------
     # Actions — Content Properties
@@ -876,7 +917,9 @@ class Confluence(BaseConnector):
         Returns:
             Created/updated property dict.
         """
-        return await self._request("POST", f"/pages/{page_id}/properties", json_body={"key": key, "value": value})
+        return await self._request(
+            "POST", f"/pages/{page_id}/properties", json_body={"key": key, "value": value}
+        )
 
     @action("Remove a label from a page", dangerous=True)
     async def remove_page_label(self, page_id: str, label_id: str) -> None:

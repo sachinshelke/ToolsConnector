@@ -268,7 +268,9 @@ class GoogleDrive(BaseConnector):
             f"\r\n--{boundary}--".encode(),
         ]
 
-        content = body_parts[0] if isinstance(body_parts[0], bytes) else body_parts[0].encode("utf-8")
+        content = (
+            body_parts[0] if isinstance(body_parts[0], bytes) else body_parts[0].encode("utf-8")
+        )
         content += body_parts[1] + body_parts[2]
 
         headers = self._get_headers()
@@ -478,7 +480,9 @@ class GoogleDrive(BaseConnector):
 
     @action("Move a file to a different folder")
     async def move_file(
-        self, file_id: str, new_parent_id: str,
+        self,
+        file_id: str,
+        new_parent_id: str,
     ) -> DriveFile:
         """Move a file to a different folder.
 
@@ -491,13 +495,15 @@ class GoogleDrive(BaseConnector):
         """
         # Get current parents to remove
         current = await self._request(
-            "GET", f"/files/{file_id}",
+            "GET",
+            f"/files/{file_id}",
             params={"fields": "parents"},
         )
         previous_parents = ",".join(current.get("parents", []))
 
         data = await self._request(
-            "PATCH", f"/files/{file_id}",
+            "PATCH",
+            f"/files/{file_id}",
             params={
                 "addParents": new_parent_id,
                 "removeParents": previous_parents,
@@ -525,7 +531,8 @@ class GoogleDrive(BaseConnector):
         if name is not None:
             body["name"] = name
         data = await self._request(
-            "POST", f"/files/{file_id}/copy",
+            "POST",
+            f"/files/{file_id}/copy",
             json=body or None,
             params={"fields": _FILE_FIELDS},
         )
@@ -533,7 +540,8 @@ class GoogleDrive(BaseConnector):
 
     @action("List permissions on a file")
     async def list_permissions(
-        self, file_id: str,
+        self,
+        file_id: str,
     ) -> list[FilePermission]:
         """List all permissions on a file.
 
@@ -544,7 +552,8 @@ class GoogleDrive(BaseConnector):
             List of FilePermission objects.
         """
         data = await self._request(
-            "GET", f"/files/{file_id}/permissions",
+            "GET",
+            f"/files/{file_id}/permissions",
             params={"fields": "permissions(id,type,role,emailAddress,displayName,domain)"},
         )
         return [
@@ -567,7 +576,8 @@ class GoogleDrive(BaseConnector):
             StorageQuota with usage and limit information.
         """
         data = await self._request(
-            "GET", "/about",
+            "GET",
+            "/about",
             params={"fields": "storageQuota"},
         )
         quota = data.get("storageQuota", {})

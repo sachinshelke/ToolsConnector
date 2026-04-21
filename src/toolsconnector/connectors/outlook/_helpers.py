@@ -82,13 +82,16 @@ def parse_contact(data: dict[str, Any]) -> OutlookContact:
         Populated OutlookContact instance.
     """
     email_addresses = [
-        {"address": e.get("address"), "name": e.get("name")}
-        for e in data.get("emailAddresses", [])
+        {"address": e.get("address"), "name": e.get("name")} for e in data.get("emailAddresses", [])
     ]
-    phone_numbers = [
-        {"number": p.get("number"), "type": p.get("type")}
-        for p in (data.get("phones") or data.get("businessPhones", []))
-    ] if data.get("phones") or data.get("businessPhones") else []
+    phone_numbers = (
+        [
+            {"number": p.get("number"), "type": p.get("type")}
+            for p in (data.get("phones") or data.get("businessPhones", []))
+        ]
+        if data.get("phones") or data.get("businessPhones")
+        else []
+    )
 
     return OutlookContact(
         id=data.get("id", ""),

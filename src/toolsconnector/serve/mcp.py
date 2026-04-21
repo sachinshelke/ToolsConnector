@@ -9,7 +9,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from toolsconnector.serve.toolkit import ToolKit
@@ -41,7 +41,7 @@ def _json_type_to_python(param_schema: dict[str, Any], required: bool) -> Any:
 
 
 def _make_tool_handler(
-    toolkit: "ToolKit",
+    toolkit: ToolKit,
     tool_name: str,
     input_schema: dict[str, Any],
 ) -> Any:
@@ -156,6 +156,5 @@ def create_and_run_mcp_server(
         server.run(transport="streamable-http", port=port)
     else:
         raise ValueError(
-            f"Unknown transport '{transport}'. "
-            f"Supported: 'stdio', 'sse', 'streamable-http'"
+            f"Unknown transport '{transport}'. Supported: 'stdio', 'sse', 'streamable-http'"
         )

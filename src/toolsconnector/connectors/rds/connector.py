@@ -25,15 +25,14 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.errors import APIError, NotFoundError
-
-from toolsconnector.connectors._aws.signing import sign_v4
 
 from .types import (
     RDSCluster,
@@ -151,10 +150,7 @@ class RDS(BaseConnector):
     category = ConnectorCategory.DATABASE
     protocol = ProtocolType.REST
     base_url = "https://rds.us-east-1.amazonaws.com"
-    description = (
-        "Create and manage relational databases -- PostgreSQL, MySQL, "
-        "Aurora, and more."
-    )
+    description = "Create and manage relational databases -- PostgreSQL, MySQL, Aurora, and more."
     _rate_limit_config = RateLimitSpec(rate=25, period=1, burst=50)
 
     # ------------------------------------------------------------------
@@ -329,10 +325,12 @@ class RDS(BaseConnector):
         vsg_list = item.find(f"{{{_NS}}}VpcSecurityGroups")
         if vsg_list is not None:
             for vsg in _findall(vsg_list, "VpcSecurityGroupMembership"):
-                vsgs.append({
-                    "VpcSecurityGroupId": _find(vsg, "VpcSecurityGroupId"),
-                    "Status": _find(vsg, "Status"),
-                })
+                vsgs.append(
+                    {
+                        "VpcSecurityGroupId": _find(vsg, "VpcSecurityGroupId"),
+                        "Status": _find(vsg, "Status"),
+                    }
+                )
 
         # Endpoint
         endpoint_el = item.find(f"{{{_NS}}}Endpoint")
@@ -416,13 +414,13 @@ class RDS(BaseConnector):
         members_el = item.find(f"{{{_NS}}}DBClusterMembers")
         if members_el is not None:
             for m in _findall(members_el, "DBClusterMember"):
-                members.append({
-                    "DBInstanceIdentifier": _find(m, "DBInstanceIdentifier"),
-                    "IsClusterWriter": _find(m, "IsClusterWriter").lower() == "true",
-                    "DBClusterParameterGroupStatus": _find(
-                        m, "DBClusterParameterGroupStatus"
-                    ),
-                })
+                members.append(
+                    {
+                        "DBInstanceIdentifier": _find(m, "DBInstanceIdentifier"),
+                        "IsClusterWriter": _find(m, "IsClusterWriter").lower() == "true",
+                        "DBClusterParameterGroupStatus": _find(m, "DBClusterParameterGroupStatus"),
+                    }
+                )
 
         port_text = _find(item, "Port")
         port = int(port_text) if port_text else 0
@@ -546,11 +544,7 @@ class RDS(BaseConnector):
         if db_name:
             params["DBName"] = db_name
         if vpc_security_group_ids:
-            params.update(
-                self._encode_members(
-                    "VpcSecurityGroupIds", vpc_security_group_ids
-                )
-            )
+            params.update(self._encode_members("VpcSecurityGroupIds", vpc_security_group_ids))
         if db_subnet_group_name:
             params["DBSubnetGroupName"] = db_subnet_group_name
 
@@ -588,10 +582,7 @@ class RDS(BaseConnector):
         instances_el = result.find(f"{{{_NS}}}DBInstances")
         if instances_el is None:
             return []
-        return [
-            self._parse_instance(el)
-            for el in _findall(instances_el, "DBInstance")
-        ]
+        return [self._parse_instance(el) for el in _findall(instances_el, "DBInstance")]
 
     @action("Delete a database instance", dangerous=True)
     async def delete_db_instance(
@@ -820,10 +811,7 @@ class RDS(BaseConnector):
         snaps_el = result.find(f"{{{_NS}}}DBSnapshots")
         if snaps_el is None:
             return []
-        return [
-            self._parse_snapshot(el)
-            for el in _findall(snaps_el, "DBSnapshot")
-        ]
+        return [self._parse_snapshot(el) for el in _findall(snaps_el, "DBSnapshot")]
 
     @action("Delete a database snapshot", dangerous=True)
     async def delete_db_snapshot(
@@ -878,9 +866,7 @@ class RDS(BaseConnector):
         if db_instance_class:
             params["DBInstanceClass"] = db_instance_class
 
-        root = await self._rds_request(
-            "RestoreDBInstanceFromDBSnapshot", params
-        )
+        root = await self._rds_request("RestoreDBInstanceFromDBSnapshot", params)
         result = _get_result(root, "RestoreDBInstanceFromDBSnapshot")
         db_el = result.find(f"{{{_NS}}}DBInstance")
         if db_el is None:
@@ -918,10 +904,7 @@ class RDS(BaseConnector):
         clusters_el = result.find(f"{{{_NS}}}DBClusters")
         if clusters_el is None:
             return []
-        return [
-            self._parse_cluster(el)
-            for el in _findall(clusters_el, "DBCluster")
-        ]
+        return [self._parse_cluster(el) for el in _findall(clusters_el, "DBCluster")]
 
     @action("Create an Aurora database cluster", dangerous=True)
     async def create_db_cluster(
@@ -1057,10 +1040,7 @@ class RDS(BaseConnector):
         groups_el = result.find(f"{{{_NS}}}DBSubnetGroups")
         if groups_el is None:
             return []
-        return [
-            self._parse_subnet_group(el)
-            for el in _findall(groups_el, "DBSubnetGroup")
-        ]
+        return [self._parse_subnet_group(el) for el in _findall(groups_el, "DBSubnetGroup")]
 
     # ==================================================================
     # Actions -- Info
@@ -1091,15 +1071,15 @@ class RDS(BaseConnector):
 
         versions: list[dict[str, Any]] = []
         for el in _findall(versions_el, "DBEngineVersion"):
-            versions.append({
-                "Engine": _find(el, "Engine"),
-                "EngineVersion": _find(el, "EngineVersion"),
-                "DBParameterGroupFamily": _find(el, "DBParameterGroupFamily"),
-                "DBEngineDescription": _find(el, "DBEngineDescription"),
-                "DBEngineVersionDescription": _find(
-                    el, "DBEngineVersionDescription"
-                ),
-            })
+            versions.append(
+                {
+                    "Engine": _find(el, "Engine"),
+                    "EngineVersion": _find(el, "EngineVersion"),
+                    "DBParameterGroupFamily": _find(el, "DBParameterGroupFamily"),
+                    "DBEngineDescription": _find(el, "DBEngineDescription"),
+                    "DBEngineVersionDescription": _find(el, "DBEngineVersionDescription"),
+                }
+            )
         return versions
 
     @action("Describe orderable DB instance options")
@@ -1119,9 +1099,7 @@ class RDS(BaseConnector):
             "Engine": engine,
         }
 
-        root = await self._rds_request(
-            "DescribeOrderableDBInstanceOptions", params
-        )
+        root = await self._rds_request("DescribeOrderableDBInstanceOptions", params)
         result = _get_result(root, "DescribeOrderableDBInstanceOptions")
         options_el = result.find(f"{{{_NS}}}OrderableDBInstanceOptions")
         if options_el is None:
@@ -1129,19 +1107,21 @@ class RDS(BaseConnector):
 
         options: list[dict[str, Any]] = []
         for el in _findall(options_el, "OrderableDBInstanceOption"):
-            options.append({
-                "DBInstanceClass": _find(el, "DBInstanceClass"),
-                "Engine": _find(el, "Engine"),
-                "EngineVersion": _find(el, "EngineVersion"),
-                "StorageType": _find(el, "StorageType"),
-                "MultiAZCapable": _find(el, "MultiAZCapable"),
-                "AvailabilityZones": [
-                    _find(az, "Name")
-                    for az_list in [el.find(f"{{{_NS}}}AvailabilityZones")]
-                    if az_list is not None
-                    for az in _findall(az_list, "AvailabilityZone")
-                ],
-            })
+            options.append(
+                {
+                    "DBInstanceClass": _find(el, "DBInstanceClass"),
+                    "Engine": _find(el, "Engine"),
+                    "EngineVersion": _find(el, "EngineVersion"),
+                    "StorageType": _find(el, "StorageType"),
+                    "MultiAZCapable": _find(el, "MultiAZCapable"),
+                    "AvailabilityZones": [
+                        _find(az, "Name")
+                        for az_list in [el.find(f"{{{_NS}}}AvailabilityZones")]
+                        if az_list is not None
+                        for az in _findall(az_list, "AvailabilityZone")
+                    ],
+                }
+            )
         return options
 
     @action("Describe database events")
@@ -1175,10 +1155,7 @@ class RDS(BaseConnector):
         events_el = result.find(f"{{{_NS}}}Events")
         if events_el is None:
             return []
-        return [
-            self._parse_event(el)
-            for el in _findall(events_el, "Event")
-        ]
+        return [self._parse_event(el) for el in _findall(events_el, "Event")]
 
     # ==================================================================
     # Actions -- Replicas
@@ -1209,9 +1186,7 @@ class RDS(BaseConnector):
         if db_instance_class:
             params["DBInstanceClass"] = db_instance_class
 
-        root = await self._rds_request(
-            "CreateDBInstanceReadReplica", params
-        )
+        root = await self._rds_request("CreateDBInstanceReadReplica", params)
         result = _get_result(root, "CreateDBInstanceReadReplica")
         db_el = result.find(f"{{{_NS}}}DBInstance")
         if db_el is None:
@@ -1359,10 +1334,12 @@ class RDS(BaseConnector):
 
         groups: list[dict[str, Any]] = []
         for el in _findall(groups_el, "DBParameterGroup"):
-            groups.append({
-                "DBParameterGroupName": _find(el, "DBParameterGroupName"),
-                "DBParameterGroupFamily": _find(el, "DBParameterGroupFamily"),
-                "Description": _find(el, "Description"),
-                "DBParameterGroupArn": _find(el, "DBParameterGroupArn"),
-            })
+            groups.append(
+                {
+                    "DBParameterGroupName": _find(el, "DBParameterGroupName"),
+                    "DBParameterGroupFamily": _find(el, "DBParameterGroupFamily"),
+                    "Description": _find(el, "Description"),
+                    "DBParameterGroupArn": _find(el, "DBParameterGroupArn"),
+                }
+            )
         return groups
