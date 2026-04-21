@@ -36,7 +36,6 @@ from .types import (
     JiraProject,
     JiraResolution,
     JiraSprint,
-    JiraStatus,
     JiraTransition,
     JiraUser,
     JiraWorklog,

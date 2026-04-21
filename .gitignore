@@ -45,3 +45,5 @@ service-account.json
 # Distribution
 *.whl
 *.tar.gz
+.cursor/
+.windsurf/

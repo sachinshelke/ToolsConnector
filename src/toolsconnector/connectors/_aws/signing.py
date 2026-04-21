@@ -47,7 +47,7 @@ def get_signing_key(
         Derived signing key bytes.
     """
     k_date = hmac_sha256(
-        f"AWS4{secret_access_key}".encode("utf-8"), date_stamp,
+        f"AWS4{secret_access_key}".encode(), date_stamp,
     )
     k_region = hmac_sha256(k_date, region)
     k_service = hmac_sha256(k_region, service)

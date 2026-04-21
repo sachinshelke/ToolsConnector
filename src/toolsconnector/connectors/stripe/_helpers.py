@@ -5,7 +5,8 @@ Extracted to keep connector.py focused on action definitions.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Coroutine, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar
+from collections.abc import Coroutine
 
 from toolsconnector.types import PageState, PaginatedList
 

@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional, Sequence
+from typing import Optional
+from collections.abc import Sequence
 
 from toolsconnector.errors import AuthError, RefreshFailedError
 from toolsconnector.keystore.base import KeyStore

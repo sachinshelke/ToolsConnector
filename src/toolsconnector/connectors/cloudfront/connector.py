@@ -430,7 +430,7 @@ class CloudFront(BaseConnector):
             f"<MinTTL>0</MinTTL>"
             f"</DefaultCacheBehavior>"
             f"</DistributionConfig>"
-        ).encode("utf-8")
+        ).encode()
 
         resp = await self._cf_request(
             "POST",
@@ -511,7 +511,7 @@ class CloudFront(BaseConnector):
             f"</Paths>"
             f"<CallerReference>{caller_ref}</CallerReference>"
             f"</InvalidationBatch>"
-        ).encode("utf-8")
+        ).encode()
 
         resp = await self._cf_request(
             "POST",
@@ -689,35 +689,50 @@ def _replace_xml_value(xml_text: str, tag: str, new_value: str) -> str:
     XML round-tripping (which can alter namespace prefixes and element
     ordering).
 
+    The function tries each opening-tag form in order:
+
+    1. ``<{tag}>``                         (bare element)
+    2. ``<{tag} ``                         (element with attributes)
+    3. ``<{{namespace}}{tag}>``            (namespace-qualified, bare)
+    4. ``<{{namespace}}{tag} ``            (namespace-qualified, attributes)
+
+    The first form that matches wins.
+
     Args:
         xml_text: Raw XML string.
         tag: Element tag name to find.
         new_value: New text content for the element.
 
     Returns:
-        Updated XML string.
+        Updated XML string. Returns ``xml_text`` unchanged if no matching
+        element was found.
     """
-    # Match both namespaced and bare tags.
-    for pattern_start in (f"<{tag}>", f"<{tag} "):
-        start_idx = xml_text.find(f"<{tag}>")
-        if start_idx == -1:
-            # Try namespace-qualified version.
-            ns_tag = f"{{{_CF_NS}}}{tag}"
-            start_idx = xml_text.find(f"<{ns_tag}>")
-            if start_idx != -1:
-                tag = ns_tag
+    ns_tag = f"{{{_CF_NS}}}{tag}"
+    candidates = (
+        (tag, f"<{tag}>"),
+        (tag, f"<{tag} "),
+        (ns_tag, f"<{ns_tag}>"),
+        (ns_tag, f"<{ns_tag} "),
+    )
 
-        if start_idx != -1:
-            open_tag = f"<{tag}>"
-            close_tag = f"</{tag}>"
-            content_start = start_idx + len(open_tag)
-            end_idx = xml_text.find(close_tag, content_start)
-            if end_idx != -1:
-                return (
-                    xml_text[:content_start]
-                    + new_value
-                    + xml_text[end_idx:]
-                )
+    for actual_tag, open_pattern in candidates:
+        start_idx = xml_text.find(open_pattern)
+        if start_idx == -1:
+            continue
+        # Find the closing `>` of the opening tag (it is start_idx + len(...)
+        # for the bare form, but for the attribute form we must skip past
+        # any attributes to the next unquoted `>`).
+        if open_pattern.endswith(" "):
+            content_start = xml_text.find(">", start_idx)
+            if content_start == -1:
+                continue
+            content_start += 1
+        else:
+            content_start = start_idx + len(open_pattern)
+        close_tag = f"</{actual_tag}>"
+        end_idx = xml_text.find(close_tag, content_start)
+        if end_idx != -1:
+            return xml_text[:content_start] + new_value + xml_text[end_idx:]
     return xml_text
 
 

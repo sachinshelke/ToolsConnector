@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import datetime
 import hashlib
-import json
 import logging
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -227,7 +226,7 @@ class S3(BaseConnector):
                 f'<CreateBucketConfiguration xmlns="{_S3_NS}">'
                 f"<LocationConstraint>{target_region}</LocationConstraint>"
                 f"</CreateBucketConfiguration>"
-            ).encode("utf-8")
+            ).encode()
 
         await self._s3_request(
             "PUT", "/", host=self._bucket_host(bucket), body=body,
@@ -844,7 +843,7 @@ class S3(BaseConnector):
             f'<VersioningConfiguration xmlns="{_S3_NS}">'
             f"<Status>{status}</Status>"
             f"</VersioningConfiguration>"
-        ).encode("utf-8")
+        ).encode()
 
         await self._s3_request(
             "PUT", "/", host=self._bucket_host(bucket),

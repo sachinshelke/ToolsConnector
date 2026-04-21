@@ -487,7 +487,7 @@ class Vercel(BaseConnector):
             The new VercelDeployment.
         """
         resp = await self._request(
-            "POST", f"/v13/deployments",
+            "POST", "/v13/deployments",
             json={"deploymentId": deployment_id},
         )
         return _parse_deployment(resp.json())

@@ -432,27 +432,23 @@ class MongoDB(BaseConnector):
         Returns:
             Dict with the command result from MongoDB.
         """
-        body = self._base_body(collection, database)
-        body["pipeline"] = [
-            {"$currentOp": {"allUsers": False}},
-        ]
-        # The Atlas Data API doesn't have a direct createIndex endpoint;
-        # use runCommand via aggregation workaround
-        cmd_body: dict[str, Any] = {
-            "dataSource": body.get("dataSource", ""),
-            "database": database,
+        # The Atlas Data API does not have a direct createIndex endpoint.
+        # Best-effort: ping the aggregate endpoint so the request is logged
+        # against the connection, then return a stable acknowledgement
+        # shape. Real index creation must go through the Atlas Admin API.
+        await self._request(
+            "/action/aggregate",
+            {
+                **self._base_body(collection, database),
+                "pipeline": [],
+            },
+        )
+        return {
+            "keys": keys,
             "collection": collection,
-            "filter": {},
-            "update": {},
+            "database": database,
+            "status": "requested",
         }
-        # Direct approach: use the admin endpoint if available
-        resp = await self._request("/action/aggregate", {
-            **self._base_body(collection, database),
-            "pipeline": [],
-        })
-        # For Atlas Data API, index creation may need to be done via Atlas Admin API
-        # Return a best-effort result
-        return {"keys": keys, "collection": collection, "database": database, "status": "requested"}
 
     @action("Drop a collection from a database", dangerous=True)
     async def drop_collection(
@@ -585,29 +581,9 @@ class MongoDB(BaseConnector):
         Returns:
             List of database name strings.
         """
-        # The Atlas Data API does not have a native listDatabases action;
-        # use an aggregate with $listLocalSessions on admin as workaround
-        # is not available either.  Best-effort: use $currentOp or a
-        # known endpoint.
-        body: dict[str, Any] = {
-            "dataSource": "Cluster0",
-            "database": "admin",
-            "collection": "system.version",
-            "pipeline": [
-                {"$limit": 1},
-                {
-                    "$lookup": {
-                        "from": "system.version",
-                        "pipeline": [
-                            {"$listLocalSessions": {}},
-                            {"$limit": 1},
-                        ],
-                        "as": "_ignored",
-                    },
-                },
-            ],
-        }
-        # Fallback: try the dedicated endpoint if available
+        # The Atlas Data API does not have a native listDatabases action.
+        # Try the dedicated endpoint if available (some Atlas plans expose
+        # it); fall back to an empty list on 4xx.
         try:
             resp = await self._client.post("/action/listDatabases", json={
                 "dataSource": "Cluster0",

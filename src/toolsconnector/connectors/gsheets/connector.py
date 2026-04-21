@@ -12,7 +12,6 @@ import httpx
 
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
-from toolsconnector.types import PaginatedList
 
 from .types import (
     AppendResult,

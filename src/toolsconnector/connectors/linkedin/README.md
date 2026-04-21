@@ -91,31 +91,33 @@ except AuthError as e:
     print(f"Auth failed: {e.suggestion}")
 ```
 
-## What works without LinkedIn approval
+## What actually works for standard BYOK tokens ✅
 
-Every developer can call these immediately after enabling **Sign In with LinkedIn using OpenID Connect** + **Share on LinkedIn** on a [LinkedIn Developer App](https://www.linkedin.com/developers/apps). Required scopes: `openid profile email w_member_social`.
+Three actions are **live-verified** against the real LinkedIn API (2026-04). Any developer can enable these by creating a [LinkedIn Developer App](https://www.linkedin.com/developers/apps) and adding the two self-serve products listed below — no partnership approval needed.
 
-| Action | Endpoint | Scope |
+| Action | Endpoint | Scope | Status |
+|---|---|---|---|
+| `get_profile` | `GET /v2/userinfo` | `openid profile email` (Sign in with LinkedIn using OpenID Connect) | ✅ **Live verified** |
+| `create_post` | `POST /rest/posts` | `w_member_social` (Share on LinkedIn) | ✅ **Live verified** |
+| `delete_post` | `DELETE /rest/posts/{urn}` | `w_member_social` (Share on LinkedIn) | ✅ **Live verified** |
+
+## What requires LinkedIn Partner Program approval ⚠️
+
+LinkedIn's public docs say these need only `w_member_social` or `r_member_social`, but **live testing reveals they are actually gated behind the LinkedIn Partner Program** — requests with standard self-serve tokens return HTTP 403 with error codes like `partnerApiReactions.CREATE.20260401` or `partnerApiSocialActions.CREATE.20260401`. This connector exposes the endpoints regardless so approved partners can use them; standard tokens hit `PermissionDeniedError` with a clear hint pointing at the Partner Program.
+
+| Action | Endpoint | LinkedIn's 403 error code |
 |---|---|---|
-| `get_profile` | `GET /v2/userinfo` | `openid profile email` |
-| `create_post` | `POST /rest/posts` | `w_member_social` |
-| `delete_post` | `DELETE /rest/posts/{urn}` | `w_member_social` |
-| `create_comment` | `POST /rest/socialActions/{urn}/comments` | `w_member_social` |
-| `react_to_post` | `POST /rest/reactions?actor={urn}` | `w_member_social` |
+| `create_comment` | `POST /rest/socialActions/{urn}/comments` | `partnerApiSocialActions.CREATE` |
+| `react_to_post` | `POST /rest/reactions?actor={urn}` | `partnerApiReactions.CREATE` |
+| `list_comments` | `GET /rest/socialActions/{urn}/comments` | `partnerApiSocialActions.READ` (needs restricted `r_member_social`) |
+| `get_post` | `GET /rest/posts/{urn}` | `r_member_social` (restricted) |
+| `list_my_posts` | `GET /rest/posts?q=author&author={urn}` | `r_member_social` (restricted) |
 
-## Restricted (LinkedIn-approved developers only)
-
-LinkedIn gates the `r_member_social` scope behind a manual approval process. Standard apps will get HTTP 403 `ACCESS_DENIED` (mapped here to `PermissionDeniedError`) when calling these:
-
-| Action | Endpoint | Scope |
-|---|---|---|
-| `get_post` | `GET /rest/posts/{urn}` | `r_member_social` (RESTRICTED) |
-| `list_my_posts` | `GET /rest/posts?q=author&author={urn}` | `r_member_social` (RESTRICTED) |
-| `list_comments` | `GET /rest/socialActions/{urn}/comments` | `r_member_social` (RESTRICTED) |
+To get LinkedIn Partner Program access: https://www.linkedin.com/business/partner-programs/marketing
 
 ## Not supported (Partner Program required)
 
-These cannot be exposed under standard BYOK access — they require a contractual partnership with LinkedIn, not just OAuth scopes:
+These cannot be exposed under standard BYOK access at all — no endpoints are included in the connector:
 
 | Capability | Why it's not implemented |
 |---|---|

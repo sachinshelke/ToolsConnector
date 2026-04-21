@@ -19,7 +19,6 @@ from toolsconnector.spec.connector import (
     ProtocolType,
     RateLimitSpec,
 )
-from toolsconnector.types import PaginatedList, PageState
 
 from .types import (
     TelegramChat,
@@ -27,7 +26,6 @@ from .types import (
     TelegramMessage,
     TelegramUpdate,
     TelegramUser,
-    TelegramWebhookInfo,
 )
 
 logger = logging.getLogger("toolsconnector.telegram")

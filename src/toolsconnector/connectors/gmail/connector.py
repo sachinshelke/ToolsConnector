@@ -30,7 +30,6 @@ from .types import (
     Draft,
     DraftId,
     Email,
-    EmailAddress,
     HistoryRecord,
     Label,
     LabelColor,

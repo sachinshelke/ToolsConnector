@@ -32,7 +32,6 @@ from .types import (
     PineconeStats,
     PineconeUpsertResult,
     PineconeVector,
-    PineconeVectorList,
     PineconeVectorListItem,
 )
 

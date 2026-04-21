@@ -263,9 +263,9 @@ class GoogleDrive(BaseConnector):
             f"{json_mod.dumps(metadata)}\r\n"
             f"--{boundary}\r\n"
             f"Content-Type: {mime_type}\r\n"
-            f"Content-Transfer-Encoding: base64\r\n\r\n".encode("utf-8"),
+            f"Content-Transfer-Encoding: base64\r\n\r\n".encode(),
             file_bytes,
-            f"\r\n--{boundary}--".encode("utf-8"),
+            f"\r\n--{boundary}--".encode(),
         ]
 
         content = body_parts[0] if isinstance(body_parts[0], bytes) else body_parts[0].encode("utf-8")

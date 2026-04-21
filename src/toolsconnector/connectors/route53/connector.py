@@ -381,7 +381,7 @@ class Route53(BaseConnector):
             f"<CallerReference>{_xml_escape(caller_reference)}</CallerReference>"
             f"{comment_xml}"
             f"</CreateHostedZoneRequest>"
-        ).encode("utf-8")
+        ).encode()
 
         resp = await self._r53_request(
             "POST",
@@ -591,7 +591,7 @@ class Route53(BaseConnector):
             f"</Changes>"
             f"</ChangeBatch>"
             f"</ChangeResourceRecordSetsRequest>"
-        ).encode("utf-8")
+        ).encode()
 
         resp = await self._r53_request(
             "POST",
@@ -652,7 +652,7 @@ class Route53(BaseConnector):
             f"<FailureThreshold>{failure_threshold}</FailureThreshold>"
             f"</HealthCheckConfig>"
             f"</CreateHealthCheckRequest>"
-        ).encode("utf-8")
+        ).encode()
 
         resp = await self._r53_request(
             "POST",
@@ -855,7 +855,7 @@ class Route53(BaseConnector):
             f'<ChangeTagsForResourceRequest xmlns="{_R53_NS}">'
             f"{add_xml}{remove_xml}"
             f"</ChangeTagsForResourceRequest>"
-        ).encode("utf-8")
+        ).encode()
 
         await self._r53_request(
             "POST",

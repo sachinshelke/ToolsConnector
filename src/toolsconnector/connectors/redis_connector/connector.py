@@ -21,7 +21,7 @@ from toolsconnector.spec.connector import (
     RateLimitSpec,
 )
 
-from .types import RedisKeyInfo, RedisResult
+from .types import RedisResult
 
 logger = logging.getLogger("toolsconnector.redis")
 

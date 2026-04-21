@@ -19,6 +19,7 @@ How to get the token:
     developer portal.
 """
 
+import json
 import os
 
 from toolsconnector.serve import ToolKit
@@ -29,13 +30,28 @@ if not TOKEN:
 
 kit = ToolKit(connectors=["linkedin"], credentials={"linkedin": TOKEN})
 
+
+def call(tool_name: str, args: dict) -> dict:
+    """Call a tool and return its result as a dict.
+
+    ``ToolKit.execute()`` returns the JSON-serialised string the MCP/HTTP
+    transport would emit on the wire. For Python-native callers we want
+    the parsed dict back, so we ``json.loads()`` it. Returns an empty
+    dict for tools whose result is None / empty (e.g. delete actions).
+    """
+    raw = kit.execute(tool_name, args)
+    if not raw:
+        return {}
+    return json.loads(raw)
+
+
 # 1. Identity — get the URN we need to post as.
-profile = kit.execute("linkedin_get_profile", {})
+profile = call("linkedin_get_profile", {})
 author_urn = f"urn:li:person:{profile['sub']}"
 print(f"Authenticated as: {profile['name']} ({author_urn})")
 
 # 2. Publish a test post (CONNECTIONS visibility — only your network sees it).
-post = kit.execute("linkedin_create_post", {
+post = call("linkedin_create_post", {
     "author": author_urn,
     "commentary": "Test post from ToolsConnector — please ignore.",
     "visibility": "CONNECTIONS",
@@ -45,7 +61,7 @@ print(f"Posted: {post_urn}")
 print(f"View:   https://www.linkedin.com/feed/update/{post_urn}/")
 
 # 3. Add a LIKE reaction.
-kit.execute("linkedin_react_to_post", {
+call("linkedin_react_to_post", {
     "post_urn": post_urn,
     "actor": author_urn,
     "reaction_type": "LIKE",
@@ -53,5 +69,5 @@ kit.execute("linkedin_react_to_post", {
 print("Reacted: LIKE")
 
 # 4. Clean up — delete the test post.
-kit.execute("linkedin_delete_post", {"urn": post_urn})
+call("linkedin_delete_post", {"urn": post_urn})
 print(f"Deleted: {post_urn}")

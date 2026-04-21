@@ -37,7 +37,7 @@ import time
 import uuid
 from typing import Any, Optional
 
-from toolsconnector.serve._discovery import resolve_connectors, get_connector_class
+from toolsconnector.serve._discovery import resolve_connectors
 from toolsconnector.serve._credentials import resolve_credentials
 from toolsconnector.serve._filtering import build_tool_list, ToolEntry
 from toolsconnector.serve._validation import validate_arguments

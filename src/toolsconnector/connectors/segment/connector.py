@@ -28,7 +28,6 @@ from toolsconnector.types import PageState, PaginatedList
 
 from .types import (
     SegmentDestination,
-    SegmentEvent,
     SegmentSource,
     SegmentTrackResult,
 )
@@ -100,7 +99,7 @@ class Segment(BaseConnector):
             Dict with Authorization header and content type.
         """
         encoded = base64.b64encode(
-            f"{self._write_key}:".encode("utf-8")
+            f"{self._write_key}:".encode()
         ).decode("ascii")
         return {
             "Authorization": f"Basic {encoded}",
