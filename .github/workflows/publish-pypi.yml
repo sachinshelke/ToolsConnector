@@ -1,0 +1,110 @@
+name: Publish to PyPI
+
+# Triggers on version tag push (e.g. `git push origin v0.3.0`), or manually
+# from the Actions tab. Tag push is the canonical release signal so the
+# repo's tag history always equals the PyPI release history.
+on:
+  push:
+    tags:
+      - 'v*'         # v0.3.0, v0.3.1, v1.0.0, etc.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'If true, build + twine-check but DO NOT upload to PyPI or create a Release'
+        type: boolean
+        required: false
+        default: false
+
+# Only one release can be in flight at a time.
+concurrency:
+  group: publish-pypi
+  cancel-in-progress: false   # never cancel an in-flight PyPI upload
+
+permissions:
+  # We need contents:write to create a GitHub Release.
+  contents: write
+
+jobs:
+  publish:
+    name: Build + Publish + Release
+    runs-on: ubuntu-latest
+    # Optional: gate behind a GitHub Environment for manual approval before
+    # PyPI upload. Remove the next line if you want fully-automatic publish.
+    # environment: pypi
+
+    steps:
+      # ── 1. Checkout at the tag ────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so the release notes have context
+
+      # ── 2. Python setup ───────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install build + twine
+        run: pip install --upgrade build twine
+
+      # ── 3. Verify tag matches pyproject.toml version ──────────────────
+      # Prevents accidentally publishing v0.3.0 when pyproject says 0.2.1.
+      - name: Check version alignment
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          TAG_VERSION="${TAG#v}"
+          PROJECT_VERSION=$(grep -E '^version' pyproject.toml | head -1 | sed -E 's/version = "(.+)"/\1/')
+          echo "Tag: ${TAG} -> ${TAG_VERSION}"
+          echo "pyproject.toml: ${PROJECT_VERSION}"
+          if [ "${TAG_VERSION}" != "${PROJECT_VERSION}" ]; then
+            echo "::error::Tag ${TAG} does not match pyproject.toml version ${PROJECT_VERSION}"
+            exit 1
+          fi
+
+      # ── 4. Build + verify artifacts ───────────────────────────────────
+      - name: Clean previous builds
+        run: rm -rf dist/ build/ *.egg-info
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: Check artifacts with twine
+        run: twine check dist/*
+
+      - name: Summarize artifacts
+        run: |
+          echo "## Build artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          ls -lh dist/ | tail -n +2 | awk '{print "- `" $NF "` (" $5 ")"}' >> $GITHUB_STEP_SUMMARY
+
+      # ── 5. Dry-run short-circuit ──────────────────────────────────────
+      - name: Dry run — stop before upload
+        if: inputs.dry_run == true
+        run: |
+          echo "::notice::Dry run enabled. Skipping PyPI upload and GitHub Release."
+          exit 0
+
+      # ── 6. Upload to PyPI ─────────────────────────────────────────────
+      # Uses the classic token flow. For fully tokenless trusted-publishing,
+      # enable PyPI's OIDC setting on the project page and replace this step
+      # with `pypa/gh-action-pypi-publish@release/v1` without env vars.
+      - name: Upload to PyPI
+        if: inputs.dry_run != true
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload --non-interactive dist/*
+
+      # ── 7. Create GitHub Release with auto-generated notes + artifacts ─
+      - name: Create GitHub Release
+        if: inputs.dry_run != true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: dist/*
+          draft: false
+          prerelease: false

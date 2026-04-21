@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/site-ui]
   pull_request:
-    branches: [main]
+    branches: [main, feature/site-ui]
+  workflow_dispatch:
 
 permissions:
   contents: read

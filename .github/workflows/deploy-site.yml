@@ -4,14 +4,14 @@ name: Build & Deploy Site
 # Also runnable manually from the Actions tab.
 on:
   push:
-    branches: [main]
+    # Default branch — change if you rename away from feature/site-ui.
+    branches: [feature/site-ui, main]
     paths:
-      - 'site/index.html'
-      - 'site/logo.svg'
+      - 'site/**'
       - 'webapp/tool_metadata.py'
       - 'scripts/build_site.py'
       - 'docs/**'
-      - 'src/toolsconnector/connectors/**/README.md'
+      - 'src/toolsconnector/connectors/**'
   workflow_dispatch:
 
 # Only one deploy at a time — cancel any in-flight run when a newer
