@@ -13,11 +13,24 @@ name: Release Please
 # When you merge the release PR:
 #   1. pyproject.toml version is bumped automatically.
 #   2. CHANGELOG.md is updated with a new section.
-#   3. Git tag (e.g. v0.4.0) is created.
-#   4. The tag push fires `publish-pypi.yml` → uploads to PyPI + creates
-#      a GitHub Release with the same notes.
+#   3. Git tag (e.g. v0.4.0) + GitHub Release are created.
+#   4. THIS workflow then dispatches `publish-pypi.yml` via the
+#      `repository_dispatch` event (see below for why).
 #
 # You never manually bump pyproject.toml or write CHANGELOG entries.
+#
+# ─── Why repository_dispatch and not `on: release: published`? ──────────
+# GitHub's default GITHUB_TOKEN deliberately does NOT trigger downstream
+# workflows when it creates tags, releases, or push events — a security
+# measure to prevent recursive runs. The ONLY two events that ARE allowed
+# to chain from a GITHUB_TOKEN-initiated action are `workflow_dispatch`
+# and `repository_dispatch`. So Release Please creating a GitHub Release
+# silently fails to trigger publish-pypi.yml via `on: release: published`.
+#
+# We fix this by explicitly dispatching a `release-created` event from
+# this workflow after release-please reports `release_created == true`.
+# publish-pypi.yml listens for that event type and publishes the tagged
+# version to PyPI via OIDC Trusted Publishing.
 
 on:
   push:
@@ -25,7 +38,7 @@ on:
   workflow_dispatch:   # allow manual re-runs (e.g. after tag hygiene fixes)
 
 permissions:
-  contents: write       # create tags + commits on the release PR
+  contents: write       # create tags + commits on the release PR, dispatch events
   pull-requests: write  # open / update the release PR
 
 jobs:
@@ -33,7 +46,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           config-file: .release-please-config.json
           manifest-file: .release-please-manifest.json
           target-branch: ${{ github.ref_name }}
+
+      # Chain publish-pypi.yml via repository_dispatch.
+      # Fires ONLY when release-please created an actual release (i.e. the
+      # maintainer merged the release PR). Skipped on the typical run where
+      # release-please just updates the open release PR.
+      - name: Dispatch publish-pypi for new release
+        if: steps.release.outputs.release_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          echo "Release created: ${TAG} (version ${VERSION})"
+          echo "Dispatching publish-pypi.yml via repository_dispatch..."
+          gh api -X POST repos/${{ github.repository }}/dispatches \
+            -f event_type=release-created \
+            -F "client_payload[tag]=${TAG}" \
+            -F "client_payload[version]=${VERSION}"
+          echo "Dispatched. publish-pypi.yml should start within a few seconds."

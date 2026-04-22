@@ -1,25 +1,33 @@
 name: Publish to PyPI
 
-# Triggers:
+# Triggers (in order of preference for auto-runs):
 #
-#   (1) A GitHub Release is *published* — this is the canonical signal.
-#       Release Please publishes the Release automatically when its
-#       chore(release): X.Y.Z PR is merged, so this fires end-to-end
-#       without manual intervention. The `release: published` event
-#       (unlike `push: tags`) DOES fire downstream workflows even when
-#       the Release is created by GitHub Actions / a bot.
+#   (1) repository_dispatch { type: release-created } — fired by
+#       release-please.yml after the Release Please PR merges and a
+#       new tag + GitHub Release are created. This is the canonical
+#       auto-publish path.
 #
-#   (2) Tag push to v* — kept as a backup path for manual `git tag` +
-#       `git push origin vX.Y.Z` workflows. Note: tags pushed by the
-#       default GITHUB_TOKEN do NOT fire this trigger (GitHub security
-#       limitation), so don't rely on this path for bot automation.
+#       Why not `on: release: published`? GITHUB_TOKEN cannot chain
+#       workflows via push/release events (security measure against
+#       recursion). repository_dispatch IS one of the two events that
+#       GITHUB_TOKEN is allowed to fire, so release-please.yml uses it
+#       to hand off to this workflow explicitly.
 #
-#   (3) workflow_dispatch — manual escape hatch from the Actions tab,
+#   (2) release:published — still useful for Releases created manually
+#       via the GitHub UI or by a third-party tool. Will NOT fire for
+#       Release Please bot-created releases (see above).
+#
+#   (3) push:tags v* — manual `git tag vX.Y.Z && git push --tags`.
+#       Won't fire when the tag is pushed by GITHUB_TOKEN.
+#
+#   (4) workflow_dispatch — manual escape hatch from the Actions tab,
 #       e.g. to re-run a failed publish or do a dry-run build.
 #
 # Tag history always equals PyPI release history (Release Please is the
 # single source of truth for both).
 on:
+  repository_dispatch:
+    types: [release-created]
   release:
     types: [published]
   push:
@@ -75,16 +83,22 @@ jobs:
 
     steps:
       # ── 0. Resolve the tag/ref this run targets ───────────────────────
-      # For `release` events: github.event.release.tag_name
-      # For `push tags`:      github.ref_name
-      # For workflow_dispatch: github.ref_name (whatever ref was selected)
+      # For repository_dispatch: github.event.client_payload.tag  (chained from release-please)
+      # For release events:      github.event.release.tag_name
+      # For push:tags:           github.ref_name
+      # For workflow_dispatch:   github.ref_name (whatever ref was selected)
       - name: Resolve target tag
         id: target
         run: |
-          if [ -n "${{ github.event.release.tag_name }}" ]; then
+          if [ -n "${{ github.event.client_payload.tag }}" ]; then
+            TAG="${{ github.event.client_payload.tag }}"
+            echo "Source: repository_dispatch from release-please"
+          elif [ -n "${{ github.event.release.tag_name }}" ]; then
             TAG="${{ github.event.release.tag_name }}"
+            echo "Source: release event"
           else
             TAG="${{ github.ref_name }}"
+            echo "Source: push/workflow_dispatch ref"
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Resolved tag: ${TAG}"
