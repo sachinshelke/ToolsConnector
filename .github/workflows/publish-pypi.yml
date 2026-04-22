@@ -1,12 +1,30 @@
 name: Publish to PyPI
 
-# Triggers on version tag push (e.g. `git push origin v0.3.0`), or manually
-# from the Actions tab. Tag push is the canonical release signal so the
-# repo's tag history always equals the PyPI release history.
+# Triggers:
+#
+#   (1) A GitHub Release is *published* — this is the canonical signal.
+#       Release Please publishes the Release automatically when its
+#       chore(release): X.Y.Z PR is merged, so this fires end-to-end
+#       without manual intervention. The `release: published` event
+#       (unlike `push: tags`) DOES fire downstream workflows even when
+#       the Release is created by GitHub Actions / a bot.
+#
+#   (2) Tag push to v* — kept as a backup path for manual `git tag` +
+#       `git push origin vX.Y.Z` workflows. Note: tags pushed by the
+#       default GITHUB_TOKEN do NOT fire this trigger (GitHub security
+#       limitation), so don't rely on this path for bot automation.
+#
+#   (3) workflow_dispatch — manual escape hatch from the Actions tab,
+#       e.g. to re-run a failed publish or do a dry-run build.
+#
+# Tag history always equals PyPI release history (Release Please is the
+# single source of truth for both).
 on:
+  release:
+    types: [published]
   push:
     tags:
-      - 'v*'         # v0.3.0, v0.3.1, v1.0.0, etc.
+      - 'v*'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -33,10 +51,26 @@ jobs:
     # environment: pypi
 
     steps:
-      # ── 1. Checkout at the tag ────────────────────────────────────────
+      # ── 0. Resolve the tag/ref this run targets ───────────────────────
+      # For `release` events: github.event.release.tag_name
+      # For `push tags`:      github.ref_name
+      # For workflow_dispatch: github.ref_name (whatever ref was selected)
+      - name: Resolve target tag
+        id: target
+        run: |
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag: ${TAG}"
+
+      # ── 1. Checkout at the resolved tag ───────────────────────────────
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ steps.target.outputs.tag }}
           fetch-depth: 0   # full history so the release notes have context
 
       # ── 2. Python setup ───────────────────────────────────────────────
@@ -53,7 +87,7 @@ jobs:
       # Prevents accidentally publishing v0.3.0 when pyproject says 0.2.1.
       - name: Check version alignment
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${{ steps.target.outputs.tag }}"
           TAG_VERSION="${TAG#v}"
           PROJECT_VERSION=$(grep -E '^version' pyproject.toml | head -1 | sed -E 's/version = "(.+)"/\1/')
           echo "Tag: ${TAG} -> ${TAG_VERSION}"
@@ -97,14 +131,22 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: twine upload --non-interactive dist/*
 
-      # ── 7. Create GitHub Release with auto-generated notes + artifacts ─
-      - name: Create GitHub Release
+      # ── 7. Attach build artifacts to the GitHub Release ───────────────
+      # When fired by `release: published`, the Release already exists
+      # (created by Release Please) — this step uploads the wheel + sdist
+      # to it without recreating the Release entry or notes.
+      # When fired by `push: tags` or workflow_dispatch, no Release exists
+      # yet, so this step ALSO creates it with auto-generated notes.
+      - name: Upload artifacts to GitHub Release
         if: inputs.dry_run != true
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          generate_release_notes: true
+          tag_name: ${{ steps.target.outputs.tag }}
+          # Only set name + auto-generate notes for tag/manual triggers;
+          # skip on `release: published` so we don't overwrite the notes
+          # Release Please already wrote.
+          name: ${{ github.event_name == 'release' && '' || steps.target.outputs.tag }}
+          generate_release_notes: ${{ github.event_name != 'release' }}
           files: dist/*
           draft: false
           prerelease: false
