@@ -1095,7 +1095,7 @@ Each SDK must:
 ### 6.1 Security Policy
 
 **SECURITY.md** (created at project init):
-- Vulnerability disclosure: security@toolsconnector.dev
+- Vulnerability disclosure: sachin.worldnet@gmail.com (prefer GitHub Private Vulnerability Reporting — see SECURITY.md)
 - Response SLA: acknowledge within 48h, patch within 14 days for critical
 - CVE process: request CVE for any auth/credential vulnerability
 - Security audit: annual third-party audit once funded
