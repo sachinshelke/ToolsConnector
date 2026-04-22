@@ -37,8 +37,13 @@ repos:
         args: [--fix=lf]
 
   # ── Ruff (lint + format) — mirrors the CI lint job ────────────────────
+  # Pinned to match the ruff version shipped with pip install -e ".[dev]".
+  # Dependabot tracks ruff-pre-commit; when it opens a PR bumping this rev,
+  # also update the ruff version floor in pyproject.toml's dev extras so
+  # pre-commit and CI stay aligned and rule selectors don't drift out from
+  # under the config (e.g. UP045, which was added in ruff 0.8.x).
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.15.11
     hooks:
       - id: ruff
         args: [--fix]
