@@ -90,24 +90,55 @@ jobs:
           TAG="${{ steps.target.outputs.tag }}"
           TAG_VERSION="${TAG#v}"
           PROJECT_VERSION=$(grep -E '^version' pyproject.toml | head -1 | sed -E 's/version = "(.+)"/\1/')
+          echo "tag_version=${TAG_VERSION}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${TAG} -> ${TAG_VERSION}"
           echo "pyproject.toml: ${PROJECT_VERSION}"
           if [ "${TAG_VERSION}" != "${PROJECT_VERSION}" ]; then
             echo "::error::Tag ${TAG} does not match pyproject.toml version ${PROJECT_VERSION}"
             exit 1
           fi
+        id: version
+
+      # ── 3b. Short-circuit if version is already on PyPI ───────────────
+      # Prevents spurious re-publish attempts when a tag ref is force-updated
+      # (e.g. after a history rewrite) — the ref update fires `push: tags`,
+      # but the payload bytes haven't changed from the user's perspective.
+      # PyPI treats re-uploading an identical file as idempotent; this check
+      # makes the behavior explicit and lets us skip the GitHub Release
+      # update too (which would fail if the Release was created with a
+      # now-stale target_commitish).
+      - name: Check if version already on PyPI
+        id: pypi_check
+        run: |
+          TAG_VERSION="${{ steps.version.outputs.tag_version }}"
+          HTTP_CODE=$(curl -sI -o /dev/null -w "%{http_code}" \
+            "https://pypi.org/pypi/toolsconnector/${TAG_VERSION}/json")
+          if [ "${HTTP_CODE}" = "200" ]; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::toolsconnector ${TAG_VERSION} is already on PyPI. Skipping publish + Release update."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+            echo "toolsconnector ${TAG_VERSION} not on PyPI yet (HTTP ${HTTP_CODE}) — proceeding."
+          fi
 
       # ── 4. Build + verify artifacts ───────────────────────────────────
+      # Build even if already published so the GitHub Release can still
+      # attach artifacts (backfill case). If both PyPI and the Release
+      # are up-to-date, the later steps become no-ops.
       - name: Clean previous builds
+        if: steps.pypi_check.outputs.already_published != 'true'
         run: rm -rf dist/ build/ *.egg-info
 
       - name: Build sdist + wheel
+        if: steps.pypi_check.outputs.already_published != 'true'
         run: python -m build
 
       - name: Check artifacts with twine
+        if: steps.pypi_check.outputs.already_published != 'true'
         run: twine check dist/*
 
       - name: Summarize artifacts
+        if: steps.pypi_check.outputs.already_published != 'true'
         run: |
           echo "## Build artifacts" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -124,12 +155,14 @@ jobs:
       # Uses the classic token flow. For fully tokenless trusted-publishing,
       # enable PyPI's OIDC setting on the project page and replace this step
       # with `pypa/gh-action-pypi-publish@release/v1` without env vars.
+      # --skip-existing makes the upload idempotent even if PyPI's HEAD
+      # check raced with another run.
       - name: Upload to PyPI
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.pypi_check.outputs.already_published != 'true'
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload --non-interactive dist/*
+        run: twine upload --non-interactive --skip-existing dist/*
 
       # ── 7. Attach build artifacts to the GitHub Release ───────────────
       # When fired by `release: published`, the Release already exists
@@ -137,8 +170,10 @@ jobs:
       # to it without recreating the Release entry or notes.
       # When fired by `push: tags` or workflow_dispatch, no Release exists
       # yet, so this step ALSO creates it with auto-generated notes.
+      # Skipped entirely when the version is already on PyPI (nothing new
+      # to attach — the prior release run already handled artifact upload).
       - name: Upload artifacts to GitHub Release
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.pypi_check.outputs.already_published != 'true'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.target.outputs.tag }}
