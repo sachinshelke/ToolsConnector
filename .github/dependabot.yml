@@ -1,0 +1,61 @@
+# Dependabot configuration.
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Two ecosystems we care about:
+#   1. pip      — runtime + dev dependencies declared in pyproject.toml
+#   2. github-actions — pinned action versions in .github/workflows/*
+#
+# Security updates are ALWAYS opened immediately when GitHub Security
+# Advisories publish a CVE for a pinned dependency. The schedules below
+# control the cadence for *non-security* version bumps.
+
+version: 2
+updates:
+
+  # ── Python runtime + dev deps (pyproject.toml) ─────────────────────────
+  - package-ecosystem: pip
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels: [dependencies, python]
+    commit-message:
+      prefix: chore(deps)
+      prefix-development: chore(deps-dev)
+      include: scope
+    # Group minor + patch bumps for noisy dev tools so we don't get
+    # flooded with one-line PRs every Monday.
+    groups:
+      dev-tools:
+        patterns:
+          - 'ruff*'
+          - 'mypy*'
+          - 'pytest*'
+          - 'respx*'
+          - 'vcrpy*'
+          - 'bandit*'
+          - 'pip-audit*'
+        update-types: [minor, patch]
+      core-runtime:
+        patterns:
+          - 'pydantic*'
+          - 'httpx*'
+          - 'docstring-parser*'
+        update-types: [patch]   # patch only for runtime — minor needs review
+
+  # ── GitHub Actions versions ────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: ci(deps)
+      include: scope
