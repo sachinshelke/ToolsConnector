@@ -42,12 +42,22 @@ repos:
   # also update the ruff version floor in pyproject.toml's dev extras so
   # pre-commit and CI stay aligned and rule selectors don't drift out from
   # under the config (e.g. UP045, which was added in ruff 0.8.x).
+  #
+  # Scoped to `src/` to match CI (`.github/workflows/ci.yml` runs
+  # `ruff check src/` + `ruff format --check src/`). Other directories
+  # (scripts/, tests/, webapp/, .agents/) have their own conventions that
+  # conflict with ruff defaults (E402 for sys.path shims, N806 for uppercase
+  # locals, etc.) and may carry real issues that should be fixed in a
+  # dedicated cleanup PR — not a blind blanket reformat on every commit.
+  # Expand `files:` below when you're ready to widen the enforcement zone.
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.11
     hooks:
       - id: ruff
         args: [--fix]
+        files: ^src/
       - id: ruff-format
+        files: ^src/
 
   # ── Basic credential-pattern guard ────────────────────────────────────
   # Mirrors the grep patterns in ci.yml's security job so leaks get caught
