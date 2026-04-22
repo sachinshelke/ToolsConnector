@@ -1,0 +1,31 @@
+# EditorConfig — cross-editor consistency for file formatting.
+# Docs: https://editorconfig.org
+
+root = true
+
+# Baseline for every file in the repo.
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Python — matches ruff's target line length.
+[*.py]
+indent_size = 4
+max_line_length = 100
+
+# Web / markup / data formats (2-space convention).
+[*.{yml,yaml,json,toml,md,html,css,js,ts,tsx}]
+indent_size = 2
+
+# Makefiles require hard tabs.
+[{Makefile,*.mk}]
+indent_style = tab
+
+# Don't reformat vendored or generated content.
+[site/data.json]
+insert_final_newline = false
+trim_trailing_whitespace = false

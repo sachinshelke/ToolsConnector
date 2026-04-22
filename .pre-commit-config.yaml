@@ -1,0 +1,56 @@
+# Pre-commit hooks — catch issues BEFORE they reach CI.
+#
+# Install (one-time per clone):
+#   pip install pre-commit  # or: pip install -e ".[dev]"
+#   pre-commit install
+#
+# Run against the whole tree on demand:
+#   pre-commit run --all-files
+#
+# The hooks mirror the gates in .github/workflows/ci.yml — ruff check +
+# ruff format — plus lightweight file hygiene (whitespace, EOF, large
+# files, merge-conflict markers, private-key patterns).
+#
+# CI remains the authoritative gate. Pre-commit is a dev-side convenience
+# so you don't discover formatting issues only after pushing.
+
+default_language_version:
+  python: python3.11
+
+repos:
+  # ── File hygiene ──────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]   # allow custom tags in GHA workflows
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # ── Ruff (lint + format) — mirrors the CI lint job ────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # ── Basic credential-pattern guard ────────────────────────────────────
+  # Mirrors the grep patterns in ci.yml's security job so leaks get caught
+  # at the `git commit` step, not after push.
+  - repo: local
+    hooks:
+      - id: no-real-credentials
+        name: Check for credential patterns
+        entry: bash -c 'LEAKS=$(grep -rEn -e "ghp_[A-Za-z0-9]{30,}" -e "xoxb-[0-9]{8,}-[0-9]{8,}-[A-Za-z0-9]{20,}" -e "AKIA[A-Z0-9]{16}([^A-Za-z0-9]|$)" -e "sk-ant-api03-[A-Za-z0-9_-]{80,}" -e "sk_live_[A-Za-z0-9]{20,}" "$@" 2>/dev/null | grep -viE "xxxx|\.\.\.|redacted|<redacted>|example|placeholder|your[_-]?(token|key)"); if [ -n "$LEAKS" ]; then echo "Credential-like pattern detected:"; echo "$LEAKS"; exit 1; fi' --
+        language: system
+        types: [python]

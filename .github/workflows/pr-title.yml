@@ -1,0 +1,64 @@
+name: PR Title Lint
+
+# Conventional-Commits check on the pull-request title.
+#
+# The repo relies on Conventional Commits to drive Release Please's
+# versioning and CHANGELOG generation. A PR whose title doesn't match the
+# grammar will silently break the automation (the PR's squash-merged
+# commit subject becomes the commit message on `main`, so a free-form
+# title like "fix stuff" lands verbatim on `main` and Release Please
+# can't classify it).
+#
+# This job blocks merge until the title is a valid Conventional Commit
+# line — `<type>(<optional-scope>): <description>`, with `!` allowed
+# after type/scope to mark breaking changes.
+#
+# No effect on individual commits within the PR — only the title,
+# because that's what squash-merge uses.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint:
+    name: Conventional Commit title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Types accepted — must mirror `.release-please-config.json`
+          # changelog-sections so every valid PR type is releasable.
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            ci
+            build
+            chore
+            style
+            security
+          # Allow any scope (connector names, subsystem names), but flag
+          # uppercase so we keep to e.g. `feat(slack):` not `feat(Slack):`.
+          requireScope: false
+          disallowScopes: |
+            [A-Z]+
+          # Require subject starts lowercase ("add" not "Add") to match
+          # the existing commit-log style.
+          subjectPattern: ^[a-z].+[^.]$
+          subjectPatternError: |
+            PR title subject (text after the `:`) must start lowercase
+            and not end with a period. Got: "{subject}".
+
+            Examples:
+              feat(slack): add scheduled message support
+              fix(linkedin): correct EMPTY_ACCESS_TOKEN handling
+              ci: enforce conventional-commit PR titles

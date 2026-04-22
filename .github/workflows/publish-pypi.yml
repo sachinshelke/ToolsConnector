@@ -41,6 +41,15 @@ concurrency:
 permissions:
   # We need contents:write to create a GitHub Release.
   contents: write
+  # id-token:write enables PyPI Trusted Publishing (OIDC) — no long-lived
+  # PYPI_API_TOKEN secret required. See:
+  # https://docs.pypi.org/trusted-publishers/
+  id-token: write
+  # attestations:write enables SLSA build provenance — `actions/attest-build-provenance`
+  # signs the wheel + sdist via Sigstore so users can verify "this artifact
+  # came from this commit via this workflow." See:
+  # https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds
+  attestations: write
 
 jobs:
   publish:
@@ -85,6 +94,8 @@ jobs:
 
       - name: Install build + twine
         run: pip install --upgrade build twine
+        # twine is still installed for `twine check` — the actual upload
+        # step uses pypa/gh-action-pypi-publish with OIDC.
 
       # ── 3. Verify tag matches pyproject.toml version ──────────────────
       # Prevents accidentally publishing v0.3.0 when pyproject says 0.2.1.
@@ -154,18 +165,37 @@ jobs:
           echo "::notice::Dry run enabled. Skipping PyPI upload and GitHub Release."
           exit 0
 
-      # ── 6. Upload to PyPI ─────────────────────────────────────────────
-      # Uses the classic token flow. For fully tokenless trusted-publishing,
-      # enable PyPI's OIDC setting on the project page and replace this step
-      # with `pypa/gh-action-pypi-publish@release/v1` without env vars.
-      # --skip-existing makes the upload idempotent even if PyPI's HEAD
-      # check raced with another run.
-      - name: Upload to PyPI
+      # ── 6a. Generate SLSA build provenance (Sigstore) ─────────────────
+      # Signs the wheel + sdist with a short-lived Sigstore cert derived
+      # from GitHub's OIDC token. The resulting attestation is stored on
+      # the GitHub Attestations API and can be verified with:
+      #   gh attestation verify dist/toolsconnector-X.Y.Z-py3-none-any.whl \
+      #       --repo sachinshelke/ToolsConnector
+      - name: Attest build provenance
         if: inputs.dry_run != true && steps.pypi_check.outputs.already_published != 'true'
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload --non-interactive --skip-existing dist/*
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'dist/*'
+
+      # ── 6b. Upload to PyPI via Trusted Publishing (OIDC) ──────────────
+      # No PYPI_API_TOKEN secret. GitHub's OIDC token is exchanged at PyPI's
+      # token-minting endpoint for a short-lived upload token scoped to this
+      # project + this workflow + this environment. Requires PyPI-side
+      # configuration (one-time):
+      #
+      #   https://pypi.org/manage/project/toolsconnector/settings/publishing/
+      #
+      # Owner: sachinshelke, Repo: ToolsConnector,
+      # Workflow filename: publish-pypi.yml, Environment: pypi
+      - name: Upload to PyPI (Trusted Publishing)
+        if: inputs.dry_run != true && steps.pypi_check.outputs.already_published != 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # skip_existing makes the upload idempotent — a racy re-run
+          # won't fail even if the version was just published.
+          skip-existing: true
+          # Print upload details to the job log for audit.
+          verbose: true
 
       # ── 7. Attach build artifacts to the GitHub Release ───────────────
       # When fired by `release: published`, the Release already exists

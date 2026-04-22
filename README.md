@@ -9,6 +9,7 @@
 [![CodeQL](https://github.com/sachinshelke/ToolsConnector/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/sachinshelke/ToolsConnector/security/code-scanning)
 [![Pydantic V2](https://img.shields.io/badge/pydantic-v2-e92063.svg)](https://docs.pydantic.dev/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/toolsconnector.svg?color=brightgreen)](https://pypi.org/project/toolsconnector/)
+[![Typed](https://img.shields.io/badge/typing-typed-blue.svg)](https://peps.python.org/pep-0561/)
 
 ---
 
