@@ -242,4 +242,3 @@ PyPI release; they only refresh the live site.
 4. Ensure all tests pass locally: `pytest tests/ -v && ruff check src/ && ruff format --check src/`
 5. Submit a PR with a clear description
 6. Core maintainers will review within 48 hours
-
