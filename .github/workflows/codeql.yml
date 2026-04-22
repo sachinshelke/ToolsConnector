@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # Set up the language toolchain so CodeQL can build / extract.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
