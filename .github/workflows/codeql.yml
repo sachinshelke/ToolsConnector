@@ -49,10 +49,13 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: python
-          # security-and-quality is the broadest standard query suite —
-          # finds real CVEs and quality issues that often correlate with
-          # security bugs (e.g. tainted SQL, unvalidated redirects).
-          queries: security-and-quality
+          # security-extended = all default security queries + extra
+          # security-relevant rules. Drops the 'quality' queries (unused
+          # imports, cyclic imports, style hints) that ruff + our CI
+          # already cover and that inflate the Security tab with noise.
+          # Keeps everything that matters for CVEs: injection, deserialisation,
+          # SSRF, path traversal, crypto misuse, hardcoded credentials, etc.
+          queries: security-extended
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4

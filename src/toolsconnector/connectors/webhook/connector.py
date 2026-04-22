@@ -95,6 +95,8 @@ class Webhook(BaseConnector):
         try:
             response_body = response.text[:10000]  # Cap at 10KB
         except Exception:
+            # Best-effort body capture: .text can raise for undecodable
+            # (non-UTF-8) or streamed responses. Leave response_body=None.
             pass
 
         return WebhookResponse(

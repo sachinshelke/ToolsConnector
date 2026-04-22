@@ -277,6 +277,8 @@ class ALB(BaseConnector):
                 if code_el is not None and code_el.text:
                     err_code = code_el.text
             except ET.ParseError:
+                # AWS XML error response was malformed — fall back to the
+                # generic "ALB <action> error" message raised below.
                 pass
 
             full_msg = f"ALB {api_action} error: {err_code} - {err_msg}"
