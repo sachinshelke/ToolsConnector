@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.2...v0.3.3) (2026-04-22)
+
+
+### 🐛 Bug Fixes
+
+* correct required-checks branch protection + sweep residual old contact email ([ca4300f](https://github.com/sachinshelke/ToolsConnector/commit/ca4300f65494d845b124d184e30da1b3cc864e0e))
+
 ## [0.3.2](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.1...v0.3.2) (2026-04-22)
 
 
