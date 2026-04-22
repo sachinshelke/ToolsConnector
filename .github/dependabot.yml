@@ -23,9 +23,10 @@ updates:
     open-pull-requests-limit: 5
     labels: [dependencies, python]
     commit-message:
-      prefix: chore(deps)
-      prefix-development: chore(deps-dev)
-      include: scope
+      # Dependabot auto-appends a scope, so set just the type prefix.
+      # Final titles will look like: chore(deps): bump flask from 3.0 to 3.1.3
+      prefix: chore
+      prefix-development: chore
     # Group minor + patch bumps for noisy dev tools so we don't get
     # flooded with one-line PRs every Monday.
     groups:
@@ -57,5 +58,6 @@ updates:
     open-pull-requests-limit: 5
     labels: [dependencies, ci]
     commit-message:
-      prefix: ci(deps)
-      include: scope
+      # See note above re: dependabot auto-scope.
+      # Titles will look like: ci(deps): bump actions/checkout from 4 to 6
+      prefix: ci
