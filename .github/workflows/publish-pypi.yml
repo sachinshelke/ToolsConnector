@@ -55,11 +55,22 @@ jobs:
   publish:
     name: Build + Publish + Release
     runs-on: ubuntu-latest
-    # Pre-1.0 release gate: PyPI upload pauses here for manual approval.
-    # The environment `pypi` must exist with required reviewers configured
-    # in Settings → Environments. Approval happens in the Actions tab when
-    # this job enters "waiting" state. Remove this line post-1.0 if you
-    # trust the automated gate fully.
+    # The `pypi` environment is a SCOPING boundary for PyPI Trusted
+    # Publishing — not a manual-approval gate. PyPI's trusted-publisher
+    # config for this project requires the OIDC token to assert
+    # `environment: pypi`, so the workflow must run inside that environment
+    # for the OIDC handshake to succeed. The environment itself has zero
+    # protection rules (no required reviewers, no wait timer), so the job
+    # runs straight through with no human pause.
+    #
+    # The "conscious decision" gate for releases lives upstream — merging
+    # the Release Please PR. Once that merges, this workflow runs end-to-end
+    # without intervention.
+    #
+    # To add a manual approval gate back (e.g. when onboarding a
+    # co-maintainer), add required reviewers to the environment via:
+    #   gh api -X PUT repos/sachinshelke/ToolsConnector/environments/pypi \
+    #       --input - <<< '{"reviewers":[{"type":"User","id":869601}]}'
     environment: pypi
 
     steps:

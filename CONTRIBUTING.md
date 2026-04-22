@@ -214,25 +214,44 @@ push commits with feat:/fix: messages
    ↓
 CI runs (lint + test + conformance + security)
    ↓
-Release Please updates an OPEN PR titled "chore(release): X.Y.Z"
+Release Please updates an OPEN PR titled "chore(main): release X.Y.Z"
    ↓
 Maintainer reviews the proposed CHANGELOG + version, then merges
    ↓
 Release Please bumps pyproject.toml + CHANGELOG.md, creates v-tag + GitHub Release
    ↓
-publish-pypi.yml fires → builds artifacts + twine-check
-   ↓
-⏸  PAUSES at "pypi" environment approval gate ⏸
-   ↓
-Maintainer clicks "Approve" in the Actions tab
-   ↓
-PyPI upload + artifact attachment to GitHub Release
+publish-pypi.yml fires automatically:
+  • check tag/version alignment
+  • short-circuit if PyPI already has this version
+  • build sdist + wheel
+  • twine check
+  • SLSA build provenance attestation (Sigstore)
+  • OIDC publish to PyPI (no long-lived secret)
+  • attach wheel + sdist to the GitHub Release
 ```
 
-**Two manual gates** (Release PR merge, PyPI environment approval) ensure that
-every PyPI release is a conscious decision by the maintainer — not a side
-effect of merging a regular PR. Doc-only or site-only changes never trigger a
-PyPI release; they only refresh the live site.
+**One conscious decision per release.** The "should we ship this?" gate is
+*merging the Release Please PR* — that's where you read the proposed
+CHANGELOG before clicking. Everything downstream is automated. Doc-only or
+site-only changes never trigger a PyPI release; they only refresh the live
+site.
+
+The workflow runs inside the `pypi` GitHub Environment. That environment
+exists purely as a scoping boundary for PyPI Trusted Publishing (the
+OIDC handshake requires the token to assert `environment: pypi`). It has
+no required reviewers, so the job runs end-to-end with no human pause.
+
+If you ever want a second human-approval gate (e.g. when adding a
+co-maintainer), add required reviewers to the environment in
+Settings → Environments → pypi. The workflow needs no changes.
+
+### Dependency updates (also hands-free)
+
+Dependabot opens PRs for dependency updates on a weekly schedule
+(`.github/dependabot.yml`). Patch and minor version bumps **auto-merge**
+once CI passes (`.github/workflows/dependabot-auto-merge.yml`). Major
+version bumps (e.g. `pydantic 2.x → 3.x`) get an automated comment and
+wait for maintainer review — they may carry breaking changes.
 
 ## Pull Request Process
 
