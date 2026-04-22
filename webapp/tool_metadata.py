@@ -41,7 +41,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free (15GB), Google Workspace plans for more",
         "rate_limit": "12,000 requests/minute per project",
         "prerequisites": ["Google Cloud project with Drive API enabled", "OAuth 2.0 credentials"],
-    
+
         "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
         "get_credentials_steps": "Google Cloud Console > APIs & Services > Credentials",
     },
@@ -59,7 +59,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free with Google account",
         "rate_limit": "500 requests/100 seconds per user",
         "prerequisites": ["Google Cloud project with Calendar API enabled"],
-    
+
         "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
         "get_credentials_steps": "Google Cloud Console > Credentials",
     },
@@ -77,7 +77,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free with Google account",
         "rate_limit": "300 requests/minute per project",
         "prerequisites": ["Google Cloud project with Sheets API enabled"],
-    
+
         "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
         "get_credentials_steps": "Google Cloud Console > Credentials",
     },
@@ -95,7 +95,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free with Google account",
         "rate_limit": "300 requests/minute per project",
         "prerequisites": ["Google Cloud project with Docs API enabled"],
-    
+
         "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
         "get_credentials_steps": "Google Cloud Console > Credentials",
     },
@@ -113,7 +113,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free with Google account",
         "rate_limit": "300 requests/minute per project",
         "prerequisites": ["Google Cloud project with Tasks API enabled"],
-    
+
         "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
         "get_credentials_steps": "Google Cloud Console > Credentials",
     },
@@ -131,7 +131,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free tier available, Pro from $8.75/user/month",
         "rate_limit": "1 request/second (Tier 2)",
         "prerequisites": ["Slack workspace", "Slack App with bot token"],
-    
+
         "get_credentials_url": "https://api.slack.com/apps",
         "get_credentials_steps": "Slack API > Your Apps > Create New App > Bot Token",
     },
@@ -149,7 +149,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free, Nitro from $9.99/month",
         "rate_limit": "50 requests/second global",
         "prerequisites": ["Discord account", "Bot application in Developer Portal"],
-    
+
         "get_credentials_url": "https://discord.com/developers/applications",
         "get_credentials_steps": "Developer Portal > New Application > Bot Token",
     },
@@ -167,7 +167,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free for public repos, Teams from $4/user/month",
         "rate_limit": "5,000 requests/hour authenticated",
         "prerequisites": ["GitHub account", "Personal access token or GitHub App"],
-    
+
         "get_credentials_url": "https://github.com/settings/tokens",
         "get_credentials_steps": "Settings > Developer Settings > Personal Access Tokens",
     },
@@ -185,7 +185,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free tier, Premium from $29/user/month",
         "rate_limit": "2,000 requests/minute authenticated",
         "prerequisites": ["GitLab account", "Personal access token"],
-    
+
         "get_credentials_url": "https://gitlab.com/-/user_settings/personal_access_tokens",
         "get_credentials_steps": "Preferences > Access Tokens > Create",
     },
@@ -203,7 +203,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free for personal, Plus from $10/user/month",
         "rate_limit": "3 requests/second average",
         "prerequisites": ["Notion workspace", "Internal integration or OAuth app"],
-    
+
         "get_credentials_url": "https://www.notion.so/my-integrations",
         "get_credentials_steps": "Settings > My Integrations > New Integration",
     },
@@ -221,7 +221,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free up to 10 users, Standard from $8.15/user/month",
         "rate_limit": "100 requests/minute",
         "prerequisites": ["Atlassian account", "API token from id.atlassian.com"],
-    
+
         "get_credentials_url": "https://id.atlassian.com/manage-profile/security/api-tokens",
         "get_credentials_steps": "Account Settings > Security > API Tokens",
     },
@@ -252,7 +252,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "2.9% + 30c per transaction",
         "rate_limit": "100 read/sec, 100 write/sec",
         "prerequisites": ["Stripe account", "API secret key from dashboard"],
-    
+
         "get_credentials_url": "https://dashboard.stripe.com/apikeys",
         "get_credentials_steps": "Dashboard > Developers > API Keys",
     },
@@ -270,7 +270,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Pay-per-token (varies by model)",
         "rate_limit": "Varies by model and tier",
         "prerequisites": ["OpenAI account", "API key from platform.openai.com"],
-    
+
         "get_credentials_url": "https://platform.openai.com/api-keys",
         "get_credentials_steps": "Platform > API Keys > Create New",
     },
@@ -288,7 +288,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Pay-per-token (varies by model)",
         "rate_limit": "Varies by model and tier",
         "prerequisites": ["Anthropic account", "API key from console.anthropic.com"],
-    
+
         "get_credentials_url": "https://console.anthropic.com/settings/keys",
         "get_credentials_steps": "Console > Settings > API Keys",
     },
@@ -306,7 +306,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Enterprise pricing (from $25/user/month)",
         "rate_limit": "Varies by edition",
         "prerequisites": ["Salesforce org", "Connected App with OAuth credentials"],
-    
+
         "get_credentials_url": "https://login.salesforce.com",
         "get_credentials_steps": "Setup > Apps > App Manager > Connected App",
     },
@@ -324,7 +324,7 @@ TOOL_META: dict[str, dict] = {
         "pricing": "Free CRM, Starter from $20/month",
         "rate_limit": "100 requests/10 seconds (private apps)",
         "prerequisites": ["HubSpot account", "Private app access token"],
-    
+
         "get_credentials_url": "https://app.hubspot.com/settings",
         "get_credentials_steps": "Settings > Integrations > Private Apps > Create",
     },

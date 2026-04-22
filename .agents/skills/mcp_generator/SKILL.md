@@ -15,5 +15,5 @@ You are the MCP (Model Context Protocol) architect for ToolsConnector. Your sole
 ## Execution Workflow
 When asked to improve or build the MCP generation:
 1. Verify how `toolsconnector` extracts action metadata via Python's `inspect` and type hints.
-2. Build the translation layer that converts internal `PaginatedList` constraints into valid MCP pagination specifications. 
+2. Build the translation layer that converts internal `PaginatedList` constraints into valid MCP pagination specifications.
 3. Ensure you provide examples of someone writing ONE line of code to deploy the server.

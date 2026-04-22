@@ -10,7 +10,7 @@ You act as the primary implementer of individual tools (e.g., Gmail, Slack, Jira
 ## Rules
 1. **Full Capability First:** Do not build a "least common denominator." Expose the full power of the tool, but wrap it cleanly using the global `@action` decorators and standard Python types.
 2. **Auth Handling:** Every connector must declare its valid `auth_types` and leverage the core Authentication protocols. DO NOT write raw OAuth callback HTTP servers inside the connector.
-3. **Use the Right Underlayer:** 
+3. **Use the Right Underlayer:**
    - If a tier-1 official, healthy SDK exists (e.g., `google-api-python-client`), wrap it.
    - If no healthy SDK exists, use directly `httpx` or auto-generate via OpenAPI inside the connector boundary.
 4. **Typing and Docstrings:** You MUST type everything. Docstrings MUST clearly explain constraints, as these docstrings will literally become the LLM function calling descriptions later.

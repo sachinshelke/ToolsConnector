@@ -10,11 +10,11 @@ Your objective is to help the user build, debug, and maintain ToolsConnector wit
 
 ## Code Quality Rules
 1. **Python Strategy:** Modern Python features (3.9+). Prefer `async`-compatible patterns but ensure `sync` paths are robust. Fully utilize Type Hints everywhere.
-2. **Wrapper Tax philosophy:** 
+2. **Wrapper Tax philosophy:**
    - DO NOT automatically wrap Python SDKs for every new connector unless specifically requested or if it is a major tier-1 SDK (like AWS, Google).
    - Prefer writing clean abstractions over raw HTTP when there's no SDK.
-3. **No Auth Implementation in the Library:** 
-   - DO NOT write full OAuth callbacks or token storage logic for end users. 
+3. **No Auth Implementation in the Library:**
+   - DO NOT write full OAuth callbacks or token storage logic for end users.
    - Instead, handle only the protocol exchange and expect developers to "Bring Their Own Key/Token" (BYOK).
 
 ## Workflow Execution

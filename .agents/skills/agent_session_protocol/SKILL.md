@@ -16,7 +16,7 @@ To function as an effective **AI Agent Team** (and not just isolated tools), all
 ## Cross-Agent Subagent Coordination
 When an agent tackles a large task, they should break it down for their subagent processes:
 1. The **Principal Architect** drafts the API shape in a scratchpad or `.project_state.json`.
-2. The executing agent runs generation iteratively. 
+2. The executing agent runs generation iteratively.
 3. The **Health Watcher** (or Verifier) validates the implementation against the rules.
 
 ## Output Discipline

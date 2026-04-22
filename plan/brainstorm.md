@@ -73,8 +73,8 @@ There is no open-source, self-contained, plug-and-play library that:
 
 In the era of advanced AI, developers often ask: *"Why use a library when Claude or Cursor can generate a Gmail OAuth wrapper in 5 minutes?"*
 
-**The reality:** 
-- **Token efficiency and correctness:** Generating reliable code repeatedly wastes tokens, and AI can hallucinate specs if upstream APIs have recently changed. 
+**The reality:**
+- **Token efficiency and correctness:** Generating reliable code repeatedly wastes tokens, and AI can hallucinate specs if upstream APIs have recently changed.
 - **The Maintenance Nightmare:** Code generation is easy; maintenance is hard. Who updates the generated code when the API changes? Who ensures high-performance pagination, security, and edge-case testing?
 - **Third-Party Avoidance:** Developers don't want to rely on closed, third-party managed integration platforms (like Composio) that lock them in or require paid subscriptions.
 - **The Agent Army Solution:** Instead of users generating code on the fly, **we use an AI Agent Army** behind the scenes to build, test, and maintain the connectors offline, embedding that flawless output into our library.
@@ -1088,11 +1088,11 @@ from toolsconnector.core.types import PaginatedList
 
 class Gmail(Connector):
     """Connect to Gmail to read, send, and manage emails."""
-    
+
     name = "gmail"
     category = "communication"
     auth_types = [Auth.OAUTH2, Auth.SERVICE_ACCOUNT]
-    
+
     # OAuth configuration — each provider is different, we abstract the quirks
     oauth_config = Auth.OAuth2Config(
         auth_url="https://accounts.google.com/o/oauth2/auth",
@@ -1103,16 +1103,16 @@ class Gmail(Connector):
             "full": ["gmail.modify"]
         }
     )
-    
+
     @action("List emails matching a query")
     def list_emails(
-        self, 
-        query: str = "is:unread", 
+        self,
+        query: str = "is:unread",
         limit: int = 10,
         labels: list[str] | None = None
     ) -> PaginatedList[Email]:
         """List emails from the user's mailbox.
-        
+
         Args:
             query: Gmail search query (same syntax as Gmail search bar)
             limit: Maximum number of emails to return
@@ -1126,18 +1126,18 @@ class Gmail(Connector):
             items=[Email.from_api(msg) for msg in response.get("messages", [])],
             next_token=response.get("nextPageToken")
         )
-    
+
     @action("Send an email to a recipient", requires_scope="send")
     def send_email(
-        self, 
-        to: str, 
-        subject: str, 
+        self,
+        to: str,
+        subject: str,
         body: str,
         cc: list[str] | None = None,
         attachments: list[Attachment] | None = None
     ) -> MessageId:
         """Send an email message.
-        
+
         Args:
             to: Recipient email address
             subject: Email subject line
@@ -1470,7 +1470,7 @@ File handling (e.g., Slack attachments, Gmail attachments) requires a standardiz
 
 ## 23. User Zero: AgentStore & UDAP
 
-Most open-source tools die because they are built in a vacuum. ToolsConnector will be battle-tested immediately inside **AgentStore** and **UDAP**. 
+Most open-source tools die because they are built in a vacuum. ToolsConnector will be battle-tested immediately inside **AgentStore** and **UDAP**.
 
 By serving as the fundamental tool layer for a production AI marketplace (AgentStore) experiencing real multi-tenant auth challenges and massive agent volume, ToolsConnector will be hardened against actual enterprise problems before it even launches to the public. AgentStore acts as the ultimate proving ground and credibility anchor.
 
