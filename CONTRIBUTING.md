@@ -186,7 +186,7 @@ versioning and the `CHANGELOG.md`. Use this prefix in every commit:
 | `docs:` `ci:` `build:` `test:` `chore:` `style:` | No version bump | `docs: fix typo in linkedin README` |
 
 You don't have to think about version numbers manually. Release Please reads
-your commit messages on every push to `main` / `feature/site-ui` and maintains
+your commit messages on every push to `main` and maintains
 an open `chore(release): X.Y.Z` PR with the calculated next version and
 changelog. When you merge that PR, a tag is created and PyPI publishes
 automatically.

@@ -5,8 +5,8 @@
 [![PyPI version](https://img.shields.io/pypi/v/toolsconnector.svg?color=blue)](https://pypi.org/project/toolsconnector/)
 [![Python 3.9+](https://img.shields.io/pypi/pyversions/toolsconnector.svg)](https://pypi.org/project/toolsconnector/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![CI](https://github.com/sachinshelke/ToolsConnector/actions/workflows/ci.yml/badge.svg?branch=feature%2Fsite-ui)](https://github.com/sachinshelke/ToolsConnector/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/sachinshelke/ToolsConnector/actions/workflows/codeql.yml/badge.svg?branch=feature%2Fsite-ui)](https://github.com/sachinshelke/ToolsConnector/security/code-scanning)
+[![CI](https://github.com/sachinshelke/ToolsConnector/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sachinshelke/ToolsConnector/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/sachinshelke/ToolsConnector/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/sachinshelke/ToolsConnector/security/code-scanning)
 [![Pydantic V2](https://img.shields.io/badge/pydantic-v2-e92063.svg)](https://docs.pydantic.dev/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/toolsconnector.svg?color=brightgreen)](https://pypi.org/project/toolsconnector/)
 

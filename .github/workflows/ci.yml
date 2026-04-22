@@ -20,9 +20,9 @@ name: CI
 
 on:
   push:
-    branches: [main, feature/site-ui]
+    branches: [main]
   pull_request:
-    branches: [main, feature/site-ui]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -203,7 +203,7 @@ jobs:
     if: |
       always() &&
       github.event_name == 'push' &&
-      (github.ref_name == 'main' || github.ref_name == 'feature/site-ui') &&
+      github.ref_name == 'main' &&
       needs.detect-changes.outputs.site == 'true' &&
       (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
       (needs.test.result == 'success' || needs.test.result == 'skipped') &&

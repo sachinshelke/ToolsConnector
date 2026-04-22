@@ -6,7 +6,7 @@ name: CodeQL
 # the repo's Security tab.
 #
 # Triggers:
-#   • Every push to main / feature/site-ui touching Python source
+#   • Every push to main touching Python source
 #   • Every PR to those branches touching Python source
 #   • Weekly schedule (Sundays at 03:00 UTC) so newly-published advisories
 #     against pinned dependencies surface even without code changes
@@ -15,12 +15,12 @@ name: CodeQL
 
 on:
   push:
-    branches: [main, feature/site-ui]
+    branches: [main]
     paths:
       - '**.py'
       - '.github/workflows/codeql.yml'
   pull_request:
-    branches: [main, feature/site-ui]
+    branches: [main]
     paths:
       - '**.py'
   schedule:

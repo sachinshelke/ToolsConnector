@@ -5,13 +5,13 @@
       "Edit",
       "Bash",
       "Bash(git * main)",
+      "Bash(git commit *)",
       "Bash(*)",
       "WebSearch",
       "WebFetch(*)"
     ],
     "deny": [
       "Bash(git push *)",
-      "Bash(git commit *)",
       "Bash(sudo *)"
     ],
     "defaultMode": "bypassPermissions"
