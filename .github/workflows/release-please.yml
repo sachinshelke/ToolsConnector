@@ -22,6 +22,7 @@ name: Release Please
 on:
   push:
     branches: [main]
+  workflow_dispatch:   # allow manual re-runs (e.g. after tag hygiene fixes)
 
 permissions:
   contents: write       # create tags + commits on the release PR
