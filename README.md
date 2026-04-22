@@ -1,10 +1,14 @@
 # ToolsConnector
 
-**One interface, every tool. Connect 53+ APIs to your Python app or AI agent in minutes.**
+**One interface, every tool. Connect 68+ APIs to your Python app or AI agent in minutes.**
 
+[![PyPI version](https://img.shields.io/pypi/v/toolsconnector.svg?color=blue)](https://pypi.org/project/toolsconnector/)
+[![Python 3.9+](https://img.shields.io/pypi/pyversions/toolsconnector.svg)](https://pypi.org/project/toolsconnector/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/sachinshelke/ToolsConnector/actions/workflows/ci.yml/badge.svg?branch=feature%2Fsite-ui)](https://github.com/sachinshelke/ToolsConnector/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/sachinshelke/ToolsConnector/actions/workflows/codeql.yml/badge.svg?branch=feature%2Fsite-ui)](https://github.com/sachinshelke/ToolsConnector/security/code-scanning)
 [![Pydantic V2](https://img.shields.io/badge/pydantic-v2-e92063.svg)](https://docs.pydantic.dev/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/toolsconnector.svg?color=brightgreen)](https://pypi.org/project/toolsconnector/)
 
 ---
 
@@ -12,7 +16,7 @@
 
 Every SaaS API has its own SDK, its own auth dance, its own pagination scheme, and its own error format. If you're building an AI agent, you also need to generate JSON Schema for function calling -- differently for OpenAI, Anthropic, and Gemini. You end up writing glue code instead of product code.
 
-ToolsConnector gives you a single, typed Python interface to 53 connectors and 1,137 actions. It works identically whether you're building a Django app, an OpenAI agent, or an MCP server for Claude Desktop.
+ToolsConnector gives you a single, typed Python interface to **68 connectors and 1,370 actions**. It works identically whether you're building a Django app, an OpenAI agent, or an MCP server for Claude Desktop.
 
 ## Run the Documentation Site
 
@@ -67,7 +71,7 @@ That's it. Same `ToolKit`, same `.execute()`, every connector.
 
 ## Key Features
 
-- **53 connectors, 1,137 actions** across 17 categories -- communication, databases, DevOps, CRM, AI/ML, and more
+- **68 connectors, 1,370 actions** across 20 categories -- communication, social, databases, DevOps, CRM, AI/ML, AWS infrastructure, and more
 - **Dual-use design** -- works for traditional Python apps (Django, Flask, FastAPI) and AI agents (function calling, tool use) with zero code changes
 - **One-line MCP server** -- expose any combination of connectors to Claude Desktop, Cursor, or any MCP client
 - **Schema generation** -- produces OpenAI, Anthropic, and Gemini function-calling schemas from the same source of truth
@@ -214,7 +218,7 @@ app = kit.create_rest_app(prefix="/api/v1")
 
 ## Supported Connectors
 
-53 connectors, 1,137 actions across 17 categories.
+68 connectors, 1,370 actions across 20 categories.
 
 ### Communication (7)
 
@@ -366,7 +370,7 @@ ToolsConnector is structured as four layers, each with a single responsibility:
 +------------------------------------------------------------------+
 |  Runtime Engine    BaseConnector, @action, Middleware, Auth       |
 +------------------------------------------------------------------+
-|  Connectors        Gmail, Slack, GitHub, Stripe, ... (53)        |
+|  Connectors        Gmail, Slack, GitHub, Stripe, ... (68)        |
 +------------------------------------------------------------------+
 |  Spec Types        Pydantic V2 models, JSON Schema, Contracts    |
 +------------------------------------------------------------------+
@@ -376,7 +380,7 @@ ToolsConnector is structured as four layers, each with a single responsibility:
 
 **Runtime** -- The execution engine. `BaseConnector` is the abstract base class. The `@action` decorator parses type hints and docstrings to generate JSON Schema automatically. Middleware handles retry, rate limiting, auth refresh, and structured logging.
 
-**Connectors** -- 53 implementations, each following the same pattern: subclass `BaseConnector`, set metadata, implement `@action` methods. Most use raw `httpx` for direct HTTP calls. Google and AWS connectors use official SDKs where protocol complexity justifies it.
+**Connectors** -- 68 implementations, each following the same pattern: subclass `BaseConnector`, set metadata, implement `@action` methods. Most use raw `httpx` for direct HTTP calls. Google and AWS connectors use official SDKs where protocol complexity justifies it.
 
 **Serve** -- The `ToolKit` ties everything together. Configure once with a list of connectors and credentials, then serve as MCP, generate OpenAI/Anthropic/Gemini schemas, expose as REST, or call directly from Python.
 

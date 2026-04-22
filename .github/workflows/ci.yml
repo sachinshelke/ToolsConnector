@@ -1,5 +1,23 @@
 name: CI
 
+# Smart, path-aware unified pipeline.
+#
+#   Detect what changed
+#       ├── code (src/, tests/, pyproject.toml, examples/)
+#       ├── site (site/, webapp/tool_metadata.py, scripts/build_site.py,
+#       │         docs/, src/toolsconnector/connectors/**)
+#       └── workflow (.github/workflows/**)
+#
+#   Then route:
+#       • code change      → lint + test + conformance + security
+#       • site change      → security scan only (cheap), then deploy-site
+#       • both             → all of the above (deploy waits for everything)
+#       • PR (any change)  → always run full CI for safety, never deploy
+#
+# Tag-based PyPI publishing is intentionally separate (see publish-pypi.yml)
+# and gated through Release Please's release PR (see release-please.yml).
+# The Actions tab shows ONE "CI" run per push.
+
 on:
   push:
     branches: [main, feature/site-ui]
@@ -11,9 +29,46 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Lint & Type Check
+  # ── 0. Detect what changed in this push/PR ─────────────────────────────
+  detect-changes:
+    name: Detect changed paths
     runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      site: ${{ steps.filter.outputs.site }}
+      workflow: ${{ steps.filter.outputs.workflow }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'tests/**'
+              - 'pyproject.toml'
+              - 'examples/**'
+            site:
+              - 'site/**'
+              - 'webapp/**'
+              - 'scripts/build_site.py'
+              - 'scripts/generate_readmes.py'
+              - 'docs/**'
+              - 'src/toolsconnector/connectors/**'
+            workflow:
+              - '.github/workflows/**'
+              - '.release-please-*.json'
+
+  # ── 1. Lint + Format check (code or workflow change, or PR) ────────────
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-changes.outputs.code == 'true' ||
+      needs.detect-changes.outputs.workflow == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -28,9 +83,15 @@ jobs:
       - name: Ruff format check
         run: ruff format --check src/
 
+  # ── 2. Tests across Python versions (code change or PR) ────────────────
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-changes.outputs.code == 'true'
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
@@ -61,9 +122,15 @@ jobs:
           print(f'All {len(names)} connectors import OK')
           "
 
+  # ── 3. Conformance (code change or PR) ─────────────────────────────────
   conformance:
-    name: Conformance Checks
+    name: Conformance
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -93,6 +160,7 @@ jobs:
           print(f'All {len(names)} connectors pass spec validation ({total} actions)')
           "
 
+  # ── 4. Security scan (always — cheap, catches everything) ──────────────
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -107,10 +175,8 @@ jobs:
         run: bandit -r src/toolsconnector/ -s B101 --quiet || true
       - name: Check for credential leaks
         run: |
-          # Match REAL-length credential patterns, then post-filter lines that
-          # are obviously documentation placeholders (contain '...', 'xxxx',
-          # 'REDACTED', 'example', etc.). Without the post-filter, the scan
-          # matches every docstring that tells users what a token LOOKS LIKE.
+          # Match REAL-length credential patterns, post-filter docs placeholders
+          # (..., xxxx, REDACTED, example) to avoid false positives in docstrings.
           LEAKS=$(grep -rEn \
             -e 'ghp_[A-Za-z0-9]{30,}' \
             -e 'xoxb-[0-9]{8,}-[0-9]{8,}-[A-Za-z0-9]{20,}' \
@@ -125,4 +191,61 @@ jobs:
             echo "$LEAKS"
             exit 1
           fi
-          echo "No real credentials found in source (documentation placeholders ignored)"
+          echo "No real credentials found in source"
+
+  # ── 5. Deploy site (push only, site change only, after all gates) ─────
+  # Skipped CI jobs count as 'satisfied' in needs:, so a site-only push
+  # still reaches this job after the path-filtered code jobs are skipped.
+  deploy-site:
+    name: Deploy → toolsconnector.github.io
+    runs-on: ubuntu-latest
+    needs: [detect-changes, lint, test, conformance, security]
+    if: |
+      always() &&
+      github.event_name == 'push' &&
+      (github.ref_name == 'main' || github.ref_name == 'feature/site-ui') &&
+      needs.detect-changes.outputs.site == 'true' &&
+      (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped') &&
+      (needs.conformance.result == 'success' || needs.conformance.result == 'skipped') &&
+      needs.security.result == 'success'
+    concurrency:
+      group: deploy-site
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install pydantic docstring-parser eval_type_backport httpx
+          pip install -e .
+
+      - name: Build site/data.json
+        run: python scripts/build_site.py
+
+      - name: Deploy to ToolsConnector.github.io
+        env:
+          DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name  "github-actions[bot]"
+
+          git clone --depth 1 \
+            https://x-access-token:${DEPLOY_TOKEN}@github.com/ToolsConnector/ToolsConnector.github.io.git \
+            _deploy
+
+          find _deploy -mindepth 1 -not -path '_deploy/.git*' -delete
+          cp -r site/. _deploy/
+
+          cd _deploy
+          git add -A
+          git diff --staged --quiet && echo "No changes to deploy." && exit 0
+
+          SHORT_SHA="${SOURCE_SHA:0:7}"
+          git commit -m "deploy: ToolsConnector@${SHORT_SHA}"
+          git push

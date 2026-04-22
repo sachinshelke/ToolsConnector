@@ -1,0 +1,63 @@
+name: CodeQL
+
+# GitHub-native semantic code scanner. Runs CodeQL queries for Python
+# security issues (SQL injection, command injection, deserialisation,
+# crypto misuse, hardcoded credentials, etc.) and surfaces findings on
+# the repo's Security tab.
+#
+# Triggers:
+#   • Every push to main / feature/site-ui touching Python source
+#   • Every PR to those branches touching Python source
+#   • Weekly schedule (Sundays at 03:00 UTC) so newly-published advisories
+#     against pinned dependencies surface even without code changes
+#
+# Findings appear at: https://github.com/sachinshelke/ToolsConnector/security/code-scanning
+
+on:
+  push:
+    branches: [main, feature/site-ui]
+    paths:
+      - '**.py'
+      - '.github/workflows/codeql.yml'
+  pull_request:
+    branches: [main, feature/site-ui]
+    paths:
+      - '**.py'
+  schedule:
+    - cron: '0 3 * * 0'   # Sunday 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write   # required to upload SARIF findings
+
+jobs:
+  analyze:
+    name: Analyze (Python)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Set up the language toolchain so CodeQL can build / extract.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          # security-and-quality is the broadest standard query suite —
+          # finds real CVEs and quality issues that often correlate with
+          # security bugs (e.g. tainted SQL, unvalidated redirects).
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:python'

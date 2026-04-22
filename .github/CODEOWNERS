@@ -1,0 +1,13 @@
+# Default owner for everything in the repo.
+# Required reviewer for any PR (when branch protection is enabled).
+*                                @sachinshelke
+
+# Workflow files — extra scrutiny so CI/CD changes get reviewed.
+/.github/workflows/               @sachinshelke
+/.release-please-config.json      @sachinshelke
+/.release-please-manifest.json    @sachinshelke
+
+# Release-managed files — Release Please bot writes these on PR merge,
+# but humans editing them directly should be reviewed.
+/CHANGELOG.md                     @sachinshelke
+/pyproject.toml                   @sachinshelke

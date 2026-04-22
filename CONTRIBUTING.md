@@ -170,10 +170,51 @@ Before submitting a PR, verify:
 - Google-style docstrings with Args, Returns, Raises
 - Ruff for linting: `ruff check src/`
 
+## Commit Messages — Conventional Commits
+
+This repo uses [Conventional Commits](https://www.conventionalcommits.org/) so
+[Release Please](https://github.com/googleapis/release-please) can automate
+versioning and the `CHANGELOG.md`. Use this prefix in every commit:
+
+| Prefix | Effect on next release | Example |
+|---|---|---|
+| `feat:` | Minor version bump (0.3.1 → 0.4.0) | `feat(slack): add scheduled message support` |
+| `fix:` | Patch version bump (0.3.1 → 0.3.2) | `fix(linkedin): correct EMPTY_ACCESS_TOKEN handling` |
+| `feat!:` or `BREAKING CHANGE:` in body | Major version bump (0.3.1 → 1.0.0) | `feat!: rename ToolKit.execute → ToolKit.run` |
+| `perf:` | Patch bump | `perf(http): reuse httpx pool across actions` |
+| `refactor:` | No version bump (still in changelog) | `refactor(serve): extract _request helper` |
+| `docs:` `ci:` `build:` `test:` `chore:` `style:` | No version bump | `docs: fix typo in linkedin README` |
+
+You don't have to think about version numbers manually. Release Please reads
+your commit messages on every push to `main` / `feature/site-ui` and maintains
+an open `chore(release): X.Y.Z` PR with the calculated next version and
+changelog. When you merge that PR, a tag is created and PyPI publishes
+automatically.
+
 ## Pull Request Process
 
 1. Fork the repo and create a branch
 2. Make your changes
-3. Ensure all tests pass
-4. Submit a PR with a clear description
-5. Core maintainers will review within 48 hours
+3. Use Conventional Commit messages (see above) so Release Please can pick them up
+4. Ensure all tests pass locally: `pytest tests/ -v && ruff check src/ && ruff format --check src/`
+5. Submit a PR with a clear description
+6. Core maintainers will review within 48 hours
+
+## How releases happen (no manual version bumping)
+
+```
+push commits with feat:/fix: messages
+   ↓
+CI runs (lint + test + conformance + security)
+   ↓
+Release Please updates an OPEN PR titled "chore(release): X.Y.Z"
+   ↓
+You merge that PR when ready to release
+   ↓
+Release Please bumps pyproject.toml + CHANGELOG.md, creates v-tag
+   ↓
+publish-pypi.yml fires → PyPI upload + GitHub Release
+```
+
+Doc-only or site-only changes never trigger a PyPI release — they only update
+the live site.
