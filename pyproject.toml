@@ -9,22 +9,40 @@ description = "A foundational primitive for standardizing external API tool conn
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.9"
-authors = [{ name = "Sachin", email = "sachin@toolsconnector.dev" }]
+authors = [{ name = "Sachin Shelke", email = "sachin.worldnet@gmail.com" }]
+maintainers = [{ name = "Sachin Shelke", email = "sachin.worldnet@gmail.com" }]
+keywords = [
+    "api", "connectors", "http", "rest",
+    "agent", "ai", "llm", "mcp", "tools", "tool-use",
+    "integration", "integrations",
+    "langchain", "openai",
+    "async", "httpx", "pydantic",
+]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    # PEP 301 Trove classifiers — self-declared metadata shown on PyPI.
+    # See https://pypi.org/classifiers/ for the canonical vocabulary.
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: System Administrators",
+    # The License classifier was intentionally dropped — PEP 639 replaced it
+    # with the top-level `license = "Apache-2.0"` expression at line 10.
+    # Having both triggers a PyPI warning (duplicate metadata).
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Environment :: Web Environment",
+    "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP",
+    "Typing :: Typed",
 ]
 dependencies = [
     "pydantic>=2.0,<3.0",
     "httpx>=0.25.0,<1.0",
-    "docstring-parser>=0.15",
+    "docstring-parser>=0.15,<1.0",
     "eval_type_backport>=0.2.0; python_version < '3.10'",
 ]
 
@@ -214,6 +232,9 @@ tc = "toolsconnector.serve.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/toolsconnector"]
+# Include the PEP 561 marker so downstream mypy/pyright pick up our inline
+# type hints without needing a separate `toolsconnector-stubs` package.
+include = ["src/toolsconnector/py.typed"]
 
 [tool.hatch.build.targets.sdist]
 include = [

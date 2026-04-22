@@ -170,26 +170,69 @@ Before submitting a PR, verify:
 - Google-style docstrings with Args, Returns, Raises
 - Ruff for linting: `ruff check src/`
 
+## Versioning Policy (pre-1.0)
+
+ToolsConnector is **pre-1.0**. Semantic Versioning (SemVer) treats the `0.X.Y`
+range as a place where anything can change, which makes the post-1.0 contract
+(`MAJOR.MINOR.PATCH` = breaking/feature/fix) not directly applicable. We narrow
+that ambiguity with an explicit pre-1.0 rule:
+
+| While `0.x.y` | Bump rule |
+|---|---|
+| `feat:`, `fix:`, `perf:`, `refactor:` (no breaking change) | **Patch** (`0.3.2 → 0.3.3`) |
+| `feat!:` or any `BREAKING CHANGE:` footer | **Minor** (`0.3.3 → 0.4.0`) — minor axis signals breaking change while major stays at 0 |
+| Manual decision | **Major** (`0.x → 1.0.0`) — only when the public API is deliberately frozen |
+
+The `0.X` axis (minor) is the pre-1.0 "compatibility-break" axis. Users
+should pin exact versions (`toolsconnector==0.3.3`) until 1.0 and read the
+CHANGELOG before upgrading across a minor bump. This is enforced in
+`.release-please-config.json` via `bump-patch-for-minor-pre-major: true`.
+
 ## Commit Messages — Conventional Commits
 
 This repo uses [Conventional Commits](https://www.conventionalcommits.org/) so
 [Release Please](https://github.com/googleapis/release-please) can automate
 versioning and the `CHANGELOG.md`. Use this prefix in every commit:
 
-| Prefix | Effect on next release | Example |
+| Prefix | Effect on next release (pre-1.0) | Example |
 |---|---|---|
-| `feat:` | Minor version bump (0.3.1 → 0.4.0) | `feat(slack): add scheduled message support` |
-| `fix:` | Patch version bump (0.3.1 → 0.3.2) | `fix(linkedin): correct EMPTY_ACCESS_TOKEN handling` |
-| `feat!:` or `BREAKING CHANGE:` in body | Major version bump (0.3.1 → 1.0.0) | `feat!: rename ToolKit.execute → ToolKit.run` |
+| `feat:` | Patch bump (`0.3.2 → 0.3.3`) | `feat(slack): add scheduled message support` |
+| `fix:` | Patch bump | `fix(linkedin): correct EMPTY_ACCESS_TOKEN handling` |
 | `perf:` | Patch bump | `perf(http): reuse httpx pool across actions` |
+| `feat!:` or `BREAKING CHANGE:` in body | **Minor bump** (`0.3.3 → 0.4.0`) — reserved for real API breaks | `feat!: rename ToolKit.execute → ToolKit.run` |
 | `refactor:` | No version bump (still in changelog) | `refactor(serve): extract _request helper` |
 | `docs:` `ci:` `build:` `test:` `chore:` `style:` | No version bump | `docs: fix typo in linkedin README` |
 
-You don't have to think about version numbers manually. Release Please reads
-your commit messages on every push to `main` and maintains
-an open `chore(release): X.Y.Z` PR with the calculated next version and
-changelog. When you merge that PR, a tag is created and PyPI publishes
-automatically.
+Post-1.0 the bump table will shift to standard SemVer (`feat:` → minor,
+`feat!:` → major). No commit-message syntax changes will be required at
+that cutover — only the release-please config flips.
+
+## Release Process (what happens when you merge to `main`)
+
+```
+push commits with feat:/fix: messages
+   ↓
+CI runs (lint + test + conformance + security)
+   ↓
+Release Please updates an OPEN PR titled "chore(release): X.Y.Z"
+   ↓
+Maintainer reviews the proposed CHANGELOG + version, then merges
+   ↓
+Release Please bumps pyproject.toml + CHANGELOG.md, creates v-tag + GitHub Release
+   ↓
+publish-pypi.yml fires → builds artifacts + twine-check
+   ↓
+⏸  PAUSES at "pypi" environment approval gate ⏸
+   ↓
+Maintainer clicks "Approve" in the Actions tab
+   ↓
+PyPI upload + artifact attachment to GitHub Release
+```
+
+**Two manual gates** (Release PR merge, PyPI environment approval) ensure that
+every PyPI release is a conscious decision by the maintainer — not a side
+effect of merging a regular PR. Doc-only or site-only changes never trigger a
+PyPI release; they only refresh the live site.
 
 ## Pull Request Process
 
@@ -200,21 +243,3 @@ automatically.
 5. Submit a PR with a clear description
 6. Core maintainers will review within 48 hours
 
-## How releases happen (no manual version bumping)
-
-```
-push commits with feat:/fix: messages
-   ↓
-CI runs (lint + test + conformance + security)
-   ↓
-Release Please updates an OPEN PR titled "chore(release): X.Y.Z"
-   ↓
-You merge that PR when ready to release
-   ↓
-Release Please bumps pyproject.toml + CHANGELOG.md, creates v-tag
-   ↓
-publish-pypi.yml fires → PyPI upload + GitHub Release
-```
-
-Doc-only or site-only changes never trigger a PyPI release — they only update
-the live site.

@@ -2,9 +2,16 @@
 
 ## Supported Versions
 
+Security fixes are issued for the **latest minor release only**. Because
+ToolsConnector is pre-1.0, the public API may change between minor versions;
+backporting security fixes to older pre-1.0 lines is not practical. After
+the 1.0 release, this policy will widen to cover at least the current major
+and the previous major.
+
 | Version | Supported |
 |---------|-----------|
-| 0.1.x   | Yes       |
+| 0.3.x   | Yes       |
+| ≤ 0.2.x | No — please upgrade |
 
 ## Reporting a Vulnerability
 
@@ -12,7 +19,10 @@ If you discover a security vulnerability in ToolsConnector, please report it res
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, email: **security@toolsconnector.dev**
+Preferred: use GitHub's **[Private Vulnerability Reporting](https://github.com/sachinshelke/ToolsConnector/security/advisories/new)**
+(creates a private advisory and starts the coordinated-disclosure workflow).
+
+Or email: **sachin.worldnet@gmail.com** with subject line starting `[SECURITY]`.
 
 ### What to include
 

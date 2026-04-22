@@ -46,9 +46,12 @@ jobs:
   publish:
     name: Build + Publish + Release
     runs-on: ubuntu-latest
-    # Optional: gate behind a GitHub Environment for manual approval before
-    # PyPI upload. Remove the next line if you want fully-automatic publish.
-    # environment: pypi
+    # Pre-1.0 release gate: PyPI upload pauses here for manual approval.
+    # The environment `pypi` must exist with required reviewers configured
+    # in Settings → Environments. Approval happens in the Actions tab when
+    # this job enters "waiting" state. Remove this line post-1.0 if you
+    # trust the automated gate fully.
+    environment: pypi
 
     steps:
       # ── 0. Resolve the tag/ref this run targets ───────────────────────
