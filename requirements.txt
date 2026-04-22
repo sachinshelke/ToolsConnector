@@ -3,4 +3,4 @@ httpx>=0.25
 pydantic>=2.0
 docstring-parser>=0.15
 eval_type_backport>=0.3.1
-gunicorn>=21.0
+gunicorn>=23.0.0
