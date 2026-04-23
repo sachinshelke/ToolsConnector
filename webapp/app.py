@@ -1604,9 +1604,9 @@ def _render_md_file(filepath: Path) -> str:
     if _HAS_MD_LIB:
         html = _md_lib.markdown(raw, extensions=["fenced_code", "tables", "toc", "codehilite"])
     else:
-        # Fallback: use marked.js on the client side
-        import html as _html
-        escaped = _html.escape(raw)
+        # Fallback: use marked.js on the client side. The raw string is passed
+        # to JS via json.dumps(raw) below — which handles JSON escaping. No need
+        # to pre-escape via html.escape (would double-encode &/< in the markdown).
         html = f"""<div id="md-target" class="md-body"></div>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>

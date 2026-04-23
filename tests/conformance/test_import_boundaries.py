@@ -11,7 +11,6 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 import pytest
 
@@ -19,14 +18,14 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 TC_ROOT = PROJECT_ROOT / "toolsconnector"
 
 
-def _get_imports(filepath: Path) -> List[str]:
+def _get_imports(filepath: Path) -> list[str]:
     """Extract all import module names from a Python file."""
     try:
         tree = ast.parse(filepath.read_text(encoding="utf-8"))
     except SyntaxError:
         return []
 
-    imports: List[str] = []
+    imports: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -39,13 +38,13 @@ def _get_imports(filepath: Path) -> List[str]:
 
 def _check_forbidden_imports(
     source_dir: str,
-    forbidden_prefixes: List[str],
-) -> List[Tuple[str, str]]:
+    forbidden_prefixes: list[str],
+) -> list[tuple[str, str]]:
     """Check files in source_dir for forbidden imports.
 
     Returns list of (file, import) violations.
     """
-    violations: List[Tuple[str, str]] = []
+    violations: list[tuple[str, str]] = []
     src_path = TC_ROOT / source_dir
     if not src_path.exists():
         return violations
@@ -102,7 +101,7 @@ class TestConnectorImportBoundary:
         if not connectors_dir.exists():
             return
 
-        violations: List[Tuple[str, str]] = []
+        violations: list[tuple[str, str]] = []
         for connector_dir in connectors_dir.iterdir():
             if not connector_dir.is_dir() or connector_dir.name.startswith("_"):
                 continue

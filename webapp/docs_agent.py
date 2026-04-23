@@ -34,7 +34,6 @@ try:
     from rich.markdown import Markdown
     from rich.panel import Panel
     from rich.table import Table
-    from rich.text import Text
 
     console = Console()
     HAS_RICH = True

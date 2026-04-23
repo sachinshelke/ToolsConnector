@@ -12,6 +12,15 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+# Imports here are typing-only — actual modules are imported lazily inside
+# command handlers below to keep CLI startup snappy and avoid import-time
+# side effects from the full orchestrator stack.
+if TYPE_CHECKING:
+    from .config import OrchestratorConfig
+    from .reporter import OrchestratorReporter
+    from .taskboard import TaskBoard
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -75,11 +84,11 @@ def main(argv: list[str] | None = None) -> int:
 def _cmd_run(args: argparse.Namespace, project_root: Path) -> int:
     """Execute the 'run' command."""
     from .config import OrchestratorConfig
-    from .taskboard import TaskBoard
-    from .state import StateManager
-    from .runner import AgentRunner
     from .engine import DAGExecutor
     from .reporter import OrchestratorReporter
+    from .runner import AgentRunner
+    from .state import StateManager
+    from .taskboard import TaskBoard
 
     # Load config
     config_path = Path(args.config) if args.config else None
@@ -151,15 +160,15 @@ def _cmd_run(args: argparse.Namespace, project_root: Path) -> int:
 
 def _run_single_task(
     args: argparse.Namespace,
-    config: "OrchestratorConfig",
-    taskboard: "TaskBoard",
+    config: OrchestratorConfig,
+    taskboard: TaskBoard,
     project_root: Path,
-    reporter: "OrchestratorReporter",
+    reporter: OrchestratorReporter,
 ) -> int:
     """Run a single task by ID."""
-    from .state import StateManager
-    from .runner import AgentRunner
     from .prompts.base import build_system_prompt
+    from .runner import AgentRunner
+    from .state import StateManager
 
     task = taskboard.get_task(args.task)
     if not task:
@@ -283,9 +292,5 @@ def _find_project_root() -> Path | None:
     return None
 
 
-def __main__() -> None:
-    sys.exit(main())
-
-
 if __name__ == "__main__":
-    __main__()
+    sys.exit(main())
