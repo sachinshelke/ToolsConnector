@@ -139,6 +139,75 @@ for name, action in spec.actions.items():
 "
 ```
 
+### Step 7: Write per-connector tests (respx pattern)
+
+Connectors that ship without dedicated tests are silently fragile —
+the parametrized smoke test in `tests/unit/test_connectors.py` only
+verifies that `get_spec()` works, not that any action actually does
+the right thing.
+
+The pattern is established in `tests/connectors/test_slack.py`,
+`test_github.py`, `test_openai.py`. Copy one of those whose vendor
+shape most resembles yours:
+
+| Pattern | Reference test | Vendor shape |
+|---|---|---|
+| HTTP 200 + body-flag auth (`{"ok": false, "error": "..."}`) | `test_slack.py` | Slack-style |
+| HTTP status code auth (200/401/404) | `test_github.py` | most REST APIs |
+| Per-request httpx client + JSON body + tool-use parameters | `test_openai.py` | LLM APIs |
+
+Five tests is the floor, ten the ceiling. Cover at minimum:
+
+1. **Happy path on the most-common action** — verify request method,
+   URL, auth header, request body, and response parsing.
+2. **Error mapping** — vendor's auth/notfound/ratelimit responses
+   translate to our typed exceptions (or HTTPStatusError where the
+   connector hasn't done that mapping yet).
+3. **Pagination** — if the connector exposes paginated listings,
+   test that PageState.cursor + has_more wire through correctly on
+   a 2-page sequence.
+4. **`dangerous=True` flag declarations** — write/delete actions
+   carry the flag, read actions don't. Guards against an accidental
+   edit dropping it (which would silently expose dangerous actions
+   to AI agents under the default `exclude_dangerous=True` ToolKit).
+
+Don't try to test every action. The 1432 framework tests in
+`tests/unit/` already cover the runtime; per-connector tests are for
+**behavioral correctness on representative actions**.
+
+```python
+# tests/connectors/test_mytool.py
+import httpx, pytest, pytest_asyncio, respx
+from toolsconnector.connectors.mytool import MyTool
+
+@pytest_asyncio.fixture           # NOT @pytest.fixture — strict-mode asyncio
+async def mytool() -> MyTool:
+    connector = MyTool(credentials="fake-token")
+    await connector._setup()
+    yield connector
+    await connector._teardown()
+
+@pytest.mark.asyncio
+async def test_list_records_happy_path(mytool: MyTool) -> None:
+    with respx.mock(base_url="https://api.mytool.com/v1") as m:
+        route = m.get("/records").mock(return_value=httpx.Response(
+            200, json={"records": [{"id": "1", "name": "Alice"}]}
+        ))
+        result = await mytool.alist_records()  # NOTE the `a` prefix for async
+        assert result.items[0].name == "Alice"
+        assert route.calls.last.request.headers["authorization"] == "Bearer fake-token"
+```
+
+Two key gotchas:
+
+- **`await connector.aname()` not `await connector.name()`.**
+  `BaseConnector.__init__` installs sync wrappers as `name(...)` and
+  exposes the raw async coroutine as `aname(...)`. Tests should
+  `await` the `a*` form.
+- **`@pytest_asyncio.fixture` not `@pytest.fixture`.** The project
+  runs pytest-asyncio in strict mode (see `pyproject.toml`), so
+  async fixtures need the explicit decorator.
+
 ## Connector Quality Checklist
 
 Before submitting a PR, verify:
@@ -154,7 +223,8 @@ Before submitting a PR, verify:
 - [ ] Rate limits declared via `_rate_limit_config`
 - [ ] No credentials hardcoded
 - [ ] `get_spec()` works without instantiation
-- [ ] Tests pass: `pytest tests/ -v`
+- [ ] **`tests/connectors/test_<name>.py` exists with 5+ respx tests** (see Step 7 above)
+- [ ] All tests pass: `pytest tests/ -v`
 
 ## Architecture Rules
 
