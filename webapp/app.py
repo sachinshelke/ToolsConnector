@@ -8,37 +8,45 @@ Usage:
     export OPENROUTER_API_KEY=sk-or-v1-...
     python webapp/app.py
 """
+
 from __future__ import annotations
-import json, os, sys
-from pathlib import Path
+
+import json
+import os
+import sys
 from collections import Counter
+from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from flask import Flask, render_template_string, request, jsonify, Response
-import httpx
-from toolsconnector.serve import ToolKit, list_connectors, get_connector_class
-from toolsconnector.health import HealthChecker
-from toolsconnector.codegen import extract_spec, extract_all_specs
+from flask import Flask, jsonify, render_template_string, request
 from tool_metadata import get_tool_meta
+
+from toolsconnector.codegen import extract_spec
+from toolsconnector.health import HealthChecker
+from toolsconnector.serve import ToolKit, list_connectors
 
 app = Flask(__name__)
 
 # -- Data helpers ----------------------------------------------------------
 _spec_cache: dict[str, dict] = {}
 
+
 def _get_spec(name: str) -> dict[str, Any]:
     if name not in _spec_cache:
         _spec_cache[name] = extract_spec(name)
     return _spec_cache[name]
+
 
 def _all_specs() -> dict[str, dict]:
     for n in list_connectors():
         _get_spec(n)
     return _spec_cache
 
+
 def _cat(c: str) -> str:
     return c.replace("_", " ").title()
+
 
 def _stats() -> dict[str, Any]:
     specs = _all_specs()
@@ -47,7 +55,13 @@ def _stats() -> dict[str, Any]:
     for s in specs.values():
         cats[s["category"]] += 1
         acts += len(s.get("actions", {}))
-    return {"connectors": len(specs), "actions": acts, "categories": len(cats), "by_category": dict(sorted(cats.items()))}
+    return {
+        "connectors": len(specs),
+        "actions": acts,
+        "categories": len(cats),
+        "by_category": dict(sorted(cats.items())),
+    }
+
 
 # -- Base template ---------------------------------------------------------
 _BASE = r"""<!DOCTYPE html>
@@ -84,8 +98,10 @@ body{font-family:'Inter',system-ui,sans-serif}code,pre{font-family:'JetBrains Mo
 <footer class="border-t border-slate-200 dark:border-slate-800 mt-16"><div class="max-w-7xl mx-auto px-4 py-8 text-center text-sm text-slate-500">ToolsConnector &mdash; The universal tool-connection primitive for AI agents and applications.</div></footer>
 </body></html>"""
 
+
 def _r(title: str, content: str) -> str:
     return render_template_string(_BASE, title=title, content=content)
+
 
 # -- Routes ----------------------------------------------------------------
 @app.route("/")
@@ -117,12 +133,23 @@ def home():
         "custom": '<path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.648 3.165a.75.75 0 01-1.022-.868l1.023-5.958-4.326-4.234a.75.75 0 01.418-1.276l5.974-.87L10.59 0a.75.75 0 011.32 0l2.748 5.13 5.974.87a.75.75 0 01.418 1.276l-4.326 4.234 1.023 5.958a.75.75 0 01-1.022.868l-5.648-3.165z"/>',
     }
     _CAT_COLORS = {
-        "communication": "#3B82F6", "crm": "#F59E0B", "project_management": "#8B5CF6",
-        "code_platform": "#1E293B", "devops": "#06B6D4", "database": "#10B981",
-        "productivity": "#F97316", "ai_ml": "#7C3AED", "finance": "#6366F1",
-        "marketing": "#EC4899", "storage": "#14B8A6", "message_queue": "#EF4444",
-        "analytics": "#8B5CF6", "security": "#059669", "knowledge": "#0EA5E9",
-        "ecommerce": "#84CC16", "custom": "#6366F1",
+        "communication": "#3B82F6",
+        "crm": "#F59E0B",
+        "project_management": "#8B5CF6",
+        "code_platform": "#1E293B",
+        "devops": "#06B6D4",
+        "database": "#10B981",
+        "productivity": "#F97316",
+        "ai_ml": "#7C3AED",
+        "finance": "#6366F1",
+        "marketing": "#EC4899",
+        "storage": "#14B8A6",
+        "message_queue": "#EF4444",
+        "analytics": "#8B5CF6",
+        "security": "#059669",
+        "knowledge": "#0EA5E9",
+        "ecommerce": "#84CC16",
+        "custom": "#6366F1",
     }
 
     # Category grid for section 8
@@ -132,7 +159,7 @@ def home():
         icon_color = _CAT_COLORS.get(c, "#6366F1")
         cats_html += (
             f'<a href="/connectors?cat={c}" class="group flex items-center gap-4 p-4 rounded-xl border border-slate-200'
-            f' dark:border-slate-800 hover:border-b-400 hover:shadow-lg transition-all'
+            f" dark:border-slate-800 hover:border-b-400 hover:shadow-lg transition-all"
             f' bg-white dark:bg-slate-900">'
             f'<div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background:{icon_color}15">'
             f'<svg class="w-5 h-5" fill="none" stroke="{icon_color}" stroke-width="1.5" viewBox="0 0 24 24">{icon_path}</svg></div>'
@@ -142,23 +169,38 @@ def home():
 
     # Tool logos for the logo cloud
     tool_logos = [
-        ("gmail", "Gmail"), ("slack", "Slack"), ("github", "GitHub"),
-        ("stripe", "Stripe"), ("openai", "OpenAI"), ("anthropic", "Anthropic"),
-        ("notion", "Notion"), ("jira", "Jira"), ("discord", "Discord"),
-        ("amazons3", "AWS S3"), ("salesforce", "Salesforce"), ("hubspot", "HubSpot"),
-        ("twilio", "Twilio"), ("shopify", "Shopify"), ("dropbox", "Dropbox"),
-        ("figma", "Figma"), ("linear", "Linear"), ("asana", "Asana"),
-        ("googlecalendar", "Calendar"), ("microsoftteams", "Teams"),
+        ("gmail", "Gmail"),
+        ("slack", "Slack"),
+        ("github", "GitHub"),
+        ("stripe", "Stripe"),
+        ("openai", "OpenAI"),
+        ("anthropic", "Anthropic"),
+        ("notion", "Notion"),
+        ("jira", "Jira"),
+        ("discord", "Discord"),
+        ("amazons3", "AWS S3"),
+        ("salesforce", "Salesforce"),
+        ("hubspot", "HubSpot"),
+        ("twilio", "Twilio"),
+        ("shopify", "Shopify"),
+        ("dropbox", "Dropbox"),
+        ("figma", "Figma"),
+        ("linear", "Linear"),
+        ("asana", "Asana"),
+        ("googlecalendar", "Calendar"),
+        ("microsoftteams", "Teams"),
     ]
     logos_html = "".join(
         f'<div class="flex flex-col items-center gap-2 p-4">'
         f'<img src="https://cdn.simpleicons.org/{si}" alt="{label}" class="w-10 h-10 dark:invert dark:brightness-200 dark:contrast-75"'
-        f' onerror="this.parentElement.style.display=\'none\'">'
+        f" onerror=\"this.parentElement.style.display='none'\">"
         f'<span class="text-xs text-slate-500 dark:text-slate-400 font-medium">{label}</span></div>'
         for si, label in tool_logos
     )
 
-    return _r("Home", f"""
+    return _r(
+        "Home",
+        f"""
 <!-- Section 1: Hero -->
 <section class="text-center pt-12 pb-16 sm:pt-20 sm:pb-24">
   <h1 class="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
@@ -490,7 +532,8 @@ tools = kit.to_openai_tools()</code></pre>
       <div class="font-medium text-sm">Health</div>
     </a>
   </div>
-</section>""")
+</section>""",
+    )
 
 
 @app.route("/connectors")
@@ -501,7 +544,12 @@ def connectors_page():
     grouped: dict[str, list] = {}
     for name in sorted(specs):
         sp = specs[name]
-        if q and q not in name and q not in sp.get("description", "").lower() and q not in sp.get("display_name", "").lower():
+        if (
+            q
+            and q not in name
+            and q not in sp.get("description", "").lower()
+            and q not in sp.get("display_name", "").lower()
+        ):
             continue
         if cf and sp["category"] != cf:
             continue
@@ -518,14 +566,17 @@ def connectors_page():
             else:
                 ini = sp["display_name"][:2].upper()
                 icon = f'<div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:{m["color"]}">{ini}</div>'
-            html += f'<a href="/connector/{name}" class="group flex items-start gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 bg-white dark:bg-slate-900 hover:shadow-md transition-all">{icon}<div class="flex-1 min-w-0"><div class="flex items-start justify-between"><div><div class="font-semibold text-b-700 dark:text-b-400">{sp["display_name"]}</div><div class="text-xs text-slate-500 mt-0.5">{name}</div></div><span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">{na}</span></div><p class="text-sm text-slate-600 dark:text-slate-400 mt-1.5 line-clamp-2">{sp.get("description","")}</p></div></a>'
+            html += f'<a href="/connector/{name}" class="group flex items-start gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 bg-white dark:bg-slate-900 hover:shadow-md transition-all">{icon}<div class="flex-1 min-w-0"><div class="flex items-start justify-between"><div><div class="font-semibold text-b-700 dark:text-b-400">{sp["display_name"]}</div><div class="text-xs text-slate-500 mt-0.5">{name}</div></div><span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">{na}</span></div><p class="text-sm text-slate-600 dark:text-slate-400 mt-1.5 line-clamp-2">{sp.get("description", "")}</p></div></a>'
         html += "</div>"
-    return _r("Connectors", f"""
+    return _r(
+        "Connectors",
+        f"""
 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
 <h1 class="text-2xl font-bold">Connectors</h1>
 <div class="relative w-full sm:w-72"><svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
 <input type="text" value="{q}" placeholder="Filter connectors..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-b-500 outline-none" onkeyup="if(event.key==='Enter')location.href='/connectors?q='+this.value+'&cat={cf}'"></div></div>
-{html or '<p class="text-slate-500 py-8 text-center">No connectors match your search.</p>'}""")
+{html or '<p class="text-slate-500 py-8 text-center">No connectors match your search.</p>'}""",
+    )
 
 
 def _action_scope(aname: str, act: dict) -> str:
@@ -534,13 +585,66 @@ def _action_scope(aname: str, act: dict) -> str:
         return act["requires_scope"]
     if act.get("dangerous"):
         return "destructive"
-    if any(aname.startswith(p) for p in ("list_", "get_", "search_", "query_", "describe_", "find_", "fetch_")):
+    if any(
+        aname.startswith(p)
+        for p in ("list_", "get_", "search_", "query_", "describe_", "find_", "fetch_")
+    ):
         return "read"
-    if any(aname.startswith(p) for p in ("create_", "send_", "add_", "insert_", "import_", "append_", "upload_", "batch_create", "upsert_")):
+    if any(
+        aname.startswith(p)
+        for p in (
+            "create_",
+            "send_",
+            "add_",
+            "insert_",
+            "import_",
+            "append_",
+            "upload_",
+            "batch_create",
+            "upsert_",
+        )
+    ):
         return "write"
-    if any(aname.startswith(p) for p in ("update_", "modify_", "rename_", "move_", "assign_", "mark_", "star_", "unstar_", "batch_modify", "batch_update", "merge_", "transition_", "complete_", "subscribe_", "unsubscribe_")):
+    if any(
+        aname.startswith(p)
+        for p in (
+            "update_",
+            "modify_",
+            "rename_",
+            "move_",
+            "assign_",
+            "mark_",
+            "star_",
+            "unstar_",
+            "batch_modify",
+            "batch_update",
+            "merge_",
+            "transition_",
+            "complete_",
+            "subscribe_",
+            "unsubscribe_",
+        )
+    ):
         return "modify"
-    if any(aname.startswith(p) for p in ("delete_", "trash_", "untrash_", "remove_", "cancel_", "void_", "purge_", "clear_", "empty_", "batch_delete", "ban_", "block_", "deactivate_", "revoke_")):
+    if any(
+        aname.startswith(p)
+        for p in (
+            "delete_",
+            "trash_",
+            "untrash_",
+            "remove_",
+            "cancel_",
+            "void_",
+            "purge_",
+            "clear_",
+            "empty_",
+            "batch_delete",
+            "ban_",
+            "block_",
+            "deactivate_",
+            "revoke_",
+        )
+    ):
         return "delete"
     return "action"
 
@@ -549,11 +653,23 @@ def _best_first_action(actions: dict) -> str:
     """Pick the most useful action for quickstart examples."""
     # Prefer specific common actions first
     preferred = [
-        "list_emails", "list_messages", "list_files", "list_events",
-        "list_repos", "list_channels", "list_contacts", "list_issues",
-        "list_records", "list_tasks", "list_products", "list_projects",
-        "get_values", "get_spreadsheet", "get_document",
-        "search", "query",
+        "list_emails",
+        "list_messages",
+        "list_files",
+        "list_events",
+        "list_repos",
+        "list_channels",
+        "list_contacts",
+        "list_issues",
+        "list_records",
+        "list_tasks",
+        "list_products",
+        "list_projects",
+        "get_values",
+        "get_spreadsheet",
+        "get_document",
+        "search",
+        "query",
     ]
     for name in preferred:
         if name in actions:
@@ -587,12 +703,19 @@ def _example_value(p: dict) -> str:
 def _action_section_html(aname: str, act: dict, connector_name: str) -> str:
     """Render one action as a full visible section (no click-to-expand)."""
     import html as _html
+
     params = act.get("parameters", [])
     scope = _action_scope(aname, act)
     is_dangerous = act.get("dangerous", False)
     desc = act.get("description", "")
     returns = act.get("returns", {})
-    return_type = returns.get("type", "dict") if isinstance(returns, dict) else str(returns) if returns else "dict"
+    return_type = (
+        returns.get("type", "dict")
+        if isinstance(returns, dict)
+        else str(returns)
+        if returns
+        else "dict"
+    )
 
     # Scope badge
     scope_bg = {
@@ -602,9 +725,15 @@ def _action_section_html(aname: str, act: dict, connector_name: str) -> str:
         "delete": "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400",
         "destructive": "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400",
     }
-    badge_cls = scope_bg.get(scope, "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400")
+    badge_cls = scope_bg.get(
+        scope, "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+    )
     scope_badge = f'<span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full {badge_cls}">{scope}</span>'
-    warn_html = ' <span class="text-amber-500 text-sm" title="Destructive action">&#9888;</span>' if is_dangerous else ""
+    warn_html = (
+        ' <span class="text-amber-500 text-sm" title="Destructive action">&#9888;</span>'
+        if is_dangerous
+        else ""
+    )
 
     # Parameters block
     params_html = ""
@@ -612,24 +741,32 @@ def _action_section_html(aname: str, act: dict, connector_name: str) -> str:
         rows = ""
         for p in params:
             ptype = p.get("type", "any")
-            req_label = '<span class="text-red-400 font-medium">required</span>' if p.get("required") else '<span class="text-slate-300 dark:text-slate-500">optional</span>'
-            pdesc = _html.escape(p.get("description", "")) if p.get("description") else '<span class="text-slate-300">&mdash;</span>'
-            rows += f'''<div class="flex items-start gap-3 text-xs">
+            req_label = (
+                '<span class="text-red-400 font-medium">required</span>'
+                if p.get("required")
+                else '<span class="text-slate-300 dark:text-slate-500">optional</span>'
+            )
+            pdesc = (
+                _html.escape(p.get("description", ""))
+                if p.get("description")
+                else '<span class="text-slate-300">&mdash;</span>'
+            )
+            rows += f"""<div class="flex items-start gap-3 text-xs">
 <code class="font-semibold text-slate-700 dark:text-slate-300 w-28 flex-shrink-0">{p["name"]}</code>
 <span class="text-purple-500 dark:text-purple-400 w-16 flex-shrink-0">{ptype}</span>
 <span class="w-14 flex-shrink-0">{req_label}</span>
 <span class="text-slate-500 dark:text-slate-400">{pdesc}</span>
-</div>'''
-        params_html = f'''<div class="mb-3">
+</div>"""
+        params_html = f"""<div class="mb-3">
 <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Parameters</div>
 <div class="bg-slate-50 dark:bg-slate-800/30 rounded-lg p-3 space-y-1.5">{rows}</div>
-</div>'''
+</div>"""
 
     # Returns block
-    returns_html = f'''<div class="mb-3 text-xs">
+    returns_html = f"""<div class="mb-3 text-xs">
 <span class="text-slate-400">Returns:</span>
 <code class="font-mono text-b-600 dark:text-b-400 ml-1">{_html.escape(str(return_type))}</code>
-</div>'''
+</div>"""
 
     # Example code with real values
     required_params = [p for p in params if p.get("required")]
@@ -642,7 +779,7 @@ def _action_section_html(aname: str, act: dict, connector_name: str) -> str:
         example_code = f'result = kit.execute("{connector_name}_{aname}", {{}})'
     escaped_code = _html.escape(example_code)
 
-    return f'''<section id="action-{aname}" class="scroll-mt-20 py-6 border-b border-slate-100 dark:border-slate-800/50 px-5">
+    return f"""<section id="action-{aname}" class="scroll-mt-20 py-6 border-b border-slate-100 dark:border-slate-800/50 px-5">
 <div class="flex items-center gap-2 mb-1.5">
 <h3 class="text-sm font-bold font-mono text-slate-800 dark:text-slate-200">{aname}</h3>
 {scope_badge}{warn_html}
@@ -654,7 +791,7 @@ def _action_section_html(aname: str, act: dict, connector_name: str) -> str:
 <pre class="text-[11px] bg-slate-900 text-slate-100 rounded-lg p-3 overflow-x-auto"><code class="language-python">{escaped_code}</code></pre>
 <button onclick="navigator.clipboard.writeText(this.previousElementSibling.querySelector('code').textContent.trim());this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" class="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-400 hover:text-white cursor-pointer">Copy</button>
 </div>
-</section>'''
+</section>"""
 
 
 def _sidebar_html(actions: dict, name: str) -> str:
@@ -668,7 +805,7 @@ def _sidebar_html(actions: dict, name: str) -> str:
     for aname in sorted(actions.keys()):
         action_links += f'<a href="#action-{aname}" class="sidebar-link action-link block px-3 py-1 text-xs font-mono text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded truncate" data-section="action-{aname}" title="{aname}">{aname}</a>\n'
 
-    sidebar_inner = f'''<a href="/connectors" class="block px-3 py-1.5 rounded text-sm text-slate-400 hover:text-slate-600 mb-2">&larr; All Connectors</a>
+    sidebar_inner = f"""<a href="/connectors" class="block px-3 py-1.5 rounded text-sm text-slate-400 hover:text-slate-600 mb-2">&larr; All Connectors</a>
 <a href="#overview" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="overview">Overview</a>
 <a href="#install" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="install">Install</a>
 <a href="#quickstart" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="quickstart">Quick Start</a>
@@ -680,9 +817,9 @@ def _sidebar_html(actions: dict, name: str) -> str:
 </div>
 <div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
 <a href="#auth" class="sidebar-link block px-3 py-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="auth">Authentication</a>
-</div>'''
+</div>"""
 
-    return f'''<!-- Mobile sidebar toggle -->
+    return f"""<!-- Mobile sidebar toggle -->
 <div class="lg:hidden fixed bottom-4 right-4 z-40">
 <button onclick="document.getElementById('mobile-sidebar').classList.toggle('hidden')" class="w-12 h-12 rounded-full bg-b-600 text-white shadow-lg flex items-center justify-center hover:bg-b-700 transition-colors">
 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
@@ -703,7 +840,7 @@ def _sidebar_html(actions: dict, name: str) -> str:
 <div class="sticky top-20 space-y-0.5 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 text-sm">
 {sidebar_inner}
 </div>
-</nav>'''
+</nav>"""
 
 
 @app.route("/connector/<name>")
@@ -711,17 +848,28 @@ def connector_detail(name: str):
     try:
         sp = _get_spec(name)
     except Exception:
-        return _r("Not Found", '<p class="text-center py-16 text-slate-500">Connector not found.</p>'), 404
+        return _r(
+            "Not Found", '<p class="text-center py-16 text-slate-500">Connector not found.</p>'
+        ), 404
 
     actions = sp.get("actions", {})
     meta = get_tool_meta(name)
     import html as _html
 
     # --- Try README.md rendering first ---
-    readme_path = Path(__file__).parent.parent / "src" / "toolsconnector" / "connectors" / name / "README.md"
+    readme_path = (
+        Path(__file__).parent.parent / "src" / "toolsconnector" / "connectors" / name / "README.md"
+    )
     # Also check common alternate names (e.g. openai -> openai_connector)
     for alt_name in [name, name.replace("_connector", ""), f"{name}_connector"]:
-        alt_path = Path(__file__).parent.parent / "src" / "toolsconnector" / "connectors" / alt_name / "README.md"
+        alt_path = (
+            Path(__file__).parent.parent
+            / "src"
+            / "toolsconnector"
+            / "connectors"
+            / alt_name
+            / "README.md"
+        )
         if alt_path.exists():
             readme_path = alt_path
             break
@@ -748,8 +896,10 @@ def connector_detail(name: str):
                 action_md += "|---|---|---|---|\n"
                 for p in params:
                     req = "Yes" if p.get("required") else "No"
-                    default = f" (default: `{p['default']}`)" if p.get("default") is not None else ""
-                    action_md += f"| `{p['name']}` | `{p.get('type','any')}` | {req} | {p.get('description','')}{default} |\n"
+                    default = (
+                        f" (default: `{p['default']}`)" if p.get("default") is not None else ""
+                    )
+                    action_md += f"| `{p['name']}` | `{p.get('type', 'any')}` | {req} | {p.get('description', '')}{default} |\n"
                 action_md += "\n"
 
             action_md += f"**Returns:** `{return_type}`\n\n"
@@ -760,7 +910,9 @@ def connector_detail(name: str):
             ex_params = req_params + opt_params[:2]
             if ex_params:
                 args = ", ".join(f'"{p["name"]}": {_example_value(p)}' for p in ex_params)
-                action_md += f'```python\nresult = kit.execute("{name}_{aname}", {{{args}}})\n```\n\n'
+                action_md += (
+                    f'```python\nresult = kit.execute("{name}_{aname}", {{{args}}})\n```\n\n'
+                )
             else:
                 action_md += f'```python\nresult = kit.execute("{name}_{aname}", {{}})\n```\n\n'
 
@@ -768,6 +920,7 @@ def connector_detail(name: str):
 
         # Inject actions into README
         import re
+
         if "<!-- ACTIONS_START -->" in readme_content:
             readme_content = re.sub(
                 r"<!-- ACTIONS_START -->.*?<!-- ACTIONS_END -->",
@@ -786,16 +939,18 @@ def connector_detail(name: str):
             h_id = h.lower().replace(" ", "-").replace("(", "").replace(")", "")
             sidebar_links += f'<a href="#{h_id}" class="sidebar-link block px-3 py-1.5 rounded text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium" data-section="{h_id}">{h}</a>\n'
 
-        sidebar_md = f'''<nav class="hidden lg:block w-52 flex-shrink-0">
+        sidebar_md = f"""<nav class="hidden lg:block w-52 flex-shrink-0">
 <div class="sticky top-20 space-y-0.5 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2">
 <a href="/connectors" class="block px-3 py-1.5 rounded text-sm text-slate-400 hover:text-slate-600 mb-2">&larr; All Connectors</a>
 {sidebar_links}
-</div></nav>'''
+</div></nav>"""
 
         # Render with marked.js + custom styles
         escaped_md = json.dumps(readme_content)
 
-        return _r(sp["display_name"], f"""
+        return _r(
+            sp["display_name"],
+            f"""
 <div class="flex gap-8">
 {sidebar_md}
 <div class="flex-1 min-w-0">
@@ -820,7 +975,7 @@ def connector_detail(name: str):
 }}
 .dark .connector-readme h1 {{ color: #f1f5f9; border-color: #334155; }}
 .connector-readme blockquote {{
-    border-left: 4px solid {meta.get('color', '#6366f1')};
+    border-left: 4px solid {meta.get("color", "#6366f1")};
     padding: 0.5em 1em;
     margin: 0 0 1.5em;
     background: #f8fafc;
@@ -990,7 +1145,8 @@ document.querySelectorAll('.connector-readme pre').forEach(function(pre) {{
     sections.forEach(function(s) {{ observer.observe(s); }});
 }})();
 </script>
-""")
+""",
+        )
 
     # --- Fallback: generated page (no README.md) ---
     first_action = _best_first_action(actions)
@@ -1031,7 +1187,9 @@ document.querySelectorAll('.connector-readme pre').forEach(function(pre) {{
         cred_link_html = f'<a href="{meta["get_credentials_url"]}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-sm text-b-600 dark:text-b-400 hover:underline mt-3"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>Get credentials</a>'
 
     # All action sections
-    action_sections = "".join(_action_section_html(aname, act, name) for aname, act in sorted(actions.items()))
+    action_sections = "".join(
+        _action_section_html(aname, act, name) for aname, act in sorted(actions.items())
+    )
 
     # Sidebar
     sidebar = _sidebar_html(actions, name)
@@ -1056,7 +1214,9 @@ print(result)''')
 
     # Related connectors
     specs = _all_specs()
-    related = [(n, s) for n, s in specs.items() if s["category"] == sp["category"] and n != name][:4]
+    related = [(n, s) for n, s in specs.items() if s["category"] == sp["category"] and n != name][
+        :4
+    ]
     related_html = ""
     if related:
         related_cards = ""
@@ -1068,19 +1228,21 @@ print(result)''')
                 ri = rsp["display_name"][:2].upper()
                 rlogo = f'<div class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs" style="background:{rmeta["color"]}">{ri}</div>'
             rcount = len(rsp.get("actions", {}))
-            related_cards += f'''<a href="/connector/{rname}" class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 hover:shadow-sm bg-white dark:bg-slate-900 transition-all">
+            related_cards += f"""<a href="/connector/{rname}" class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 hover:shadow-sm bg-white dark:bg-slate-900 transition-all">
 {rlogo}
 <div class="min-w-0">
 <div class="font-medium text-sm text-slate-800 dark:text-slate-200">{rsp["display_name"]}</div>
 <div class="text-xs text-slate-400">{rcount} actions</div>
-</div></a>'''
-        related_html = f'''
+</div></a>"""
+        related_html = f"""
 <section id="related" class="scroll-mt-20 mb-8">
 <h2 class="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-4">Related Connectors</h2>
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">{related_cards}</div>
-</section>'''
+</section>"""
 
-    return _r(sp["display_name"], f"""
+    return _r(
+        sp["display_name"],
+        f"""
 <div class="flex gap-8">
 
 <!-- Sidebar -->
@@ -1091,7 +1253,7 @@ print(result)''')
 
 <!-- Section: Overview -->
 <section id="overview" class="scroll-mt-20 mb-8">
-<div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden" style="border-top:4px solid {meta['color']}">
+<div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden" style="border-top:4px solid {meta["color"]}">
 <div class="p-6 sm:p-8">
 <div class="flex items-start gap-5">
 {logo_html}
@@ -1100,10 +1262,10 @@ print(result)''')
 <h1 class="text-2xl font-bold text-slate-900 dark:text-white">{sp["display_name"]}</h1>
 {f'<span class="text-sm text-slate-400">by {meta["company"]}</span>' if meta.get("company") else ""}
 </div>
-<p class="text-slate-500 mt-1">{meta.get("tagline") or sp.get("description","")}</p>
+<p class="text-slate-500 mt-1">{meta.get("tagline") or sp.get("description", "")}</p>
 <div class="flex items-center gap-2 flex-wrap mt-4">
-<span class="text-xs px-2.5 py-1 rounded-full font-medium text-white" style="background:{meta['color']}">{_cat(sp["category"])}</span>
-<span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">{sp.get("protocol","rest").upper()}</span>
+<span class="text-xs px-2.5 py-1 rounded-full font-medium text-white" style="background:{meta["color"]}">{_cat(sp["category"])}</span>
+<span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">{sp.get("protocol", "rest").upper()}</span>
 <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">{len(actions)} actions</span>
 </div>
 <div class="flex items-center gap-4 flex-wrap mt-4">{ext_links_html}</div>
@@ -1221,14 +1383,20 @@ function filterActions(q){{
 </script>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
-<script>document.querySelectorAll('pre code').forEach(function(b){{ hljs.highlightElement(b); }});</script>""")
+<script>document.querySelectorAll('pre code').forEach(function(b){{ hljs.highlightElement(b); }});</script>""",
+    )
 
 
 @app.route("/playground")
 def playground():
     specs = _all_specs()
-    cbs = "".join(f'<label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 px-2 py-1 rounded"><input type="checkbox" name="c" value="{n}" class="ccb rounded border-slate-300 text-b-600 focus:ring-b-500"><span>{specs[n]["display_name"]}</span></label>' for n in sorted(specs))
-    return _r("Playground", """
+    cbs = "".join(
+        f'<label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 px-2 py-1 rounded"><input type="checkbox" name="c" value="{n}" class="ccb rounded border-slate-300 text-b-600 focus:ring-b-500"><span>{specs[n]["display_name"]}</span></label>'
+        for n in sorted(specs)
+    )
+    return _r(
+        "Playground",
+        """
 <h1 class="text-2xl font-bold mb-6">Schema Playground</h1>
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 <div class="lg:col-span-1 space-y-4">
@@ -1237,7 +1405,9 @@ def playground():
 <div class="flex gap-2 mb-2"><button onclick="document.querySelectorAll('.ccb').forEach(c=>c.checked=true)" class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200">Select All</button><button onclick="document.querySelectorAll('.ccb').forEach(c=>c.checked=false)" class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200">Clear</button></div>
 <div class="relative mb-2"><svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
 <input type="text" placeholder="Search connectors..." class="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs focus:ring-2 focus:ring-b-500 outline-none" oninput="document.querySelectorAll('.ccb-wrap').forEach(w=>w.style.display=w.textContent.toLowerCase().includes(this.value.toLowerCase())?'':'none')"></div>
-<div class="max-h-64 overflow-y-auto space-y-0.5">""" + cbs.replace('label class="flex', 'label class="ccb-wrap flex') + """</div></div>
+<div class="max-h-64 overflow-y-auto space-y-0.5">"""
+        + cbs.replace('label class="flex', 'label class="ccb-wrap flex')
+        + """</div></div>
 <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
 <h3 class="font-semibold mb-2">Options</h3>
 <div><label class="text-sm font-medium">Framework</label>
@@ -1259,7 +1429,8 @@ document.getElementById('so').textContent='Generating...';
 try{const r=await fetch('/api/schema',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({connectors:cs,framework:fw,exclude_dangerous:exD})});
 const d=await r.json();document.getElementById('so').textContent=JSON.stringify(d.schema,null,2);
 document.getElementById('si').textContent=d.tools_count+' tools generated for '+fw.charAt(0).toUpperCase()+fw.slice(1)}catch(e){document.getElementById('so').textContent='Error: '+e.message}}
-</script>""")
+</script>""",
+    )
 
 
 @app.route("/api/schema", methods=["POST"])
@@ -1269,7 +1440,11 @@ def api_schema():
     fw = d.get("framework", "openai")
     try:
         kit = ToolKit(cs, exclude_dangerous=d.get("exclude_dangerous", False))
-        fn = {"openai": kit.to_openai_tools, "anthropic": kit.to_anthropic_tools, "gemini": kit.to_gemini_tools}.get(fw, kit.to_openai_tools)
+        fn = {
+            "openai": kit.to_openai_tools,
+            "anthropic": kit.to_anthropic_tools,
+            "gemini": kit.to_gemini_tools,
+        }.get(fw, kit.to_openai_tools)
         schema = fn()
         return jsonify({"schema": schema, "tools_count": len(schema), "framework": fw})
     except Exception as e:
@@ -1311,7 +1486,9 @@ def assistant():
     )
     escaped_sys = json.dumps(sys_prompt)
 
-    return _r("AI Assistant", f"""
+    return _r(
+        "AI Assistant",
+        f"""
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
@@ -1516,7 +1693,8 @@ async function sendMsg() {{
   }}
   busy = false; document.getElementById('sb').disabled = false;
 }}
-</script>""")
+</script>""",
+    )
 
 
 # /api/chat removed — AI assistant now calls OpenRouter directly from the
@@ -1526,7 +1704,9 @@ async function sendMsg() {{
 
 @app.route("/health")
 def health_page():
-    return _r("Health", """
+    return _r(
+        "Health",
+        """
 <h1 class="text-2xl font-bold mb-6">Health Dashboard</h1>
 <div id="hl" class="text-center py-16"><div class="inline-block w-8 h-8 border-4 border-b-200 border-t-b-600 rounded-full animate-spin"></div><p class="text-sm text-slate-500 mt-3">Checking connector health...</p></div>
 <div id="hc" class="hidden">
@@ -1548,30 +1728,46 @@ const t=document.getElementById('ht');
 d.reports.forEach(r=>{const ok=r.healthy;
 t.innerHTML+=`<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50"><td class="px-4 py-3 font-medium"><a href="/connector/${r.connector_name}" class="text-b-600 dark:text-b-400 hover:underline">${r.connector_name}</a></td><td class="px-4 py-3"><span class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rounded-full ${ok?'bg-emerald-500':'bg-red-500'}"></span>${ok?'Healthy':'Unhealthy'}</span></td><td class="px-4 py-3">${r.actions_count}</td><td class="px-4 py-3">${r.spec_valid?'<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700">Valid</span>':'<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700">Invalid</span>'}</td><td class="px-4 py-3 text-xs text-slate-500">${r.error||'-'}</td></tr>`})
 }).catch(e=>{document.getElementById('hl').innerHTML='<p class="text-red-500">Failed: '+e.message+'</p>'});
-</script>""")
+</script>""",
+    )
 
 
 @app.route("/api/health")
 def api_health():
     import asyncio
+
     checker = HealthChecker()
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 report = pool.submit(lambda: asyncio.run(checker.check_all())).result()
         else:
             report = loop.run_until_complete(checker.check_all())
     except RuntimeError:
         report = asyncio.run(checker.check_all())
-    return jsonify({
-        "total": report.total, "healthy": report.healthy,
-        "degraded": report.degraded, "unavailable": report.unavailable,
-        "reports": [{"connector_name": r.connector_name, "healthy": r.healthy,
-            "error": r.error, "suggestion": r.suggestion, "actions_count": r.actions_count,
-            "spec_valid": r.spec_valid, "checked_at": r.checked_at} for r in report.reports],
-    })
+    return jsonify(
+        {
+            "total": report.total,
+            "healthy": report.healthy,
+            "degraded": report.degraded,
+            "unavailable": report.unavailable,
+            "reports": [
+                {
+                    "connector_name": r.connector_name,
+                    "healthy": r.healthy,
+                    "error": r.error,
+                    "suggestion": r.suggestion,
+                    "actions_count": r.actions_count,
+                    "spec_valid": r.spec_valid,
+                    "checked_at": r.checked_at,
+                }
+                for r in report.reports
+            ],
+        }
+    )
 
 
 # -- Docs routes -----------------------------------------------------------
@@ -1582,19 +1778,36 @@ _README_PATH = Path(__file__).parent.parent / "README.md"
 _DOC_PAGES = [
     ("quickstart", "Quickstart", "guides/quickstart.md", "Get started in 5 minutes"),
     ("mcp-server", "MCP Server", "guides/mcp-server.md", "Claude Desktop and Cursor setup"),
-    ("ai-frameworks", "AI Frameworks", "guides/ai-frameworks.md", "OpenAI, Anthropic, Gemini, LangChain"),
+    (
+        "ai-frameworks",
+        "AI Frameworks",
+        "guides/ai-frameworks.md",
+        "OpenAI, Anthropic, Gemini, LangChain",
+    ),
     ("credentials", "Credentials", "guides/credentials.md", "BYOK, env vars, KeyStore"),
     ("resilience", "Resilience", "guides/resilience.md", "Circuit breakers, retries, timeouts"),
-    ("adding-connector", "Adding a Connector", "guides/adding-connector.md", "Build your own connector"),
+    (
+        "adding-connector",
+        "Adding a Connector",
+        "guides/adding-connector.md",
+        "Build your own connector",
+    ),
     ("api-reference", "API Reference", "API.md", "All classes and methods"),
-    ("architecture-faq", "Architecture FAQ", "ARCHITECTURE_FAQ.md", "Design decisions and reasoning"),
+    (
+        "architecture-faq",
+        "Architecture FAQ",
+        "ARCHITECTURE_FAQ.md",
+        "Design decisions and reasoning",
+    ),
 ]
 
 try:
     import markdown as _md_lib
+
     _HAS_MD_LIB = True
 except ImportError:
     _HAS_MD_LIB = False
+
 
 def _render_md_file(filepath: Path) -> str:
     """Read a markdown file and convert to HTML."""
@@ -1619,13 +1832,14 @@ document.querySelectorAll('pre code').forEach(b=>{{try{{hljs.highlightElement(b)
 </script>"""
     return html
 
+
 @app.route("/docs")
 def docs_index():
     cards = ""
     for slug, title, _, desc in _DOC_PAGES:
-        cards += f'''<a href="/docs/{slug}" class="group block p-5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 hover:shadow-lg transition-all bg-white dark:bg-slate-900">
+        cards += f"""<a href="/docs/{slug}" class="group block p-5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-b-400 hover:shadow-lg transition-all bg-white dark:bg-slate-900">
 <div class="font-semibold text-b-700 dark:text-b-400 group-hover:text-b-600">{title}</div>
-<p class="text-sm text-slate-500 mt-1">{desc}</p></a>'''
+<p class="text-sm text-slate-500 mt-1">{desc}</p></a>"""
 
     examples = ""
     if _EXAMPLES_DIR.exists():
@@ -1633,14 +1847,18 @@ def docs_index():
             name = f.stem.replace("_", " ").title()
             examples += f'<a href="/docs/example/{f.stem}" class="block px-4 py-2.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">{name}</a>'
 
-    return _r("Documentation", f"""
+    return _r(
+        "Documentation",
+        f"""
 <h1 class="text-2xl font-bold mb-2">Documentation</h1>
 <p class="text-slate-500 mb-8">Guides, API reference, and examples for ToolsConnector.</p>
 <h2 class="text-lg font-semibold mb-4">Guides</h2>
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">{cards}</div>
 <h2 class="text-lg font-semibold mb-4">Examples</h2>
 <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">{examples or '<p class="text-slate-400 p-4">No examples found.</p>'}</div>
-""")
+""",
+    )
+
 
 @app.route("/docs/<slug>")
 def docs_page(slug: str):
@@ -1658,12 +1876,20 @@ def docs_page(slug: str):
     # Sidebar nav
     sidebar = ""
     for s, t, _, _ in _DOC_PAGES:
-        active = "bg-b-100 dark:bg-b-900/30 text-b-700 dark:text-b-400 font-medium" if s == slug else "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-        sidebar += f'<a href="/docs/{s}" class="block px-3 py-2 rounded-lg text-sm {active}">{t}</a>'
+        active = (
+            "bg-b-100 dark:bg-b-900/30 text-b-700 dark:text-b-400 font-medium"
+            if s == slug
+            else "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+        )
+        sidebar += (
+            f'<a href="/docs/{s}" class="block px-3 py-2 rounded-lg text-sm {active}">{t}</a>'
+        )
 
     content = _render_md_file(filepath)
 
-    return _r(title, f"""
+    return _r(
+        title,
+        f"""
 <div class="flex gap-8">
 <nav class="hidden lg:block w-56 flex-shrink-0">
 <div class="sticky top-24 space-y-1">
@@ -1693,7 +1919,9 @@ def docs_page(slug: str):
 .md-body img{{max-width:100%;border-radius:8px}}
 </style>
 {content}
-</article></div></div>""")
+</article></div></div>""",
+    )
+
 
 @app.route("/docs/example/<name>")
 def docs_example(name: str):
@@ -1703,10 +1931,13 @@ def docs_example(name: str):
 
     code = filepath.read_text(encoding="utf-8")
     import html as _html
+
     escaped = _html.escape(code)
     title = name.replace("_", " ").title()
 
-    return _r(title, f"""
+    return _r(
+        title,
+        f"""
 <div class="mb-4"><a href="/docs" class="text-sm text-b-600 dark:text-b-400 hover:underline">&larr; Back to Docs</a></div>
 <h1 class="text-2xl font-bold mb-2">{title}</h1>
 <p class="text-slate-500 mb-6">examples/{name}.py</p>
@@ -1717,12 +1948,13 @@ def docs_example(name: str):
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
 <script>hljs.highlightElement(document.getElementById('excode'));</script>
-""")
+""",
+    )
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
-    print(f"\n  ToolsConnector Playground")
+    print("\n  ToolsConnector Playground")
     print(f"  http://127.0.0.1:{port}\n")
     app.run(debug=debug, host="0.0.0.0", port=port)

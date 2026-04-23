@@ -9,10 +9,7 @@ Ensures architectural layering is maintained:
 from __future__ import annotations
 
 import ast
-import sys
 from pathlib import Path
-
-import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 TC_ROOT = PROJECT_ROOT / "toolsconnector"
@@ -76,9 +73,8 @@ class TestSpecImportBoundary:
                 "toolsconnector.health",
             ],
         )
-        assert violations == [], (
-            f"spec/ has forbidden imports:\n"
-            + "\n".join(f"  {f} imports {i}" for f, i in violations)
+        assert violations == [], "spec/ has forbidden imports:\n" + "\n".join(
+            f"  {f} imports {i}" for f, i in violations
         )
 
 
@@ -90,9 +86,8 @@ class TestConnectorImportBoundary:
             "connectors",
             ["toolsconnector.serve"],
         )
-        assert violations == [], (
-            f"connectors/ imports serve/:\n"
-            + "\n".join(f"  {f} imports {i}" for f, i in violations)
+        assert violations == [], "connectors/ imports serve/:\n" + "\n".join(
+            f"  {f} imports {i}" for f, i in violations
         )
 
     def test_connectors_dont_cross_import(self):
@@ -117,7 +112,6 @@ class TestConnectorImportBoundary:
                             if imported_connector != connector_dir.name:
                                 violations.append((rel_file, imp))
 
-        assert violations == [], (
-            f"Cross-connector imports found:\n"
-            + "\n".join(f"  {f} imports {i}" for f, i in violations)
+        assert violations == [], "Cross-connector imports found:\n" + "\n".join(
+            f"  {f} imports {i}" for f, i in violations
         )

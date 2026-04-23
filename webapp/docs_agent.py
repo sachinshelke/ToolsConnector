@@ -10,9 +10,9 @@ Usage:
 Or without API key (uses offline knowledge base):
     python webapp/docs_agent.py --offline
 """
+
 from __future__ import annotations
 
-import json
 import os
 import sys
 import textwrap
@@ -58,13 +58,14 @@ MODELS = [
 # Dynamic project introspection
 # ---------------------------------------------------------------------------
 
+
 def _build_connector_summary() -> tuple[str, str, int, int]:
     """Import live project data and return (connector_details, category_summary, n_connectors, n_actions).
 
     This reads from the actual installed package so the documentation agent
     is always in sync with the codebase.
     """
-    from toolsconnector.serve import list_connectors, get_connector_class
+    from toolsconnector.serve import get_connector_class, list_connectors
 
     connector_lines: list[str] = []
     total_actions = 0
@@ -80,15 +81,13 @@ def _build_connector_summary() -> tuple[str, str, int, int]:
             categories.setdefault(cat, []).append(name)
             actions_csv = ", ".join(sorted(spec.actions.keys()))
             connector_lines.append(
-                f"- **{name}** ({spec.display_name}): category={cat}, "
-                f"{n} actions: {actions_csv}"
+                f"- **{name}** ({spec.display_name}): category={cat}, {n} actions: {actions_csv}"
             )
         except Exception as exc:
             connector_lines.append(f"- **{name}**: failed to load ({exc})")
 
     cat_summary = "\n".join(
-        f"  {cat}: {', '.join(sorted(names))}"
-        for cat, names in sorted(categories.items())
+        f"  {cat}: {', '.join(sorted(names))}" for cat, names in sorted(categories.items())
     )
 
     return (
@@ -331,6 +330,7 @@ def _offline_search(query: str) -> str | None:
 # LLM communication
 # ---------------------------------------------------------------------------
 
+
 def chat_with_llm(messages: list[dict], model: str) -> str:
     """Call OpenRouter API with automatic model fallback.
 
@@ -393,6 +393,7 @@ def chat_with_llm(messages: list[dict], model: str) -> str:
 # Display helpers
 # ---------------------------------------------------------------------------
 
+
 def _print_welcome() -> None:
     """Print the welcome banner."""
     welcome = textwrap.dedent("""\
@@ -454,7 +455,7 @@ def _print_warning(text: str) -> None:
 
 def _print_connector_table() -> None:
     """Print a table of all connectors (works offline)."""
-    from toolsconnector.serve import list_connectors, get_connector_class
+    from toolsconnector.serve import get_connector_class, list_connectors
 
     if HAS_RICH:
         table = Table(title="Available Connectors", border_style="blue")
@@ -484,8 +485,10 @@ def _print_connector_table() -> None:
             try:
                 cls = get_connector_class(name)
                 spec = cls.get_spec()
-                print(f"  {name:16s} {spec.display_name:20s} "
-                      f"{spec.category.value:20s} {len(spec.actions)} actions")
+                print(
+                    f"  {name:16s} {spec.display_name:20s} "
+                    f"{spec.category.value:20s} {len(spec.actions)} actions"
+                )
             except Exception:
                 print(f"  {name:16s} (failed to load)")
 
@@ -500,6 +503,7 @@ def _get_input(prompt_text: str) -> str:
 # ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     """Run the interactive documentation agent."""
@@ -574,7 +578,7 @@ def main() -> None:
 
         if cmd == "model":
             _print_info(f"Current model: {current_model}")
-            _print_info(f"Available free models:")
+            _print_info("Available free models:")
             for m in MODELS:
                 marker = " <-- active" if m == current_model else ""
                 _print_info(f"  {m}{marker}")

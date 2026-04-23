@@ -4,26 +4,19 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from toolsconnector.spec import (
+    SPEC_VERSION,
     ActionSpec,
-    AuthProviderSpec,
-    AuthSpec,
     AuthType,
     ConnectorCategory,
     ConnectorSpec,
     ErrorCode,
-    ErrorSpec,
     OAuthSpec,
-    PaginationSpec,
     PaginationStrategyType,
     ParameterSpec,
     ProtocolType,
     RateLimitSpec,
     ScopeSet,
-    SPEC_VERSION,
-    TypeSpec,
 )
 
 

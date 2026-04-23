@@ -9,4 +9,5 @@ import pytest
 def project_root():
     """Return the project root path."""
     from pathlib import Path
+
     return Path(__file__).parent.parent

@@ -7,9 +7,9 @@ from typing import Optional
 import pytest
 from pydantic import BaseModel
 
-from toolsconnector.runtime import action, BaseConnector
+from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType
-from toolsconnector.types import PaginatedList, PageState
+from toolsconnector.types import PageState, PaginatedList
 
 
 class TestItem(BaseModel):

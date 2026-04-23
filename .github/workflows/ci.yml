@@ -78,10 +78,16 @@ jobs:
         run: |
           pip install -e ".[dev]"
           pip install eval_type_backport
+      # Ruff covers src/ (the published library), tests/ (which we ship in
+      # the sdist), and webapp/ (the UI that drives toolsconnector.github.io).
+      # scripts/ and .agents/ are deliberately excluded — they're developer-
+      # only tooling with their own patterns (sys.path shims, ad-hoc poll
+      # loops) where ruff defaults conflict with intent. Per-file-ignores
+      # for legitimate webapp/ conventions live in pyproject.toml.
       - name: Ruff check
-        run: ruff check src/
+        run: ruff check src/ tests/ webapp/
       - name: Ruff format check
-        run: ruff format --check src/
+        run: ruff format --check src/ tests/ webapp/
 
   # ── 2. Tests across Python versions (code change or PR) ────────────────
   test:
@@ -179,14 +185,21 @@ jobs:
           print(f'All {len(names)} connectors pass spec validation ({total} actions)')
           "
 
-  # ── 3b. Type check (mypy) — informational ──────────────────────────────
+  # ── 3b. Type check (mypy) — informational, split core vs connectors ────
   # The project ships `py.typed` and claims `Typing :: Typed` in classifiers,
-  # so we owe our users an actual type check. `strict = true` is configured
-  # in pyproject.toml's [tool.mypy], but this job runs `--no-incremental`
-  # without failing the build yet — the codebase has accreted type debt
-  # and a hard gate would be disruptive. Errors appear in the log so the
-  # count can be driven down incrementally. Flip `continue-on-error` to
-  # false once the count is manageable, then drop this comment.
+  # so we owe our users an actual type check.
+  #
+  # pyproject.toml's [tool.mypy] sets `strict = true` as the baseline, then
+  # uses [[tool.mypy.overrides]] to relax `connectors.*` (which can't
+  # meaningfully be strict-typed — every connector handles dict[str, Any]
+  # JSON payloads from vendor REST APIs, and the JSON shape isn't part of
+  # OUR contract).
+  #
+  # This job runs mypy and reports counts split into core vs connectors.
+  # Core is the path to "required" — when core errors hit zero, flip
+  # `continue-on-error` to false (and consider running mypy on core only).
+  # Connector errors are tracked but acknowledged as long-term debt
+  # (latent bugs in vendor-API mappers — fix opportunistically).
   typecheck:
     name: Typecheck (mypy)
     runs-on: ubuntu-latest
@@ -206,14 +219,19 @@ jobs:
       - name: Run mypy
         run: |
           mypy src/toolsconnector/ 2>&1 | tee mypy-output.txt || true
-          ERRORS=$(grep -cE '^.+: error:' mypy-output.txt || echo 0)
-          echo "mypy_errors=${ERRORS}" >> $GITHUB_STEP_SUMMARY
+          TOTAL=$(grep -cE '^src/toolsconnector/.+: error:' mypy-output.txt || echo 0)
+          CORE=$(grep -E '^src/toolsconnector/' mypy-output.txt | grep -v '/connectors/' | grep -cE ': error:' || echo 0)
+          CONNECTOR=$(grep -E '^src/toolsconnector/connectors/' mypy-output.txt | grep -cE ': error:' || echo 0)
           echo "## Type check summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "mypy errors: **${ERRORS}**" >> $GITHUB_STEP_SUMMARY
+          echo "| | Errors |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Core (runtime/serve/codegen/etc.) | **${CORE}** |" >> $GITHUB_STEP_SUMMARY
+          echo "| Connectors | ${CONNECTOR} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Total | ${TOTAL} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Drive this number down over time, then flip this job's" >> $GITHUB_STEP_SUMMARY
-          echo "\`continue-on-error\` to \`false\` to enforce." >> $GITHUB_STEP_SUMMARY
+          echo "Goal: drive **core** to zero, then flip this job's \`continue-on-error\` to \`false\` to gate PRs." >> $GITHUB_STEP_SUMMARY
+          echo "Connectors are acknowledged debt — fix opportunistically when touching a connector." >> $GITHUB_STEP_SUMMARY
 
   # ── 4. Security scan (always — cheap, catches everything) ──────────────
   security:

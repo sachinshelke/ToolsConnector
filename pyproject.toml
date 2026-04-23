@@ -318,12 +318,73 @@ ignore = [
 # (errors → serve → _discovery → errors). The late import is intentional.
 "src/toolsconnector/serve/_discovery.py" = ["E402"]
 
+# webapp/ — the Flask UI uses a few patterns that don't fit ruff's defaults
+# but are intentional and documented inline:
+#
+# - N806: `_CAT_ICONS` and `_CAT_COLORS` are uppercase function-local CONSTANTS
+#   (lookup tables). Treating them as constants makes their immutability
+#   intent obvious to readers; renaming to lowercase would mislead.
+# - E731: `_BF = lambda d: ...` in tool_metadata.py — compact one-line URL
+#   helper that's used hundreds of times in a flat data dict. A `def` would
+#   pad the file by ~3 lines for no readability gain.
+# - E402: webapp/docs_agent.py has a sys.path.insert() before importing httpx
+#   so `python webapp/docs_agent.py` works without installing the package.
+"webapp/app.py"            = ["N806"]
+"webapp/tool_metadata.py"  = ["E731"]
+"webapp/docs_agent.py"     = ["E402"]
+
 [tool.mypy]
 python_version = "3.9"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
 mypy_path = "src"
+
+# ── Per-module mypy relaxations ───────────────────────────────────────────
+#
+# As of v0.3.x mypy reports ~509 errors across the codebase. ~471 of those
+# live in `connectors/`, where strict typing fights vendor-API JSON shape
+# (every endpoint returns `dict[str, Any]` whose nested keys aren't
+# discoverable until runtime). The remaining ~54 are in core modules
+# (serve/runtime/codegen) and are tractable in a focused triage session.
+#
+# Strategy: keep `strict = true` as the default but loosen on per-module
+# basis for code where strict typing isn't pragmatic. Goal: drive the
+# enforced surface to zero errors so the CI mypy job can flip from
+# `continue-on-error: true` to required.
+
+# Connectors are vendor-API mappers — relax strict mode.
+# Each connector handles dict[str, Any] payloads from its tool's REST API,
+# which loses meaningful type info at the JSON parse boundary. Strict here
+# would produce ~470 errors of type `[no-any-return]` and `[type-arg]` that
+# don't represent real bugs — they represent "this dict's shape is the
+# vendor's contract, not ours." Type-check connectors at the loose level
+# (catches use-before-define, unreachable code, obvious mistakes) but not
+# the type-flow rules.
+[[tool.mypy.overrides]]
+module = "toolsconnector.connectors.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_any_unimported = false
+disallow_any_generics = false
+warn_return_any = false
+no_implicit_optional = false
+
+# 3rd-party libraries that ship without type stubs. These are all OPTIONAL
+# dependencies behind extras — mypy can't see them when the extras aren't
+# installed. Marking them as `ignore_missing_imports` removes the false
+# positives without weakening real type checks elsewhere.
+[[tool.mypy.overrides]]
+module = [
+    "cryptography.*",
+    "yaml",
+    "websockets",
+    "starlette.*",
+    "mcp.*",
+    "langchain_core.*",
+    "uvicorn",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

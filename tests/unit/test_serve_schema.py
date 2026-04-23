@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import pytest
 
+from toolsconnector.connectors.gmail import Gmail
 from toolsconnector.serve._filtering import build_tool_list
 from toolsconnector.serve.schema import (
     to_anthropic_schema,
     to_gemini_schema,
     to_openai_schema,
 )
-from toolsconnector.connectors.gmail import Gmail
 
 
 @pytest.fixture

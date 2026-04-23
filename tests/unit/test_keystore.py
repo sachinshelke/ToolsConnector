@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import os
 
-import pytest
-
-from toolsconnector.keystore import InMemoryKeyStore, EnvironmentKeyStore
+from toolsconnector.keystore import EnvironmentKeyStore, InMemoryKeyStore
 
 
 class TestInMemoryKeyStore:
@@ -49,6 +46,7 @@ class TestInMemoryKeyStore:
 
     def test_delete_nonexistent(self):
         """Deleting a nonexistent key should not raise."""
+
         async def _test():
             ks = InMemoryKeyStore()
             await ks.delete("nope")  # Should not raise

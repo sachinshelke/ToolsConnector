@@ -20,7 +20,6 @@ import pytest
 
 from toolsconnector.serve._discovery import get_connector_class, list_connectors
 
-
 ALL_CONNECTORS = list_connectors()
 
 
@@ -66,9 +65,7 @@ class TestAllConnectorsSpec:
     def test_spec_name_matches_registry(self, name: str) -> None:
         cls = get_connector_class(name)
         spec = cls.get_spec()
-        assert spec.name == name, (
-            f"Registry key '{name}' != spec.name '{spec.name}'"
-        )
+        assert spec.name == name, f"Registry key '{name}' != spec.name '{spec.name}'"
 
     @pytest.mark.parametrize("name", ALL_CONNECTORS)
     def test_spec_has_display_name(self, name: str) -> None:
@@ -114,9 +111,7 @@ class TestAllConnectorsActions:
         cls = get_connector_class(name)
         spec = cls.get_spec()
         for action_name, action in spec.actions.items():
-            assert action.description, (
-                f"{name}.{action_name}: action has no description"
-            )
+            assert action.description, f"{name}.{action_name}: action has no description"
 
     @pytest.mark.parametrize("name", ALL_CONNECTORS)
     def test_actions_have_input_schema(self, name: str) -> None:
@@ -124,9 +119,7 @@ class TestAllConnectorsActions:
         spec = cls.get_spec()
         for action_name, action in spec.actions.items():
             schema = action.input_schema
-            assert isinstance(schema, dict), (
-                f"{name}.{action_name}: input_schema is not a dict"
-            )
+            assert isinstance(schema, dict), f"{name}.{action_name}: input_schema is not a dict"
             assert schema.get("type") == "object", (
                 f"{name}.{action_name}: input_schema type is not 'object'"
             )
@@ -136,9 +129,7 @@ class TestAllConnectorsActions:
         cls = get_connector_class(name)
         spec = cls.get_spec()
         for action_name, action in spec.actions.items():
-            assert action.name, (
-                f"{name}.{action_name}: action.name is empty"
-            )
+            assert action.name, f"{name}.{action_name}: action.name is empty"
             assert action.name == action_name, (
                 f"{name}: action key '{action_name}' != action.name '{action.name}'"
             )
@@ -173,9 +164,7 @@ class TestAllConnectorsInstantiation:
         instance = cls()
         spec = cls.get_spec()
         for action_name in spec.actions:
-            assert hasattr(instance, action_name), (
-                f"{name}: missing sync wrapper for {action_name}"
-            )
+            assert hasattr(instance, action_name), f"{name}: missing sync wrapper for {action_name}"
 
     @pytest.mark.parametrize("name", ALL_CONNECTORS)
     def test_connector_repr(self, name: str) -> None:
@@ -238,9 +227,7 @@ class TestConnectorCounts:
             for action in spec.actions.values():
                 if action.dangerous:
                     dangerous_count += 1
-        assert dangerous_count > 50, (
-            f"Only {dangerous_count} dangerous actions -- expected 50+"
-        )
+        assert dangerous_count > 50, f"Only {dangerous_count} dangerous actions -- expected 50+"
 
     def test_all_categories_covered(self) -> None:
         """Connectors should span multiple categories."""
@@ -249,9 +236,7 @@ class TestConnectorCounts:
             cls = get_connector_class(name)
             spec = cls.get_spec()
             categories.add(spec.category.value)
-        assert len(categories) >= 8, (
-            f"Only {len(categories)} categories -- expected 8+"
-        )
+        assert len(categories) >= 8, f"Only {len(categories)} categories -- expected 8+"
 
     def test_no_duplicate_connector_names(self) -> None:
         """Each connector spec.name must be unique."""

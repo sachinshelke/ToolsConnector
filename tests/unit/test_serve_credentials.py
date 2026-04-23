@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
+from toolsconnector.errors import MissingConfigError
 from toolsconnector.serve._credentials import (
     require_credentials,
     resolve_credentials,
 )
-from toolsconnector.errors import MissingConfigError
 
 
 class TestResolveCredentials:

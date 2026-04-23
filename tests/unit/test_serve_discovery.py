@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import pytest
 
+from toolsconnector.errors import ConnectorNotConfiguredError
 from toolsconnector.serve._discovery import (
-    _KNOWN_CONNECTORS,
     get_connector_class,
     list_connectors,
     resolve_connectors,
 )
-from toolsconnector.errors import ConnectorNotConfiguredError
 
 
 class TestListConnectors:

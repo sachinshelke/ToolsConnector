@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from toolsconnector.serve._validation import validate_arguments
 
 

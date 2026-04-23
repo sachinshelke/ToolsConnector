@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
-from toolsconnector.serve._filtering import ToolEntry, build_tool_list
 from toolsconnector.connectors.gmail import Gmail
+from toolsconnector.serve._filtering import ToolEntry, build_tool_list
 
 
 class TestBuildToolList:
@@ -52,9 +50,7 @@ class TestBuildToolList:
         all_entries = build_tool_list([Gmail])
         filtered = build_tool_list([Gmail], exclude_actions=["delete_*"])
 
-        delete_count = sum(
-            1 for e in all_entries if e.action_name.startswith("delete_")
-        )
+        delete_count = sum(1 for e in all_entries if e.action_name.startswith("delete_"))
         assert delete_count > 0, "Gmail should have at least one delete action"
         assert len(filtered) == len(all_entries) - delete_count
         assert not any(e.action_name.startswith("delete_") for e in filtered)

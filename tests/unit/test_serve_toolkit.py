@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from toolsconnector.serve.toolkit import ToolKit
 from toolsconnector.errors import ConnectorNotConfiguredError
+from toolsconnector.serve.toolkit import ToolKit
 
 
 class TestToolKitCreation:
