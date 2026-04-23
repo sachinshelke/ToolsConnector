@@ -7,9 +7,14 @@ Expects an OAuth 2.0 access token passed as ``credentials``.
 from __future__ import annotations
 
 import base64
+import logging
+import mimetypes
+import re
+from email.encoders import encode_base64
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import httpx
 
@@ -17,6 +22,9 @@ from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
+from ._helpers import (
+    html_to_text as _html_to_text,
+)
 from ._helpers import (
     parse_draft as _parse_draft,
 )
@@ -48,6 +56,13 @@ from .types import (
     UserProfile,
     VacationSettings,
 )
+
+logger = logging.getLogger("toolsconnector.gmail")
+
+# Matches any HTML-like tag. Used to detect HTML content in the `body`
+# parameter for backward-compat auto-routing (pre-0.3.5 callers passed
+# HTML directly in `body` without setting `html_body`).
+_HTML_TAG_RE = re.compile(r"<[a-zA-Z][^>]*>")
 
 
 class Gmail(BaseConnector):
@@ -108,27 +123,91 @@ class Gmail(BaseConnector):
         self,
         to: str,
         subject: str,
-        body: str,
+        text_body: Optional[str] = None,
+        html_body: Optional[str] = None,
         cc: Optional[list[str]] = None,
         bcc: Optional[list[str]] = None,
         reply_to: Optional[str] = None,
-        thread_id: Optional[str] = None,
+        attachments: Optional[list[dict[str, Any]]] = None,
+        headers: Optional[dict[str, str]] = None,
+        thread_id: Optional[str] = None,  # noqa: ARG002 — kept for API compat
     ) -> str:
         """Build an RFC 2822 email message and return base64url-encoded bytes.
+
+        Supports four content shapes, chosen automatically from inputs:
+
+        1. **Plain only** (``text_body`` set, ``html_body=None``, no
+           attachments): simple ``text/plain`` message.
+        2. **HTML only** (``html_body`` set, ``text_body=None``, no
+           attachments): ``multipart/alternative`` with the HTML as the
+           primary part and an auto-derived plain-text fallback (via
+           ``_html_to_text``).
+        3. **Both** (``text_body`` AND ``html_body`` set): ``multipart/
+           alternative`` with both parts verbatim. Use this when you want
+           to control the plain-text fallback yourself.
+        4. **With attachments**: whatever body shape is chosen above is
+           wrapped in a ``multipart/mixed`` with each attachment added as
+           a separate part.
 
         Args:
             to: Recipient email address.
             subject: Email subject line.
-            body: Email body (HTML supported).
+            text_body: Plain-text body. Required if ``html_body`` is None.
+            html_body: HTML body. Required if ``text_body`` is None.
             cc: Optional CC recipients.
             bcc: Optional BCC recipients.
-            reply_to: Optional reply-to address.
-            thread_id: Optional thread ID for threading (unused in MIME).
+            reply_to: Optional Reply-To address.
+            attachments: Optional list of dicts, each with ``filename``
+                (str), ``content`` (base64-encoded str), and optional
+                ``content_type`` (MIME type — inferred from filename if
+                omitted).
+            headers: Optional dict of custom headers (e.g.
+                ``{"In-Reply-To": "<msg-id>", "List-Unsubscribe": "<mailto:…>"}``).
+            thread_id: Reserved for future use (threading happens via the
+                Gmail ``threadId`` field on send, not via MIME).
 
         Returns:
-            Base64url-encoded string of the RFC 2822 message.
+            Base64url-encoded string of the RFC 2822 message, ready to
+            pass to Gmail's ``/messages/send`` endpoint.
+
+        Raises:
+            ValueError: If neither ``text_body`` nor ``html_body`` is set,
+                or if an attachment's ``content`` is not valid base64.
         """
-        msg = MIMEMultipart("alternative")
+        if text_body is None and html_body is None:
+            raise ValueError("_build_rfc2822 requires at least one of `text_body` or `html_body`.")
+
+        # ── 1. Build the core body part (plain, html, or alternative) ─
+        body_part: Union[MIMEText, MIMEMultipart]
+        if html_body is not None and text_body is not None:
+            body_part = MIMEMultipart("alternative")
+            body_part.attach(MIMEText(text_body, "plain", _charset="utf-8"))
+            body_part.attach(MIMEText(html_body, "html", _charset="utf-8"))
+        elif html_body is not None:
+            # HTML-only → still emit as multipart/alternative with an
+            # auto-derived text fallback. Mail clients without HTML support
+            # (rare but not zero) need it; spam filters penalize single-part
+            # HTML messages.
+            body_part = MIMEMultipart("alternative")
+            body_part.attach(MIMEText(_html_to_text(html_body), "plain", _charset="utf-8"))
+            body_part.attach(MIMEText(html_body, "html", _charset="utf-8"))
+        else:
+            # text_body only (text_body is not None here per the guard above)
+            assert text_body is not None  # noqa: S101 — narrowing for mypy
+            body_part = MIMEText(text_body, "plain", _charset="utf-8")
+
+        # ── 2. Wrap in multipart/mixed if there are attachments ───────
+        msg: Union[MIMEText, MIMEMultipart]
+        if attachments:
+            mixed = MIMEMultipart("mixed")
+            mixed.attach(body_part)
+            for idx, att in enumerate(attachments):
+                mixed.attach(self._build_attachment_part(att, idx))
+            msg = mixed
+        else:
+            msg = body_part
+
+        # ── 3. Top-level headers ──────────────────────────────────────
         msg["To"] = to
         msg["Subject"] = subject
         if cc:
@@ -138,13 +217,71 @@ class Gmail(BaseConnector):
         if reply_to:
             msg["Reply-To"] = reply_to
 
-        # Attach both plain text and HTML parts
-        plain_text = body.replace("<br>", "\n").replace("<br/>", "\n")
-        msg.attach(MIMEText(plain_text, "plain"))
-        msg.attach(MIMEText(body, "html"))
+        # ── 4. Custom headers (late so they can override defaults) ────
+        if headers:
+            for name, value in headers.items():
+                if name in msg:
+                    msg.replace_header(name, value)
+                else:
+                    msg[name] = value
 
         raw_bytes = msg.as_bytes()
         return base64.urlsafe_b64encode(raw_bytes).decode("ascii")
+
+    @staticmethod
+    def _build_attachment_part(att: dict[str, Any], idx: int) -> MIMEBase:
+        """Build a MIMEBase part from an attachment dict.
+
+        Args:
+            att: Dict with ``filename`` (str), ``content`` (base64 str),
+                and optional ``content_type`` (MIME type).
+            idx: Zero-based index — used only for error messages when
+                validation fails.
+
+        Returns:
+            A MIMEBase part with base64 Content-Transfer-Encoding and a
+            proper Content-Disposition: attachment header.
+
+        Raises:
+            ValueError: If ``filename`` is missing, ``content`` is not a
+                string, or ``content`` is not valid base64.
+        """
+        filename = att.get("filename")
+        if not filename or not isinstance(filename, str):
+            raise ValueError(f"Attachment {idx} is missing a `filename` (str). Got: {att!r}")
+
+        content = att.get("content")
+        if not isinstance(content, str):
+            raise ValueError(
+                f"Attachment '{filename}' requires `content` to be a "
+                f"base64-encoded string. Got type: {type(content).__name__}."
+            )
+
+        content_type = att.get("content_type") or (
+            mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        )
+        if "/" not in content_type:
+            raise ValueError(
+                f"Attachment '{filename}' has invalid content_type "
+                f"{content_type!r}. Expected '<maintype>/<subtype>'."
+            )
+        maintype, subtype = content_type.split("/", 1)
+
+        try:
+            payload_bytes = base64.b64decode(content, validate=True)
+        except (ValueError, TypeError) as exc:
+            raise ValueError(f"Attachment '{filename}' content is not valid base64: {exc}") from exc
+
+        part = MIMEBase(maintype, subtype)
+        part.set_payload(payload_bytes)
+        # Gmail requires base64 Content-Transfer-Encoding for binary parts.
+        encode_base64(part)
+        part.add_header(
+            "Content-Disposition",
+            "attachment",
+            filename=filename,
+        )
+        return part
 
     # ------------------------------------------------------------------
     # Actions
@@ -231,33 +368,113 @@ class Gmail(BaseConnector):
         to: str,
         subject: str,
         body: str,
+        html_body: Optional[str] = None,
+        attachments: Optional[list[dict[str, Any]]] = None,
         cc: Optional[list[str]] = None,
         bcc: Optional[list[str]] = None,
         reply_to: Optional[str] = None,
+        headers: Optional[dict[str, str]] = None,
     ) -> MessageId:
         """Send an email message.
 
         Constructs an RFC 2822 message, base64url-encodes it, and sends
         it via the Gmail API.
 
+        Four common usage shapes:
+
+        **Plain-text email**
+
+        .. code-block:: python
+
+            send_email(to="x@y.com", subject="Hi", body="Hello from plain text")
+
+        **HTML email with auto-generated plain-text fallback**
+
+        .. code-block:: python
+
+            send_email(
+                to="x@y.com",
+                subject="Styled",
+                body="Plain text version",
+                html_body="<h1>Hello</h1><p>With <b>inline styles</b>.</p>",
+            )
+
+        **HTML-only** (``body`` becomes the caller-supplied text fallback)
+
+        Leave ``body`` as a brief plain summary and put the rich content in
+        ``html_body``. Clients without HTML support show ``body`` instead.
+
+        **With attachments**
+
+        .. code-block:: python
+
+            import base64
+            with open("report.pdf", "rb") as f:
+                pdf_b64 = base64.b64encode(f.read()).decode("ascii")
+            send_email(
+                to="x@y.com",
+                subject="Report",
+                body="See attached report.",
+                attachments=[{
+                    "filename": "report.pdf",
+                    "content": pdf_b64,
+                    # content_type inferred from filename if omitted
+                }],
+            )
+
         Args:
             to: Recipient email address.
             subject: Email subject line.
-            body: Email body (supports HTML).
+            body: Plain-text body. If only HTML content is passed here
+                (for backward compatibility with earlier releases), it
+                is auto-routed to ``html_body`` and a text fallback is
+                derived. Prefer explicit ``html_body`` in new code.
+            html_body: Optional HTML body. When set, the message becomes
+                ``multipart/alternative`` with ``body`` as the plain-text
+                part and ``html_body`` as the HTML part.
+            attachments: Optional list of attachment dicts. Each dict
+                must have ``filename`` (str) and ``content`` (base64-
+                encoded str); ``content_type`` is optional and inferred
+                from the filename extension when not provided.
             cc: Optional CC recipients.
             bcc: Optional BCC recipients.
-            reply_to: Optional reply-to address.
+            reply_to: Optional Reply-To address.
+            headers: Optional dict of custom headers. Useful for
+                ``In-Reply-To`` / ``References`` (proper threading),
+                ``List-Unsubscribe`` (bulk-mail compliance), and custom
+                ``Message-ID``.
 
         Returns:
             MessageId with the sent message's ID and thread ID.
+
+        Raises:
+            ValueError: If an attachment's ``content`` is not valid base64.
         """
+        # ── Backward-compat auto-routing ──────────────────────────────
+        # Pre-0.3.5 callers passed HTML directly in `body`. Detect that
+        # and route it to html_body so the new multipart logic kicks in,
+        # and emit a one-time deprecation log message.
+        effective_text = body
+        effective_html = html_body
+        if html_body is None and _HTML_TAG_RE.search(body):
+            logger.debug(
+                "gmail.send_email received HTML content in `body` with no "
+                "`html_body` set. Auto-routing to html_body for backward "
+                "compatibility. Prefer passing HTML to `html_body` explicitly."
+            )
+            effective_html = body
+            effective_text = _html_to_text(body)
+
         raw = self._build_rfc2822(
             to=to,
             subject=subject,
-            body=body,
+            text_body=effective_text,
+            html_body=effective_html,
             cc=cc,
             bcc=bcc,
             reply_to=reply_to,
+            attachments=attachments,
+            headers=headers,
         )
 
         data = await self._request(
@@ -308,20 +525,56 @@ class Gmail(BaseConnector):
         to: str,
         subject: str,
         body: str,
+        html_body: Optional[str] = None,
+        attachments: Optional[list[dict[str, Any]]] = None,
         cc: Optional[list[str]] = None,
+        bcc: Optional[list[str]] = None,
+        reply_to: Optional[str] = None,
+        headers: Optional[dict[str, str]] = None,
     ) -> DraftId:
         """Create a draft email message.
+
+        Accepts the same full content shape as :meth:`send_email` —
+        plain text, multipart HTML+text, attachments, and custom headers.
+        See :meth:`send_email` for usage examples.
 
         Args:
             to: Recipient email address.
             subject: Email subject line.
-            body: Email body (supports HTML).
+            body: Plain-text body (or HTML for backward compatibility —
+                see :meth:`send_email` for the auto-routing behavior).
+            html_body: Optional HTML body (triggers multipart/alternative).
+            attachments: Optional list of attachment dicts (see
+                :meth:`send_email` for the dict shape).
             cc: Optional CC recipients.
+            bcc: Optional BCC recipients.
+            reply_to: Optional Reply-To address.
+            headers: Optional dict of custom headers.
 
         Returns:
             DraftId with the created draft's ID and associated message ID.
         """
-        raw = self._build_rfc2822(to=to, subject=subject, body=body, cc=cc)
+        effective_text = body
+        effective_html = html_body
+        if html_body is None and _HTML_TAG_RE.search(body):
+            logger.debug(
+                "gmail.create_draft received HTML content in `body` with no "
+                "`html_body` set. Auto-routing for backward compatibility."
+            )
+            effective_html = body
+            effective_text = _html_to_text(body)
+
+        raw = self._build_rfc2822(
+            to=to,
+            subject=subject,
+            text_body=effective_text,
+            html_body=effective_html,
+            cc=cc,
+            bcc=bcc,
+            reply_to=reply_to,
+            attachments=attachments,
+            headers=headers,
+        )
 
         data = await self._request(
             "POST",
@@ -745,24 +998,52 @@ class Gmail(BaseConnector):
         to: str,
         subject: str,
         body: str,
+        html_body: Optional[str] = None,
+        attachments: Optional[list[dict[str, Any]]] = None,
         cc: Optional[list[str]] = None,
+        bcc: Optional[list[str]] = None,
+        reply_to: Optional[str] = None,
+        headers: Optional[dict[str, str]] = None,
     ) -> Draft:
         """Replace the content of an existing draft.
 
         The entire message is replaced; partial updates are not supported
-        by the Gmail API.
+        by the Gmail API. Accepts the same full content shape as
+        :meth:`send_email` — plain text, multipart HTML+text, attachments,
+        and custom headers.
 
         Args:
             draft_id: The ID of the draft to update.
             to: Recipient email address.
             subject: Email subject line.
-            body: Email body (supports HTML).
+            body: Plain-text body (or HTML for backward compatibility).
+            html_body: Optional HTML body (triggers multipart/alternative).
+            attachments: Optional list of attachment dicts.
             cc: Optional CC recipients.
+            bcc: Optional BCC recipients.
+            reply_to: Optional Reply-To address.
+            headers: Optional dict of custom headers.
 
         Returns:
             Updated Draft object.
         """
-        raw = self._build_rfc2822(to=to, subject=subject, body=body, cc=cc)
+        effective_text = body
+        effective_html = html_body
+        if html_body is None and _HTML_TAG_RE.search(body):
+            effective_html = body
+            effective_text = _html_to_text(body)
+
+        raw = self._build_rfc2822(
+            to=to,
+            subject=subject,
+            text_body=effective_text,
+            html_body=effective_html,
+            cc=cc,
+            bcc=bcc,
+            reply_to=reply_to,
+            attachments=attachments,
+            headers=headers,
+        )
 
         data = await self._request(
             "PUT",

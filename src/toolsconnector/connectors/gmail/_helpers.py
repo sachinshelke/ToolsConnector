@@ -7,6 +7,8 @@ into typed Pydantic models.
 from __future__ import annotations
 
 import base64
+import html as _html_module
+from html.parser import HTMLParser
 from typing import Any, Optional
 
 from .types import (
@@ -18,6 +20,89 @@ from .types import (
     Thread,
     VacationSettings,
 )
+
+
+class _HTMLToTextParser(HTMLParser):
+    """Minimal HTML → plain-text converter used for multipart/alternative
+    fallback when the caller supplies only ``html_body``.
+
+    Not a full email-quality renderer — strips tags, preserves line breaks
+    for block-level elements, and unescapes HTML entities. Callers who
+    need a polished plain-text variant should pass ``text_body`` explicitly.
+    """
+
+    _BLOCK_TAGS = {
+        "p",
+        "div",
+        "br",
+        "li",
+        "tr",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "blockquote",
+        "pre",
+        "article",
+        "section",
+    }
+    _SKIP_TAGS = {"script", "style", "head"}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._parts: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
+        if tag in self._SKIP_TAGS:
+            self._skip_depth += 1
+            return
+        if tag in self._BLOCK_TAGS:
+            self._parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self._SKIP_TAGS and self._skip_depth > 0:
+            self._skip_depth -= 1
+            return
+        if tag in self._BLOCK_TAGS:
+            self._parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth > 0:
+            return
+        self._parts.append(data)
+
+    def get_text(self) -> str:
+        raw = "".join(self._parts)
+        # Collapse runs of 3+ newlines to 2 (paragraph break), leave single
+        # newlines alone. Strip leading/trailing whitespace.
+        import re
+
+        collapsed = re.sub(r"\n{3,}", "\n\n", raw)
+        # Strip trailing whitespace on each line (but keep the newlines)
+        lines = [line.rstrip() for line in collapsed.split("\n")]
+        return "\n".join(lines).strip()
+
+
+def html_to_text(html: str) -> str:
+    """Convert an HTML email body to plain text for multipart fallback.
+
+    Handles tag stripping, block-level line breaks, entity unescape
+    (``&amp;`` → ``&``, ``&lt;`` → ``<``, etc.), and script/style removal.
+
+    Args:
+        html: HTML source to convert.
+
+    Returns:
+        Plain-text equivalent suitable for a ``text/plain`` MIME part.
+    """
+    parser = _HTMLToTextParser()
+    parser.feed(html)
+    text = parser.get_text()
+    # Unescape any remaining numeric + named entities that slipped through
+    return _html_module.unescape(text)
 
 
 def parse_email_address(raw: str) -> EmailAddress:
