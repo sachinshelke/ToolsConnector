@@ -12,11 +12,21 @@ from html.parser import HTMLParser
 from typing import Any, Optional
 
 from .types import (
+    AutoForwarding,
+    Delegate,
     Draft,
     Email,
     EmailAddress,
+    Filter,
+    FilterAction,
+    FilterCriteria,
+    ForwardingAddress,
     HistoryRecord,
+    ImapSettings,
     Label,
+    LanguageSettings,
+    PopSettings,
+    SendAs,
     Thread,
     VacationSettings,
 )
@@ -321,3 +331,134 @@ def parse_vacation_settings(data: dict[str, Any]) -> VacationSettings:
         start_time=str(data["startTime"]) if data.get("startTime") else None,
         end_time=str(data["endTime"]) if data.get("endTime") else None,
     )
+
+
+# ---------------------------------------------------------------------------
+# Settings parsers
+# ---------------------------------------------------------------------------
+
+
+def parse_filter(data: dict[str, Any]) -> Filter:
+    """Parse a Gmail filter response."""
+    criteria_raw = data.get("criteria", {}) or {}
+    action_raw = data.get("action", {}) or {}
+    criteria = FilterCriteria(
+        from_address=criteria_raw.get("from"),
+        to=criteria_raw.get("to"),
+        subject=criteria_raw.get("subject"),
+        query=criteria_raw.get("query"),
+        negated_query=criteria_raw.get("negatedQuery"),
+        has_attachment=criteria_raw.get("hasAttachment"),
+        exclude_chats=criteria_raw.get("excludeChats"),
+        size=criteria_raw.get("size"),
+        size_comparison=criteria_raw.get("sizeComparison"),
+    )
+    action = FilterAction(
+        add_label_ids=action_raw.get("addLabelIds", []) or [],
+        remove_label_ids=action_raw.get("removeLabelIds", []) or [],
+        forward=action_raw.get("forward"),
+    )
+    return Filter(id=data.get("id", ""), criteria=criteria, action=action)
+
+
+def build_filter_criteria_payload(criteria: FilterCriteria) -> dict[str, Any]:
+    """Convert a FilterCriteria model back into the API's snake→camel shape."""
+    payload: dict[str, Any] = {}
+    if criteria.from_address is not None:
+        payload["from"] = criteria.from_address
+    if criteria.to is not None:
+        payload["to"] = criteria.to
+    if criteria.subject is not None:
+        payload["subject"] = criteria.subject
+    if criteria.query is not None:
+        payload["query"] = criteria.query
+    if criteria.negated_query is not None:
+        payload["negatedQuery"] = criteria.negated_query
+    if criteria.has_attachment is not None:
+        payload["hasAttachment"] = criteria.has_attachment
+    if criteria.exclude_chats is not None:
+        payload["excludeChats"] = criteria.exclude_chats
+    if criteria.size is not None:
+        payload["size"] = criteria.size
+    if criteria.size_comparison is not None:
+        payload["sizeComparison"] = criteria.size_comparison
+    return payload
+
+
+def build_filter_action_payload(action: FilterAction) -> dict[str, Any]:
+    """Convert a FilterAction model back into the API's snake→camel shape."""
+    payload: dict[str, Any] = {}
+    if action.add_label_ids:
+        payload["addLabelIds"] = action.add_label_ids
+    if action.remove_label_ids:
+        payload["removeLabelIds"] = action.remove_label_ids
+    if action.forward is not None:
+        payload["forward"] = action.forward
+    return payload
+
+
+def parse_send_as(data: dict[str, Any]) -> SendAs:
+    """Parse a Gmail send-as alias response."""
+    smtp = data.get("smtpMsa") or {}
+    return SendAs(
+        send_as_email=data.get("sendAsEmail", ""),
+        display_name=data.get("displayName"),
+        reply_to_address=data.get("replyToAddress"),
+        signature=data.get("signature"),
+        is_primary=data.get("isPrimary", False),
+        is_default=data.get("isDefault", False),
+        treat_as_alias=data.get("treatAsAlias", False),
+        verification_status=data.get("verificationStatus"),
+        smtp_msa_host=smtp.get("host"),
+        smtp_msa_port=smtp.get("port"),
+        smtp_msa_username=smtp.get("username"),
+        smtp_msa_security_mode=smtp.get("securityMode"),
+    )
+
+
+def parse_delegate(data: dict[str, Any]) -> Delegate:
+    """Parse a Gmail delegate response."""
+    return Delegate(
+        delegate_email=data.get("delegateEmail", ""),
+        verification_status=data.get("verificationStatus"),
+    )
+
+
+def parse_forwarding_address(data: dict[str, Any]) -> ForwardingAddress:
+    """Parse a Gmail forwarding address response."""
+    return ForwardingAddress(
+        forwarding_email=data.get("forwardingEmail", ""),
+        verification_status=data.get("verificationStatus"),
+    )
+
+
+def parse_auto_forwarding(data: dict[str, Any]) -> AutoForwarding:
+    """Parse a Gmail auto-forwarding settings response."""
+    return AutoForwarding(
+        enabled=data.get("enabled", False),
+        email_address=data.get("emailAddress"),
+        disposition=data.get("disposition"),
+    )
+
+
+def parse_imap_settings(data: dict[str, Any]) -> ImapSettings:
+    """Parse a Gmail IMAP settings response."""
+    return ImapSettings(
+        enabled=data.get("enabled", False),
+        auto_expunge=data.get("autoExpunge", True),
+        expunge_behavior=data.get("expungeBehavior"),
+        max_folder_size=data.get("maxFolderSize", 0),
+    )
+
+
+def parse_pop_settings(data: dict[str, Any]) -> PopSettings:
+    """Parse a Gmail POP settings response."""
+    return PopSettings(
+        access_window=data.get("accessWindow"),
+        disposition=data.get("disposition"),
+    )
+
+
+def parse_language_settings(data: dict[str, Any]) -> LanguageSettings:
+    """Parse a Gmail language settings response."""
+    return LanguageSettings(display_language=data.get("displayLanguage", "en"))

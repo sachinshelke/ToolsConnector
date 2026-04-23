@@ -176,3 +176,160 @@ class VacationSettings(BaseModel):
     response_body_html: Optional[str] = None
     start_time: Optional[str] = None  # epoch millis as string
     end_time: Optional[str] = None  # epoch millis as string
+
+
+# ---------------------------------------------------------------------------
+# Settings — Filters (users.settings.filters)
+# ---------------------------------------------------------------------------
+
+
+class FilterCriteria(BaseModel):
+    """Match criteria for a Gmail filter.
+
+    All fields optional; filters match when ALL specified criteria hold.
+    See https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.filters
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    from_address: Optional[str] = None  # maps to API field `from`
+    to: Optional[str] = None
+    subject: Optional[str] = None
+    query: Optional[str] = None  # same syntax as Gmail search box
+    negated_query: Optional[str] = None  # `-(...)` to exclude
+    has_attachment: Optional[bool] = None
+    exclude_chats: Optional[bool] = None
+    size: Optional[int] = None  # bytes
+    size_comparison: Optional[str] = None  # "larger" | "smaller"
+
+
+class FilterAction(BaseModel):
+    """Actions applied to messages matching a filter."""
+
+    model_config = ConfigDict(frozen=True)
+
+    add_label_ids: list[str] = Field(default_factory=list)
+    remove_label_ids: list[str] = Field(default_factory=list)
+    forward: Optional[str] = None  # forwarding address
+
+
+class Filter(BaseModel):
+    """A Gmail filter (auto-categorization rule)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    criteria: FilterCriteria
+    action: FilterAction
+
+
+# ---------------------------------------------------------------------------
+# Settings — Send-As addresses (users.settings.sendAs)
+# ---------------------------------------------------------------------------
+
+
+class SendAs(BaseModel):
+    """A send-as alias — an address the user can send email from.
+
+    Includes both owned primary addresses and verified aliases.
+    See https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.sendAs
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    send_as_email: str
+    display_name: Optional[str] = None
+    reply_to_address: Optional[str] = None
+    signature: Optional[str] = None
+    is_primary: bool = False
+    is_default: bool = False
+    treat_as_alias: bool = False
+    verification_status: Optional[str] = None  # "accepted" | "pending" | etc.
+    # SMTP relay config for non-Gmail aliases (rare — advanced setups)
+    smtp_msa_host: Optional[str] = None
+    smtp_msa_port: Optional[int] = None
+    smtp_msa_username: Optional[str] = None
+    smtp_msa_security_mode: Optional[str] = None  # "smtpMsaSecurityMode" enum
+
+
+# ---------------------------------------------------------------------------
+# Settings — Delegates (users.settings.delegates)
+# ---------------------------------------------------------------------------
+
+
+class Delegate(BaseModel):
+    """A delegate: another account with access to this mailbox.
+
+    Workspace-only feature.
+    See https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.delegates
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    delegate_email: str
+    verification_status: Optional[str] = None  # "accepted" | "pending" | "rejected" | "expired"
+
+
+# ---------------------------------------------------------------------------
+# Settings — Forwarding addresses (users.settings.forwardingAddresses)
+# ---------------------------------------------------------------------------
+
+
+class ForwardingAddress(BaseModel):
+    """A verified forwarding address.
+
+    Separate from sendAs — forwarding routes incoming mail elsewhere.
+    See https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.forwardingAddresses
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    forwarding_email: str
+    verification_status: Optional[str] = None  # "accepted" | "pending"
+
+
+# ---------------------------------------------------------------------------
+# Settings — Misc (autoForwarding, imap, pop, language)
+# ---------------------------------------------------------------------------
+
+
+class AutoForwarding(BaseModel):
+    """Top-level auto-forwarding configuration.
+
+    Separate from per-address forwarding in filters — this forwards ALL
+    incoming mail to a single address.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = False
+    email_address: Optional[str] = None  # destination
+    disposition: Optional[str] = None  # "leaveInInbox"|"archive"|"trash"|"markRead"
+
+
+class ImapSettings(BaseModel):
+    """IMAP access configuration for the mailbox."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = False
+    auto_expunge: bool = True
+    expunge_behavior: Optional[str] = None  # "archive"|"trash"|"deleteForever"
+    max_folder_size: int = 0  # 0 = unlimited
+
+
+class PopSettings(BaseModel):
+    """POP access configuration for the mailbox."""
+
+    model_config = ConfigDict(frozen=True)
+
+    access_window: Optional[str] = None  # "disabled"|"allMail"|"fromNowOn"
+    disposition: Optional[str] = None  # "leaveInInbox"|"archive"|"trash"|"markRead"
+
+
+class LanguageSettings(BaseModel):
+    """Language preference for the Gmail UI."""
+
+    model_config = ConfigDict(frozen=True)
+
+    display_language: str  # BCP-47 code e.g. "en-US"

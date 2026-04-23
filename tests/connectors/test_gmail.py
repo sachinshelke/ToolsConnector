@@ -377,7 +377,234 @@ def test_send_email_has_new_multipart_params() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 8. HTML-to-text helper
+# 8. Settings — Filters (smoke test: URL + body shape + parsing)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_filter_sends_correct_payload(gmail: Gmail) -> None:
+    """create_filter: criteria + action serialize to the snake→camel
+    shape Gmail expects (e.g. `from` not `from_address`).
+    """
+    from toolsconnector.connectors.gmail.types import FilterAction, FilterCriteria
+
+    with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
+        route = respx_mock.post("/users/me/settings/filters").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": "filter-123",
+                    "criteria": {"from": "boss@example.com", "hasAttachment": True},
+                    "action": {"addLabelIds": ["IMPORTANT"]},
+                },
+            )
+        )
+
+        result = await gmail.acreate_filter(
+            criteria=FilterCriteria(from_address="boss@example.com", has_attachment=True),
+            action=FilterAction(add_label_ids=["IMPORTANT"]),
+        )
+
+        assert result.id == "filter-123"
+        assert result.criteria.from_address == "boss@example.com"
+        assert result.action.add_label_ids == ["IMPORTANT"]
+
+        body = route.calls.last.request.read()
+        # Critical: API expects `from`, not `from_address` or `fromAddress`
+        assert b'"from":"boss@example.com"' in body
+        assert b'"hasAttachment":true' in body
+        assert b'"addLabelIds":["IMPORTANT"]' in body
+
+
+# ---------------------------------------------------------------------------
+# 9. Settings — SendAs (URL + parsing)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_send_as(gmail: Gmail) -> None:
+    """list_send_as: GET /settings/sendAs → list[SendAs]."""
+    with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
+        respx_mock.get("/users/me/settings/sendAs").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "sendAs": [
+                        {
+                            "sendAsEmail": "primary@example.com",
+                            "displayName": "Sachin",
+                            "isPrimary": True,
+                            "isDefault": True,
+                            "verificationStatus": "accepted",
+                        },
+                        {
+                            "sendAsEmail": "alias@example.com",
+                            "displayName": "Sachin (alias)",
+                            "verificationStatus": "pending",
+                        },
+                    ]
+                },
+            )
+        )
+
+        result = await gmail.alist_send_as()
+        assert len(result) == 2
+        assert result[0].is_primary is True
+        assert result[1].verification_status == "pending"
+
+
+# ---------------------------------------------------------------------------
+# 10. Settings — AutoForwarding (PUT body shape)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_update_auto_forwarding_disabled(gmail: Gmail) -> None:
+    """update_auto_forwarding(enabled=False): only sends `enabled`,
+    not `emailAddress` or `disposition` (None values omitted).
+    """
+    with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
+        route = respx_mock.put("/users/me/settings/autoForwarding").mock(
+            return_value=httpx.Response(200, json={"enabled": False})
+        )
+
+        result = await gmail.aupdate_auto_forwarding(enabled=False)
+        assert result.enabled is False
+        body = route.calls.last.request.read()
+        assert b'"enabled":false' in body
+        assert b"emailAddress" not in body
+        assert b"disposition" not in body
+
+
+# ---------------------------------------------------------------------------
+# 11. Push notifications — watch URL + body
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_watch_sends_topic_name(gmail: Gmail) -> None:
+    """watch: POST /watch with topicName (and optional labelIds)."""
+    with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
+        route = respx_mock.post("/users/me/watch").mock(
+            return_value=httpx.Response(
+                200, json={"historyId": "12345", "expiration": "1700000000000"}
+            )
+        )
+
+        result = await gmail.awatch(
+            topic_name="projects/my-proj/topics/gmail-notifs",
+            label_ids=["INBOX"],
+            label_filter_behavior="include",
+        )
+        assert result["historyId"] == "12345"
+
+        body = route.calls.last.request.read()
+        assert b'"topicName":"projects/my-proj/topics/gmail-notifs"' in body
+        assert b'"labelIds":["INBOX"]' in body
+        assert b'"labelFilterBehavior":"include"' in body
+
+
+# ---------------------------------------------------------------------------
+# 12. Settings completeness — every new action is in the spec
+# ---------------------------------------------------------------------------
+
+
+def test_settings_completeness() -> None:
+    """Regression guard: the 28 settings/push actions added in 0.3.5 all
+    show up in the spec. If a future refactor removes one, this fires.
+    """
+    expected = {
+        # Filters
+        "list_filters",
+        "get_filter",
+        "create_filter",
+        "delete_filter",
+        # SendAs
+        "list_send_as",
+        "get_send_as",
+        "create_send_as",
+        "update_send_as",
+        "delete_send_as",
+        "verify_send_as",
+        # Delegates
+        "list_delegates",
+        "get_delegate",
+        "create_delegate",
+        "delete_delegate",
+        # ForwardingAddresses
+        "list_forwarding_addresses",
+        "get_forwarding_address",
+        "create_forwarding_address",
+        "delete_forwarding_address",
+        # AutoForwarding / IMAP / POP / Language
+        "get_auto_forwarding",
+        "update_auto_forwarding",
+        "get_imap_settings",
+        "update_imap_settings",
+        "get_pop_settings",
+        "update_pop_settings",
+        "get_language",
+        "update_language",
+        # Push
+        "watch",
+        "stop",
+    }
+    actions = set(Gmail.get_spec().actions.keys())
+    missing = expected - actions
+    assert not missing, f"Spec is missing settings actions: {sorted(missing)}"
+
+
+def test_dangerous_flags_on_settings_actions() -> None:
+    """Sanity: write/delete settings actions must carry dangerous=True.
+
+    `exclude_dangerous=True` ToolKits should never accidentally let an
+    agent delete the user's filters or remove a delegate.
+    """
+    spec = Gmail.get_spec()
+    must_be_dangerous = [
+        "create_filter",
+        "delete_filter",
+        "create_send_as",
+        "delete_send_as",
+        "create_delegate",
+        "delete_delegate",
+        "create_forwarding_address",
+        "delete_forwarding_address",
+        "update_auto_forwarding",
+        "update_imap_settings",
+        "update_pop_settings",
+        "watch",
+    ]
+    for name in must_be_dangerous:
+        assert spec.actions[name].dangerous is True, (
+            f"{name} should be dangerous=True (modifies account settings)"
+        )
+
+    must_be_safe = [
+        "list_filters",
+        "get_filter",
+        "list_send_as",
+        "get_send_as",
+        "verify_send_as",
+        "list_delegates",
+        "get_delegate",
+        "list_forwarding_addresses",
+        "get_forwarding_address",
+        "get_auto_forwarding",
+        "get_imap_settings",
+        "get_pop_settings",
+        "get_language",
+        "update_language",
+        "stop",
+    ]
+    for name in must_be_safe:
+        assert spec.actions[name].dangerous is False, (
+            f"{name} should be dangerous=False (read-only or low-impact)"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 13. HTML-to-text helper
 # ---------------------------------------------------------------------------
 
 

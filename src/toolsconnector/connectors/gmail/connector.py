@@ -23,19 +23,49 @@ from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateL
 from toolsconnector.types import PageState, PaginatedList
 
 from ._helpers import (
+    build_filter_action_payload as _build_filter_action_payload,
+)
+from ._helpers import (
+    build_filter_criteria_payload as _build_filter_criteria_payload,
+)
+from ._helpers import (
     html_to_text as _html_to_text,
+)
+from ._helpers import (
+    parse_auto_forwarding as _parse_auto_forwarding,
+)
+from ._helpers import (
+    parse_delegate as _parse_delegate,
 )
 from ._helpers import (
     parse_draft as _parse_draft,
 )
 from ._helpers import (
+    parse_filter as _parse_filter,
+)
+from ._helpers import (
+    parse_forwarding_address as _parse_forwarding_address,
+)
+from ._helpers import (
     parse_history_record as _parse_history_record,
+)
+from ._helpers import (
+    parse_imap_settings as _parse_imap_settings,
 )
 from ._helpers import (
     parse_label as _parse_label,
 )
 from ._helpers import (
+    parse_language_settings as _parse_language_settings,
+)
+from ._helpers import (
     parse_message as _parse_message,
+)
+from ._helpers import (
+    parse_pop_settings as _parse_pop_settings,
+)
+from ._helpers import (
+    parse_send_as as _parse_send_as,
 )
 from ._helpers import (
     parse_thread as _parse_thread,
@@ -45,13 +75,23 @@ from ._helpers import (
 )
 from .types import (
     Attachment,
+    AutoForwarding,
+    Delegate,
     Draft,
     DraftId,
     Email,
+    Filter,
+    FilterAction,
+    FilterCriteria,
+    ForwardingAddress,
     HistoryRecord,
+    ImapSettings,
     Label,
     LabelColor,
+    LanguageSettings,
     MessageId,
+    PopSettings,
+    SendAs,
     Thread,
     UserProfile,
     VacationSettings,
@@ -1468,3 +1508,505 @@ class Gmail(BaseConnector):
             "/users/me/messages/batchDelete",
             json={"ids": email_ids[:1000]},
         )
+
+    # ==================================================================
+    # Settings — Filters (auto-categorization rules)
+    # ==================================================================
+    # Docs: https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.filters
+    # All filter actions require the gmail.settings.basic scope.
+
+    @action("List all filters", requires_scope="settings")
+    async def list_filters(self) -> list[Filter]:
+        """List every filter (auto-categorization rule) on the mailbox.
+
+        Filters run server-side on incoming mail and can label, archive,
+        delete, or forward messages that match their criteria.
+
+        Returns:
+            All filters on the account. Empty list if none configured.
+        """
+        data = await self._request("GET", "/users/me/settings/filters")
+        return [_parse_filter(f) for f in data.get("filter", [])]
+
+    @action("Get a single filter by ID", requires_scope="settings")
+    async def get_filter(self, filter_id: str) -> Filter:
+        """Retrieve a single filter by its ID.
+
+        Args:
+            filter_id: The filter's server-assigned ID.
+
+        Returns:
+            The Filter object.
+        """
+        data = await self._request("GET", f"/users/me/settings/filters/{filter_id}")
+        return _parse_filter(data)
+
+    @action("Create a new filter", requires_scope="settings", dangerous=True)
+    async def create_filter(
+        self,
+        criteria: FilterCriteria,
+        action: FilterAction,
+    ) -> Filter:
+        """Create a new filter that runs on every incoming message.
+
+        This is powerful — a filter can auto-archive, auto-delete, or
+        auto-forward. Marked dangerous so agents with
+        ``exclude_dangerous=True`` don't create rules silently.
+
+        Args:
+            criteria: Match conditions (from, to, subject, query, size, etc.).
+                All specified fields must match for the filter to trigger.
+            action: Actions to apply to matching messages (add/remove labels,
+                forward to a verified forwarding address).
+
+        Returns:
+            The created Filter object with its server-assigned ID.
+
+        Raises:
+            httpx.HTTPStatusError 400: if criteria/action are empty or
+                invalid; 403 if missing gmail.settings.basic scope.
+        """
+        payload = {
+            "criteria": _build_filter_criteria_payload(criteria),
+            "action": _build_filter_action_payload(action),
+        }
+        data = await self._request("POST", "/users/me/settings/filters", json=payload)
+        return _parse_filter(data)
+
+    @action("Delete a filter", requires_scope="settings", dangerous=True)
+    async def delete_filter(self, filter_id: str) -> None:
+        """Permanently delete a filter.
+
+        Args:
+            filter_id: ID of the filter to delete.
+        """
+        await self._request("DELETE", f"/users/me/settings/filters/{filter_id}")
+
+    # ==================================================================
+    # Settings — Send-As aliases (multi-identity sending)
+    # ==================================================================
+    # Docs: https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.sendAs
+
+    @action("List send-as aliases", requires_scope="settings")
+    async def list_send_as(self) -> list[SendAs]:
+        """List every address the user can send email from.
+
+        Includes the primary account plus any verified aliases.
+
+        Returns:
+            All send-as entries for the account.
+        """
+        data = await self._request("GET", "/users/me/settings/sendAs")
+        return [_parse_send_as(s) for s in data.get("sendAs", [])]
+
+    @action("Get a single send-as alias", requires_scope="settings")
+    async def get_send_as(self, send_as_email: str) -> SendAs:
+        """Retrieve a single send-as alias by email.
+
+        Args:
+            send_as_email: The alias address (primary key in this resource).
+
+        Returns:
+            The SendAs object.
+        """
+        data = await self._request("GET", f"/users/me/settings/sendAs/{send_as_email}")
+        return _parse_send_as(data)
+
+    @action("Create a send-as alias", requires_scope="settings", dangerous=True)
+    async def create_send_as(
+        self,
+        send_as_email: str,
+        display_name: Optional[str] = None,
+        reply_to_address: Optional[str] = None,
+        signature: Optional[str] = None,
+        treat_as_alias: bool = True,
+    ) -> SendAs:
+        """Create a new send-as alias.
+
+        Non-primary aliases require email verification — the new entry
+        starts in ``verification_status = "pending"`` and a verification
+        message is sent to the address. Call :meth:`verify_send_as` to
+        resend that message if needed.
+
+        Args:
+            send_as_email: The address to add (must be different from
+                existing aliases).
+            display_name: Friendly display name shown on outgoing mail
+                (``"Sachin <sachin@example.com>"``).
+            reply_to_address: Default Reply-To for mail sent from this
+                address.
+            signature: HTML signature appended to outgoing mail.
+            treat_as_alias: Whether Gmail treats this as an alias (True)
+                or a distinct account (False, requires SMTP relay config).
+
+        Returns:
+            The created SendAs entry (typically with status=pending).
+        """
+        payload: dict[str, Any] = {
+            "sendAsEmail": send_as_email,
+            "treatAsAlias": treat_as_alias,
+        }
+        if display_name is not None:
+            payload["displayName"] = display_name
+        if reply_to_address is not None:
+            payload["replyToAddress"] = reply_to_address
+        if signature is not None:
+            payload["signature"] = signature
+
+        data = await self._request("POST", "/users/me/settings/sendAs", json=payload)
+        return _parse_send_as(data)
+
+    @action("Update a send-as alias", requires_scope="settings")
+    async def update_send_as(
+        self,
+        send_as_email: str,
+        display_name: Optional[str] = None,
+        reply_to_address: Optional[str] = None,
+        signature: Optional[str] = None,
+        is_default: Optional[bool] = None,
+        treat_as_alias: Optional[bool] = None,
+    ) -> SendAs:
+        """Update mutable fields on a send-as alias.
+
+        Uses ``PATCH`` semantics — only the fields you set are changed.
+
+        Args:
+            send_as_email: The alias to update (URL-path key).
+            display_name: New display name, or None to leave unchanged.
+            reply_to_address: New default Reply-To, or None.
+            signature: New HTML signature, or None.
+            is_default: Set True to make this the default send-from address.
+            treat_as_alias: Toggle alias vs. distinct-account behavior.
+
+        Returns:
+            The updated SendAs entry.
+        """
+        payload: dict[str, Any] = {}
+        if display_name is not None:
+            payload["displayName"] = display_name
+        if reply_to_address is not None:
+            payload["replyToAddress"] = reply_to_address
+        if signature is not None:
+            payload["signature"] = signature
+        if is_default is not None:
+            payload["isDefault"] = is_default
+        if treat_as_alias is not None:
+            payload["treatAsAlias"] = treat_as_alias
+
+        data = await self._request(
+            "PATCH", f"/users/me/settings/sendAs/{send_as_email}", json=payload
+        )
+        return _parse_send_as(data)
+
+    @action("Delete a send-as alias", requires_scope="settings", dangerous=True)
+    async def delete_send_as(self, send_as_email: str) -> None:
+        """Remove a send-as alias.
+
+        Deletes even if the alias is the default (another address will
+        become default on the server side).
+
+        Args:
+            send_as_email: The alias to remove.
+        """
+        await self._request("DELETE", f"/users/me/settings/sendAs/{send_as_email}")
+
+    @action("Re-send verification for a pending send-as", requires_scope="settings")
+    async def verify_send_as(self, send_as_email: str) -> None:
+        """Trigger Gmail to re-send the ownership-verification email.
+
+        Only meaningful when the alias is in ``verification_status = "pending"``.
+
+        Args:
+            send_as_email: The pending alias to re-verify.
+        """
+        await self._request("POST", f"/users/me/settings/sendAs/{send_as_email}/verify")
+
+    # ==================================================================
+    # Settings — Delegates (mailbox-access sharing, Workspace only)
+    # ==================================================================
+    # Docs: https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.delegates
+
+    @action("List mailbox delegates", requires_scope="settings")
+    async def list_delegates(self) -> list[Delegate]:
+        """List accounts that have been delegated access to this mailbox.
+
+        Workspace-only feature — returns empty list on consumer Gmail.
+        """
+        data = await self._request("GET", "/users/me/settings/delegates")
+        return [_parse_delegate(d) for d in data.get("delegates", [])]
+
+    @action("Get a delegate by email", requires_scope="settings")
+    async def get_delegate(self, delegate_email: str) -> Delegate:
+        """Retrieve a single delegate's info (including verification status)."""
+        data = await self._request("GET", f"/users/me/settings/delegates/{delegate_email}")
+        return _parse_delegate(data)
+
+    @action("Add a mailbox delegate", requires_scope="settings", dangerous=True)
+    async def create_delegate(self, delegate_email: str) -> Delegate:
+        """Grant another account access to this mailbox.
+
+        The new delegate receives an email asking them to accept. Their
+        verification_status stays "pending" until they do.
+
+        Args:
+            delegate_email: The account to grant delegated access to.
+        """
+        data = await self._request(
+            "POST",
+            "/users/me/settings/delegates",
+            json={"delegateEmail": delegate_email},
+        )
+        return _parse_delegate(data)
+
+    @action("Remove a mailbox delegate", requires_scope="settings", dangerous=True)
+    async def delete_delegate(self, delegate_email: str) -> None:
+        """Revoke a delegate's access.
+
+        Args:
+            delegate_email: The delegate to remove.
+        """
+        await self._request("DELETE", f"/users/me/settings/delegates/{delegate_email}")
+
+    # ==================================================================
+    # Settings — Forwarding addresses
+    # ==================================================================
+    # Docs: https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.forwardingAddresses
+
+    @action("List forwarding addresses", requires_scope="settings")
+    async def list_forwarding_addresses(self) -> list[ForwardingAddress]:
+        """List every verified forwarding address on the account.
+
+        Forwarding addresses are separate from send-as aliases — they're
+        *destinations* where Gmail can forward incoming mail.
+        """
+        data = await self._request("GET", "/users/me/settings/forwardingAddresses")
+        return [_parse_forwarding_address(f) for f in data.get("forwardingAddresses", [])]
+
+    @action("Get a forwarding address", requires_scope="settings")
+    async def get_forwarding_address(self, forwarding_email: str) -> ForwardingAddress:
+        """Retrieve a single forwarding address and its verification status."""
+        data = await self._request(
+            "GET",
+            f"/users/me/settings/forwardingAddresses/{forwarding_email}",
+        )
+        return _parse_forwarding_address(data)
+
+    @action(
+        "Add a forwarding address (pending verification)",
+        requires_scope="settings",
+        dangerous=True,
+    )
+    async def create_forwarding_address(self, forwarding_email: str) -> ForwardingAddress:
+        """Add a forwarding address.
+
+        Gmail sends a verification email to the address; status stays
+        ``pending`` until the recipient clicks the verification link.
+
+        Args:
+            forwarding_email: The destination address for forwarded mail.
+        """
+        data = await self._request(
+            "POST",
+            "/users/me/settings/forwardingAddresses",
+            json={"forwardingEmail": forwarding_email},
+        )
+        return _parse_forwarding_address(data)
+
+    @action("Remove a forwarding address", requires_scope="settings", dangerous=True)
+    async def delete_forwarding_address(self, forwarding_email: str) -> None:
+        """Remove a forwarding address.
+
+        If this address was used by any filters with ``forward`` actions,
+        those filter actions become no-ops (not an error).
+
+        Args:
+            forwarding_email: The address to remove.
+        """
+        await self._request(
+            "DELETE",
+            f"/users/me/settings/forwardingAddresses/{forwarding_email}",
+        )
+
+    # ==================================================================
+    # Settings — Top-level auto-forwarding
+    # ==================================================================
+    # Separate from filters and forwarding addresses: this is the global
+    # "forward ALL incoming mail to X" setting.
+
+    @action("Get auto-forwarding settings", requires_scope="settings")
+    async def get_auto_forwarding(self) -> AutoForwarding:
+        """Retrieve the global auto-forwarding configuration."""
+        data = await self._request("GET", "/users/me/settings/autoForwarding")
+        return _parse_auto_forwarding(data)
+
+    @action("Update auto-forwarding settings", requires_scope="settings", dangerous=True)
+    async def update_auto_forwarding(
+        self,
+        enabled: bool,
+        email_address: Optional[str] = None,
+        disposition: Optional[str] = None,
+    ) -> AutoForwarding:
+        """Enable, disable, or reconfigure global auto-forwarding.
+
+        Args:
+            enabled: Whether auto-forwarding is on.
+            email_address: Destination (must be a verified forwarding
+                address — see :meth:`create_forwarding_address`).
+                Required when ``enabled=True``.
+            disposition: What happens to the original in this mailbox.
+                One of ``"leaveInInbox"``, ``"archive"``, ``"trash"``,
+                ``"markRead"``. Required when ``enabled=True``.
+
+        Returns:
+            The updated AutoForwarding config.
+        """
+        payload: dict[str, Any] = {"enabled": enabled}
+        if email_address is not None:
+            payload["emailAddress"] = email_address
+        if disposition is not None:
+            payload["disposition"] = disposition
+        data = await self._request("PUT", "/users/me/settings/autoForwarding", json=payload)
+        return _parse_auto_forwarding(data)
+
+    # ==================================================================
+    # Settings — IMAP / POP / Language
+    # ==================================================================
+
+    @action("Get IMAP settings", requires_scope="settings")
+    async def get_imap_settings(self) -> ImapSettings:
+        """Retrieve IMAP access configuration."""
+        data = await self._request("GET", "/users/me/settings/imap")
+        return _parse_imap_settings(data)
+
+    @action("Update IMAP settings", requires_scope="settings", dangerous=True)
+    async def update_imap_settings(
+        self,
+        enabled: bool,
+        auto_expunge: Optional[bool] = None,
+        expunge_behavior: Optional[str] = None,
+        max_folder_size: Optional[int] = None,
+    ) -> ImapSettings:
+        """Enable/disable IMAP and configure expunge behavior.
+
+        Args:
+            enabled: Whether IMAP access is allowed.
+            auto_expunge: Whether to auto-expunge deleted messages.
+            expunge_behavior: ``"archive"``, ``"trash"``, or ``"deleteForever"``.
+            max_folder_size: Max folder size (0 = unlimited).
+        """
+        payload: dict[str, Any] = {"enabled": enabled}
+        if auto_expunge is not None:
+            payload["autoExpunge"] = auto_expunge
+        if expunge_behavior is not None:
+            payload["expungeBehavior"] = expunge_behavior
+        if max_folder_size is not None:
+            payload["maxFolderSize"] = max_folder_size
+        data = await self._request("PUT", "/users/me/settings/imap", json=payload)
+        return _parse_imap_settings(data)
+
+    @action("Get POP settings", requires_scope="settings")
+    async def get_pop_settings(self) -> PopSettings:
+        """Retrieve POP3 access configuration."""
+        data = await self._request("GET", "/users/me/settings/pop")
+        return _parse_pop_settings(data)
+
+    @action("Update POP settings", requires_scope="settings", dangerous=True)
+    async def update_pop_settings(
+        self,
+        access_window: Optional[str] = None,
+        disposition: Optional[str] = None,
+    ) -> PopSettings:
+        """Configure POP3 access.
+
+        Args:
+            access_window: ``"disabled"``, ``"allMail"``, or ``"fromNowOn"``.
+            disposition: What happens to fetched messages in the mailbox
+                (``"leaveInInbox"``, ``"archive"``, ``"trash"``, ``"markRead"``).
+        """
+        payload: dict[str, Any] = {}
+        if access_window is not None:
+            payload["accessWindow"] = access_window
+        if disposition is not None:
+            payload["disposition"] = disposition
+        data = await self._request("PUT", "/users/me/settings/pop", json=payload)
+        return _parse_pop_settings(data)
+
+    @action("Get language settings", requires_scope="settings")
+    async def get_language(self) -> LanguageSettings:
+        """Retrieve the account's Gmail UI language preference."""
+        data = await self._request("GET", "/users/me/settings/language")
+        return _parse_language_settings(data)
+
+    @action("Update language settings", requires_scope="settings")
+    async def update_language(self, display_language: str) -> LanguageSettings:
+        """Set the Gmail UI language.
+
+        Args:
+            display_language: BCP-47 language code (e.g. ``"en-US"``,
+                ``"es"``, ``"ja"``). Non-existent codes are accepted by
+                the API but have no effect.
+        """
+        data = await self._request(
+            "PUT",
+            "/users/me/settings/language",
+            json={"displayLanguage": display_language},
+        )
+        return _parse_language_settings(data)
+
+    # ==================================================================
+    # Push notifications — /watch and /stop
+    # ==================================================================
+    # Gmail's push model uses Google Cloud Pub/Sub. Users must:
+    #   1. Create a Pub/Sub topic in a GCP project
+    #   2. Grant gmail-api-push@system.gserviceaccount.com the
+    #      pubsub.publisher role on that topic
+    #   3. Pass the fully-qualified topic name here
+    # See: https://developers.google.com/workspace/gmail/api/guides/push
+
+    @action(
+        "Start receiving mailbox-change push notifications",
+        requires_scope="read",
+        dangerous=True,
+    )
+    async def watch(
+        self,
+        topic_name: str,
+        label_ids: Optional[list[str]] = None,
+        label_filter_behavior: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Subscribe this mailbox to push notifications on a Pub/Sub topic.
+
+        Gmail's push notifications aren't webhooks — they publish to a
+        Google Cloud Pub/Sub topic that the caller owns. You must have
+        created the topic and granted
+        ``gmail-api-push@system.gserviceaccount.com`` the
+        ``pubsub.publisher`` role on it before calling this.
+
+        Returns a short-lived ``historyId`` that must be renewed every
+        ~7 days; call this action again on a schedule.
+
+        Args:
+            topic_name: Fully-qualified Pub/Sub topic name, e.g.
+                ``"projects/my-project/topics/gmail-notifs"``.
+            label_ids: Restrict notifications to changes on these labels.
+            label_filter_behavior: ``"include"`` (default — only listed
+                labels) or ``"exclude"`` (notify for everything EXCEPT
+                these labels).
+
+        Returns:
+            A dict with ``historyId`` and ``expiration`` (epoch ms).
+        """
+        payload: dict[str, Any] = {"topicName": topic_name}
+        if label_ids is not None:
+            payload["labelIds"] = label_ids
+        if label_filter_behavior is not None:
+            payload["labelFilterBehavior"] = label_filter_behavior
+        return await self._request("POST", "/users/me/watch", json=payload)
+
+    @action("Stop push notifications", requires_scope="read")
+    async def stop(self) -> None:
+        """Cancel any active push-notification subscription for this mailbox.
+
+        Idempotent — safe to call even if no watch is active.
+        """
+        await self._request("POST", "/users/me/stop")
