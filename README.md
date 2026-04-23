@@ -68,6 +68,25 @@ kit.execute("slack_send_message", {"channel": "#general", "text": "Deployed v2.1
 
 That's it. Same `ToolKit`, same `.execute()`, every connector.
 
+## Try the Examples
+
+Want to see real integrations end-to-end? **[`examples/`](examples/)** has 10 copy-pasteable scripts covering every major usage pattern. Pick one closest to what you want to build:
+
+| Pattern | Script |
+|---|---|
+| 5-minute intro: ToolKit + execute | [`01_basic_usage.py`](examples/01_basic_usage.py) |
+| One-line MCP server for Claude Desktop / Cursor | [`02_mcp_server.py`](examples/02_mcp_server.py) |
+| OpenAI function-calling agent (full tool-use loop) | [`03_openai_function_calling.py`](examples/03_openai_function_calling.py) |
+| Anthropic Claude tool-use agent | [`04_anthropic_tool_use.py`](examples/04_anthropic_tool_use.py) |
+| Multi-connector agent with safety filtering | [`05_multi_connector.py`](examples/05_multi_connector.py) |
+| `tc` CLI walkthrough | [`06_cli_usage.sh`](examples/06_cli_usage.sh) |
+| Multi-tenant ToolKitFactory (per-user isolation) | [`07_multi_tenant.py`](examples/07_multi_tenant.py) |
+| Expose connectors as REST API (Starlette + uvicorn) | [`08_rest_api.py`](examples/08_rest_api.py) |
+| CI health checks, spec extraction, OpenAPI export | [`09_health_check.py`](examples/09_health_check.py) |
+| Publish to LinkedIn end-to-end | [`10_linkedin_publish.py`](examples/10_linkedin_publish.py) |
+
+See [`examples/README.md`](examples/README.md) for the full table with required env vars.
+
 ---
 
 ## Key Features

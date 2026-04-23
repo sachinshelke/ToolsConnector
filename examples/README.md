@@ -25,6 +25,7 @@ python examples/01_basic_usage.py
 | 07 | `07_multi_tenant.py` | Per-user isolated ToolKits via ToolKitFactory | `toolsconnector[gmail,slack]` |
 | 08 | `08_rest_api.py` | Expose connectors as a REST API (Starlette + uvicorn) | `toolsconnector[rest,gmail,slack]` |
 | 09 | `09_health_check.py` | CI/CD health checks, spec extraction, OpenAPI generation | `toolsconnector[gmail,slack,github]` |
+| 10 | `10_linkedin_publish.py` | Publish a post to LinkedIn end-to-end (auth → compose → post) | `toolsconnector[linkedin]` |
 
 ## Environment Variables
 
