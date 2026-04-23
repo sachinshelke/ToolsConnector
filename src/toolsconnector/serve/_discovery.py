@@ -7,7 +7,10 @@ to avoid loading all 60 connectors (and their dependencies) at startup.
 from __future__ import annotations
 
 import importlib
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from toolsconnector.runtime.base import BaseConnector
 
 # Map connector name -> "module.path:ClassName"
 _KNOWN_CONNECTORS: dict[str, str] = {
@@ -96,7 +99,7 @@ def list_connectors() -> list[str]:
     return sorted(_KNOWN_CONNECTORS.keys())
 
 
-def get_connector_class(name: str) -> type:
+def get_connector_class(name: str) -> type[BaseConnector]:
     """Lazily import and return a connector class by name.
 
     Args:
@@ -122,7 +125,9 @@ def get_connector_class(name: str) -> type:
     module_path, class_name = _KNOWN_CONNECTORS[name].rsplit(":", 1)
     try:
         module = importlib.import_module(module_path)
-        return getattr(module, class_name)
+        # cast: getattr(...) is typed Any; we know the registry maps names
+        # to BaseConnector subclasses (enforced via tests/conformance/).
+        return cast("type[BaseConnector]", getattr(module, class_name))
     except ImportError as e:
         pkg = _INSTALL_HINTS.get(name, f"toolsconnector[{name}]")
         raise ConnectorInitError(
@@ -139,7 +144,7 @@ def get_connector_class(name: str) -> type:
         ) from e
 
 
-def resolve_connectors(connectors: list[Any]) -> list[type]:
+def resolve_connectors(connectors: list[Any]) -> list[type[BaseConnector]]:
     """Accept a mix of connector classes and name strings, return classes.
 
     This is the primary entry point used by ``ToolKit`` to normalize

@@ -176,7 +176,7 @@ class ToolKit:
 
     def __init__(
         self,
-        connectors: list,  # list[type[BaseConnector] | str]
+        connectors: list[type[BaseConnector] | str],
         *,
         credentials: Optional[dict[str, str]] = None,
         tenant_id: Optional[str] = None,
@@ -190,7 +190,7 @@ class ToolKit:
         circuit_breaker_recovery: float = 60.0,
     ) -> None:
         # -- Resolve connector classes --
-        self._connector_classes: dict[str, type] = {}
+        self._connector_classes: dict[str, type[BaseConnector]] = {}
         resolved = resolve_connectors(connectors)
         for cls in resolved:
             self._connector_classes[cls.name] = cls
@@ -285,7 +285,7 @@ class ToolKit:
         except ImportError:
             return [_to_gemini_schema(e) for e in self._tool_entries_list]
 
-    def to_langchain_tools(self) -> list:
+    def to_langchain_tools(self) -> list[Any]:
         """Generate LangChain StructuredTool objects with built-in execution.
 
         Requires langchain-core: pip install langchain-core
@@ -294,7 +294,7 @@ class ToolKit:
 
         return to_langchain_tools(self)
 
-    def to_crewai_tools(self) -> list:
+    def to_crewai_tools(self) -> list[Any]:
         """Generate CrewAI-compatible tools."""
         from toolsconnector.serve.adapters import to_crewai_tools
 
@@ -891,7 +891,7 @@ class ToolKitFactory:
 
     def __init__(
         self,
-        connectors: list,
+        connectors: list[type[BaseConnector] | str],
         *,
         include_actions: Optional[list[str]] = None,
         exclude_actions: Optional[list[str]] = None,

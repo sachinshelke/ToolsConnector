@@ -86,7 +86,10 @@ class HealthChecker:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for result in results:
-            if isinstance(result, Exception):
+            # asyncio.gather(return_exceptions=True) returns
+            # list[T | BaseException] — wider than just Exception so narrow
+            # against BaseException to fully exhaust the union for mypy.
+            if isinstance(result, BaseException):
                 report.unavailable += 1
                 report.reports.append(
                     HealthReport(

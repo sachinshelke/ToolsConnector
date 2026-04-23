@@ -125,4 +125,4 @@ class RetryMiddleware:
         # Add jitter: uniform random in [0, 0.5 * delay].
         jitter = random.uniform(0, 0.5 * exp_delay)  # noqa: S311
 
-        return exp_delay + jitter
+        return float(exp_delay + jitter)

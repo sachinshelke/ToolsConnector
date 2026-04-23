@@ -29,7 +29,9 @@ def _make_sync_func(toolkit: ToolKit, tool_name: str, description: str) -> Any:
     """
 
     def func(**kwargs: Any) -> str:
-        return toolkit.execute(tool_name, kwargs)
+        # toolkit.execute returns Any (vendor response shape varies);
+        # cast to str via str() for adapter consumers that expect strings.
+        return str(toolkit.execute(tool_name, kwargs))
 
     func.__name__ = tool_name
     func.__doc__ = description
@@ -53,14 +55,14 @@ def _make_async_func(toolkit: ToolKit, tool_name: str, description: str) -> Any:
     """
 
     async def afunc(**kwargs: Any) -> str:
-        return await toolkit.aexecute(tool_name, kwargs)
+        return str(await toolkit.aexecute(tool_name, kwargs))
 
     afunc.__name__ = tool_name
     afunc.__doc__ = description
     return afunc
 
 
-def to_langchain_tools(toolkit: ToolKit) -> list:
+def to_langchain_tools(toolkit: ToolKit) -> list[Any]:
     """Generate LangChain StructuredTool objects with built-in execution.
 
     Each tool wraps a ToolKit action so LangChain agents can call
@@ -84,7 +86,7 @@ def to_langchain_tools(toolkit: ToolKit) -> list:
             "LangChain adapter requires 'langchain-core'. Install with: pip install langchain-core"
         )
 
-    tools: list = []
+    tools: list[Any] = []
     for entry_dict in toolkit.list_tools():
         tool_name: str = entry_dict["name"]
         description: str = entry_dict["description"]
@@ -102,7 +104,7 @@ def to_langchain_tools(toolkit: ToolKit) -> list:
     return tools
 
 
-def to_crewai_tools(toolkit: ToolKit) -> list:
+def to_crewai_tools(toolkit: ToolKit) -> list[Any]:
     """Generate CrewAI-compatible tools.
 
     CrewAI uses a similar tool interface to LangChain.

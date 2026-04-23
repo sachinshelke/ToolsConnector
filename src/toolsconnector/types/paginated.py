@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Iterator
-from typing import Any, Callable, Generic, TypeVar
+from collections.abc import Awaitable, Coroutine, Iterator
+from typing import Any, Callable, Generic, TypeVar, cast
 
 from pydantic import BaseModel, Field, PrivateAttr
 
@@ -13,7 +13,7 @@ from toolsconnector.types.common import PageState
 T = TypeVar("T")
 
 
-def _run_sync(coro: Awaitable[T]) -> T:
+def _run_sync(coro: Coroutine[Any, Any, T]) -> T:
     """Run an async coroutine synchronously.
 
     Attempts to use the current running event loop if available (via
@@ -37,7 +37,7 @@ def _run_sync(coro: Awaitable[T]) -> T:
         import concurrent.futures
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(asyncio.run, coro)
+            future: concurrent.futures.Future[T] = pool.submit(asyncio.run, coro)
             return future.result()
 
     return asyncio.run(coro)
@@ -118,7 +118,10 @@ class PaginatedList(BaseModel, Generic[T]):
         """
         if not self.has_more or self._fetch_next is None:
             return None
-        return await self._fetch_next()
+        # _fetch_next is Callable[..., Awaitable[PaginatedList[Any]]];
+        # mypy loses the precise return type through the Callable->await
+        # combo, so cast it back.
+        return cast("PaginatedList[Any] | None", await self._fetch_next())
 
     async def collect(self, max_items: int = 1000) -> list[Any]:
         """Collect items across all remaining pages asynchronously.

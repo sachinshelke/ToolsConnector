@@ -21,7 +21,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 # Default location for the encrypted key file
 _DEFAULT_PATH = Path.home() / ".toolsconnector" / "keys.enc"
@@ -105,7 +105,8 @@ class LocalFileKeyStore:
             return base64.b64encode(plaintext.encode("utf-8"))
 
         f = Fernet(self._key)
-        return f.encrypt(plaintext.encode("utf-8"))
+        # cryptography ships without type stubs; cast for the strict checker.
+        return cast("bytes", f.encrypt(plaintext.encode("utf-8")))
 
     def _decrypt(self, ciphertext: bytes) -> str:
         """Decrypt bytes using Fernet.
@@ -123,7 +124,7 @@ class LocalFileKeyStore:
             return base64.b64decode(ciphertext).decode("utf-8")
 
         f = Fernet(self._key)
-        return f.decrypt(ciphertext).decode("utf-8")
+        return cast("str", f.decrypt(ciphertext).decode("utf-8"))
 
     def _load(self) -> None:
         """Load and decrypt the key file."""

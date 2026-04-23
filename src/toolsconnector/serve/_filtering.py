@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import fnmatch
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from toolsconnector.spec.action import ActionSpec
 from toolsconnector.spec.connector import ConnectorSpec
+
+if TYPE_CHECKING:
+    from toolsconnector.runtime.base import BaseConnector
 
 
 @dataclass(frozen=True)
@@ -78,7 +81,7 @@ def _build_description(spec: ConnectorSpec, action: ActionSpec) -> str:
 
 
 def build_tool_list(
-    connector_classes: list[type],
+    connector_classes: list[type[BaseConnector]],
     *,
     include_actions: Optional[list[str]] = None,
     exclude_actions: Optional[list[str]] = None,

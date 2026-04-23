@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import time
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 
 class CircuitState(str, Enum):
@@ -94,7 +94,7 @@ class CircuitBreaker:
         self._success_count = 0
         self._last_error = None
 
-    def status_dict(self) -> dict:
+    def status_dict(self) -> dict[str, Any]:
         """Return current status as a dict."""
         return {
             "state": self.state.value,

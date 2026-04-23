@@ -185,7 +185,7 @@ jobs:
           print(f'All {len(names)} connectors pass spec validation ({total} actions)')
           "
 
-  # ── 3b. Type check (mypy) — informational, split core vs connectors ────
+  # ── 3b. Type check (mypy) — required for core, informational for connectors
   # The project ships `py.typed` and claims `Typing :: Typed` in classifiers,
   # so we owe our users an actual type check.
   #
@@ -195,11 +195,14 @@ jobs:
   # JSON payloads from vendor REST APIs, and the JSON shape isn't part of
   # OUR contract).
   #
-  # This job runs mypy and reports counts split into core vs connectors.
-  # Core is the path to "required" — when core errors hit zero, flip
-  # `continue-on-error` to false (and consider running mypy on core only).
-  # Connector errors are tracked but acknowledged as long-term debt
-  # (latent bugs in vendor-API mappers — fix opportunistically).
+  # Two-step gate:
+  #   1. mypy on core (everything except connectors/) — REQUIRED PASS
+  #   2. mypy on full tree — INFORMATIONAL, count goes to step summary
+  #
+  # The required-pass step uses `--exclude` so it only fails on real
+  # issues in the core surface. Connector errors are tracked but
+  # acknowledged as long-term debt (latent bugs in vendor-API mappers —
+  # fix opportunistically when touching a connector).
   typecheck:
     name: Typecheck (mypy)
     runs-on: ubuntu-latest
@@ -208,7 +211,6 @@ jobs:
       github.event_name == 'pull_request' ||
       github.event_name == 'workflow_dispatch' ||
       needs.detect-changes.outputs.code == 'true'
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -216,7 +218,17 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: pip install -e ".[dev]"
-      - name: Run mypy
+
+      # REQUIRED: core must pass cleanly. As of v0.3.4 this gate is at zero
+      # errors; any new code that breaks it blocks the PR.
+      - name: Run mypy (core, REQUIRED)
+        run: mypy src/toolsconnector/ --exclude '/connectors/'
+
+      # INFORMATIONAL: full-tree count for visibility into connector debt.
+      # Continues on failure so connector issues don't block PRs.
+      - name: Run mypy (full tree, informational)
+        if: always()
+        continue-on-error: true
         run: |
           mypy src/toolsconnector/ 2>&1 | tee mypy-output.txt || true
           TOTAL=$(grep -cE '^src/toolsconnector/.+: error:' mypy-output.txt || echo 0)
@@ -224,14 +236,14 @@ jobs:
           CONNECTOR=$(grep -E '^src/toolsconnector/connectors/' mypy-output.txt | grep -cE ': error:' || echo 0)
           echo "## Type check summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| | Errors |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| Core (runtime/serve/codegen/etc.) | **${CORE}** |" >> $GITHUB_STEP_SUMMARY
-          echo "| Connectors | ${CONNECTOR} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Total | ${TOTAL} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Surface | Errors | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Core (runtime/serve/codegen/etc.) | **${CORE}** | required (must be 0) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Connectors | ${CONNECTOR} | informational |" >> $GITHUB_STEP_SUMMARY
+          echo "| Total | ${TOTAL} | — |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Goal: drive **core** to zero, then flip this job's \`continue-on-error\` to \`false\` to gate PRs." >> $GITHUB_STEP_SUMMARY
-          echo "Connectors are acknowledged debt — fix opportunistically when touching a connector." >> $GITHUB_STEP_SUMMARY
+          echo "Connector errors are vendor-API JSON shape issues + latent bugs in connector code." >> $GITHUB_STEP_SUMMARY
+          echo "Fix opportunistically when touching a connector." >> $GITHUB_STEP_SUMMARY
 
   # ── 4. Security scan (always — cheap, catches everything) ──────────────
   security:

@@ -35,7 +35,7 @@ def _get_background_loop() -> asyncio.AbstractEventLoop:
 
         def _run_loop() -> None:
             asyncio.set_event_loop(_background_loop)
-            _background_loop.run_forever()  # type: ignore[union-attr]
+            _background_loop.run_forever()
 
         _background_thread = threading.Thread(
             target=_run_loop,

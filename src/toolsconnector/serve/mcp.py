@@ -37,7 +37,7 @@ def _json_type_to_python(param_schema: dict[str, Any], required: bool) -> Any:
         "object": dict,
     }
     py_type = type_map.get(json_type, Any)
-    return py_type if required else Optional[py_type]  # type: ignore[return-value]
+    return py_type if required else Optional[py_type]
 
 
 def _make_tool_handler(
@@ -95,7 +95,10 @@ def _make_tool_handler(
             raise
 
     # Replace the signature so FastMCP sees real parameter names, not **kwargs.
-    _handler.__signature__ = inspect.Signature(params, return_annotation=str)
+    # __signature__ is not a documented attribute of the function type but
+    # inspect.signature honors it when present (PEP 362). Pyright/mypy don't
+    # know this — runtime is correct.
+    _handler.__signature__ = inspect.Signature(params, return_annotation=str)  # type: ignore[attr-defined]
     return _handler
 
 

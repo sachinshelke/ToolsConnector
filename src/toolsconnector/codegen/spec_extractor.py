@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 
 def extract_spec(connector_name: str) -> dict[str, Any]:
@@ -24,7 +24,8 @@ def extract_spec(connector_name: str) -> dict[str, Any]:
 
     cls = get_connector_class(connector_name)
     spec = cls.get_spec()
-    return json.loads(spec.model_dump_json())
+    # json.loads is typed to return Any; the spec serializes to a dict.
+    return cast("dict[str, Any]", json.loads(spec.model_dump_json()))
 
 
 def extract_all_specs(

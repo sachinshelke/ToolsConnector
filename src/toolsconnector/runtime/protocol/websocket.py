@@ -45,7 +45,7 @@ class WebSocketAdapter:
             ImportError: If the ``websockets`` package is not installed.
         """
         try:
-            import websockets  # type: ignore[import-untyped]
+            import websockets
         except ImportError:
             raise ImportError(
                 "WebSocket adapter requires 'websockets'. "
@@ -91,6 +91,9 @@ class WebSocketAdapter:
         """
         if self._connection is None:
             await self.connect()
+        # connect() sets self._connection; assert satisfies the strict
+        # checker that the attribute is no longer None across the call.
+        assert self._connection is not None  # noqa: S101 — narrowing aid
 
         message = _json.dumps({"type": operation, **(body or {})})
         await self._connection.send(message)
@@ -124,6 +127,7 @@ class WebSocketAdapter:
         """
         if self._connection is None:
             await self.connect()
+        assert self._connection is not None  # noqa: S101 — narrowing aid
         await self._connection.send(message)
 
     async def receive(self) -> ProtocolResponse:
@@ -135,6 +139,7 @@ class WebSocketAdapter:
         """
         if self._connection is None:
             await self.connect()
+        assert self._connection is not None  # noqa: S101 — narrowing aid
 
         raw = await self._connection.recv()
         data = self._parse_frame(raw)
