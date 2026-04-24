@@ -65,19 +65,28 @@ class ToolEntry:
 def _build_description(spec: ConnectorSpec, action: ActionSpec) -> str:
     """Build LLM-optimized description with connector context.
 
+    Returns just the connector-prefixed action description. We deliberately
+    do NOT inline ``requires_scope`` or ``dangerous`` here — both are
+    already structured fields on :class:`ToolEntry` (and reachable by
+    REST/MCP/schema consumers via the entry's ``requires_scope`` and
+    ``dangerous`` attributes). Inlining them duplicated the metadata,
+    bloated every per-tool description by ~15% in tokens, and got
+    re-paid on every chat turn. Drop the duplication; let consumers read
+    the structured fields if they care.
+
+    The connector-name prefix (``"Gmail: "``) IS kept — it helps LLMs
+    disambiguate when many connectors are loaded (e.g. ``"List records"``
+    is ambiguous across Airtable, MongoDB, Salesforce; ``"Airtable: List
+    records"`` is not).
+
     Args:
         spec: The parent connector specification.
         action: The action specification.
 
     Returns:
-        A description string enriched with scope and safety warnings.
+        ``"{display_name}: {action_description}"``.
     """
-    parts = [f"{spec.display_name}: {action.description}"]
-    if action.requires_scope:
-        parts.append(f"Requires {action.requires_scope} permission.")
-    if action.dangerous:
-        parts.append("WARNING: This action has destructive side effects.")
-    return " ".join(parts)
+    return f"{spec.display_name}: {action.description}"
 
 
 def build_tool_list(

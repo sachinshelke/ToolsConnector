@@ -15,7 +15,11 @@
 # so you don't discover formatting issues only after pushing.
 
 default_language_version:
-  python: python3.11
+  # Pinned to the project's minimum supported version so hook installs
+  # work on any contributor box that meets the project's Python floor.
+  # CI runs the test matrix on 3.9-3.12; the linters here only need the
+  # AST + filesystem tooling, all stable across that range.
+  python: python3.9
 
 repos:
   # ── File hygiene ──────────────────────────────────────────────────────
