@@ -117,6 +117,10 @@ Add to `.cursor/mcp.json` in your project root:
 
 Use `stdio` for local desktop integrations. Use `sse` or `streamable-http` when the MCP server runs on a different machine or serves multiple clients.
 
+**Multi-agent daemon deployments.** Both `sse` and `streamable-http` support multiple concurrent client sessions on the same port — one running ToolsConnector daemon serves N agents. FastMCP handles per-connection sessions at the protocol level; per-tool circuit breakers and timeout budgets in the underlying `ToolKit` apply across all clients fairly, so one runaway agent can't starve the others of a connector.
+
+Production note: the HTTP transports have **no built-in authentication**. Put the daemon behind a reverse proxy (nginx, Caddy, Cloudflare Access, etc.) that handles auth before exposing the port publicly. `streamable-http` is the MCP-spec's current recommended HTTP transport; `sse` is being deprecated upstream.
+
 ## Filtering Dangerous Actions
 
 Actions marked as `dangerous=True` (send, delete, create operations) can be excluded from the MCP server to prevent unintended side effects:

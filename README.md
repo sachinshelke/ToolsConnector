@@ -141,8 +141,18 @@ kit.serve_mcp()  # stdio transport, ready for Claude Desktop
 Or from the command line:
 
 ```bash
+# Stdio (one client per process — Claude Desktop launches it as subprocess)
 tc serve mcp gmail gcalendar notion --transport stdio
+
+# Long-lived HTTP daemon — multiple agents share one process
+tc serve mcp gmail slack github --transport streamable-http --port 9000
 ```
+
+The HTTP transport (`streamable-http`) accepts many concurrent client
+sessions on the same port — one daemon serves N agents. Per-tool
+circuit breakers and timeout budgets apply fairly across all clients.
+There's no built-in auth on the HTTP transport; put it behind a reverse
+proxy before exposing it publicly.
 
 ### 3. OpenAI Function Calling
 

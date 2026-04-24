@@ -722,12 +722,32 @@ class ToolKit:
     ) -> None:
         """Start an MCP server exposing all configured tools.
 
-        Blocks until the server shuts down.
+        Blocks until the server shuts down. Three transports are supported,
+        chosen via the ``transport`` argument:
+
+        - ``"stdio"`` (default) — JSON-RPC over stdin/stdout. The classic
+          MCP transport; one client per process. Use this when the MCP
+          host (Claude Desktop, Cursor, etc.) launches the server as a
+          subprocess.
+        - ``"sse"`` — Server-Sent Events over HTTP. Long-lived daemon;
+          multiple concurrent client sessions on the same port. Being
+          deprecated upstream in favor of ``streamable-http``.
+        - ``"streamable-http"`` — MCP-spec's current HTTP transport.
+          Long-lived daemon; multiple concurrent client sessions; the
+          recommended path for production deployments where one
+          ToolsConnector daemon serves many agents. Has no built-in
+          auth — put it behind a reverse proxy (nginx / Caddy /
+          Cloudflare Access) before exposing publicly.
+
+        Per-tool circuit breakers and timeout budgets apply across all
+        clients fairly — one runaway agent can't starve the others.
 
         Args:
-            transport: Transport type (``"stdio"`` or ``"http"``).
+            transport: One of ``"stdio"``, ``"sse"``, ``"streamable-http"``.
+                Passing the older value ``"http"`` raises ``ValueError``.
             name: Server name advertised to MCP clients.
-            port: Port number for HTTP transport.
+            port: Port number for HTTP transports (sse / streamable-http).
+                Ignored for stdio.
         """
         from toolsconnector.serve.mcp import create_and_run_mcp_server
 

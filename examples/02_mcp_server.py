@@ -1,15 +1,30 @@
-"""Start an MCP server for Claude Desktop / Cursor.
+"""Start an MCP server for Claude Desktop / Cursor / agent runtimes.
 
-MCP (Model Context Protocol) lets AI assistants call your tools
-over stdio or HTTP. This script starts a server that exposes
-your connectors as MCP tools.
+MCP (Model Context Protocol) lets AI assistants call your tools.
+This script starts a server that exposes connectors as MCP tools.
+
+Three transports are supported:
+
+    stdio              — JSON-RPC over stdin/stdout, one client per
+                         process. Use when an MCP host (Claude Desktop,
+                         Cursor) launches this script as a subprocess.
+                         This is the default.
+
+    sse                — Server-Sent Events over HTTP. Long-lived
+                         daemon, many concurrent clients. Being
+                         deprecated upstream in favor of streamable-http.
+
+    streamable-http    — Current MCP-spec HTTP transport. Long-lived
+                         daemon, many concurrent clients. Recommended
+                         for production deployments where one
+                         ToolsConnector daemon serves many agents.
 
 Prerequisites:
     pip install "toolsconnector[mcp,gmail,slack]"
     export TC_GMAIL_CREDENTIALS='your-token'
     export TC_SLACK_CREDENTIALS='your-token'
 
-Then add to your Claude Desktop config (~/.claude/claude_desktop_config.json):
+Stdio (Claude Desktop config — ~/.claude/claude_desktop_config.json):
 {
   "mcpServers": {
     "toolsconnector": {
@@ -18,7 +33,12 @@ Then add to your Claude Desktop config (~/.claude/claude_desktop_config.json):
     }
   }
 }
+
+Daemon (one process, many agents):
+    python examples/02_mcp_server.py --daemon
 """
+
+import sys
 
 from toolsconnector.serve import ToolKit
 
@@ -30,7 +50,13 @@ kit = ToolKit(
     exclude_dangerous=True,
 )
 
-# serve_mcp() blocks and runs the MCP server on stdio.
-# Claude Desktop (or any MCP client) connects automatically.
-# Supported transports: "stdio" (default), "http".
-kit.serve_mcp(name="my-tools")
+# Pass --daemon on the command line to switch to long-lived HTTP mode.
+if "--daemon" in sys.argv:
+    # Multiple concurrent agents can connect to localhost:9000 and share
+    # this one running process. Per-tool circuit breakers + timeout
+    # budgets apply across all clients fairly.
+    kit.serve_mcp(name="my-tools", transport="streamable-http", port=9000)
+else:
+    # serve_mcp() blocks and runs the MCP server on stdio.
+    # Claude Desktop (or any MCP client) connects automatically.
+    kit.serve_mcp(name="my-tools")
