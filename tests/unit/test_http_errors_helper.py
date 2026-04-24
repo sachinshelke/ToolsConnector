@@ -78,6 +78,11 @@ def test_success_and_redirect_are_noop(status: int) -> None:
         (502, ServerError),
         (503, ServerError),
         (504, ServerError),
+        # Non-standard 6xx codes that some CDNs synthesize for upstream
+        # failures — should still be ServerError (retry-eligible) rather
+        # than the generic APIError fallthrough.
+        (600, ServerError),
+        (699, ServerError),
         # Other 4xx falls through to APIError
         (402, APIError),
         (405, APIError),
@@ -182,6 +187,20 @@ def test_429_without_retry_after_uses_default() -> None:
     assert exc_info.value.retry_after_seconds == 60.0
 
 
+def test_429_negative_retry_after_clamped_to_zero() -> None:
+    """A hostile or buggy upstream sending ``Retry-After: -30`` must NOT
+    cause ``await asyncio.sleep(-30)`` in the caller (raises ValueError
+    in stdlib asyncio). Helper clamps negative seconds to 0.0 — the
+    caller still gets a typed RateLimitError but with a safe sleep value.
+    """
+    with pytest.raises(RateLimitError) as exc_info:
+        raise_typed_for_status(
+            _resp(429, headers={"Retry-After": "-30"}),
+            connector="testconn",
+        )
+    assert exc_info.value.retry_after_seconds == 0.0
+
+
 def test_429_http_date_format_falls_back_to_default() -> None:
     """RFC 7231 also allows ``Retry-After`` as an HTTP-date. We don't
     parse that form (rare in JSON APIs; would add date-parsing overhead
@@ -212,6 +231,59 @@ def test_body_preview_truncates_long_bodies() -> None:
     # Plan-file constant: _MAX_BODY_PREVIEW = 500
     assert len(preview) <= 600  # 500 + "...[truncated]" suffix
     assert preview.endswith("...[truncated]")
+
+
+# Synthetic credential-shaped strings — match the helper's regex
+# patterns but obviously fake (no real-world secret here). The
+# `# fake test credential` comment on each line is what the
+# pre-commit secret-leak hook looks for to skip the line — keep it.
+_FAKE_GH_PAT = "ghp_" + "0" * 30 + "FAKETESTPAT1234"  # fake test credential
+_FAKE_ANTHROPIC = "sk-ant-api03-" + "a" * 90  # fake test credential
+_FAKE_STRIPE = "sk_live_" + "Z" * 30  # fake test credential (placeholder)
+_FAKE_OPENAI = "sk-proj-" + "Q" * 30  # fake test credential (placeholder)
+_FAKE_SLACK = "xoxb-12345678-87654321-" + "Y" * 24  # fake test credential
+_FAKE_AWS = "AKIAIOSFODNN7EXAMPLE"  # fake test credential — AWS docs example
+_FAKE_BEARER = "Bearer ya29.a0AfH6SMB" + "x" * 24  # fake test credential
+
+
+@pytest.mark.parametrize(
+    ("secret_in_body", "description"),
+    [
+        (_FAKE_GH_PAT, "GitHub PAT"),
+        (_FAKE_ANTHROPIC, "Anthropic API key"),
+        (_FAKE_STRIPE, "Stripe live key"),
+        (_FAKE_OPENAI, "OpenAI key"),
+        (_FAKE_SLACK, "Slack bot token"),
+        (_FAKE_AWS, "AWS access key"),
+        (_FAKE_BEARER, "OAuth bearer (Google-style)"),
+    ],
+)
+def test_body_preview_redacts_echoed_credentials(secret_in_body: str, description: str) -> None:
+    """Some misbehaving upstreams echo the request's auth token (or
+    other secrets posted in the body) back in the error response.
+    Without redaction those would land in ``details["body_preview"]``
+    and leak into any sink that logs the exception.
+
+    Helper redacts known credential patterns inline before storing.
+    """
+    body = f'{{"error":"invalid_token","received":"{secret_in_body}"}}'
+    with pytest.raises(InvalidCredentialsError) as exc_info:
+        raise_typed_for_status(_resp(401, body=body), connector="testconn")
+
+    preview = exc_info.value.details["body_preview"]
+    assert secret_in_body not in preview, f"{description} leaked into body_preview unredacted"
+    assert "[REDACTED]" in preview
+
+
+def test_body_preview_does_not_redact_innocuous_strings() -> None:
+    """Make sure the redaction patterns are tight enough to not
+    munge ordinary error messages. False positives would degrade
+    debuggability with no security benefit.
+    """
+    innocuous = "Resource not found. ID: usr_12345abc. Try GET /users instead."
+    with pytest.raises(NotFoundError) as exc_info:
+        raise_typed_for_status(_resp(404, body=innocuous), connector="testconn")
+    assert exc_info.value.details["body_preview"] == innocuous
 
 
 def test_undecodable_body_does_not_break_helper() -> None:

@@ -133,7 +133,13 @@ class Segment(BaseConnector):
             Parsed JSON response as a dict.
 
         Raises:
-            httpx.HTTPStatusError: If the API returns a non-2xx status.
+            toolsconnector.errors.APIError (subclass): On any non-2xx response.
+                Maps to a typed exception by status: 401 -> InvalidCredentialsError
+                or TokenExpiredError; 403 -> PermissionDeniedError; 404 -> NotFoundError;
+                409 -> ConflictError; 400/422 -> ValidationError; 429 -> RateLimitError;
+                5xx -> ServerError; other 4xx -> APIError. See
+                toolsconnector.connectors._helpers.raise_typed_for_status for the full mapping.
+
         """
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(
@@ -163,7 +169,13 @@ class Segment(BaseConnector):
             Parsed JSON response as a dict.
 
         Raises:
-            httpx.HTTPStatusError: If the API returns a non-2xx status.
+            toolsconnector.errors.APIError (subclass): On any non-2xx response.
+                Maps to a typed exception by status: 401 -> InvalidCredentialsError
+                or TokenExpiredError; 403 -> PermissionDeniedError; 404 -> NotFoundError;
+                409 -> ConflictError; 400/422 -> ValidationError; 429 -> RateLimitError;
+                5xx -> ServerError; other 4xx -> APIError. See
+                toolsconnector.connectors._helpers.raise_typed_for_status for the full mapping.
+
         """
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.request(

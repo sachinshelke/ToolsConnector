@@ -94,7 +94,12 @@ class MyTool(BaseConnector):
         response = await self._client.get(
             "/records", params={"limit": limit, "offset": offset}
         )
-        response.raise_for_status()
+        # Use the framework's shared error-mapping helper instead of
+        # response.raise_for_status() — it raises typed exceptions
+        # (RateLimitError, NotFoundError, TokenExpiredError, …) so
+        # callers can pattern-match on the failure mode.
+        from toolsconnector.connectors._helpers import raise_typed_for_status
+        raise_typed_for_status(response, connector=self.name)
         data = response.json()
         items = [MyRecord(**r) for r in data.get("records", [])]
         has_more = len(items) == limit
@@ -161,8 +166,13 @@ Five tests is the floor, ten the ceiling. Cover at minimum:
 1. **Happy path on the most-common action** — verify request method,
    URL, auth header, request body, and response parsing.
 2. **Error mapping** — vendor's auth/notfound/ratelimit responses
-   translate to our typed exceptions (or HTTPStatusError where the
-   connector hasn't done that mapping yet).
+   translate to our typed exceptions (`InvalidCredentialsError`,
+   `TokenExpiredError`, `NotFoundError`, `PermissionDeniedError`,
+   `RateLimitError`, `ValidationError`, `ServerError`, etc.) via the
+   shared `raise_typed_for_status()` helper. Slack-style connectors
+   that need vendor-specific body parsing handle their own mapping
+   inline; either way, callers should always see a typed exception
+   rather than bare `httpx.HTTPStatusError`.
 3. **Pagination** — if the connector exposes paginated listings,
    test that PageState.cursor + has_more wire through correctly on
    a 2-page sequence.

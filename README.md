@@ -246,6 +246,47 @@ app = kit.create_rest_app(prefix="/api/v1")
 
 ---
 
+## Error Handling
+
+Every connector raises typed exceptions from `toolsconnector.errors` so
+your code can branch on the failure mode instead of parsing HTTP status
+codes:
+
+```python
+from toolsconnector.errors import (
+    InvalidCredentialsError, TokenExpiredError, PermissionDeniedError,
+    NotFoundError, RateLimitError, ValidationError, ServerError,
+)
+
+try:
+    await kit.aexecute("gmail_send_email", {...})
+except TokenExpiredError:
+    await refresh_oauth_token()
+    # ...retry...
+except RateLimitError as e:
+    await asyncio.sleep(e.retry_after_seconds)  # parsed from Retry-After header
+    # ...retry...
+except InvalidCredentialsError:
+    prompt_user_to_reauthenticate()
+except NotFoundError:
+    return None  # 404 — caller decides what "missing" means
+except PermissionDeniedError:
+    request_additional_oauth_scopes()
+except ValidationError:
+    # 400 / 422 — your arguments were rejected by the upstream API
+    raise
+except ServerError:
+    # 5xx — upstream is having a bad day; retry-eligible
+    pass
+```
+
+All typed errors carry `connector`, `action`, `upstream_status`, and a
+truncated `details["body_preview"]` — useful for logs and observability.
+The full taxonomy lives in `src/toolsconnector/errors/` if you want to
+match more granular cases (e.g. `ConflictError` for 409).
+
+---
+
 ## Supported Connectors
 
 68 connectors, 1,370 actions across 20 categories.

@@ -145,7 +145,12 @@ class Cloudflare(BaseConnector):
             ``errors``, ``messages``, and optionally ``result_info``).
 
         Raises:
-            httpx.HTTPStatusError: On 4xx/5xx responses.
+            toolsconnector.errors.APIError (subclass): On any non-2xx response.
+                Maps to a typed exception by status: 401 -> InvalidCredentialsError
+                or TokenExpiredError; 403 -> PermissionDeniedError; 404 -> NotFoundError;
+                409 -> ConflictError; 400/422 -> ValidationError; 429 -> RateLimitError;
+                5xx -> ServerError; other 4xx -> APIError. See
+                toolsconnector.connectors._helpers.raise_typed_for_status for the full mapping.
             RuntimeError: When Cloudflare returns ``success: false``.
         """
         resp = await self._client.request(

@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.errors import ValidationError
 
 from .base import ProtocolResponse
@@ -101,7 +102,15 @@ class GraphQLAdapter:
             json=payload,
             headers=merged_headers,
         )
-        response.raise_for_status()
+        # Use the framework helper rather than bare raise_for_status() so
+        # GraphQL HTTP-layer errors surface as the project's typed
+        # exceptions (RateLimitError, NotFoundError, etc.). The
+        # `connector="graphql"` label tells callers the failure is at
+        # the protocol-adapter layer, not in the upstream service's
+        # business logic. (GraphQL business-logic errors come back as
+        # 200 OK with `errors` in the JSON — those still raise
+        # ValidationError below.)
+        raise_typed_for_status(response, connector="graphql")
         result = response.json()
 
         # Surface GraphQL-level errors as a ValidationError.

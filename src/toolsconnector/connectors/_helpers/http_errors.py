@@ -67,6 +67,7 @@ are preserved on each exception's ``details`` dict for debugging.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 
 import httpx
@@ -96,6 +97,28 @@ _TOKEN_EXPIRED_MARKERS = (
     "revoked_access_token",
     "token_expired",
 )
+
+# Regex patterns matching real credentials that some misbehaving upstreams
+# echo back in error response bodies (request payload echoed for "debug",
+# auth header reflected as "received: ..."). We redact these BEFORE
+# storing the body preview on the exception so logs / observability
+# pipelines never see the live secret.
+#
+# Patterns mirror the ones the CI's secret-leak grep enforces (see
+# .github/workflows/ci.yml + .pre-commit-config.yaml). Keep them in sync.
+_CREDENTIAL_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"ghp_[A-Za-z0-9]{30,}"),  # GitHub PAT
+    re.compile(r"xoxb-[0-9]{8,}-[0-9]{8,}-[A-Za-z0-9]{20,}"),  # Slack bot token
+    re.compile(r"AKIA[A-Z0-9]{16}"),  # AWS access key
+    re.compile(r"sk-ant-api03-[A-Za-z0-9_-]{80,}"),  # Anthropic key
+    re.compile(r"sk_live_[A-Za-z0-9]{20,}"),  # Stripe live key
+    # OpenAI keys: sk-..., sk-proj-..., sk-svcacct-... — needs dashes
+    # in the body (sk-proj-... wouldn't match a [A-Za-z0-9]-only class).
+    re.compile(r"sk-[A-Za-z0-9_-]{20,}"),
+    re.compile(r"Bearer\s+[A-Za-z0-9._-]{20,}", re.IGNORECASE),  # Bearer tokens
+)
+
+_REDACTION_PLACEHOLDER = "[REDACTED]"
 
 
 def raise_typed_for_status(
@@ -143,7 +166,13 @@ def raise_typed_for_status(
         "status_code": status,
         "body_preview": body_preview,
     }
-    base_kwargs = {
+    # `dict[str, Any]` annotation is required: mypy otherwise infers
+    # the most-specific union of the literal values (str | int | dict |
+    # None), which then fails to match the typed-error constructors'
+    # individual kwarg signatures when we spread with `**base_kwargs`.
+    # Each typed exception class validates its own params; this dict is
+    # just a transport, so Any is appropriate here.
+    base_kwargs: dict[str, Any] = {
         "connector": connector,
         "action": action,
         "details": details,
@@ -186,7 +215,11 @@ def raise_typed_for_status(
             rl_kwargs["retry_after_seconds"] = retry_after
         raise RateLimitError(message, **rl_kwargs)
 
-    if 500 <= status < 600:
+    if status >= 500:
+        # 5xx and any non-standard codes >= 600 (rare but they exist —
+        # some CDNs synthesize 6xx for upstream errors). Always treat as
+        # server-side: caller retry is appropriate via ServerError's
+        # ``retry_eligible=True`` default.
         raise ServerError(message, **base_kwargs)
 
     # Other 4xx (402, 405, 408, 410, 411, 413-418, 421, 423-431, 451 …):
@@ -201,17 +234,41 @@ def raise_typed_for_status(
 def _safe_body_preview(response: httpx.Response) -> str:
     """Best-effort body extraction for the error's details field.
 
-    Truncates to ``_MAX_BODY_PREVIEW`` chars. Never raises — if the body
-    can't be decoded as text (e.g. binary response), returns an empty
-    string. We don't want exception construction itself to fail because
-    of an oddly-encoded body.
+    Three guarantees:
+
+    1. **Never raises.** If the body can't be decoded as text (e.g. binary
+       response, malformed encoding), returns an empty string. Exception
+       construction must not fail because of an oddly-encoded body.
+    2. **Truncates to ``_MAX_BODY_PREVIEW`` chars** to keep exception
+       repr / log output bounded.
+    3. **Redacts known credential patterns** before returning. Some
+       misbehaving upstreams echo the request's auth token (or other
+       secrets posted in the body) back in the error response. Without
+       redaction those would land in ``details["body_preview"]`` and
+       leak into any sink that logs the exception. Patterns matched
+       are the same ones the CI secret-scan grep enforces.
     """
     try:
         text = response.text
     except Exception:
         return ""
     if len(text) > _MAX_BODY_PREVIEW:
-        return text[:_MAX_BODY_PREVIEW] + "...[truncated]"
+        text = text[:_MAX_BODY_PREVIEW] + "...[truncated]"
+    return _redact_credentials(text)
+
+
+def _redact_credentials(text: str) -> str:
+    """Replace any credential-looking substrings with ``[REDACTED]``.
+
+    Defensive — applied to every body preview regardless of whether
+    we have evidence the upstream actually echoed a secret. The cost
+    is one regex pass over up to ~500 bytes per error; the benefit
+    is that no integrator's logs contain a live token because of us.
+    """
+    if not text:
+        return text
+    for pattern in _CREDENTIAL_PATTERNS:
+        text = pattern.sub(_REDACTION_PLACEHOLDER, text)
     return text
 
 
@@ -244,13 +301,18 @@ def _parse_retry_after(header_value: Optional[str]) -> Optional[float]:
     which makes RateLimitError use its default of 60.0 s.
 
     Returns:
-        Seconds as a float, or ``None`` if the header is missing or
-        not a numeric value.
+        Seconds as a float, never negative, or ``None`` if the header
+        is missing or not a numeric value. Negative values are clamped
+        to ``0.0`` so a hostile or buggy upstream can't trick the
+        caller into ``await asyncio.sleep(-N)`` (which raises
+        ``ValueError`` in stdlib asyncio and behaves inconsistently
+        across third-party schedulers).
     """
     if not header_value:
         return None
     stripped = header_value.strip()
     try:
-        return float(stripped)
+        seconds = float(stripped)
     except ValueError:
         return None
+    return max(0.0, seconds)

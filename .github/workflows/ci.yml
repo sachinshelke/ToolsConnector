@@ -219,10 +219,18 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
-      # REQUIRED: core must pass cleanly. As of v0.3.4 this gate is at zero
-      # errors; any new code that breaks it blocks the PR.
-      - name: Run mypy (core, REQUIRED)
-        run: mypy src/toolsconnector/ --exclude '/connectors/'
+      # REQUIRED: core + shared connector helpers must pass cleanly.
+      # As of v0.3.4 this gate is at zero errors; any new code that breaks
+      # it blocks the PR.
+      #
+      # The `connectors/` exclude pattern is paired with an explicit
+      # include for `connectors/_helpers/` because that subpackage holds
+      # framework-level utilities (raise_typed_for_status, etc.) used by
+      # every connector — bugs there propagate everywhere, so we hold it
+      # to the same strict bar as core.
+      - name: Run mypy (core + helpers, REQUIRED)
+        run: |
+          mypy src/toolsconnector/ --exclude '/connectors/[^_]'
 
       # INFORMATIONAL: full-tree count for visibility into connector debt.
       # Continues on failure so connector issues don't block PRs.

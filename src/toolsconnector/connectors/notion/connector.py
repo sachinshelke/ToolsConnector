@@ -76,7 +76,13 @@ class Notion(BaseConnector):
             Parsed JSON response dict.
 
         Raises:
-            httpx.HTTPStatusError: On non-2xx responses.
+            toolsconnector.errors.APIError (subclass): On any non-2xx response.
+                Maps to a typed exception by status: 401 -> InvalidCredentialsError
+                or TokenExpiredError; 403 -> PermissionDeniedError; 404 -> NotFoundError;
+                409 -> ConflictError; 400/422 -> ValidationError; 429 -> RateLimitError;
+                5xx -> ServerError; other 4xx -> APIError. See
+                toolsconnector.connectors._helpers.raise_typed_for_status for the full mapping.
+
         """
         url = f"{self._base_url}{path}"
         async with httpx.AsyncClient(timeout=self._timeout) as client:
