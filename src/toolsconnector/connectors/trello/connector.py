@@ -12,6 +12,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -129,7 +130,7 @@ class Trello(BaseConnector):
             params=merged_params,
             json=json_body,
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp
 
     # ------------------------------------------------------------------

@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -156,7 +157,7 @@ class Twilio(BaseConnector):
             params=params,
             data=data,
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp
 
     def _page_state(self, body: dict[str, Any]) -> PageState:
@@ -246,7 +247,7 @@ class Twilio(BaseConnector):
             Paginated list of TwilioMessage objects.
         """
         resp = await self._client.get(uri)
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         body = resp.json()
         items = [parse_message(m) for m in body.get("messages", [])]
         ps = self._page_state(body)
@@ -318,7 +319,7 @@ class Twilio(BaseConnector):
             Paginated list of TwilioCall objects.
         """
         resp = await self._client.get(uri)
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         body = resp.json()
         items = [parse_call(c) for c in body.get("calls", [])]
         ps = self._page_state(body)
@@ -593,7 +594,7 @@ class Twilio(BaseConnector):
             "/Services",
             data={"FriendlyName": friendly_name},
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         data = resp.json()
         return TwilioVerifyService(
             sid=data["sid"],
@@ -628,7 +629,7 @@ class Twilio(BaseConnector):
             f"/Services/{service_sid}/Verifications",
             data={"To": to, "Channel": channel},
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         data = resp.json()
         return TwilioVerification(
             sid=data["sid"],
@@ -664,7 +665,7 @@ class Twilio(BaseConnector):
             f"/Services/{service_sid}/VerificationCheck",
             data={"To": to, "Code": code},
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         data = resp.json()
         return TwilioVerificationCheck(
             sid=data["sid"],
@@ -710,7 +711,7 @@ class Twilio(BaseConnector):
             f"/PhoneNumbers/{phone_number}",
             params=params or None,
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         data = resp.json()
         return TwilioLookupResult(
             phone_number=data.get("phone_number"),
@@ -746,7 +747,7 @@ class Twilio(BaseConnector):
             "/Conversations",
             params=params,
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         body = resp.json()
         return [
             TwilioConversation(
@@ -782,7 +783,7 @@ class Twilio(BaseConnector):
             "/Conversations",
             json={"friendly_name": friendly_name},
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         data = resp.json()
         return TwilioConversation(
             sid=data["sid"],

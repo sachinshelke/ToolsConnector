@@ -25,6 +25,7 @@ from typing import Any, Optional
 import httpx
 
 from toolsconnector.connectors._aws.signing import sign_v4
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -194,7 +195,7 @@ class S3(BaseConnector):
             headers=headers,
             content=body,
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp
 
     # ------------------------------------------------------------------

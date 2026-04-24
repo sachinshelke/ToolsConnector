@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -122,7 +123,7 @@ class GitHub(BaseConnector):
         remaining = resp.headers.get("X-RateLimit-Remaining")
         if remaining is not None:
             logger.debug("GitHub rate-limit remaining: %s", remaining)
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp
 
     def _build_page_state(self, resp: httpx.Response) -> PageState:
@@ -140,7 +141,7 @@ class GitHub(BaseConnector):
         """Fetch a page, using a cursor URL when available."""
         if cursor:
             resp = await self._client.get(cursor)
-            resp.raise_for_status()
+            raise_typed_for_status(resp, connector=self.name)
             return resp
         return await self._request("GET", path, params=params)
 

@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -151,7 +152,7 @@ class Stripe(BaseConnector):
         if remaining is not None:
             logger.debug("Stripe rate-limit remaining: %s", remaining)
 
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp
 
     # ------------------------------------------------------------------

@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -113,7 +114,7 @@ class Freshdesk(BaseConnector):
             httpx.HTTPStatusError: On non-2xx responses.
         """
         response = await self._client.request(method, path, json=json, params=params)
-        response.raise_for_status()
+        raise_typed_for_status(response, connector=self.name)
         if response.status_code == 204:
             return {}
         return response.json()

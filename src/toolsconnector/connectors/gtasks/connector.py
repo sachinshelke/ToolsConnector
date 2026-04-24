@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
@@ -104,7 +105,7 @@ class GoogleTasks(BaseConnector):
                 headers=self._get_headers(),
                 **kwargs,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             if response.status_code == 204 or not response.content:
                 return {}
             return response.json()

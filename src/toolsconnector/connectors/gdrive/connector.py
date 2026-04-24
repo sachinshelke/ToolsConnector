@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
@@ -125,7 +126,7 @@ class GoogleDrive(BaseConnector):
                 headers=self._get_headers(),
                 **kwargs,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             if response.status_code == 204 or not response.content:
                 return {}
             return response.json()
@@ -153,7 +154,7 @@ class GoogleDrive(BaseConnector):
                 headers=self._get_headers(),
                 **kwargs,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             return response
 
     # ------------------------------------------------------------------
@@ -278,7 +279,7 @@ class GoogleDrive(BaseConnector):
 
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(upload_url, headers=headers, content=content)
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         return FileUploadResult(

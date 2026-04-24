@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -104,7 +105,7 @@ class MongoDB(BaseConnector):
             httpx.HTTPStatusError: On 4xx/5xx responses.
         """
         resp = await self._client.post(endpoint, json=body)
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp
 
     def _base_body(
@@ -593,7 +594,7 @@ class MongoDB(BaseConnector):
                     "dataSource": "Cluster0",
                 },
             )
-            resp.raise_for_status()
+            raise_typed_for_status(resp, connector=self.name)
             data = resp.json()
             return [db.get("name", "") for db in data.get("databases", [])]
         except httpx.HTTPStatusError:
@@ -625,7 +626,7 @@ class MongoDB(BaseConnector):
                     "database": database,
                 },
             )
-            resp.raise_for_status()
+            raise_typed_for_status(resp, connector=self.name)
             data = resp.json()
             return [c.get("name", "") for c in data.get("collections", [])]
         except httpx.HTTPStatusError:

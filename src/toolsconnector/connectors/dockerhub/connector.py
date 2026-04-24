@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -193,7 +194,7 @@ class DockerHub(BaseConnector):
             "/users/login",
             json={"username": username, "password": password},
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp.json().get("token", "")
 
     async def _teardown(self) -> None:
@@ -233,7 +234,7 @@ class DockerHub(BaseConnector):
             params=params,
             json=json,
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp
 
     async def _get_page(
@@ -254,7 +255,7 @@ class DockerHub(BaseConnector):
         """
         if cursor:
             resp = await self._client.get(cursor)
-            resp.raise_for_status()
+            raise_typed_for_status(resp, connector=self.name)
             return resp
         return await self._request("GET", path, params=params)
 

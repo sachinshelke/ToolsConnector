@@ -23,6 +23,7 @@ import pytest_asyncio
 import respx
 
 from toolsconnector.connectors.github import GitHub
+from toolsconnector.errors import InvalidCredentialsError, NotFoundError
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -137,14 +138,11 @@ async def test_create_repo_sends_correct_body(github: GitHub) -> None:
 
 
 @pytest.mark.asyncio
-async def test_404_raises_http_status_error(github: GitHub) -> None:
-    """GitHub uses standard REST status codes; 404 surfaces as the
-    underlying httpx.HTTPStatusError (the connector's `_request`
-    calls `raise_for_status`).
-
-    This documents the current behavior — note that GitHub doesn't
-    map to our typed NotFoundError yet (room for future improvement,
-    but capturing the contract as it stands prevents silent regressions).
+async def test_404_raises_not_found_error(github: GitHub) -> None:
+    """GitHub 404 → typed :class:`NotFoundError` (was bare
+    ``httpx.HTTPStatusError`` before the framework-wide error mapping
+    landed in 0.3.5). Agents can now ``except NotFoundError`` instead
+    of string-parsing the status code.
     """
     with respx.mock(base_url="https://api.github.com") as respx_mock:
         respx_mock.get("/repos/missing/missing").mock(
@@ -153,24 +151,34 @@ async def test_404_raises_http_status_error(github: GitHub) -> None:
             )
         )
 
-        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        with pytest.raises(NotFoundError) as exc_info:
             await github.aget_repo(owner="missing", repo="missing")
 
-        assert exc_info.value.response.status_code == 404
+        err = exc_info.value
+        assert err.connector == "github"
+        assert err.upstream_status == 404
+        assert "Not Found" in err.details["body_preview"]
 
 
 @pytest.mark.asyncio
-async def test_401_raises_http_status_error(github: GitHub) -> None:
-    """Invalid / expired token → 401 → HTTPStatusError."""
+async def test_401_raises_invalid_credentials_error(github: GitHub) -> None:
+    """Invalid token → 401 → :class:`InvalidCredentialsError`.
+
+    GitHub's "Bad credentials" body doesn't contain an "expired" marker,
+    so the helper picks the more generic ``InvalidCredentialsError``
+    rather than ``TokenExpiredError`` — correct because PATs don't
+    expire silently the way OAuth access tokens do.
+    """
     with respx.mock(base_url="https://api.github.com") as respx_mock:
         respx_mock.get("/repos/owner/repo").mock(
             return_value=httpx.Response(401, json={"message": "Bad credentials"})
         )
 
-        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        with pytest.raises(InvalidCredentialsError) as exc_info:
             await github.aget_repo(owner="owner", repo="repo")
 
-        assert exc_info.value.response.status_code == 401
+        assert exc_info.value.connector == "github"
+        assert exc_info.value.upstream_status == 401
 
 
 # ---------------------------------------------------------------------------

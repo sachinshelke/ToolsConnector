@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -132,7 +133,7 @@ class Shopify(BaseConnector):
         if call_limit:
             logger.debug("Shopify rate-limit: %s", call_limit)
 
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp
 
     def _build_page_state(self, resp: httpx.Response) -> PageState:

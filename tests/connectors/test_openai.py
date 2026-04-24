@@ -25,6 +25,7 @@ import pytest_asyncio
 import respx
 
 from toolsconnector.connectors.openai_connector import OpenAI
+from toolsconnector.errors import InvalidCredentialsError, RateLimitError
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -220,8 +221,15 @@ async def test_chat_completion_with_tools_passthrough(openai: OpenAI) -> None:
 
 
 @pytest.mark.asyncio
-async def test_invalid_api_key_raises_http_status_error(openai: OpenAI) -> None:
-    """OpenAI returns 401 with body when the key is invalid."""
+async def test_invalid_api_key_raises_invalid_credentials_error(openai: OpenAI) -> None:
+    """OpenAI 401 → typed :class:`InvalidCredentialsError` (was bare
+    ``httpx.HTTPStatusError`` pre-0.3.5).
+
+    OpenAI's "Incorrect API key provided" body doesn't match the
+    expired-token markers, so this stays as ``InvalidCredentialsError``
+    rather than promoting to ``TokenExpiredError`` — correct because
+    OpenAI API keys don't expire (they're static, user-rotatable secrets).
+    """
     with respx.mock(base_url="https://api.openai.com/v1") as respx_mock:
         respx_mock.post("/chat/completions").mock(
             return_value=httpx.Response(
@@ -236,17 +244,22 @@ async def test_invalid_api_key_raises_http_status_error(openai: OpenAI) -> None:
             )
         )
 
-        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        with pytest.raises(InvalidCredentialsError) as exc_info:
             await openai.achat_completion(
                 model="gpt-4o", messages=[{"role": "user", "content": "hi"}]
             )
 
-        assert exc_info.value.response.status_code == 401
+        assert exc_info.value.connector == "openai"
+        assert exc_info.value.upstream_status == 401
 
 
 @pytest.mark.asyncio
-async def test_rate_limit_raises_http_status_error(openai: OpenAI) -> None:
-    """429 → HTTPStatusError. (Future improvement: map to RateLimitError.)"""
+async def test_rate_limit_raises_rate_limit_error(openai: OpenAI) -> None:
+    """OpenAI 429 → typed :class:`RateLimitError` with ``retry_after_seconds``
+    parsed from the ``Retry-After`` header (was bare ``HTTPStatusError``
+    pre-0.3.5). Agents can now schedule a backoff that respects the
+    upstream's hint without re-parsing headers themselves.
+    """
     with respx.mock(base_url="https://api.openai.com/v1") as respx_mock:
         respx_mock.post("/chat/completions").mock(
             return_value=httpx.Response(
@@ -256,12 +269,15 @@ async def test_rate_limit_raises_http_status_error(openai: OpenAI) -> None:
             )
         )
 
-        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        with pytest.raises(RateLimitError) as exc_info:
             await openai.achat_completion(
                 model="gpt-4o", messages=[{"role": "user", "content": "hi"}]
             )
 
-        assert exc_info.value.response.status_code == 429
+        assert exc_info.value.connector == "openai"
+        assert exc_info.value.upstream_status == 429
+        # Retry-After header parsed onto the typed error
+        assert exc_info.value.retry_after_seconds == 20.0
 
 
 # ---------------------------------------------------------------------------

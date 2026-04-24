@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -115,7 +116,7 @@ class Jira(BaseConnector):
                 json=json,
                 params=params,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             if response.status_code == 204:
                 return {}
             return response.json()
@@ -167,7 +168,7 @@ class Jira(BaseConnector):
                 headers=self._headers(),
                 params=params,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             if response.status_code == 204:
                 return {}
             return response.json()
@@ -508,7 +509,7 @@ class Jira(BaseConnector):
                 headers=self._headers(),
                 json=account_id,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
 
     # ------------------------------------------------------------------
     # Actions — Agile (Boards & Sprints)
@@ -688,7 +689,7 @@ class Jira(BaseConnector):
                 headers=headers,
                 files={"file": (filename, content)},
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             attachments = response.json()
 
         # Jira returns a list; take the first (and usually only) item

@@ -22,6 +22,7 @@ import pytest_asyncio
 import respx
 
 from toolsconnector.connectors.gmail import Gmail
+from toolsconnector.errors import InvalidCredentialsError
 
 # ---------------------------------------------------------------------------
 # Fixtures & helpers
@@ -319,11 +320,16 @@ async def test_auth_header_sent(gmail: Gmail) -> None:
 
 
 @pytest.mark.asyncio
-async def test_401_unauthorized_raises_http_status_error(gmail: Gmail) -> None:
-    """Invalid / expired token → 401 → HTTPStatusError.
+async def test_401_unauthorized_raises_invalid_credentials_error(gmail: Gmail) -> None:
+    """Invalid token → 401 → typed :class:`InvalidCredentialsError`
+    (was bare ``httpx.HTTPStatusError`` pre-0.3.5).
 
-    Current behavior captured as contract. Future improvement would map
-    to typed InvalidCredentialsError or TokenExpiredError.
+    Gmail's "Request had invalid authentication credentials" body
+    doesn't contain an "expired" marker, so the helper picks
+    ``InvalidCredentialsError`` rather than ``TokenExpiredError`` —
+    correct because invalid-format tokens trigger this even when not
+    expired. Tokens that ARE expired return Google's
+    ``"invalid_grant"`` body in OAuth flows, not 401 on the API.
     """
     with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
         respx_mock.post("/users/me/messages/send").mock(
@@ -338,10 +344,11 @@ async def test_401_unauthorized_raises_http_status_error(gmail: Gmail) -> None:
             )
         )
 
-        with pytest.raises(httpx.HTTPStatusError) as exc:
+        with pytest.raises(InvalidCredentialsError) as exc:
             await gmail.asend_email(to="x@y.com", subject="x", body="x")
 
-        assert exc.value.response.status_code == 401
+        assert exc.value.connector == "gmail"
+        assert exc.value.upstream_status == 401
 
 
 # ---------------------------------------------------------------------------

@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -100,7 +101,7 @@ class Airtable(BaseConnector):
             kwargs["json"] = json_body
 
         resp = await self._client.request(**kwargs)
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp
 
     # ------------------------------------------------------------------
@@ -120,7 +121,7 @@ class Airtable(BaseConnector):
         resp = await self._client.get(
             "https://api.airtable.com/v0/meta/bases",
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         data = resp.json()
 
         return [
@@ -145,7 +146,7 @@ class Airtable(BaseConnector):
         resp = await self._client.get(
             f"https://api.airtable.com/v0/meta/bases/{base_id}/tables",
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         data = resp.json()
 
         tables: list[AirtableTable] = []
@@ -523,7 +524,7 @@ class Airtable(BaseConnector):
         resp = await self._client.get(
             f"https://api.airtable.com/v0/meta/bases/{base_id}/tables",
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         data = resp.json()
 
         tables: list[AirtableTable] = []
@@ -577,7 +578,7 @@ class Airtable(BaseConnector):
             f"https://api.airtable.com/v0/meta/bases/{base_id}/tables/{table_id}/fields",
             json=body,
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         f = resp.json()
 
         return AirtableField(
@@ -618,7 +619,7 @@ class Airtable(BaseConnector):
             f"https://api.airtable.com/v0/meta/bases/{base_id}/tables/{table_id}/fields/{field_id}",
             json=body,
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         f = resp.json()
 
         return AirtableField(
@@ -647,7 +648,7 @@ class Airtable(BaseConnector):
         resp = await self._client.get(
             f"https://api.airtable.com/v0/meta/bases/{base_id}/collaborators",
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         data = resp.json()
 
         return data.get("collaborators", [])
@@ -683,7 +684,7 @@ class Airtable(BaseConnector):
             f"https://api.airtable.com/v0/meta/bases/{base_id}/tables",
             json=body,
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         t = resp.json()
 
         parsed_fields = [

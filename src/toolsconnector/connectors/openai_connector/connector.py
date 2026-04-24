@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -105,7 +106,7 @@ class OpenAI(BaseConnector):
                 headers=self._get_headers(),
                 **kwargs,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             if response.status_code == 204 or not response.content:
                 return {}
             return response.json()
@@ -311,7 +312,7 @@ class OpenAI(BaseConnector):
         # Download the audio file
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             audio_resp = await client.get(file_url)
-            audio_resp.raise_for_status()
+            raise_typed_for_status(audio_resp, connector=self.name)
             audio_bytes = audio_resp.content
 
         # Determine filename from URL
@@ -325,7 +326,7 @@ class OpenAI(BaseConnector):
                 files={"file": (filename, audio_bytes)},
                 data={"model": whisper_model, "response_format": "verbose_json"},
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         return AudioTranscription(
@@ -361,7 +362,7 @@ class OpenAI(BaseConnector):
                 headers=headers,
                 params=params,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         assistants = [
@@ -424,7 +425,7 @@ class OpenAI(BaseConnector):
                 headers=headers,
                 json=payload,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         return Assistant(
@@ -613,7 +614,7 @@ class OpenAI(BaseConnector):
                 files={"file": (upload_name, file_content)},
                 data={"purpose": purpose},
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         return OpenAIFile(
@@ -663,7 +664,7 @@ class OpenAI(BaseConnector):
                 f"{self._base_url}/files/{file_id}/content",
                 headers=self._get_headers(),
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             return response.text
 
     @action("Delete an uploaded file", dangerous=True)
@@ -730,7 +731,7 @@ class OpenAI(BaseConnector):
                 f"{self._base_url}/assistants/{assistant_id}",
                 headers=headers,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         return Assistant(
@@ -781,7 +782,7 @@ class OpenAI(BaseConnector):
                 headers=headers,
                 json=payload,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         return Assistant(
@@ -814,7 +815,7 @@ class OpenAI(BaseConnector):
                 f"{self._base_url}/assistants/{assistant_id}",
                 headers=headers,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         return data.get("deleted", False)
@@ -839,7 +840,7 @@ class OpenAI(BaseConnector):
                 headers=headers,
                 json={},
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         return Thread(
@@ -881,7 +882,7 @@ class OpenAI(BaseConnector):
                 headers=headers,
                 json=payload,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         content_blocks = [
@@ -932,7 +933,7 @@ class OpenAI(BaseConnector):
                 headers=headers,
                 json=payload,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         usage_data = data.get("usage")
@@ -988,7 +989,7 @@ class OpenAI(BaseConnector):
                 f"{self._base_url}/threads/{thread_id}/runs/{run_id}",
                 headers=headers,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         usage_data = data.get("usage")
@@ -1047,7 +1048,7 @@ class OpenAI(BaseConnector):
                 headers=headers,
                 params=params,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             data = response.json()
 
         messages: list[ThreadMessage] = []
@@ -1119,5 +1120,5 @@ class OpenAI(BaseConnector):
                 headers=self._get_headers(),
                 json=payload,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             return response.content

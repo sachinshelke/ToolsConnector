@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -112,7 +113,7 @@ class Mixpanel(BaseConnector):
                 headers=self._get_query_headers(),
                 **kwargs,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             if response.status_code == 204 or not response.content:
                 return {}
             return response.json()
@@ -156,8 +157,7 @@ class Mixpanel(BaseConnector):
                 },
                 json=[event_data],
             )
-            response.raise_for_status()
-
+            raise_typed_for_status(response, connector=self.name)
             # Mixpanel track returns 1 for success, 0 for failure
             try:
                 result = response.json()
@@ -203,8 +203,7 @@ class Mixpanel(BaseConnector):
                 headers=self._get_query_headers(),
                 params=params,
             )
-            response.raise_for_status()
-
+            raise_typed_for_status(response, connector=self.name)
         # Export API returns JSONL (one JSON object per line)
         events: list[MixpanelEvent] = []
         for line in response.text.strip().split("\n"):
@@ -368,8 +367,7 @@ class Mixpanel(BaseConnector):
                 headers=self._get_query_headers(),
                 params=params,
             )
-            response.raise_for_status()
-
+            raise_typed_for_status(response, connector=self.name)
         events: list[MixpanelEvent] = []
         for line in response.text.strip().split("\n"):
             line = line.strip()

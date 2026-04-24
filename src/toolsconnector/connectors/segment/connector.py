@@ -18,6 +18,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -140,7 +141,7 @@ class Segment(BaseConnector):
                 headers=self._get_tracking_headers(),
                 json=payload,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             if response.status_code == 204 or not response.content:
                 return {"success": True}
             return response.json()
@@ -171,7 +172,7 @@ class Segment(BaseConnector):
                 headers=self._get_config_headers(),
                 **kwargs,
             )
-            response.raise_for_status()
+            raise_typed_for_status(response, connector=self.name)
             if response.status_code == 204 or not response.content:
                 return {}
             return response.json()

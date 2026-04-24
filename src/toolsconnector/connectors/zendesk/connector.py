@@ -12,6 +12,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -126,7 +127,7 @@ class Zendesk(BaseConnector):
         if remaining is not None:
             logger.debug("Zendesk rate-limit remaining: %s", remaining)
 
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp
 
     def _build_cursor_page_state(self, body: dict[str, Any]) -> PageState:

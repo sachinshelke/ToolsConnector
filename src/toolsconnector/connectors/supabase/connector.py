@@ -15,6 +15,7 @@ from typing import Any, Optional
 
 import httpx
 
+from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -123,7 +124,7 @@ class Supabase(BaseConnector):
             kwargs["headers"] = extra_headers
 
         resp = await self._client.request(**kwargs)
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp
 
     # ------------------------------------------------------------------
@@ -472,7 +473,7 @@ class Supabase(BaseConnector):
                 "Content-Type": "application/json",
             },
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp.json()
 
     # ------------------------------------------------------------------
@@ -629,5 +630,5 @@ class Supabase(BaseConnector):
                 "Content-Type": "application/json",
             },
         )
-        resp.raise_for_status()
+        raise_typed_for_status(resp, connector=self.name)
         return resp.json()
