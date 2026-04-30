@@ -27,6 +27,16 @@ jobs:
   lint:
     name: Conventional Commit title
     runs-on: ubuntu-latest
+    # Skip for Dependabot. Its PR titles are hard-coded as
+    # "Bump <package> from X to Y" with a capital B, which trips our
+    # `^[a-z]` subject rule. The titles ARE valid Conventional Commits
+    # otherwise (correct `ci:` / `chore(deps):` prefixes that
+    # Release Please's parser handles fine — that parser is lenient
+    # about subject capitalization), so blocking them here would only
+    # break our own auto-merge plumbing without buying any safety.
+    # If we add other well-behaved bots later (Renovate, etc.) that
+    # also use Title Case subjects, extend this list.
+    if: github.actor != 'dependabot[bot]'
     steps:
       - uses: amannn/action-semantic-pull-request@v5
         env:
