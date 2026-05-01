@@ -718,6 +718,7 @@ class ToolKit:
         *,
         transport: str = "stdio",
         name: str = "toolsconnector",
+        host: str = "127.0.0.1",
         port: int = 3000,
     ) -> None:
         """Start an MCP server exposing all configured tools.
@@ -746,6 +747,10 @@ class ToolKit:
             transport: One of ``"stdio"``, ``"sse"``, ``"streamable-http"``.
                 Passing the older value ``"http"`` raises ``ValueError``.
             name: Server name advertised to MCP clients.
+            host: Bind address for HTTP transports. Defaults to
+                ``"127.0.0.1"`` (loopback only) — explicit opt-in is
+                required for LAN/external exposure since the HTTP
+                transports ship without built-in auth. Ignored for stdio.
             port: Port number for HTTP transports (sse / streamable-http).
                 Ignored for stdio.
         """
@@ -755,6 +760,7 @@ class ToolKit:
             self,
             transport=transport,
             name=name,
+            host=host,
             port=port,
         )
 

@@ -46,6 +46,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         default="stdio",
         help="Transport: stdio|sse|streamable-http",
     )
+    mcp_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help=(
+            "Bind address for HTTP transports (default: 127.0.0.1, loopback only). "
+            "Set to 0.0.0.0 to expose on all interfaces — only do this behind a "
+            "reverse proxy with auth, the MCP HTTP transports have no built-in auth."
+        ),
+    )
     mcp_parser.add_argument("--port", type=int, default=3000, help="Port for HTTP transports")
     mcp_parser.add_argument("--name", default="toolsconnector", help="Server name")
 
@@ -133,6 +142,7 @@ def _cmd_serve_mcp(args: argparse.Namespace) -> int:
         kit.serve_mcp(
             transport=args.transport,
             name=args.name,
+            host=args.host,
             port=args.port,
         )
     except Exception as e:

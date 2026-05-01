@@ -107,6 +107,7 @@ def create_and_run_mcp_server(
     *,
     transport: str = "stdio",
     name: str = "toolsconnector",
+    host: str = "127.0.0.1",
     port: int = 3000,
 ) -> None:
     """Create and run an MCP server from a ToolKit.
@@ -117,9 +118,14 @@ def create_and_run_mcp_server(
 
     Args:
         toolkit: Configured ToolKit instance.
-        transport: Transport protocol (\"stdio\", \"sse\", \"streamable-http\").
+        transport: Transport protocol (``"stdio"``, ``"sse"``,
+            ``"streamable-http"``).
         name: Server name shown to MCP clients.
-        port: Port for HTTP transports.
+        host: Bind address for HTTP transports. Defaults to
+            ``"127.0.0.1"`` (loopback only) — explicit opt-in is
+            required for LAN/external exposure since the HTTP transports
+            ship without built-in auth. Ignored for stdio.
+        port: Port for HTTP transports. Ignored for stdio.
 
     Raises:
         ImportError: If the ``mcp`` package is not installed.
@@ -133,7 +139,26 @@ def create_and_run_mcp_server(
             'Install with: pip install "toolsconnector[mcp]"'
         )
 
-    server = FastMCP(name)
+    # Validate transport up-front so we don't construct the server
+    # (or bind a port) for an unknown value.
+    if transport not in ("stdio", "sse", "streamable-http"):
+        raise ValueError(
+            f"Unknown transport '{transport}'. Supported: 'stdio', 'sse', 'streamable-http'"
+        )
+
+    # FastMCP requires host/port at construction time — its ``run()``
+    # method does not accept them as kwargs (signature is just
+    # ``run(transport=..., mount_path=...)``). Passing them to ``run()``
+    # raises ``TypeError: FastMCP.run() got an unexpected keyword
+    # argument 'port'``. So we have to wire them in via ``__init__``.
+    # See issue #22 for the original repro.
+    if transport in ("sse", "streamable-http"):
+        server = FastMCP(name, host=host, port=port)
+    else:
+        # stdio doesn't bind a socket — skip host/port entirely so we
+        # don't even hold a port number we'll never use.
+        server = FastMCP(name)
+
     tool_entries = toolkit.list_tools()
 
     logger.info(f"Registering {len(tool_entries)} tools with MCP server '{name}'")
@@ -149,15 +174,9 @@ def create_and_run_mcp_server(
 
         server.tool(name=tool_name, description=description)(handler)
 
-    logger.info(f"Starting MCP server (transport={transport})")
-
     if transport == "stdio":
+        logger.info("Starting MCP server (transport=stdio)")
         server.run(transport="stdio")
-    elif transport == "sse":
-        server.run(transport="sse", port=port)
-    elif transport == "streamable-http":
-        server.run(transport="streamable-http", port=port)
     else:
-        raise ValueError(
-            f"Unknown transport '{transport}'. Supported: 'stdio', 'sse', 'streamable-http'"
-        )
+        logger.info(f"Starting MCP server (transport={transport}, bind={host}:{port})")
+        server.run(transport=transport)
