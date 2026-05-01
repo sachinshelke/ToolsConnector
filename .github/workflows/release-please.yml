@@ -52,7 +52,75 @@ jobs:
           manifest-file: .release-please-manifest.json
           target-branch: ${{ github.ref_name }}
 
-      # Chain publish-pypi.yml via repository_dispatch.
+      # ─── Force CI to run on the release PR ───────────────────────────────
+      # Background: any PR opened or updated by GITHUB_TOKEN does NOT
+      # trigger downstream `pull_request` workflows (GitHub anti-loop
+      # safeguard). So our required CI checks (Lint & Format, Security
+      # Scan, Test Py3.11, Conformance, Typecheck) never fire on the
+      # release PR's branch, and branch protection leaves it BLOCKED
+      # forever. This bit us empirically on PR #23 (0.3.5) and PR #25
+      # (0.3.6) — both required a manual `gh pr close N && gh pr reopen
+      # N` to coax CI into running.
+      #
+      # Two-pronged workaround, no PAT required:
+      #
+      #   1. close + reopen the PR. This fires `pull_request: reopened`,
+      #      which (per maintainer reports) is one of the events that
+      #      DOES chain even when initiated via GITHUB_TOKEN, because
+      #      it's an explicit state change rather than a token-driven
+      #      content event. The resulting CI checks attach to the PR's
+      #      check rollup and satisfy branch protection.
+      #
+      #   2. workflow_dispatch on ci.yml as a visibility fallback. If
+      #      (1) silently no-ops in some edge case, this still produces
+      #      a CI run in the Actions tab so a maintainer can see test
+      #      results on the release branch even before merging — the
+      #      checks won't satisfy branch protection (workflow_dispatch
+      #      runs aren't bound to the pull_request event), but the
+      #      green/red signal is preserved for visibility.
+      #
+      # The PROPER fix is a PAT or GitHub App token with `pull-requests:
+      # write` — those don't trip the anti-loop rule. We're avoiding
+      # that for now to keep the secrets surface minimal.
+      - name: Force CI on release PR (workaround for GITHUB_TOKEN anti-loop)
+        if: steps.release.outputs.prs_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRS_JSON: ${{ steps.release.outputs.prs }}
+        run: |
+          # `prs` is a JSON array; older releases set the singleton `pr`
+          # output. Handle both for forward-compat.
+          NUMS=$(echo "$PRS_JSON" | jq -r '.[]?.number' 2>/dev/null || true)
+          if [ -z "$NUMS" ]; then
+            PR_JSON='${{ steps.release.outputs.pr }}'
+            NUMS=$(echo "$PR_JSON" | jq -r '.number' 2>/dev/null || true)
+          fi
+          if [ -z "$NUMS" ] || [ "$NUMS" = "null" ]; then
+            echo "No release PR number found in action outputs — nothing to cycle."
+            exit 0
+          fi
+          for N in $NUMS; do
+            echo "::group::Cycling PR #$N to retrigger CI"
+            # Close, brief pause to let GitHub settle, reopen.
+            # `--comment` makes the close visible in the PR timeline so
+            # an observer understands why the PR briefly closed.
+            gh pr close "$N" --repo "$GITHUB_REPOSITORY" \
+              --comment "Closing+reopening to retrigger CI (release-please workflow workaround — see release-please.yml comments)." || true
+            sleep 3
+            gh pr reopen "$N" --repo "$GITHUB_REPOSITORY"
+
+            # Visibility fallback: dispatch CI explicitly. These checks
+            # won't attach to the PR's rollup (workflow_dispatch ≠
+            # pull_request event), but they show up in Actions tab.
+            BRANCH=$(gh pr view "$N" --repo "$GITHUB_REPOSITORY" --json headRefName --jq .headRefName)
+            if [ -n "$BRANCH" ]; then
+              gh workflow run ci.yml --ref "$BRANCH" \
+                --repo "$GITHUB_REPOSITORY" || true
+            fi
+            echo "::endgroup::"
+          done
+
+      # ─── Chain publish-pypi.yml via repository_dispatch ───────────────────
       # Fires ONLY when release-please created an actual release (i.e. the
       # maintainer merged the release PR). Skipped on the typical run where
       # release-please just updates the open release PR.
