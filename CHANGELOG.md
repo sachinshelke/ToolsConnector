@@ -5,6 +5,26 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.4...v0.3.5) (2026-05-01)
+
+
+### ✨ Features
+
+* **connectors:** adopt raise_typed_for_status across 42 HTTP connectors ([139865f](https://github.com/sachinshelke/ToolsConnector/commit/139865fd2cad3f952ff0d3d1146926d40d5c8689))
+* **errors:** shared raise_typed_for_status helper for connector error mapping ([02913e9](https://github.com/sachinshelke/ToolsConnector/commit/02913e98c2b22580565aee7f1b734c17f99e8f4c))
+* **gmail:** complete Gmail API v1 settings + push coverage (28 new actions) ([3895063](https://github.com/sachinshelke/ToolsConnector/commit/38950631195213d81b219fe12a80e341404e8a4f))
+* **gmail:** send_email/create_draft/update_draft support multipart + attachments + headers ([b135107](https://github.com/sachinshelke/ToolsConnector/commit/b135107c0ae94bccced5638b19250e9fb1aaddc1))
+
+
+### 🐛 Bug Fixes
+
+* **audit:** 7 issues from a 12-round self-audit pass ([0d43e3e](https://github.com/sachinshelke/ToolsConnector/commit/0d43e3e7cb3d3619cb990cc6fb0f336d67daa5c9))
+
+
+### ⚡ Performance
+
+* **serve:** drop redundant requires_scope/dangerous prefixes from tool descriptions ([e1b4615](https://github.com/sachinshelke/ToolsConnector/commit/e1b4615131a712bf8b0f94166bbe1430456ff7d5))
+
 ## [0.3.4](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.3...v0.3.4) (2026-04-22)
 
 
