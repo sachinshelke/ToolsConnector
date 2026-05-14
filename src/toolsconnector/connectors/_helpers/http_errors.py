@@ -115,6 +115,8 @@ _CREDENTIAL_PATTERNS: tuple[re.Pattern[str], ...] = (
     # OpenAI keys: sk-..., sk-proj-..., sk-svcacct-... — needs dashes
     # in the body (sk-proj-... wouldn't match a [A-Za-z0-9]-only class).
     re.compile(r"sk-[A-Za-z0-9_-]{20,}"),
+    re.compile(r"secret_[A-Za-z0-9]{40,}"),  # Notion integration token (legacy)
+    re.compile(r"ntn_[A-Za-z0-9_-]{40,}"),  # Notion integration token (current)
     re.compile(r"Bearer\s+[A-Za-z0-9._-]{20,}", re.IGNORECASE),  # Bearer tokens
 )
 

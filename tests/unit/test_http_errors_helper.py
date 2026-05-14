@@ -244,6 +244,8 @@ _FAKE_OPENAI = "sk-proj-" + "Q" * 30  # fake test credential (placeholder)
 _FAKE_SLACK = "xoxb-12345678-87654321-" + "Y" * 24  # fake test credential
 _FAKE_AWS = "AKIAIOSFODNN7EXAMPLE"  # fake test credential — AWS docs example
 _FAKE_BEARER = "Bearer ya29.a0AfH6SMB" + "x" * 24  # fake test credential
+_FAKE_NOTION_LEGACY = "secret_" + "A" * 43  # fake test credential — Notion legacy token shape
+_FAKE_NOTION_NTN = "ntn_" + "B" * 46  # fake test credential — Notion ntn_ token shape
 
 
 @pytest.mark.parametrize(
@@ -256,6 +258,8 @@ _FAKE_BEARER = "Bearer ya29.a0AfH6SMB" + "x" * 24  # fake test credential
         (_FAKE_SLACK, "Slack bot token"),
         (_FAKE_AWS, "AWS access key"),
         (_FAKE_BEARER, "OAuth bearer (Google-style)"),
+        (_FAKE_NOTION_LEGACY, "Notion integration token (legacy secret_*)"),
+        (_FAKE_NOTION_NTN, "Notion integration token (current ntn_*)"),
     ],
 )
 def test_body_preview_redacts_echoed_credentials(secret_in_body: str, description: str) -> None:

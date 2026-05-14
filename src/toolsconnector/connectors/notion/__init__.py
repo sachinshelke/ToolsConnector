@@ -1,4 +1,4 @@
-"""Notion connector -- manage pages, databases, and blocks."""
+"""Notion connector -- manage pages, databases, blocks, comments, and users."""
 
 from __future__ import annotations
 

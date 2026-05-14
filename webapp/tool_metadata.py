@@ -249,7 +249,7 @@ TOOL_META: dict[str, dict] = {
         "logo": _BF("notion.so"),
         "color": "#000000",
         "tagline": "All-in-one workspace for notes, docs, and databases",
-        "overview": "The Notion API provides access to pages, databases, blocks, and users. Query and update databases, create and modify pages, manage content blocks, and build integrations that sync data with your Notion workspace.",
+        "overview": "The Notion API provides access to pages, databases, blocks, comments, and users. Query and update databases, create and modify pages, manage content blocks, thread comments, and build integrations that sync data with your Notion workspace. Pinned to Notion-Version 2022-06-28.",
         "use_cases": [
             "Knowledge base management",
             "Content publishing",
@@ -257,12 +257,22 @@ TOOL_META: dict[str, dict] = {
             "CRM in Notion databases",
             "Documentation automation",
         ],
-        "auth_methods": ["Bearer Token (Integration)", "OAuth 2.0"],
+        # ToolsConnector is BYOK — users bring an Internal Integration token.
+        # OAuth is intentionally out of scope (see CLAUDE.md + ROADMAP).
+        "auth_methods": ["Bearer Token (Internal Integration)"],
         "pricing": "Free for personal, Plus from $10/user/month",
         "rate_limit": "3 requests/second average",
-        "prerequisites": ["Notion workspace", "Internal integration or OAuth app"],
+        "prerequisites": [
+            "Notion workspace",
+            "Internal integration created at notion.so/my-integrations",
+            "Each page/database must be shared with the integration via the Connections menu",
+        ],
         "get_credentials_url": "https://www.notion.so/my-integrations",
-        "get_credentials_steps": "Settings > My Integrations > New Integration",
+        "get_credentials_steps": (
+            "notion.so/my-integrations > New integration > select workspace > "
+            "copy the Internal Integration Token (secret_* or ntn_*) > "
+            "open each target page > '...' menu > Connections > add the integration"
+        ),
     },
     "jira": {
         "company": "Atlassian",

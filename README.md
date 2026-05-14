@@ -333,7 +333,7 @@ match more granular cases (e.g. `ConflictError` for 409).
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Notion | `notion` | 20 |
+| Notion | `notion` | 24 |
 | Confluence | `confluence` | 25 |
 
 ### Storage (2)

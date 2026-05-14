@@ -1,18 +1,18 @@
 # Credentials Guide
 
-How credentials work in ToolsConnector.
+How credentials work in ToolsConnector. Applies to **all** connectors uniformly — Notion, Gmail, GitHub, Slack, Stripe, every one of them.
 
 ## The BYOK Philosophy
 
 ToolsConnector follows the Bring Your Own Key (BYOK) model. You register your own OAuth apps, get your own API keys, and choose how to store them. The library handles the protocol (token exchange, refresh, scope validation) but never manages or stores credentials on your behalf.
 
-This design means zero liability for credential storage, full compatibility with enterprise security policies, and no dependency on any hosted service.
+This design means zero liability for credential storage, full compatibility with enterprise security policies, and no dependency on any hosted service. **ToolsConnector is a primitive** — composition is your application's responsibility. We provide the credential-passing surface; you decide whether tokens come from a config file, a per-request header, a database column, a secrets manager, or anywhere else.
 
 ## Three Ways to Provide Credentials
 
 ### 1. Programmatic (Inline)
 
-Pass credentials directly when creating a `ToolKit`. Best for scripts, notebooks, and development.
+Pass credentials directly when creating a `ToolKit`. Best for code paths that already hold the token in memory — secrets-manager fetches, per-request injection, per-user lookup, etc.
 
 ```python
 from toolsconnector.serve import ToolKit
@@ -25,6 +25,8 @@ kit = ToolKit(
     },
 )
 ```
+
+The token never touches the process environment. The dict is consulted first; env vars are only checked as fallback.
 
 ### 2. Environment Variables
 
@@ -42,7 +44,18 @@ from toolsconnector.serve import ToolKit
 kit = ToolKit(["gmail", "slack"])
 ```
 
-This is the recommended approach for production deployments, CI/CD pipelines, and twelve-factor apps.
+This is the recommended approach for local development, CI/CD pipelines, twelve-factor apps, and any deployment with a single set of credentials per process.
+
+### Resolution priority
+
+Every connector follows the same resolution order (first match wins):
+
+1. Programmatic `credentials` dict passed to `ToolKit`
+2. `TC_{CONNECTOR}_CREDENTIALS` env var
+3. `TC_{CONNECTOR}_API_KEY` env var
+4. `TC_{CONNECTOR}_TOKEN` env var
+
+If none resolve, `MissingConfigError` is raised with an actionable suggestion listing all four sources. Implementation: [`src/toolsconnector/serve/_credentials.py`](../../src/toolsconnector/serve/_credentials.py).
 
 ### 3. KeyStore
 
@@ -82,37 +95,88 @@ For connectors that use OAuth2 (Gmail, Google Drive, Google Calendar), ToolsConn
 
 You provide the initial tokens; the library keeps them alive.
 
-## Multi-Tenant Credentials (ToolKitFactory)
+## Multiple instances of the same tool
 
-For SaaS applications serving multiple users, use `ToolKitFactory` to create per-tenant `ToolKit` instances:
+A single `ToolKit` holds one credential per connector name. To use the same tool with **different tokens in the same process** — e.g. a workspace-A Notion token and a workspace-B Notion token, or two Slack workspaces — you have three options. All are equally valid primitives; pick whichever fits your code shape.
+
+### Option A — Multiple ToolKits, one per credential
+
+The simplest pattern. Each ToolKit is an independent unit of configuration: connectors, credentials, circuit-breaker state, rate-limit windows are all isolated.
+
+```python
+from toolsconnector.serve import ToolKit
+
+workspace_a = ToolKit(["notion"], credentials={"notion": "ntn_workspace_a_token"})
+workspace_b = ToolKit(["notion"], credentials={"notion": "ntn_workspace_b_token"})
+
+# Same action name, different credentials → different workspaces
+a_pages = workspace_a.execute("notion_search", {"query": "OKR"})
+b_pages = workspace_b.execute("notion_search", {"query": "OKR"})
+```
+
+This composes naturally with whatever lifecycle your app already has — request handlers, background jobs, per-user contexts. Hold a ToolKit per credential and discard it when the credential rotates.
+
+### Option B — Direct connector instantiation
+
+Skip ToolKit entirely when you don't need its discovery / serving / OpenAI-schema features. Every connector class accepts `credentials=...` directly:
+
+```python
+from toolsconnector.connectors.notion import Notion
+
+a = Notion(credentials="ntn_workspace_a_token")
+b = Notion(credentials="ntn_workspace_b_token")
+
+# Use the async methods directly
+import asyncio
+pages_a = asyncio.run(a.asearch(query="OKR"))
+pages_b = asyncio.run(b.asearch(query="OKR"))
+```
+
+Best for library code that already has an event loop, or when you want a long-lived connector instance pinned to one credential.
+
+### Option C — Reuse a ToolKit, rebuild on credential change
+
+If a single execution flow needs to switch credentials briefly, instantiate a fresh ToolKit at that point. ToolKits are cheap; there's no shared global state preventing this.
+
+```python
+def run_for_workspace(token: str, action: str, args: dict) -> dict:
+    kit = ToolKit(["notion"], credentials={"notion": token})
+    return json.loads(kit.execute(action, args))
+```
+
+## Isolated configuration (ToolKitFactory)
+
+When the same connector configuration (which tools, which middleware, which circuit-breaker settings) is reused across many credential sets, `ToolKitFactory` lets you declare the shared shape once and stamp out independent ToolKit instances per credential set:
 
 ```python
 from toolsconnector.serve import ToolKitFactory
 
+# Shared config — no credentials held at this layer
 factory = ToolKitFactory(
     connectors=["gmail", "slack"],
-    keystore=my_keystore,
+    exclude_dangerous=True,
 )
 
-# Create a ToolKit for a specific tenant
-kit = factory.for_tenant(
-    tenant_id="user-123",
-    credentials={
-        "gmail": user_gmail_token,
-        "slack": user_slack_token,
-    },
+# Stamp out independent ToolKits — caller decides what each one is for
+kit_one = factory.for_tenant(
+    tenant_id="config-a",  # arbitrary string — just an identity label
+    credentials={"gmail": "token-a", "slack": "token-a"},
 )
-
-result = kit.execute("gmail_list_emails", {"query": "is:unread"})
+kit_two = factory.for_tenant(
+    tenant_id="config-b",
+    credentials={"gmail": "token-b", "slack": "token-b"},
+)
 ```
 
-Each tenant gets isolated credentials, rate limits, and circuit breaker state.
+The `tenant_id` parameter is a label for telemetry / debugging — it does NOT encode a tenancy model. ToolsConnector does not know or care whether the label maps to a user, an organization, a workspace, a CI run, or something else. That mapping lives in your application code.
+
+Each `for_tenant()` call yields an isolated ToolKit with its own credential set, circuit-breaker state, and rate-limit windows — exactly equivalent to constructing the ToolKit directly. The factory just removes the boilerplate of repeating the shared config.
 
 ## Security Best Practices
 
 - Never commit credentials to version control. Use environment variables or a secrets manager.
 - Use short-lived access tokens with refresh tokens where possible.
 - Scope credentials to the minimum permissions each connector needs.
-- In multi-tenant deployments, use separate `KeyStore` namespaces per tenant.
 - Rotate API keys regularly. The `KeyStore` TTL feature helps enforce expiry.
 - For production, implement a `KeyStore` backed by a secrets manager (AWS Secrets Manager, HashiCorp Vault, etc.) rather than using `InMemoryKeyStore`.
+- If your application holds credentials for many independent contexts, isolate each context to its own `ToolKit` instance (see "Multiple instances of the same tool" above). Do not share a `ToolKit` across credential boundaries.

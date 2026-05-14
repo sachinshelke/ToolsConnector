@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class NotionUser(BaseModel):
     """A Notion user reference."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     name: Optional[str] = None
@@ -28,7 +28,7 @@ class NotionUser(BaseModel):
 class NotionRichText(BaseModel):
     """A single rich-text segment in Notion."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     type: str = "text"
     plain_text: str = ""
@@ -43,7 +43,7 @@ class NotionProperty(BaseModel):
     (e.g., ``"title"``, ``"rich_text"``, ``"number"``).
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str = ""
     type: str = ""
@@ -73,7 +73,7 @@ class NotionProperty(BaseModel):
 class NotionPage(BaseModel):
     """A Notion page object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "page"
@@ -92,7 +92,7 @@ class NotionPage(BaseModel):
 class NotionDatabase(BaseModel):
     """A Notion database object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "database"
@@ -100,6 +100,8 @@ class NotionDatabase(BaseModel):
     description: list[NotionRichText] = Field(default_factory=list)
     created_time: Optional[str] = None
     last_edited_time: Optional[str] = None
+    created_by: Optional[NotionUser] = None
+    last_edited_by: Optional[NotionUser] = None
     archived: bool = False
     url: Optional[str] = None
     parent: dict[str, Any] = Field(default_factory=dict)
@@ -112,7 +114,7 @@ class NotionDatabase(BaseModel):
 class NotionBlock(BaseModel):
     """A Notion block (content element)."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "block"
@@ -130,7 +132,7 @@ class NotionBlock(BaseModel):
 class NotionComment(BaseModel):
     """A Notion comment on a page or block."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "comment"

@@ -20,7 +20,7 @@ Every connector in the registry falls into one of these tiers:
 
 | Tier | Criteria | Example |
 |---|---|---|
-| **Tier 1 — Live verified** | Doc-verified AND tested against the real vendor API with a real token. | `linkedin` (3 of 8 actions live-verified as of 2026-04) |
+| **Tier 1 — Live verified** | Doc-verified AND tested against the real vendor API with a real token. | `linkedin` (3 of 8 actions live-verified as of 2026-04); `notion` (**all 24 of 24 actions + full error matrix live-verified as of 2026-05-14**) |
 | **Tier 2 — Doc verified** | Every endpoint, header, scope, and body shape cross-checked against the vendor's canonical docs and verified with respx mocks. | `x` (Twitter) |
 | **Tier 3 — Pattern correct** | Code reads sensibly, matches documented API patterns from public knowledge, but no active doc or live verification has happened. This is where most of the 68 connectors currently sit. | `medium`, the 14 AWS connectors, the 51 pre-existing ones |
 
@@ -34,7 +34,11 @@ The goal is to progressively promote connectors from Tier 3 → Tier 2 → Tier 
 Each connector's README gets a `Getting credentials` section explaining exactly how to obtain a token for that service (which developer portal, which scopes, how to regenerate). Zero new library code — pure docs. Unblocks onboarding for every BYOK user without introducing OAuth flow complexity.
 
 ### Doc-verification sweep for the top 10 connectors
-Apply the same `WebFetch → compare → respx-verify` treatment used for LinkedIn and X to the 10 highest-value connectors: `gmail`, `slack`, `github`, `notion`, `jira`, `stripe`, `hubspot`, `linear`, `asana`, `mongodb`. Target: move all 10 from Tier 3 → Tier 2.
+Apply the same `WebFetch → compare → respx-verify` treatment used for LinkedIn and X to the 10 highest-value connectors. Target: move all 10 from Tier 3 → Tier 2.
+
+- ✅ `gmail`, `slack`, `github` — respx-verified against canonical vendor docs (Tier 2)
+- ✅ `notion` — **Fully Tier 1 — all 24 of 24 actions + complete error matrix live-verified (2026-05-14)**. End-to-end live runs against a real workspace covered every action including the database CRUD chain (`get_database`, `create_database`, `update_database`, `query_database` with filter+sort), the comment lifecycle (top-level and threaded via `discussion_id`), all block CRUD, all page CRUD + archive/restore, page-property fetches, and identity (`get_me`, `list_users`, `get_user`). The typed-error mapping was also verified against real Notion responses: real 404 → `NotFoundError`, real 400 → `ValidationError`, real 401 → `InvalidCredentialsError`. Live testing uncovered + fixed **3 bugs respx alone would not have caught**: (1) `search` crashing on mixed page/database results; (2) `parse_page` defensiveness against unknown property shapes; (3) `add_comment(discussion_id=...)` sending the wrong body envelope (top-level `discussion_id` is required, not `parent.discussion_id`). 24 actions, 89 respx tests + 1 MCP-subprocess integration test, 97.6% coverage. Pinned to `Notion-Version: 2022-06-28`. See [docs/connectors/knowledge.md](docs/connectors/knowledge.md) and [examples/11_notion_workflow.py](examples/11_notion_workflow.py).
+- ⏳ `jira`, `stripe`, `hubspot`, `linear`, `asana`, `mongodb` — remaining
 
 ---
 
