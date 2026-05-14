@@ -55,6 +55,10 @@ jobs:
               - 'scripts/generate_readmes.py'
               - 'docs/**'
               - 'src/toolsconnector/connectors/**'
+              # release-please bumps the version here on every release;
+              # site embeds it (data.json meta.version + footer chip +
+              # JSON-LD softwareVersion), so a version bump rebuilds.
+              - 'pyproject.toml'
             workflow:
               - '.github/workflows/**'
               - '.release-please-*.json'
