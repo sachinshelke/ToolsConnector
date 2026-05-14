@@ -33,6 +33,22 @@ except ImportError:
 
 SITE_DIR = ROOT / "site"
 CONNECTORS_DIR = ROOT / "src" / "toolsconnector" / "connectors"
+
+
+def _read_package_version() -> str:
+    """Read the canonical package version from pyproject.toml.
+
+    Source of truth for the version displayed everywhere on the site
+    (data.json meta.version, the home page JSON-LD softwareVersion via
+    runtime JS, and the static connector subpage JSON-LD). Kept as a
+    plain regex parse so this runs on Python 3.9 without a TOML library.
+    """
+    pyproject = ROOT / "pyproject.toml"
+    text = pyproject.read_text(encoding="utf-8")
+    match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
+    if not match:
+        raise RuntimeError(f"Could not find `version = \"...\"` in {pyproject}")
+    return match.group(1)
 DOCS_DIR = ROOT / "docs"
 
 
@@ -274,8 +290,17 @@ def _esc(text: str) -> str:
                 .replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#39;"))
 
 
-def generate_connector_page(name: str, data: dict) -> str:
-    """Return a fully static, SEO-rich HTML page for one connector."""
+def generate_connector_page(name: str, data: dict, package_version: str = "") -> str:
+    """Return a fully static, SEO-rich HTML page for one connector.
+
+    Args:
+        name: Connector slug (e.g. ``"notion"``).
+        data: Connector record from ``data.json``.
+        package_version: Current ToolsConnector package version (e.g.
+            ``"0.3.7"``). Stamped into the page's JSON-LD softwareVersion
+            field and the visible footer so each release is observable
+            on the per-connector pages.
+    """
     display_name = data["display_name"]
     description  = data.get("description", "")
     category_key = data.get("category", "")
@@ -300,7 +325,7 @@ def generate_connector_page(name: str, data: dict) -> str:
     ])
 
     # ── JSON-LD ──────────────────────────────────────────────────────────────
-    jsonld = json.dumps({
+    jsonld_data: dict = {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": f"ToolsConnector — {display_name} Connector",
@@ -318,7 +343,10 @@ def generate_connector_page(name: str, data: dict) -> str:
             "name": "ToolsConnector",
             "url": "https://toolsconnector.github.io/",
         },
-    }, indent=2)
+    }
+    if package_version:
+        jsonld_data["softwareVersion"] = package_version
+    jsonld = json.dumps(jsonld_data, indent=2)
 
     # ── Action rows ──────────────────────────────────────────────────────────
     action_rows: list[str] = []
@@ -523,7 +551,7 @@ footer a {{ color: #94a3b8; }}
   <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
   <a href="https://github.com/sachinshelke/ToolsConnector">GitHub</a> ·
   <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
-  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a>{f' · v{package_version}' if package_version else ''}
 </footer>
 
 </body>
@@ -704,11 +732,13 @@ def main():
 
     # ── Assemble output ─────────────────────────────────────────────
     built_at = datetime.now(timezone.utc)
+    package_version = _read_package_version()
     output = {
         "connectors": connectors_out,
         "docs": docs,
         "meta": {
             "built_at": built_at.isoformat(),
+            "version": package_version,
             "connector_count": len(connectors_out),
             "action_count": total_actions,
             "category_count": len(cats),
@@ -731,7 +761,7 @@ def main():
     for cname, cdata in connectors_out.items():
         page_dir = pages_dir / cname
         page_dir.mkdir(exist_ok=True)
-        html = generate_connector_page(cname, cdata)
+        html = generate_connector_page(cname, cdata, package_version=package_version)
         (page_dir / "index.html").write_text(html, encoding="utf-8")
     print(f"  {len(connectors_out)} connector pages → site/connectors/*/index.html")
 

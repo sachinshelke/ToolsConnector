@@ -209,7 +209,7 @@ tailwind.config = {
       "softwareRequirements": "Python 3.9+",
       "programmingLanguage": "Python",
       "codeRepository": "https://github.com/sachinshelke/ToolsConnector",
-      "softwareVersion": "0.1.0",
+      "softwareVersion": "0.3.7",
       "license": "https://opensource.org/licenses/Apache-2.0",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "featureList": [
@@ -388,6 +388,7 @@ tailwind.config = {
         <a href="https://github.com/sachinshelke/ToolsConnector" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">GitHub</a>
         <a href="https://pypi.org/project/toolsconnector/" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">PyPI</a>
         <a href="https://opensource.org/licenses/Apache-2.0" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors">Apache 2.0</a>
+        <a id="tc-version-link" href="https://pypi.org/project/toolsconnector/" target="_blank" rel="noopener" class="text-xs px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Latest published version on PyPI"><span id="tc-version">v0.3.7</span></a>
       </div>
     </div>
   </div>
@@ -2372,6 +2373,30 @@ async function init() {
         spec.name = name;
       }
     }
+    // Sync the visible footer chip + JSON-LD softwareVersion to META.version.
+    // Keeps the rendered version aligned with whatever build produced
+    // data.json — no Camo/SVG cache delay because this is plain text DOM.
+    try {
+      var ver = META && META.version;
+      if (ver) {
+        var vSpan = document.getElementById('tc-version');
+        if (vSpan) vSpan.textContent = 'v' + ver;
+        // Patch the static SoftwareApplication JSON-LD so SEO crawlers
+        // that execute JS (Google Search does) see the live version.
+        document.querySelectorAll('script[type="application/ld+json"]').forEach(function(el) {
+          try {
+            var ld = JSON.parse(el.textContent);
+            var apps = Array.isArray(ld) ? ld : (ld['@graph'] || [ld]);
+            apps.forEach(function(node) {
+              if (node && node['@type'] === 'SoftwareApplication') {
+                node.softwareVersion = ver;
+              }
+            });
+            el.textContent = JSON.stringify(ld, null, 2);
+          } catch (_e) { /* leave malformed nodes alone */ }
+        });
+      }
+    } catch (_e) { /* defensive: never let version-chip patching break init */ }
     computeStats();
   } catch (err) {
     $('#app').innerHTML = `<div class="text-center py-20"><h2 class="text-2xl font-bold mb-4 text-red-600">Failed to load data</h2><p class="text-gray-500">${esc(err.message)}</p></div>`;
