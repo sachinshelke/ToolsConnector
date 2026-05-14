@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notion Python Connector — 20 Actions | ToolsConnector</title>
-<meta name="description" content="Connect Notion to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[notion]&quot;. Apache 2.0. Free.">
+<title>Notion Python Connector — 24 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Notion to Python apps and AI agents with 24 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[notion]&quot;. Apache 2.0. Free.">
 <meta name="keywords" content="Notion Python, Notion API Python, Notion connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
 <meta name="author" content="ToolsConnector">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -15,15 +15,15 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://toolsconnector.github.io/connectors/notion/">
 <meta property="og:site_name" content="ToolsConnector">
-<meta property="og:title" content="Notion Python Connector — 20 Actions | ToolsConnector">
-<meta property="og:description" content="Connect Notion to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[notion]&quot;. Apache 2.0. Free.">
+<meta property="og:title" content="Notion Python Connector — 24 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Notion to Python apps and AI agents with 24 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[notion]&quot;. Apache 2.0. Free.">
 <meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@toolsconnector">
-<meta name="twitter:title" content="Notion Python Connector — 20 Actions | ToolsConnector">
-<meta name="twitter:description" content="Connect Notion to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[notion]&quot;. Apache 2.0. Free.">
+<meta name="twitter:title" content="Notion Python Connector — 24 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Notion to Python apps and AI agents with 24 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[notion]&quot;. Apache 2.0. Free.">
 <meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
 
 <script type="application/ld+json">
@@ -31,7 +31,7 @@
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "ToolsConnector \u2014 Notion Connector",
-  "description": "Connect Notion to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[notion]\". Apache 2.0. Free.",
+  "description": "Connect Notion to Python apps and AI agents with 24 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[notion]\". Apache 2.0. Free.",
   "url": "https://toolsconnector.github.io/connectors/notion/",
   "downloadUrl": "https://pypi.org/project/toolsconnector/",
   "applicationCategory": "DeveloperApplication",
@@ -50,9 +50,12 @@
     "create_database",
     "create_page",
     "delete_block",
+    "delete_comment",
     "get_block",
     "get_block_children",
+    "get_comment",
     "get_database",
+    "get_me",
     "get_page",
     "get_page_property",
     "get_user",
@@ -62,6 +65,7 @@
     "restore_page",
     "search",
     "update_block",
+    "update_comment",
     "update_database",
     "update_page"
   ],
@@ -168,7 +172,7 @@ footer a { color: #94a3b8; }
 
   <div class="stats">
     <div class="stat">
-      <div class="stat-num">20</div>
+      <div class="stat-num">24</div>
       <div class="stat-lbl">Actions</div>
     </div>
     <div class="stat">
@@ -183,7 +187,7 @@ footer a { color: #94a3b8; }
 </div>
 
 <div class="section">
-  <h2>All 20 Actions</h2>
+  <h2>All 24 Actions</h2>
   <div class="tbl-wrap">
     <table>
       <thead>
@@ -195,17 +199,20 @@ footer a { color: #94a3b8; }
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>add_comment ⚠</code></td><td class="desc">Add a comment to a page</td><td><span class="req">page_id, text</span></td><td><code>NotionComment</code></td></tr>
+        <tr><td><code>add_comment ⚠</code></td><td class="desc">Add a comment to a page or discussion thread</td><td><span class="req">page_id, text</span> &nbsp;<span class="opt">[discussion_id]</span></td><td><code>NotionComment</code></td></tr>
 <tr><td><code>append_block_children ⚠</code></td><td class="desc">Append child blocks to a page or block</td><td><span class="req">block_id, children</span></td><td><code>list</code></td></tr>
 <tr><td><code>archive_page ⚠</code></td><td class="desc">Archive (soft-delete) a page</td><td><span class="req">page_id</span></td><td><code>NotionPage</code></td></tr>
 <tr><td><code>create_database ⚠</code></td><td class="desc">Create a new database</td><td><span class="req">parent_id, title, properties</span></td><td><code>NotionDatabase</code></td></tr>
 <tr><td><code>create_page ⚠</code></td><td class="desc">Create a new page</td><td><span class="req">parent_id, title</span> &nbsp;<span class="opt">[properties, children]</span></td><td><code>NotionPage</code></td></tr>
 <tr><td><code>delete_block ⚠</code></td><td class="desc">Delete a block</td><td><span class="req">block_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_comment ⚠</code></td><td class="desc">Delete a comment</td><td><span class="req">comment_id</span></td><td><code>NoneType</code></td></tr>
 <tr><td><code>get_block</code></td><td class="desc">Get a single block by ID</td><td><span class="req">block_id</span></td><td><code>NotionBlock</code></td></tr>
 <tr><td><code>get_block_children</code></td><td class="desc">Get child blocks of a page or block</td><td><span class="req">block_id</span> &nbsp;<span class="opt">[limit, cursor]</span></td><td><code>PaginatedList[NotionBlock]</code></td></tr>
+<tr><td><code>get_comment</code></td><td class="desc">Get a single comment by ID</td><td><span class="req">comment_id</span></td><td><code>NotionComment</code></td></tr>
 <tr><td><code>get_database</code></td><td class="desc">Get a database schema and metadata</td><td><span class="req">database_id</span></td><td><code>NotionDatabase</code></td></tr>
+<tr><td><code>get_me</code></td><td class="desc">Get the bot user associated with the integration token</td><td><span class="opt">—</span></td><td><code>NotionUser</code></td></tr>
 <tr><td><code>get_page</code></td><td class="desc">Get a single page by ID</td><td><span class="req">page_id</span></td><td><code>NotionPage</code></td></tr>
-<tr><td><code>get_page_property</code></td><td class="desc">Get a page property value by ID</td><td><span class="req">page_id, property_id</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_page_property</code></td><td class="desc">Get a page property value by ID</td><td><span class="req">page_id, property_id</span> &nbsp;<span class="opt">[cursor, limit]</span></td><td><code>dict</code></td></tr>
 <tr><td><code>get_user</code></td><td class="desc">Get a single user by ID</td><td><span class="req">user_id</span></td><td><code>NotionUser</code></td></tr>
 <tr><td><code>list_comments</code></td><td class="desc">List comments on a block or page</td><td><span class="req">block_id</span> &nbsp;<span class="opt">[limit, cursor]</span></td><td><code>PaginatedList[NotionComment]</code></td></tr>
 <tr><td><code>list_users</code></td><td class="desc">List all users in the workspace</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
@@ -213,6 +220,7 @@ footer a { color: #94a3b8; }
 <tr><td><code>restore_page</code></td><td class="desc">Restore an archived page</td><td><span class="req">page_id</span></td><td><code>NotionPage</code></td></tr>
 <tr><td><code>search</code></td><td class="desc">Search pages and databases in the workspace</td><td><span class="opt">[query, filter_type, limit, cursor]</span></td><td><code>PaginatedList[NotionPage]</code></td></tr>
 <tr><td><code>update_block</code></td><td class="desc">Update a block&#39;s content</td><td><span class="req">block_id, content</span></td><td><code>NotionBlock</code></td></tr>
+<tr><td><code>update_comment</code></td><td class="desc">Update a comment&#39;s text</td><td><span class="req">comment_id, text</span></td><td><code>NotionComment</code></td></tr>
 <tr><td><code>update_database</code></td><td class="desc">Update a database&#39;s title, description, or properties</td><td><span class="req">database_id</span> &nbsp;<span class="opt">[title, description, properties]</span></td><td><code>NotionDatabase</code></td></tr>
 <tr><td><code>update_page</code></td><td class="desc">Update page properties</td><td><span class="req">page_id, properties</span></td><td><code>NotionPage</code></td></tr>
       </tbody>

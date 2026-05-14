@@ -25,6 +25,7 @@
 * [DevOps & Cloud](connectors/devops.md)
 * [AI/ML](connectors/ai-ml.md)
 * [Finance & Payments](connectors/finance.md)
+* [Knowledge](connectors/knowledge.md)
 * [Storage](connectors/storage.md)
 
 ## Reference

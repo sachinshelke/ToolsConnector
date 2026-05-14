@@ -201,7 +201,7 @@ footer a { color: #94a3b8; }
 <tr><td><code>delete_index ⚠</code></td><td class="desc">Delete a composite index</td><td><span class="req">project, database, index_id</span></td><td><code>NoneType</code></td></tr>
 <tr><td><code>export_documents</code></td><td class="desc">Export documents from a collection</td><td><span class="req">project, collection</span></td><td><code>list</code></td></tr>
 <tr><td><code>get_document</code></td><td class="desc">Get a Firestore document by ID</td><td><span class="req">project, collection, document_id</span></td><td><code>FirestoreDocument</code></td></tr>
-<tr><td><code>get_document_field</code></td><td class="desc">Get a single field value from a Firestore document</td><td><span class="req">project, collection, document_id, field_path</span></td><td><code>Any</code></td></tr>
+<tr><td><code>get_document_field</code></td><td class="desc">Get a single field value from a Firestore document</td><td><span class="req">project, collection, document_id, field_path</span></td><td><code>typing.Any</code></td></tr>
 <tr><td><code>list_collections</code></td><td class="desc">List collections in a Firestore project</td><td><span class="req">project</span></td><td><code>list</code></td></tr>
 <tr><td><code>list_documents</code></td><td class="desc">List documents in a Firestore collection</td><td><span class="req">project, collection</span> &nbsp;<span class="opt">[limit, page_token]</span></td><td><code>PaginatedList[FirestoreDocument]</code></td></tr>
 <tr><td><code>list_indexes</code></td><td class="desc">List indexes for a collection</td><td><span class="req">project, collection</span></td><td><code>list</code></td></tr>

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gmail Python Connector — 38 Actions | ToolsConnector</title>
-<meta name="description" content="Connect Gmail to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gmail]&quot;. Apache 2.0. Free.">
+<title>Gmail Python Connector — 66 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Gmail to Python apps and AI agents with 66 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gmail]&quot;. Apache 2.0. Free.">
 <meta name="keywords" content="Gmail Python, Gmail API Python, Gmail connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
 <meta name="author" content="ToolsConnector">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -15,15 +15,15 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://toolsconnector.github.io/connectors/gmail/">
 <meta property="og:site_name" content="ToolsConnector">
-<meta property="og:title" content="Gmail Python Connector — 38 Actions | ToolsConnector">
-<meta property="og:description" content="Connect Gmail to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gmail]&quot;. Apache 2.0. Free.">
+<meta property="og:title" content="Gmail Python Connector — 66 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Gmail to Python apps and AI agents with 66 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gmail]&quot;. Apache 2.0. Free.">
 <meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@toolsconnector">
-<meta name="twitter:title" content="Gmail Python Connector — 38 Actions | ToolsConnector">
-<meta name="twitter:description" content="Connect Gmail to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gmail]&quot;. Apache 2.0. Free.">
+<meta name="twitter:title" content="Gmail Python Connector — 66 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Gmail to Python apps and AI agents with 66 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[gmail]&quot;. Apache 2.0. Free.">
 <meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
 
 <script type="application/ld+json">
@@ -31,7 +31,7 @@
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "ToolsConnector \u2014 Gmail Connector",
-  "description": "Connect Gmail to Python apps and AI agents with 38 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[gmail]\". Apache 2.0. Free.",
+  "description": "Connect Gmail to Python apps and AI agents with 66 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[gmail]\". Apache 2.0. Free.",
   "url": "https://toolsconnector.github.io/connectors/gmail/",
   "downloadUrl": "https://pypi.org/project/toolsconnector/",
   "applicationCategory": "DeveloperApplication",
@@ -46,25 +46,45 @@
   "featureList": [
     "batch_delete",
     "batch_modify",
+    "create_delegate",
     "create_draft",
+    "create_filter",
+    "create_forwarding_address",
     "create_label",
+    "create_send_as",
+    "delete_delegate",
     "delete_draft",
     "delete_email",
+    "delete_filter",
+    "delete_forwarding_address",
     "delete_label",
+    "delete_send_as",
     "delete_thread",
     "get_attachment",
+    "get_auto_forwarding",
+    "get_delegate",
     "get_draft",
     "get_email",
+    "get_filter",
+    "get_forwarding_address",
+    "get_imap_settings",
     "get_label",
+    "get_language",
+    "get_pop_settings",
     "get_profile",
+    "get_send_as",
     "get_thread",
     "get_vacation_settings",
     "import_message",
     "insert_message",
+    "list_delegates",
     "list_drafts",
     "list_emails",
+    "list_filters",
+    "list_forwarding_addresses",
     "list_history",
     "list_labels",
+    "list_send_as",
     "list_threads",
     "mark_as_read",
     "mark_as_unread",
@@ -74,14 +94,22 @@
     "send_draft",
     "send_email",
     "star_email",
+    "stop",
     "trash_email",
     "trash_thread",
     "unstar_email",
     "untrash_email",
     "untrash_thread",
+    "update_auto_forwarding",
     "update_draft",
+    "update_imap_settings",
     "update_label",
-    "update_vacation_settings"
+    "update_language",
+    "update_pop_settings",
+    "update_send_as",
+    "update_vacation_settings",
+    "verify_send_as",
+    "watch"
   ],
   "author": {
     "@type": "Organization",
@@ -186,7 +214,7 @@ footer a { color: #94a3b8; }
 
   <div class="stats">
     <div class="stat">
-      <div class="stat-num">38</div>
+      <div class="stat-num">66</div>
       <div class="stat-lbl">Actions</div>
     </div>
     <div class="stat">
@@ -201,7 +229,7 @@ footer a { color: #94a3b8; }
 </div>
 
 <div class="section">
-  <h2>All 38 Actions</h2>
+  <h2>All 66 Actions</h2>
   <div class="tbl-wrap">
     <table>
       <thead>
@@ -215,25 +243,45 @@ footer a { color: #94a3b8; }
       <tbody>
         <tr><td><code>batch_delete ⚠</code></td><td class="desc">Batch delete messages permanently</td><td><span class="req">email_ids</span></td><td><code>NoneType</code></td></tr>
 <tr><td><code>batch_modify</code></td><td class="desc">Batch modify labels on multiple emails</td><td><span class="req">email_ids</span> &nbsp;<span class="opt">[add_labels, remove_labels]</span></td><td><code>NoneType</code></td></tr>
-<tr><td><code>create_draft</code></td><td class="desc">Create a draft email</td><td><span class="req">to, subject, body</span> &nbsp;<span class="opt">[cc]</span></td><td><code>DraftId</code></td></tr>
+<tr><td><code>create_delegate ⚠</code></td><td class="desc">Add a mailbox delegate</td><td><span class="req">delegate_email</span></td><td><code>Delegate</code></td></tr>
+<tr><td><code>create_draft</code></td><td class="desc">Create a draft email</td><td><span class="req">to, subject, body</span> &nbsp;<span class="opt">[html_body, attachments, cc, bcc, reply_to, headers]</span></td><td><code>DraftId</code></td></tr>
+<tr><td><code>create_filter ⚠</code></td><td class="desc">Create a new filter</td><td><span class="req">criteria, action</span></td><td><code>Filter</code></td></tr>
+<tr><td><code>create_forwarding_address ⚠</code></td><td class="desc">Add a forwarding address (pending verification)</td><td><span class="req">forwarding_email</span></td><td><code>ForwardingAddress</code></td></tr>
 <tr><td><code>create_label</code></td><td class="desc">Create a new label</td><td><span class="req">name</span> &nbsp;<span class="opt">[label_color]</span></td><td><code>Label</code></td></tr>
+<tr><td><code>create_send_as ⚠</code></td><td class="desc">Create a send-as alias</td><td><span class="req">send_as_email</span> &nbsp;<span class="opt">[display_name, reply_to_address, signature, treat_as_alias]</span></td><td><code>SendAs</code></td></tr>
+<tr><td><code>delete_delegate ⚠</code></td><td class="desc">Remove a mailbox delegate</td><td><span class="req">delegate_email</span></td><td><code>NoneType</code></td></tr>
 <tr><td><code>delete_draft ⚠</code></td><td class="desc">Delete a draft</td><td><span class="req">draft_id</span></td><td><code>NoneType</code></td></tr>
 <tr><td><code>delete_email ⚠</code></td><td class="desc">Delete an email</td><td><span class="req">email_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_filter ⚠</code></td><td class="desc">Delete a filter</td><td><span class="req">filter_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_forwarding_address ⚠</code></td><td class="desc">Remove a forwarding address</td><td><span class="req">forwarding_email</span></td><td><code>NoneType</code></td></tr>
 <tr><td><code>delete_label ⚠</code></td><td class="desc">Delete a label</td><td><span class="req">label_id</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>delete_send_as ⚠</code></td><td class="desc">Delete a send-as alias</td><td><span class="req">send_as_email</span></td><td><code>NoneType</code></td></tr>
 <tr><td><code>delete_thread ⚠</code></td><td class="desc">Permanently delete a thread</td><td><span class="req">thread_id</span></td><td><code>NoneType</code></td></tr>
 <tr><td><code>get_attachment</code></td><td class="desc">Download an email attachment</td><td><span class="req">email_id, attachment_id</span></td><td><code>Attachment</code></td></tr>
+<tr><td><code>get_auto_forwarding</code></td><td class="desc">Get auto-forwarding settings</td><td><span class="opt">—</span></td><td><code>AutoForwarding</code></td></tr>
+<tr><td><code>get_delegate</code></td><td class="desc">Get a delegate by email</td><td><span class="req">delegate_email</span></td><td><code>Delegate</code></td></tr>
 <tr><td><code>get_draft</code></td><td class="desc">Get a single draft by ID</td><td><span class="req">draft_id</span> &nbsp;<span class="opt">[format]</span></td><td><code>Draft</code></td></tr>
 <tr><td><code>get_email</code></td><td class="desc">Get a single email by ID</td><td><span class="req">email_id</span> &nbsp;<span class="opt">[format]</span></td><td><code>Email</code></td></tr>
+<tr><td><code>get_filter</code></td><td class="desc">Get a single filter by ID</td><td><span class="req">filter_id</span></td><td><code>Filter</code></td></tr>
+<tr><td><code>get_forwarding_address</code></td><td class="desc">Get a forwarding address</td><td><span class="req">forwarding_email</span></td><td><code>ForwardingAddress</code></td></tr>
+<tr><td><code>get_imap_settings</code></td><td class="desc">Get IMAP settings</td><td><span class="opt">—</span></td><td><code>ImapSettings</code></td></tr>
 <tr><td><code>get_label</code></td><td class="desc">Get a single label by ID</td><td><span class="req">label_id</span></td><td><code>Label</code></td></tr>
+<tr><td><code>get_language</code></td><td class="desc">Get language settings</td><td><span class="opt">—</span></td><td><code>LanguageSettings</code></td></tr>
+<tr><td><code>get_pop_settings</code></td><td class="desc">Get POP settings</td><td><span class="opt">—</span></td><td><code>PopSettings</code></td></tr>
 <tr><td><code>get_profile</code></td><td class="desc">Get user profile</td><td><span class="opt">—</span></td><td><code>UserProfile</code></td></tr>
+<tr><td><code>get_send_as</code></td><td class="desc">Get a single send-as alias</td><td><span class="req">send_as_email</span></td><td><code>SendAs</code></td></tr>
 <tr><td><code>get_thread</code></td><td class="desc">Get a single thread by ID</td><td><span class="req">thread_id</span> &nbsp;<span class="opt">[format]</span></td><td><code>Thread</code></td></tr>
 <tr><td><code>get_vacation_settings</code></td><td class="desc">Get vacation auto-reply settings</td><td><span class="opt">—</span></td><td><code>VacationSettings</code></td></tr>
 <tr><td><code>import_message ⚠</code></td><td class="desc">Import an email message into the mailbox</td><td><span class="req">raw_rfc2822</span> &nbsp;<span class="opt">[label_ids, internal_date_source]</span></td><td><code>MessageId</code></td></tr>
 <tr><td><code>insert_message ⚠</code></td><td class="desc">Insert an email message directly into the mailbox</td><td><span class="req">raw_rfc2822</span> &nbsp;<span class="opt">[label_ids, internal_date_source]</span></td><td><code>MessageId</code></td></tr>
+<tr><td><code>list_delegates</code></td><td class="desc">List mailbox delegates</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
 <tr><td><code>list_drafts</code></td><td class="desc">List drafts</td><td><span class="opt">[limit, page_token]</span></td><td><code>PaginatedList[Draft]</code></td></tr>
 <tr><td><code>list_emails</code></td><td class="desc">List emails matching a query</td><td><span class="opt">[query, limit, labels, page_token]</span></td><td><code>PaginatedList[Email]</code></td></tr>
+<tr><td><code>list_filters</code></td><td class="desc">List all filters</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_forwarding_addresses</code></td><td class="desc">List forwarding addresses</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
 <tr><td><code>list_history</code></td><td class="desc">List mailbox history</td><td><span class="req">start_history_id</span> &nbsp;<span class="opt">[label_id, history_types, limit, page_token]</span></td><td><code>PaginatedList[HistoryRecord]</code></td></tr>
 <tr><td><code>list_labels</code></td><td class="desc">List all labels</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_send_as</code></td><td class="desc">List send-as aliases</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
 <tr><td><code>list_threads</code></td><td class="desc">List email threads</td><td><span class="opt">[query, limit, page_token]</span></td><td><code>PaginatedList[Thread]</code></td></tr>
 <tr><td><code>mark_as_read</code></td><td class="desc">Mark an email as read</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
 <tr><td><code>mark_as_unread</code></td><td class="desc">Mark an email as unread</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
@@ -241,16 +289,24 @@ footer a { color: #94a3b8; }
 <tr><td><code>modify_thread</code></td><td class="desc">Modify thread labels</td><td><span class="req">thread_id</span> &nbsp;<span class="opt">[add_labels, remove_labels]</span></td><td><code>Thread</code></td></tr>
 <tr><td><code>search_emails</code></td><td class="desc">Search emails with advanced query</td><td><span class="req">query</span> &nbsp;<span class="opt">[limit, page_token]</span></td><td><code>PaginatedList[Email]</code></td></tr>
 <tr><td><code>send_draft ⚠</code></td><td class="desc">Send a draft</td><td><span class="req">draft_id</span></td><td><code>MessageId</code></td></tr>
-<tr><td><code>send_email ⚠</code></td><td class="desc">Send an email</td><td><span class="req">to, subject, body</span> &nbsp;<span class="opt">[cc, bcc, reply_to]</span></td><td><code>MessageId</code></td></tr>
+<tr><td><code>send_email ⚠</code></td><td class="desc">Send an email</td><td><span class="req">to, subject, body</span> &nbsp;<span class="opt">[html_body, attachments, cc, bcc, reply_to, headers]</span></td><td><code>MessageId</code></td></tr>
 <tr><td><code>star_email</code></td><td class="desc">Star an email</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
+<tr><td><code>stop</code></td><td class="desc">Stop push notifications</td><td><span class="opt">—</span></td><td><code>NoneType</code></td></tr>
 <tr><td><code>trash_email</code></td><td class="desc">Move an email to trash</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
 <tr><td><code>trash_thread</code></td><td class="desc">Move a thread to trash</td><td><span class="req">thread_id</span></td><td><code>Thread</code></td></tr>
 <tr><td><code>unstar_email</code></td><td class="desc">Remove star from an email</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
 <tr><td><code>untrash_email</code></td><td class="desc">Remove an email from trash</td><td><span class="req">email_id</span></td><td><code>Email</code></td></tr>
 <tr><td><code>untrash_thread</code></td><td class="desc">Remove a thread from trash</td><td><span class="req">thread_id</span></td><td><code>Thread</code></td></tr>
-<tr><td><code>update_draft</code></td><td class="desc">Update a draft</td><td><span class="req">draft_id, to, subject, body</span> &nbsp;<span class="opt">[cc]</span></td><td><code>Draft</code></td></tr>
+<tr><td><code>update_auto_forwarding ⚠</code></td><td class="desc">Update auto-forwarding settings</td><td><span class="req">enabled</span> &nbsp;<span class="opt">[email_address, disposition]</span></td><td><code>AutoForwarding</code></td></tr>
+<tr><td><code>update_draft</code></td><td class="desc">Update a draft</td><td><span class="req">draft_id, to, subject, body</span> &nbsp;<span class="opt">[html_body, attachments, cc, bcc, reply_to, headers]</span></td><td><code>Draft</code></td></tr>
+<tr><td><code>update_imap_settings ⚠</code></td><td class="desc">Update IMAP settings</td><td><span class="req">enabled</span> &nbsp;<span class="opt">[auto_expunge, expunge_behavior, max_folder_size]</span></td><td><code>ImapSettings</code></td></tr>
 <tr><td><code>update_label</code></td><td class="desc">Update a label</td><td><span class="req">label_id</span> &nbsp;<span class="opt">[name, label_color]</span></td><td><code>Label</code></td></tr>
+<tr><td><code>update_language</code></td><td class="desc">Update language settings</td><td><span class="req">display_language</span></td><td><code>LanguageSettings</code></td></tr>
+<tr><td><code>update_pop_settings ⚠</code></td><td class="desc">Update POP settings</td><td><span class="opt">[access_window, disposition]</span></td><td><code>PopSettings</code></td></tr>
+<tr><td><code>update_send_as</code></td><td class="desc">Update a send-as alias</td><td><span class="req">send_as_email</span> &nbsp;<span class="opt">[display_name, reply_to_address, signature, is_default, treat_as_alias]</span></td><td><code>SendAs</code></td></tr>
 <tr><td><code>update_vacation_settings ⚠</code></td><td class="desc">Update vacation auto-reply settings</td><td><span class="req">enable</span> &nbsp;<span class="opt">[response_subject, response_body, start_time, end_time]</span></td><td><code>VacationSettings</code></td></tr>
+<tr><td><code>verify_send_as</code></td><td class="desc">Re-send verification for a pending send-as</td><td><span class="req">send_as_email</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>watch ⚠</code></td><td class="desc">Start receiving mailbox-change push notifications</td><td><span class="req">topic_name</span> &nbsp;<span class="opt">[label_ids, label_filter_behavior]</span></td><td><code>dict</code></td></tr>
       </tbody>
     </table>
   </div>
