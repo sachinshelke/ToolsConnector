@@ -1,6 +1,9 @@
 """Pydantic models for Linear connector types.
 
-All response models use ``frozen=True`` to enforce immutability.
+All response models use ``frozen=True`` to enforce immutability and
+``extra="ignore"`` so newly-added Linear fields (which the GraphQL API
+ships without major-version bumps) don't break parsing. Mirrors the
+same pattern used by ``notion/types.py``.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class LinearUser(BaseModel):
     """A Linear user reference."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     name: Optional[str] = None
@@ -30,7 +33,7 @@ class LinearUser(BaseModel):
 class LinearState(BaseModel):
     """A workflow state in Linear."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     name: str = ""
@@ -42,7 +45,7 @@ class LinearState(BaseModel):
 class LinearLabel(BaseModel):
     """An issue label in Linear."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     name: str = ""
@@ -57,7 +60,7 @@ class LinearLabel(BaseModel):
 class LinearIssue(BaseModel):
     """A Linear issue."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     identifier: str = ""
@@ -83,7 +86,7 @@ class LinearIssue(BaseModel):
 class LinearTeam(BaseModel):
     """A Linear team."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     name: str = ""
@@ -97,7 +100,7 @@ class LinearTeam(BaseModel):
 class LinearProject(BaseModel):
     """A Linear project."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     name: str = ""
@@ -116,7 +119,7 @@ class LinearProject(BaseModel):
 class LinearCycle(BaseModel):
     """A cycle (sprint) in Linear."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     number: Optional[int] = None
@@ -134,7 +137,7 @@ class LinearCycle(BaseModel):
 class LinearComment(BaseModel):
     """A comment on a Linear issue."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     body: str = ""

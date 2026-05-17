@@ -2,11 +2,22 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any, Optional
 
 import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.errors import (
+    ConnectionError as ToolsConnectorConnectionError,
+)
+from toolsconnector.errors import (
+    RateLimitError,
+    TransportError,
+)
+from toolsconnector.errors import (
+    TimeoutError as ToolsConnectorTimeoutError,
+)
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -34,6 +45,28 @@ from .types import (
     LinearUser,
 )
 
+# Linear's GraphQL connection arguments accept a max page size of 250.
+# Defensive clamp also coerces None (from ToolKit/MCP synthetic defaults)
+# and rejects ≤0 values that would otherwise produce a 400 from the server.
+_MAX_PAGE_SIZE = 250
+_MIN_PAGE_SIZE = 1
+
+
+def _clamp_page_size(limit: Optional[int], default: int = 50) -> int:
+    """Clamp a paginated-action ``limit`` to Linear's accepted [1, 250] range.
+
+    Args:
+        limit: Caller-supplied page size. ``None`` (the ToolKit / MCP
+            synthetic default for omitted optional kwargs) is coerced to
+            ``default``.
+        default: Fallback page size when ``limit is None``. Each action
+            passes its own intended default so the MCP path produces the
+            same result as a direct Python call without an explicit limit.
+    """
+    if limit is None:
+        limit = default
+    return max(_MIN_PAGE_SIZE, min(limit, _MAX_PAGE_SIZE))
+
 
 class Linear(BaseConnector):
     """Connect to Linear to manage issues, teams, and projects.
@@ -50,7 +83,15 @@ class Linear(BaseConnector):
     description = (
         "Connect to Linear to search, create, and manage issues, projects, and teams via GraphQL."
     )
-    _rate_limit_config = RateLimitSpec(rate=250, period=60, burst=50)
+    # Linear's published rate limits (2026-05, https://linear.app/developers/rate-limiting):
+    #   Personal API key:  2,500 requests/hour per user
+    #   OAuth application: 5,000 requests/hour per user
+    #
+    # We target the personal-key cap conservatively. 40 req/min × 60 = 2,400/hour,
+    # leaving 100 req/hour headroom against the published 2,500 cap. burst=10
+    # accommodates short fan-outs (e.g. paginating through a large project list)
+    # without immediately tripping the throttle.
+    _rate_limit_config = RateLimitSpec(rate=40, period=60, burst=10)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -92,20 +133,148 @@ class Linear(BaseConnector):
         if variables:
             payload["variables"] = variables
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(
-                url,
-                headers=self._headers(),
-                json=payload,
-            )
-            raise_typed_for_status(response, connector=self.name)
-            result = response.json()
+        # Wrap the transport-layer httpx errors before they leave _graphql
+        # so callers catching ToolsConnectorError see network failures as
+        # typed exceptions instead of raw httpx classes. Mirrors the
+        # transport-error mapping shipped for Notion in 0.3.7.
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.post(
+                    url,
+                    headers=self._headers(),
+                    json=payload,
+                )
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"Linear API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "url": url,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                f"Could not connect to Linear API at {self._base_url}",
+                connector=self.name,
+                details={"url": url, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"Linear API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"url": url, "underlying": str(e)},
+            ) from e
 
-        if "errors" in result and result["errors"]:
+        # Linear-specific quirk: rate limits return HTTP 400 (not 429) with
+        # the GraphQL errors[] envelope and extensions.code == "RATELIMITED"
+        # (per Linear's published rate-limiting docs). The shared
+        # raise_typed_for_status helper would map 400 -> ValidationError,
+        # losing the rate-limit semantics. Detect the rate-limit envelope
+        # FIRST and raise typed RateLimitError; let everything else fall
+        # through to the standard status-code mapping.
+        result: Any = None
+        if response.status_code == 400:
+            try:
+                result = response.json()
+            except ValueError:
+                result = None
+            self._maybe_raise_linear_rate_limit(response, result)
+
+        raise_typed_for_status(response, connector=self.name)
+
+        # Defensive: Linear normally returns JSON, but CDN 502s / empty
+        # bodies can arrive as HTML or zero-length. Surface those as a
+        # typed TransportError instead of letting json.JSONDecodeError
+        # bubble through.
+        if result is None:
+            try:
+                result = response.json()
+            except ValueError as e:
+                raise TransportError(
+                    f"Linear API returned non-JSON body (HTTP {response.status_code})",
+                    connector=self.name,
+                    details={
+                        "url": url,
+                        "status_code": response.status_code,
+                        "body_preview": (response.text or "")[:200],
+                    },
+                ) from e
+        if result is None:
+            # JSON `null` body — treat as empty success per the same
+            # defensiveness shipped for Notion.
+            return {}
+
+        if isinstance(result, dict) and result.get("errors"):
             messages = "; ".join(e.get("message", str(e)) for e in result["errors"])
             raise ValueError(f"Linear GraphQL errors: {messages}")
 
-        return result.get("data", {})
+        return result.get("data", {}) if isinstance(result, dict) else {}
+
+    def _maybe_raise_linear_rate_limit(
+        self,
+        response: httpx.Response,
+        body: Optional[Any],
+    ) -> None:
+        """Raise RateLimitError if the 400 response carries Linear's
+        RATELIMITED error envelope.
+
+        Linear's rate-limit semantics differ from most REST APIs:
+
+        - Status code: **HTTP 400**, not 429.
+        - Signal: ``errors[].extensions.code == "RATELIMITED"`` in the
+          GraphQL response body.
+        - Reset time: ``X-RateLimit-Requests-Reset`` header carries the
+          epoch-milliseconds timestamp when the quota window resets.
+          (Also ``X-RateLimit-Endpoint-Requests-Reset`` and
+          ``X-RateLimit-Complexity-Reset`` for per-endpoint and
+          complexity-based limits respectively.)
+
+        Source: https://linear.app/developers/rate-limiting
+        """
+        if not isinstance(body, dict):
+            return
+        errors = body.get("errors") or []
+        if not isinstance(errors, list):
+            return
+        for err in errors:
+            if not isinstance(err, dict):
+                continue
+            extensions = err.get("extensions") or {}
+            code = extensions.get("code") if isinstance(extensions, dict) else None
+            if code == "RATELIMITED":
+                # Prefer the most-specific reset header. Linear sends:
+                #   X-RateLimit-Requests-Reset           (overall quota)
+                #   X-RateLimit-Endpoint-Requests-Reset  (per-endpoint)
+                #   X-RateLimit-Complexity-Reset         (complexity quota)
+                reset_header = (
+                    response.headers.get("X-RateLimit-Endpoint-Requests-Reset")
+                    or response.headers.get("X-RateLimit-Complexity-Reset")
+                    or response.headers.get("X-RateLimit-Requests-Reset")
+                )
+                retry_after_seconds: Optional[float] = None
+                if reset_header:
+                    try:
+                        reset_epoch_s = int(reset_header) / 1000.0
+                        retry_after_seconds = max(0.0, reset_epoch_s - time.time())
+                    except (ValueError, TypeError):
+                        retry_after_seconds = None
+                # Build RateLimitError kwargs — only pass retry_after_seconds
+                # when we actually parsed a value, otherwise let the
+                # exception's own default (60s) apply.
+                kwargs: dict[str, Any] = {
+                    "connector": self.name,
+                    "upstream_status": response.status_code,
+                    "details": {
+                        "linear_code": "RATELIMITED",
+                        "linear_message": err.get("message", ""),
+                        "reset_header": reset_header,
+                    },
+                }
+                if retry_after_seconds is not None:
+                    kwargs["retry_after_seconds"] = retry_after_seconds
+                raise RateLimitError("Linear API rate limit exceeded", **kwargs)
 
     # ------------------------------------------------------------------
     # Response parsers
@@ -248,23 +417,28 @@ class Linear(BaseConnector):
         Returns:
             Paginated list of LinearIssue objects.
         """
-        filters: list[str] = []
+        filter_obj: dict[str, Any] = {}
         if team_id:
-            filters.append(f'team: {{ id: {{ eq: "{team_id}" }} }}')
+            filter_obj["team"] = {"id": {"eq": team_id}}
         if state:
-            filters.append(f'state: {{ name: {{ eq: "{state}" }} }}')
-
-        filter_arg = f"filter: {{ {', '.join(filters)} }}," if filters else ""
-        after_arg = f', after: "{cursor}"' if cursor else ""
+            filter_obj["state"] = {"name": {"eq": state}}
 
         query = f"""
-        query {{ issues(first: {min(limit, 250)}, {filter_arg}
-            orderBy: updatedAt {after_arg}) {{
-            nodes {{ {ISSUE_FIELDS} }}
-            pageInfo {{ hasNextPage endCursor }}
-        }} }}
+        query($first: Int!, $after: String, $filter: IssueFilter) {{
+            issues(first: $first, after: $after, filter: $filter,
+                   orderBy: updatedAt) {{
+                nodes {{ {ISSUE_FIELDS} }}
+                pageInfo {{ hasNextPage endCursor }}
+            }}
+        }}
         """
-        data = await self._graphql(query)
+        variables: dict[str, Any] = {"first": _clamp_page_size(limit)}
+        if cursor:
+            variables["after"] = cursor
+        if filter_obj:
+            variables["filter"] = filter_obj
+
+        data = await self._graphql(query, variables=variables)
         issues_data = data.get("issues", {})
         nodes = issues_data.get("nodes", [])
         page_info = issues_data.get("pageInfo", {})
@@ -315,22 +489,22 @@ class Linear(BaseConnector):
         Returns:
             The newly created LinearIssue.
         """
-        inp: list[str] = [f'teamId: "{team_id}"', f'title: "{title}"']
+        input_obj: dict[str, Any] = {"teamId": team_id, "title": title}
         if description is not None:
-            esc = description.replace("\\", "\\\\").replace('"', '\\"')
-            cleaned = esc.replace("\n", "\\n")
-            inp.append(f'description: "{cleaned}"')
+            input_obj["description"] = description
         if priority is not None:
-            inp.append(f"priority: {priority}")
+            input_obj["priority"] = priority
         if assignee_id:
-            inp.append(f'assigneeId: "{assignee_id}"')
+            input_obj["assigneeId"] = assignee_id
 
         query = f"""
-        mutation {{ issueCreate(input: {{ {", ".join(inp)} }}) {{
-            success issue {{ {ISSUE_FIELDS} }}
-        }} }}
+        mutation($input: IssueCreateInput!) {{
+            issueCreate(input: $input) {{
+                success issue {{ {ISSUE_FIELDS} }}
+            }}
+        }}
         """
-        data = await self._graphql(query)
+        data = await self._graphql(query, variables={"input": input_obj})
         result = data.get("issueCreate", {})
         if not result.get("success"):
             raise ValueError("Linear issue creation failed")
@@ -357,27 +531,26 @@ class Linear(BaseConnector):
         Returns:
             The updated LinearIssue.
         """
-        inp: list[str] = []
+        input_obj: dict[str, Any] = {}
         if title is not None:
-            inp.append(f'title: "{title}"')
+            input_obj["title"] = title
         if description is not None:
-            esc = description.replace("\\", "\\\\").replace('"', '\\"')
-            cleaned = esc.replace("\n", "\\n")
-            inp.append(f'description: "{cleaned}"')
+            input_obj["description"] = description
         if state_id is not None:
-            inp.append(f'stateId: "{state_id}"')
+            input_obj["stateId"] = state_id
         if priority is not None:
-            inp.append(f"priority: {priority}")
-        if not inp:
+            input_obj["priority"] = priority
+        if not input_obj:
             return await self.aget_issue(issue_id)
 
         query = f"""
-        mutation {{ issueUpdate(id: "{issue_id}",
-            input: {{ {", ".join(inp)} }}) {{
-            success issue {{ {ISSUE_FIELDS} }}
-        }} }}
+        mutation($id: String!, $input: IssueUpdateInput!) {{
+            issueUpdate(id: $id, input: $input) {{
+                success issue {{ {ISSUE_FIELDS} }}
+            }}
+        }}
         """
-        data = await self._graphql(query)
+        data = await self._graphql(query, variables={"id": issue_id, "input": input_obj})
         result = data.get("issueUpdate", {})
         if not result.get("success"):
             raise ValueError("Linear issue update failed")
@@ -422,14 +595,18 @@ class Linear(BaseConnector):
         Returns:
             Paginated list of LinearProject objects.
         """
-        after_arg = f', after: "{cursor}"' if cursor else ""
-        query = f"""
-        query {{ projects(first: {min(limit, 250)} {after_arg}) {{
-            nodes {{ {PROJECT_FIELDS} }}
-            pageInfo {{ hasNextPage endCursor }}
-        }} }}
+        gql = f"""
+        query($first: Int!, $after: String) {{
+            projects(first: $first, after: $after) {{
+                nodes {{ {PROJECT_FIELDS} }}
+                pageInfo {{ hasNextPage endCursor }}
+            }}
+        }}
         """
-        data = await self._graphql(query)
+        variables: dict[str, Any] = {"first": _clamp_page_size(limit)}
+        if cursor:
+            variables["after"] = cursor
+        data = await self._graphql(gql, variables=variables)
         proj_data = data.get("projects", {})
         page_info = proj_data.get("pageInfo", {})
 
@@ -452,16 +629,17 @@ class Linear(BaseConnector):
         Returns:
             The created LinearComment.
         """
-        esc = body.replace("\\", "\\\\").replace('"', '\\"')
-        esc = esc.replace("\n", "\\n")
-        query = f"""
-        mutation {{ commentCreate(input: {{
-            issueId: "{issue_id}", body: "{esc}"
-        }}) {{
-            success comment {{ {COMMENT_FIELDS} }}
-        }} }}
+        gql = f"""
+        mutation($input: CommentCreateInput!) {{
+            commentCreate(input: $input) {{
+                success comment {{ {COMMENT_FIELDS} }}
+            }}
+        }}
         """
-        data = await self._graphql(query)
+        data = await self._graphql(
+            gql,
+            variables={"input": {"issueId": issue_id, "body": body}},
+        )
         result = data.get("commentCreate", {})
         if not result.get("success"):
             raise ValueError("Linear comment creation failed")
@@ -485,17 +663,21 @@ class Linear(BaseConnector):
         Returns:
             Paginated list of matching LinearIssue objects.
         """
-        after_arg = f', after: "{cursor}"' if cursor else ""
-        escaped = query.replace("\\", "\\\\").replace('"', '\\"')
-
         gql = f"""
-        query {{ issueSearch(query: "{escaped}",
-            first: {min(limit, 250)} {after_arg}) {{
-            nodes {{ {ISSUE_FIELDS} }}
-            pageInfo {{ hasNextPage endCursor }}
-        }} }}
+        query($q: String!, $first: Int!, $after: String) {{
+            issueSearch(query: $q, first: $first, after: $after) {{
+                nodes {{ {ISSUE_FIELDS} }}
+                pageInfo {{ hasNextPage endCursor }}
+            }}
+        }}
         """
-        data = await self._graphql(gql)
+        variables: dict[str, Any] = {
+            "q": query,
+            "first": _clamp_page_size(limit),
+        }
+        if cursor:
+            variables["after"] = cursor
+        data = await self._graphql(gql, variables=variables)
         search_data = data.get("issueSearch", {})
         page_info = search_data.get("pageInfo", {})
 
@@ -521,10 +703,12 @@ class Linear(BaseConnector):
         Returns:
             True if the issue was deleted successfully.
         """
-        query = f"""
-        mutation {{ issueDelete(id: "{issue_id}") {{ success }} }}
+        query = """
+        mutation($id: String!) {
+            issueDelete(id: $id) { success }
+        }
         """
-        data = await self._graphql(query)
+        data = await self._graphql(query, variables={"id": issue_id})
         return data.get("issueDelete", {}).get("success", False)
 
     # ------------------------------------------------------------------
@@ -544,15 +728,20 @@ class Linear(BaseConnector):
         Returns:
             List of LinearLabel objects.
         """
-        filter_arg = ""
+        filter_obj: dict[str, Any] = {}
         if team_id:
-            filter_arg = f'filter: {{ team: {{ id: {{ eq: "{team_id}" }} }} }},'
-        query = f"""
-        query {{ issueLabels({filter_arg} first: 250) {{
-            nodes {{ id name color }}
-        }} }}
+            filter_obj["team"] = {"id": {"eq": team_id}}
+        query = """
+        query($filter: IssueLabelFilter, $first: Int!) {
+            issueLabels(filter: $filter, first: $first) {
+                nodes { id name color }
+            }
+        }
         """
-        data = await self._graphql(query)
+        variables: dict[str, Any] = {"first": _MAX_PAGE_SIZE}
+        if filter_obj:
+            variables["filter"] = filter_obj
+        data = await self._graphql(query, variables=variables)
         return [
             LinearLabel(
                 id=lbl["id"],
@@ -579,15 +768,17 @@ class Linear(BaseConnector):
         Returns:
             The created LinearLabel.
         """
-        inp = [f'teamId: "{team_id}"', f'name: "{name}"']
+        input_obj: dict[str, Any] = {"teamId": team_id, "name": name}
         if color:
-            inp.append(f'color: "{color}"')
-        query = f"""
-        mutation {{ issueLabelCreate(input: {{ {", ".join(inp)} }}) {{
-            success issueLabel {{ id name color }}
-        }} }}
+            input_obj["color"] = color
+        query = """
+        mutation($input: IssueLabelCreateInput!) {
+            issueLabelCreate(input: $input) {
+                success issueLabel { id name color }
+            }
+        }
         """
-        data = await self._graphql(query)
+        data = await self._graphql(query, variables={"input": input_obj})
         result = data.get("issueLabelCreate", {})
         if not result.get("success"):
             raise ValueError("Linear label creation failed")
@@ -612,15 +803,18 @@ class Linear(BaseConnector):
         Returns:
             List of LinearState objects ordered by position.
         """
-        query = f"""
-        query {{ workflowStates(
-            filter: {{ team: {{ id: {{ eq: "{team_id}" }} }} }},
-            first: 100
-        ) {{
-            nodes {{ id name type color position }}
-        }} }}
+        query = """
+        query($filter: WorkflowStateFilter!, $first: Int!) {
+            workflowStates(filter: $filter, first: $first) {
+                nodes { id name type color position }
+            }
+        }
         """
-        data = await self._graphql(query)
+        variables: dict[str, Any] = {
+            "filter": {"team": {"id": {"eq": team_id}}},
+            "first": 100,
+        }
+        data = await self._graphql(query, variables=variables)
         return [
             LinearState(
                 id=s["id"],
@@ -653,19 +847,26 @@ class Linear(BaseConnector):
         Returns:
             Paginated list of LinearCycle objects.
         """
-        filter_arg = ""
+        filter_obj: dict[str, Any] = {}
         if team_id:
-            filter_arg = f'filter: {{ team: {{ id: {{ eq: "{team_id}" }} }} }},'
-        after_arg = f', after: "{cursor}"' if cursor else ""
+            filter_obj["team"] = {"id": {"eq": team_id}}
 
         query = f"""
-        query {{ cycles(first: {min(limit, 250)},
-            {filter_arg} orderBy: updatedAt {after_arg}) {{
-            nodes {{ {CYCLE_FIELDS} }}
-            pageInfo {{ hasNextPage endCursor }}
-        }} }}
+        query($first: Int!, $after: String, $filter: CycleFilter) {{
+            cycles(first: $first, after: $after, filter: $filter,
+                   orderBy: updatedAt) {{
+                nodes {{ {CYCLE_FIELDS} }}
+                pageInfo {{ hasNextPage endCursor }}
+            }}
+        }}
         """
-        data = await self._graphql(query)
+        variables: dict[str, Any] = {"first": _clamp_page_size(limit)}
+        if cursor:
+            variables["after"] = cursor
+        if filter_obj:
+            variables["filter"] = filter_obj
+
+        data = await self._graphql(query, variables=variables)
         cycles_data = data.get("cycles", {})
         page_info = cycles_data.get("pageInfo", {})
 
@@ -743,25 +944,24 @@ class Linear(BaseConnector):
         Returns:
             The updated LinearProject.
         """
-        inp: list[str] = []
+        input_obj: dict[str, Any] = {}
         if name is not None:
-            inp.append(f'name: "{name}"')
+            input_obj["name"] = name
         if description is not None:
-            esc = description.replace("\\", "\\\\").replace('"', '\\"')
-            cleaned = esc.replace("\n", "\\n")
-            inp.append(f'description: "{cleaned}"')
+            input_obj["description"] = description
         if state is not None:
-            inp.append(f'state: "{state}"')
-        if not inp:
+            input_obj["state"] = state
+        if not input_obj:
             raise ValueError("At least one field must be provided")
 
         query = f"""
-        mutation {{ projectUpdate(id: "{project_id}",
-            input: {{ {", ".join(inp)} }}) {{
-            success project {{ {PROJECT_FIELDS} }}
-        }} }}
+        mutation($id: String!, $input: ProjectUpdateInput!) {{
+            projectUpdate(id: $id, input: $input) {{
+                success project {{ {PROJECT_FIELDS} }}
+            }}
+        }}
         """
-        data = await self._graphql(query)
+        data = await self._graphql(query, variables={"id": project_id, "input": input_obj})
         result = data.get("projectUpdate", {})
         if not result.get("success"):
             raise ValueError("Linear project update failed")
@@ -777,10 +977,12 @@ class Linear(BaseConnector):
         Returns:
             True if the project was deleted successfully.
         """
-        query = f"""
-        mutation {{ projectDelete(id: "{project_id}") {{ success }} }}
+        query = """
+        mutation($id: String!) {
+            projectDelete(id: $id) { success }
+        }
         """
-        data = await self._graphql(query)
+        data = await self._graphql(query, variables={"id": project_id})
         return data.get("projectDelete", {}).get("success", False)
 
     # ------------------------------------------------------------------
@@ -802,14 +1004,18 @@ class Linear(BaseConnector):
         Returns:
             Paginated list of LinearUser objects.
         """
-        after_arg = f', after: "{cursor}"' if cursor else ""
         query = f"""
-        query {{ users(first: {min(limit, 250)} {after_arg}) {{
-            nodes {{ {USER_FIELDS} }}
-            pageInfo {{ hasNextPage endCursor }}
-        }} }}
+        query($first: Int!, $after: String) {{
+            users(first: $first, after: $after) {{
+                nodes {{ {USER_FIELDS} }}
+                pageInfo {{ hasNextPage endCursor }}
+            }}
+        }}
         """
-        data = await self._graphql(query)
+        variables: dict[str, Any] = {"first": _clamp_page_size(limit)}
+        if cursor:
+            variables["after"] = cursor
+        data = await self._graphql(query, variables=variables)
         users_data = data.get("users", {})
         page_info = users_data.get("pageInfo", {})
 

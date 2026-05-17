@@ -117,6 +117,7 @@ _CREDENTIAL_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"sk-[A-Za-z0-9_-]{20,}"),
     re.compile(r"secret_[A-Za-z0-9]{40,}"),  # Notion integration token (legacy)
     re.compile(r"ntn_[A-Za-z0-9_-]{40,}"),  # Notion integration token (current)
+    re.compile(r"lin_api_[A-Za-z0-9]{20,}"),  # Linear personal API key
     re.compile(r"Bearer\s+[A-Za-z0-9._-]{20,}", re.IGNORECASE),  # Bearer tokens
 )
 
