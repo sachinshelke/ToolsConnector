@@ -115,8 +115,6 @@ CYCLE_FIELDS = """
     endsAt
     completedAt
     progress
-    scopeCount
-    completedScopeCount
     team {
         id
     }

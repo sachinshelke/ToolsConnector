@@ -375,8 +375,6 @@ class Linear(BaseConnector):
             ends_at=data.get("endsAt"),
             completed_at=data.get("completedAt"),
             progress=data.get("progress", 0.0),
-            scope_count=data.get("scopeCount"),
-            completed_scope_count=data.get("completedScopeCount"),
             team_id=team_data["id"] if team_data else None,
         )
 
@@ -663,22 +661,25 @@ class Linear(BaseConnector):
         Returns:
             Paginated list of matching LinearIssue objects.
         """
+        # Linear deprecated `issueSearch(query:)` — replacement is
+        # `searchIssues(term:)`. Same response shape (IssueConnection),
+        # only the operation name and the search-text argument changed.
         gql = f"""
-        query($q: String!, $first: Int!, $after: String) {{
-            issueSearch(query: $q, first: $first, after: $after) {{
+        query($term: String!, $first: Int!, $after: String) {{
+            searchIssues(term: $term, first: $first, after: $after) {{
                 nodes {{ {ISSUE_FIELDS} }}
                 pageInfo {{ hasNextPage endCursor }}
             }}
         }}
         """
         variables: dict[str, Any] = {
-            "q": query,
+            "term": query,
             "first": _clamp_page_size(limit),
         }
         if cursor:
             variables["after"] = cursor
         data = await self._graphql(gql, variables=variables)
-        search_data = data.get("issueSearch", {})
+        search_data = data.get("searchIssues", {})
         page_info = search_data.get("pageInfo", {})
 
         return PaginatedList(
