@@ -313,7 +313,7 @@ async def test_injection_search_query_stays_in_variables(linear: Linear) -> None
     adversarial = '"} ) { teams { nodes { key } } } #'
     empty = {
         "data": {
-            "issueSearch": {"nodes": [], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+            "searchIssues": {"nodes": [], "pageInfo": {"hasNextPage": False, "endCursor": None}}
         }
     }
     with respx.mock(base_url="https://api.linear.app") as mock:
@@ -322,7 +322,7 @@ async def test_injection_search_query_stays_in_variables(linear: Linear) -> None
 
         body = _body_of(route.calls.last)
         assert adversarial not in body["query"]
-        assert body["variables"]["q"] == adversarial
+        assert body["variables"]["term"] == adversarial
 
 
 @pytest.mark.asyncio
@@ -1239,7 +1239,7 @@ async def test_every_action_emits_syntactically_valid_graphql(linear: Linear) ->
                 },
             },
             "issueDelete": {"success": True},
-            "issueSearch": {"nodes": [], "pageInfo": {"hasNextPage": False, "endCursor": None}},
+            "searchIssues": {"nodes": [], "pageInfo": {"hasNextPage": False, "endCursor": None}},
             "teams": {"nodes": []},
             "projects": {"nodes": [], "pageInfo": {"hasNextPage": False, "endCursor": None}},
             "projectUpdate": {"success": True, "project": {"id": "p", "name": "n"}},

@@ -1,6 +1,6 @@
 # Project Management
 
-Connectors for issue tracking and project management platforms. 4 connectors, 110 actions.
+Connectors for issue tracking and project management platforms. 4 connectors, 121 actions.
 
 ---
 
@@ -62,22 +62,33 @@ result = kit.execute("asana_list_tasks", {"project": "1234567890"})
 
 ### Linear
 
-**Category:** Project Management | **Auth:** API Key | **Actions:** 8
+**Category:** Project Management | **Auth:** API Key (raw, no `Bearer`) | **Actions:** 19 | **Status:** ✅ Tier 1 (16/19 live-verified)
 
-Connect to Linear to manage issues, teams, and projects through the GraphQL API.
+Connect to Linear via the GraphQL API at `api.linear.app/graphql`. The personal API key is sent **raw** in the `Authorization` header — Linear does NOT use the `Bearer` prefix for `lin_api_*` keys. The connector handles this automatically.
 
 **Actions:**
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
-| list_issues | List issues with optional filters | No |
-| get_issue | Get details of a specific issue | No |
+| list_issues | List issues with optional team/state/assignee filters and pagination | No |
+| get_issue | Get details of a specific issue by UUID | No |
 | create_issue | Create a new issue | Yes |
 | update_issue | Update an existing issue | No |
-| list_teams | List teams in the workspace | No |
-| list_projects | List projects in the workspace | No |
+| delete_issue | Permanently delete an issue | Yes |
+| search_issues | Search issues by full-text query (uses `searchIssues(term:)`) | No |
+| list_teams | List all teams in the workspace | No |
+| list_projects | List projects with pagination | No |
+| update_project | Update a project's metadata | Yes |
+| delete_project | Permanently delete a project | Yes |
+| list_users | List workspace members with pagination | No |
+| get_user | Get details for a single user | No |
+| list_labels | List issue labels, optionally filtered by team | No |
+| create_label | Create a new issue label | Yes |
+| get_workflow_states | List workflow states for a team | No |
+| list_cycles | List cycles (sprints), optionally filtered by team | No |
+| get_cycle | Get details for a single cycle | No |
 | add_comment | Add a comment to an issue | Yes |
-| search_issues | Search issues by text query | No |
+| list_issue_comments | List all comments on an issue | No |
 
 **Quick start:**
 
@@ -85,6 +96,8 @@ Connect to Linear to manage issues, teams, and projects through the GraphQL API.
 kit = ToolKit(["linear"], credentials={"linear": "lin_api_your-api-key"})
 result = kit.execute("linear_list_issues", {"team_id": "TEAM-ID", "state": "In Progress"})
 ```
+
+**Deprecation handling (transparent to callers):** Linear's GraphQL schema deprecates and replaces fields/operations over time. The connector tracks current best practice; existing `LinearTeam.private`, `LinearProject.state`, and `Linear.search_issues(query=...)` call shapes stay populated/working via parser-level backwards-compat mapping. See the connector README's *Deprecation Handling* table for the four migrations applied as of 2026-05-23.
 
 ---
 

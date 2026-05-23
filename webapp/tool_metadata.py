@@ -645,9 +645,36 @@ TOOL_META: dict[str, dict] = {
         "logo": _BF("linear.app"),
         "color": "#5E6AD2",
         "tagline": "Streamlined issue tracking for software teams",
-        "auth_methods": ["API Key", "OAuth 2.0"],
+        "overview": (
+            "The Linear GraphQL API provides access to issues, projects, cycles, teams, "
+            "labels, workflow states, comments, and users. Track bugs and features, manage "
+            "sprints, automate workflows, and build integrations with Linear's modern project "
+            "management platform. Uses ProtocolType.GRAPHQL with personal API keys sent raw "
+            "in the Authorization header (Linear's personal keys do NOT use the Bearer prefix)."
+        ),
+        "use_cases": [
+            "Issue tracking",
+            "Sprint and cycle management",
+            "Bug triage automation",
+            "Development workflow",
+            "Cross-tool project sync",
+        ],
+        # ToolsConnector is BYOK. We only implement personal API key auth.
+        # Linear also offers OAuth 2.0 for third-party apps; that flow is
+        # out of scope for the core library (the planned [auth] extra
+        # would handle it). See ROADMAP.md.
+        "auth_methods": ["Personal API Key (raw, no Bearer)"],
         "pricing": "Free tier, Plus from $8/user/month",
+        "rate_limit": "2,500 req/hour (personal key), 5,000 req/hour (OAuth)",
+        "prerequisites": [
+            "Linear workspace",
+            "Personal API key created at linear.app/settings/api",
+        ],
         "get_credentials_url": "https://linear.app/settings/api",
+        "get_credentials_steps": (
+            "linear.app > avatar > Settings > API > Personal API keys > "
+            "+ New API key > copy the lin_api_* value (shown once)"
+        ),
     },
     "linkedin": {
         "company": "LinkedIn (Microsoft)",

@@ -72,15 +72,24 @@ TEAM_FIELDS = """
     description
     icon
     color
-    private
+    visibility
 """
+# `Team.private` was deprecated by Linear (see schema deprecation reason
+# "Use `Team.visibility` instead"). We request `visibility` (enum:
+# "public" | "private" | "secret") and derive the old boolean in the
+# parser so `LinearTeam.private` keeps working for existing callers.
 
 PROJECT_FIELDS = f"""
     id
     name
     description
     slugId
-    state
+    status {{
+        id
+        name
+        type
+        color
+    }}
     url
     createdAt
     updatedAt
@@ -91,6 +100,13 @@ PROJECT_FIELDS = f"""
         {USER_FIELDS}
     }}
 """
+# `Project.state` was deprecated by Linear (see schema deprecation
+# reason "Use project.status instead"). The replacement is a nested
+# `ProjectStatus` object with `type` carrying the same string the old
+# `state` field used to return ("started", "completed", "paused",
+# etc.). The parser maps `status.type` → `LinearProject.state` for
+# backwards compat; the richer status object is also surfaced via the
+# extra fields stored on the model (extra="ignore" tolerates them).
 
 COMMENT_FIELDS = f"""
     id
@@ -115,8 +131,6 @@ CYCLE_FIELDS = """
     endsAt
     completedAt
     progress
-    scopeCount
-    completedScopeCount
     team {
         id
     }
