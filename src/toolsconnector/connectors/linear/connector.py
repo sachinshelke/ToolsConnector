@@ -346,13 +346,23 @@ class Linear(BaseConnector):
 
     @classmethod
     def _parse_project(cls, data: dict[str, Any]) -> LinearProject:
-        """Parse a raw Linear project node into a LinearProject model."""
+        """Parse a raw Linear project node into a LinearProject model.
+
+        Backwards-compat: the deprecated `Project.state` string field
+        was replaced by a nested `Project.status` object. We derive the
+        old `state` string from `status.type` so `LinearProject.state`
+        keeps working. If the server still returns the old `state`
+        field (during the deprecation window), prefer it for an exact
+        round-trip; otherwise fall back to `status.type`.
+        """
+        status = data.get("status") or {}
+        state = data.get("state") or status.get("type") or ""
         return LinearProject(
             id=data["id"],
             name=data.get("name", ""),
             description=data.get("description"),
             slug_id=data.get("slugId"),
-            state=data.get("state", ""),
+            state=state,
             url=data.get("url"),
             created_at=data.get("createdAt"),
             updated_at=data.get("updatedAt"),
@@ -565,6 +575,11 @@ class Linear(BaseConnector):
         query {{ teams {{ nodes {{ {TEAM_FIELDS} }} }} }}
         """
         data = await self._graphql(query)
+        # Backwards-compat: `Team.private` was deprecated in favor of
+        # `Team.visibility` (enum: "public" | "private" | "secret").
+        # We request `visibility` and derive the old boolean. If the
+        # server still returns `private` during the deprecation window,
+        # prefer it for an exact round-trip.
         return [
             LinearTeam(
                 id=t["id"],
@@ -573,7 +588,9 @@ class Linear(BaseConnector):
                 description=t.get("description"),
                 icon=t.get("icon"),
                 color=t.get("color"),
-                private=t.get("private", False),
+                private=(
+                    t["private"] if "private" in t else (t.get("visibility", "public") != "public")
+                ),
             )
             for t in data.get("teams", {}).get("nodes", [])
         ]

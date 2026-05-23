@@ -174,31 +174,44 @@ This is pinned by regression tests in [tests/connectors/test_linear.py](../../..
 
 ## Verification Status
 
-All 19 actions are **doc-verified** — every GraphQL query, variables shape, pagination flow, and error mapping has been cross-checked against the connector and pinned by respx mocks in [tests/connectors/test_linear.py](../../../tests/connectors/test_linear.py) (19 tests covering happy path, injection regression, error mapping, pagination, limit clamping, and dangerous-flag audit).
+All 19 actions are pinned by 75 respx tests in [tests/connectors/test_linear.py](../../../tests/connectors/test_linear.py) (happy path, GraphQL injection regression, error mapping, pagination, limit clamping, transport errors, defensive parsing, dangerous-flag audit, GraphQL syntax sweep, OpenAI schema sweep, MCP exposure).
 
-Live verification (Tier 1) is deferred until the `[auth]` extra ships (per [ROADMAP.md](../../../ROADMAP.md)) — at that point any `lin_api_*` key can be plugged in and the standard live-test harness will exercise all 19 actions end-to-end.
+**16 of 19 actions are also Live verified** — exercised end-to-end against `api.linear.app` with a real `lin_api_*` personal key. The remaining 3 are doc-verified (rationale per row below).
+
+Schema introspection sweep — **all selected fields + all selected operations are non-deprecated** in Linear's current schema as of the last live verification run.
 
 | Action | GraphQL Operation | Status |
 |---|---|---|
-| `list_issues` | `query issues(first, after, filter, orderBy)` | Doc verified |
-| `get_issue` | `query issue(id: $id)` | Doc verified |
-| `create_issue` | `mutation issueCreate(input: IssueCreateInput!)` | Doc verified |
-| `update_issue` | `mutation issueUpdate(id, input: IssueUpdateInput!)` | Doc verified |
-| `delete_issue` | `mutation issueDelete(id: $id)` | Doc verified |
-| `search_issues` | `query issueSearch(query, first, after)` | Doc verified |
-| `list_teams` | `query teams { nodes { ... } }` (no user input) | Doc verified |
-| `list_projects` | `query projects(first, after)` | Doc verified |
-| `update_project` | `mutation projectUpdate(id, input: ProjectUpdateInput!)` | Doc verified |
-| `delete_project` | `mutation projectDelete(id: $id)` | Doc verified |
-| `list_users` | `query users(first, after)` | Doc verified |
-| `get_user` | `query user(id: $id)` | Doc verified |
-| `list_labels` | `query issueLabels(filter, first)` | Doc verified |
-| `create_label` | `mutation issueLabelCreate(input: IssueLabelCreateInput!)` | Doc verified |
-| `get_workflow_states` | `query workflowStates(filter, first)` | Doc verified |
-| `list_cycles` | `query cycles(first, after, filter, orderBy)` | Doc verified |
-| `get_cycle` | `query cycle(id: $id)` | Doc verified |
-| `add_comment` | `mutation commentCreate(input: CommentCreateInput!)` | Doc verified |
-| `list_issue_comments` | `query issue(id) { comments { nodes } }` | Doc verified |
+| `list_issues` | `query issues(first, after, filter, orderBy)` | ✅ Live verified |
+| `get_issue` | `query issue(id: $id)` | ✅ Live verified |
+| `create_issue` | `mutation issueCreate(input: IssueCreateInput!)` | ✅ Live verified |
+| `update_issue` | `mutation issueUpdate(id, input: IssueUpdateInput!)` | ✅ Live verified |
+| `delete_issue` | `mutation issueDelete(id: $id)` | ✅ Live verified |
+| `search_issues` | `query searchIssues(term, first, after)` | ✅ Live verified |
+| `list_teams` | `query teams { nodes { ... } }` (no user input) | ✅ Live verified |
+| `list_projects` | `query projects(first, after)` | ✅ Live verified |
+| `update_project` | `mutation projectUpdate(id, input: ProjectUpdateInput!)` | Doc verified (would mutate real user projects) |
+| `delete_project` | `mutation projectDelete(id: $id)` | Doc verified (would mutate real user projects) |
+| `list_users` | `query users(first, after)` | ✅ Live verified |
+| `get_user` | `query user(id: $id)` | ✅ Live verified |
+| `list_labels` | `query issueLabels(filter, first)` | ✅ Live verified |
+| `create_label` | `mutation issueLabelCreate(input: IssueLabelCreateInput!)` | ✅ Live verified |
+| `get_workflow_states` | `query workflowStates(filter, first)` | ✅ Live verified |
+| `list_cycles` | `query cycles(first, after, filter, orderBy)` | ✅ Live verified |
+| `get_cycle` | `query cycle(id: $id)` | Doc verified (no cycle in test workspace) |
+| `add_comment` | `mutation commentCreate(input: CommentCreateInput!)` | ✅ Live verified |
+| `list_issue_comments` | `query issue(id) { comments { nodes } }` | ✅ Live verified |
+
+### Deprecation handling
+
+Linear deprecates schema fields with a long sunset window. The connector tracks current best practice:
+
+| Old (deprecated) | New (current) | Status |
+|---|---|---|
+| `query issueSearch(query:)` | `query searchIssues(term:)` | Migrated. `issueSearch` returns `{"code": "INPUT_ERROR", "message": "deprecated"}` from the live API today. |
+| `Project.state` (String) | `Project.status { type }` (nested object) | Migrated. `LinearProject.state` is now derived from `status.type`; existing callers see no change. |
+| `Team.private` (Boolean) | `Team.visibility` (enum: `"public" \| "private" \| "secret"`) | Migrated. `LinearTeam.private` is now derived as `visibility != "public"`; existing callers see no change. |
+| `Cycle.scopeCount` / `completedScopeCount` (Int) | `Cycle.scopeHistory` / `completedScopeHistory` (`[Float!]!`) | Phantom fields removed from the query (they 400 on the modern schema). `LinearCycle.scope_count` / `completed_scope_count` model fields kept with `None` defaults for backwards compat; they were never populated in practice. |
 
 ## Actions
 
