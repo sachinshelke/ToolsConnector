@@ -1,6 +1,6 @@
 # All Connectors
 
-ToolsConnector ships with 53 connectors organized into 17 categories, providing 1,152 total actions across communication, CRM, databases, DevOps, AI/ML, finance, and more.
+ToolsConnector ships with 53 connectors organized into 17 categories, providing 1,179 total actions across communication, CRM, databases, DevOps, AI/ML, finance, and more.
 
 ## How Connectors Work
 
@@ -28,7 +28,7 @@ result = kit.execute("gmail_list_emails", {"query": "is:unread"})
 | Category | Connectors | Actions |
 |---|---|---|
 | [Communication](communication.md) | Gmail, Slack, Discord, Outlook, Teams, Twilio, Telegram | 200 |
-| [Code Platforms](code-platforms.md) | GitHub, GitLab | 58 |
+| [Code Platforms](code-platforms.md) | GitHub, GitLab | 85 |
 | [Project Management](project-management.md) | Jira, Asana, Linear, Trello | 121 |
 | [CRM & Support](crm.md) | HubSpot, Salesforce, Zendesk, Freshdesk, Intercom | 95 |
 | [Database](database.md) | Airtable, Firestore, MongoDB, Redis, Supabase | 93 |

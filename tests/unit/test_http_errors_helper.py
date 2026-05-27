@@ -237,7 +237,12 @@ def test_body_preview_truncates_long_bodies() -> None:
 # patterns but obviously fake (no real-world secret here). The
 # `# fake test credential` comment on each line is what the
 # pre-commit secret-leak hook looks for to skip the line — keep it.
-_FAKE_GH_PAT = "ghp_" + "0" * 30 + "FAKETESTPAT1234"  # fake test credential
+_FAKE_GH_PAT = "ghp_" + "0" * 30 + "FAKETESTPAT1234"  # fake test credential — classic PAT
+_FAKE_GH_FINE = "github_pat_" + "D" * 70  # fake test credential — fine-grained PAT
+_FAKE_GH_OAUTH = "gho_" + "E" * 35  # fake test credential — OAuth access token
+_FAKE_GH_APP_INSTALL = "ghs_" + "F" * 35  # fake test credential — App installation token
+_FAKE_GH_APP_USER = "ghu_" + "G" * 35  # fake test credential — App user access token
+_FAKE_GH_REFRESH = "ghr_" + "H" * 35  # fake test credential — App refresh token
 _FAKE_ANTHROPIC = "sk-ant-api03-" + "a" * 90  # fake test credential
 _FAKE_STRIPE = "sk_live_" + "Z" * 30  # fake test credential (placeholder)
 _FAKE_OPENAI = "sk-proj-" + "Q" * 30  # fake test credential (placeholder)
@@ -252,7 +257,12 @@ _FAKE_LINEAR = "lin_api_" + "C" * 32  # fake test credential — Linear personal
 @pytest.mark.parametrize(
     ("secret_in_body", "description"),
     [
-        (_FAKE_GH_PAT, "GitHub PAT"),
+        (_FAKE_GH_PAT, "GitHub PAT (classic ghp_*)"),
+        (_FAKE_GH_FINE, "GitHub fine-grained PAT (github_pat_*)"),
+        (_FAKE_GH_OAUTH, "GitHub OAuth access token (gho_*)"),
+        (_FAKE_GH_APP_INSTALL, "GitHub App installation token (ghs_*)"),
+        (_FAKE_GH_APP_USER, "GitHub App user access token (ghu_*)"),
+        (_FAKE_GH_REFRESH, "GitHub App refresh token (ghr_*)"),
         (_FAKE_ANTHROPIC, "Anthropic API key"),
         (_FAKE_STRIPE, "Stripe live key"),
         (_FAKE_OPENAI, "OpenAI key"),

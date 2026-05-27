@@ -203,20 +203,44 @@ TOOL_META: dict[str, dict] = {
         "logo": _BF("github.com"),
         "color": "#181717",
         "tagline": "Code hosting, issues, PRs, and CI/CD",
-        "overview": "The GitHub REST API provides access to repositories, issues, pull requests, commits, releases, and more. Automate code reviews, manage CI/CD workflows, track issues, and build developer tools that integrate with the GitHub ecosystem.",
+        "overview": (
+            "Full coverage of the GitHub REST API at api.github.com — repositories, "
+            "issues, pull requests, commits, branches, releases, file content (read/write/"
+            "delete), labels, comments, GitHub Actions workflows, gists, code/repo/issue "
+            "search, and user/rate-limit endpoints. Pinned to API version 2022-11-28. "
+            "Supports every GitHub token family (classic PAT, fine-grained PAT, OAuth, "
+            "GitHub App installation/user/refresh)."
+        ),
         "use_cases": [
             "CI/CD automation",
             "Issue tracking and triage",
             "Code review workflows",
             "Release management",
             "Developer analytics",
+            "Repository scaffolding from agent prompts",
         ],
-        "auth_methods": ["Personal Access Token", "OAuth 2.0", "GitHub App"],
+        # ToolsConnector is BYOK. We accept every GitHub bearer-token format
+        # (PAT classic, fine-grained PAT, OAuth access token, App tokens).
+        # We don't run an OAuth flow — that's deferred to the [auth] extra
+        # on the roadmap.
+        "auth_methods": [
+            "Personal Access Token (classic, ghp_*)",
+            "Fine-grained Personal Access Token (github_pat_*)",
+            "OAuth access token (gho_*)",
+            "GitHub App installation token (ghs_*)",
+        ],
         "pricing": "Free for public repos, Teams from $4/user/month",
-        "rate_limit": "5,000 requests/hour authenticated",
-        "prerequisites": ["GitHub account", "Personal access token or GitHub App"],
+        "rate_limit": "5,000 req/hour authenticated (primary) + secondary abuse-detection throttle",
+        "prerequisites": [
+            "GitHub account",
+            "Personal access token or GitHub App with required scopes",
+        ],
         "get_credentials_url": "https://github.com/settings/tokens",
-        "get_credentials_steps": "Settings > Developer Settings > Personal Access Tokens",
+        "get_credentials_steps": (
+            "github.com > Settings > Developer settings > Personal access tokens > "
+            "Tokens (classic) > Generate new token > select scopes (repo, workflow, "
+            "gist, read:user) > copy the ghp_* value (shown once)"
+        ),
     },
     "gitlab": {
         "company": "GitLab Inc.",
