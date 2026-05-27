@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class GitHubUser(BaseModel):
     """A GitHub user or organisation account."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     login: str
     id: int
@@ -30,7 +30,7 @@ class GitHubUser(BaseModel):
 class GitHubLabel(BaseModel):
     """A label attached to an issue or pull request."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: int
     name: str
@@ -41,7 +41,7 @@ class GitHubLabel(BaseModel):
 class GitHubMilestone(BaseModel):
     """A milestone on a repository."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: int
     number: int
@@ -58,7 +58,7 @@ class GitHubMilestone(BaseModel):
 class Repository(BaseModel):
     """A GitHub repository."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: int
     name: str
@@ -86,7 +86,7 @@ class Repository(BaseModel):
 class Issue(BaseModel):
     """A GitHub issue."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: int
     number: int
@@ -108,7 +108,7 @@ class Issue(BaseModel):
 class Comment(BaseModel):
     """A comment on an issue or pull request."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: int
     body: str
@@ -121,7 +121,7 @@ class Comment(BaseModel):
 class PullRequest(BaseModel):
     """A GitHub pull request."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: int
     number: int
@@ -193,7 +193,7 @@ class PullRequest(BaseModel):
 class CommitAuthor(BaseModel):
     """Git commit author details."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     name: Optional[str] = None
     email: Optional[str] = None
@@ -203,7 +203,7 @@ class CommitAuthor(BaseModel):
 class CommitDetail(BaseModel):
     """The inner commit object (git metadata)."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     message: str
     author: Optional[CommitAuthor] = None
@@ -213,7 +213,7 @@ class CommitDetail(BaseModel):
 class Commit(BaseModel):
     """A GitHub commit."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     sha: str
     commit: Optional[CommitDetail] = None
@@ -225,7 +225,7 @@ class Commit(BaseModel):
 class CodeSearchResult(BaseModel):
     """A single code search result."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     name: str
     path: str
@@ -239,7 +239,7 @@ class CodeSearchResult(BaseModel):
 class Branch(BaseModel):
     """A Git branch."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     name: str
     sha: str = ""
@@ -249,7 +249,7 @@ class Branch(BaseModel):
 class Release(BaseModel):
     """A GitHub release."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: int
     tag_name: str
@@ -268,7 +268,7 @@ class Release(BaseModel):
 class FileContent(BaseModel):
     """File or directory content from a repository."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     type: str = "file"  # "file", "dir", "symlink", "submodule"
     name: str = ""
@@ -284,7 +284,7 @@ class FileContent(BaseModel):
 class Workflow(BaseModel):
     """A GitHub Actions workflow."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: int
     name: str = ""
@@ -298,7 +298,7 @@ class Workflow(BaseModel):
 class WorkflowRun(BaseModel):
     """A GitHub Actions workflow run."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: int
     name: Optional[str] = None
@@ -318,7 +318,7 @@ class WorkflowRun(BaseModel):
 class GitHubGist(BaseModel):
     """A GitHub Gist."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     description: Optional[str] = None

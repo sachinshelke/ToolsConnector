@@ -11,10 +11,21 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Optional
+from urllib.parse import quote as _url_quote
 
 import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.errors import (
+    ConnectionError as ToolsConnectorConnectionError,
+)
+from toolsconnector.errors import (
+    RateLimitError,
+    TransportError,
+)
+from toolsconnector.errors import (
+    TimeoutError as ToolsConnectorTimeoutError,
+)
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -31,6 +42,7 @@ from ._parsers import (
     parse_file_content,
     parse_gist,
     parse_issue,
+    parse_labels,
     parse_link_header,
     parse_release,
     parse_repo,
@@ -44,6 +56,7 @@ from .types import (
     Commit,
     FileContent,
     GitHubGist,
+    GitHubLabel,
     Issue,
     PullRequest,
     Release,
@@ -51,6 +64,27 @@ from .types import (
     Workflow,
     WorkflowRun,
 )
+
+
+def _p(segment: object) -> str:
+    """Percent-encode a path segment for safe URL-path interpolation.
+
+    GitHub REST paths are built via f-strings like
+    ``f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}"``. Without
+    escaping, a hostile or buggy caller passing ``owner="../admin"``
+    would produce ``/repos/../admin/repo/...`` which httpx then
+    normalizes to ``/admin/repo/...`` — escaping out of the intended
+    URL prefix.
+
+    Wrapping every interpolated segment in ``_p(...)`` percent-encodes
+    ``/`` and other URL-unsafe chars, ensuring the segment can NEVER
+    introduce additional path components. ``safe=""`` means no
+    characters are exempted from encoding — even ``/`` becomes ``%2F``.
+
+    Integers and other non-strings are coerced to ``str`` first.
+    """
+    return _url_quote(str(segment), safe="")
+
 
 logger = logging.getLogger("toolsconnector.github")
 
@@ -113,18 +147,128 @@ class GitHub(BaseConnector):
         params: Optional[dict[str, Any]] = None,
         json: Optional[dict[str, Any]] = None,
     ) -> httpx.Response:
-        """Send an authenticated request and handle errors."""
-        resp = await self._client.request(
-            method,
-            path,
-            params=params,
-            json=json,
-        )
+        """Send an authenticated request and handle errors.
+
+        Wraps httpx transport-layer errors as typed ToolsConnector
+        exceptions so callers catching ``ToolsConnectorError`` see
+        network failures uniformly instead of raw httpx classes.
+
+        Detects GitHub's two rate-limit signals (both arrive as HTTP
+        403, not 429) and raises typed ``RateLimitError`` BEFORE the
+        shared status-code mapping would otherwise classify the 403 as
+        ``PermissionDeniedError``.
+        """
+        try:
+            resp = await self._client.request(
+                method,
+                path,
+                params=params,
+                json=json,
+            )
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"GitHub API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "method": method,
+                    "path": path,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to GitHub API at api.github.com",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"GitHub API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+
         remaining = resp.headers.get("X-RateLimit-Remaining")
         if remaining is not None:
             logger.debug("GitHub rate-limit remaining: %s", remaining)
+
+        # GitHub-specific rate-limit detection. GitHub returns HTTP 403
+        # for BOTH rate-limit cases (primary + secondary), not 429:
+        #   * Primary: X-RateLimit-Remaining: 0 (5,000/hour authenticated).
+        #     X-RateLimit-Reset is an epoch-seconds timestamp.
+        #   * Secondary (abuse detection / search-API throttle): body
+        #     contains "secondary rate limit" or "abuse"; usually
+        #     accompanied by a Retry-After header (seconds).
+        # The shared raise_typed_for_status would map 403 → PermissionDeniedError
+        # losing the rate-limit semantics. Detect FIRST and raise typed
+        # RateLimitError; let everything else fall through to the
+        # standard mapping. Pattern lifted from Linear's HTTP-400 +
+        # RATELIMITED quirk (see linear/connector.py).
+        if resp.status_code == 403:
+            self._maybe_raise_github_rate_limit(resp)
+
         raise_typed_for_status(resp, connector=self.name)
         return resp
+
+    def _maybe_raise_github_rate_limit(self, resp: httpx.Response) -> None:
+        """Inspect a 403 response for GitHub's rate-limit signals; raise
+        typed RateLimitError if detected, otherwise return (caller will
+        fall through to the normal 403 → PermissionDeniedError mapping).
+        """
+        import time as _time
+
+        # Primary rate limit
+        remaining = resp.headers.get("X-RateLimit-Remaining")
+        reset = resp.headers.get("X-RateLimit-Reset")
+        if remaining == "0" and reset:
+            try:
+                retry_after = max(0, int(reset) - int(_time.time()))
+            except ValueError:
+                retry_after = None
+            raise RateLimitError(
+                "GitHub primary rate limit exceeded (5,000 requests/hour for authenticated users).",
+                connector=self.name,
+                retry_after_seconds=retry_after,
+                details={
+                    "limit_type": "primary",
+                    "x_ratelimit_limit": resp.headers.get("X-RateLimit-Limit"),
+                    "x_ratelimit_remaining": remaining,
+                    "x_ratelimit_reset": reset,
+                    "x_ratelimit_used": resp.headers.get("X-RateLimit-Used"),
+                    "x_ratelimit_resource": resp.headers.get("X-RateLimit-Resource"),
+                },
+            )
+
+        # Secondary rate limit. GitHub returns 403 with the phrase
+        # "secondary rate limit" or "abuse detection" in the body, and
+        # often a Retry-After header (in seconds).
+        retry_after_header = resp.headers.get("Retry-After")
+        body_lower = ""
+        try:
+            body_lower = resp.text.lower()
+        except Exception:  # noqa: BLE001 - defensive
+            pass
+        is_secondary = (
+            retry_after_header is not None
+            or "secondary rate limit" in body_lower
+            or "abuse" in body_lower
+        )
+        if is_secondary:
+            try:
+                retry_after = int(retry_after_header) if retry_after_header is not None else None
+            except ValueError:
+                retry_after = None
+            raise RateLimitError(
+                "GitHub secondary rate limit triggered. "
+                "Wait the Retry-After interval before retrying.",
+                connector=self.name,
+                retry_after_seconds=retry_after,
+                details={
+                    "limit_type": "secondary",
+                    "retry_after_header": retry_after_header,
+                },
+            )
 
     def _build_page_state(self, resp: httpx.Response) -> PageState:
         """Build a PageState from GitHub Link header pagination."""
@@ -138,9 +282,36 @@ class GitHub(BaseConnector):
         params: Optional[dict[str, Any]] = None,
         cursor: Optional[str] = None,
     ) -> httpx.Response:
-        """Fetch a page, using a cursor URL when available."""
+        """Fetch a page, using a cursor URL when available.
+
+        The same rate-limit + transport-error handling wraps the
+        cursor-URL path so paginating callers get consistent typed
+        errors regardless of which branch executes.
+        """
         if cursor:
-            resp = await self._client.get(cursor)
+            try:
+                resp = await self._client.get(cursor)
+            except httpx.TimeoutException as e:
+                raise ToolsConnectorTimeoutError(
+                    f"GitHub API request timed out after {self._timeout}s",
+                    connector=self.name,
+                    details={"cursor": cursor, "underlying": type(e).__name__},
+                ) from e
+            except httpx.ConnectError as e:
+                raise ToolsConnectorConnectionError(
+                    "Could not connect to GitHub API at api.github.com",
+                    connector=self.name,
+                    details={"cursor": cursor, "underlying": str(e)},
+                ) from e
+            except httpx.TransportError as e:
+                raise TransportError(
+                    f"GitHub API transport error: {type(e).__name__}",
+                    connector=self.name,
+                    details={"cursor": cursor, "underlying": str(e)},
+                ) from e
+
+            if resp.status_code == 403:
+                self._maybe_raise_github_rate_limit(resp)
             raise_typed_for_status(resp, connector=self.name)
             return resp
         return await self._request("GET", path, params=params)
@@ -170,9 +341,9 @@ class GitHub(BaseConnector):
             Paginated list of Repository objects.
         """
         if org:
-            path = f"/orgs/{org}/repos"
+            path = f"/orgs/{_p(org)}/repos"
         elif user:
-            path = f"/users/{user}/repos"
+            path = f"/users/{_p(user)}/repos"
         else:
             path = "/user/repos"
 
@@ -200,7 +371,7 @@ class GitHub(BaseConnector):
         Returns:
             Repository object.
         """
-        resp = await self._request("GET", f"/repos/{owner}/{repo}")
+        resp = await self._request("GET", f"/repos/{_p(owner)}/{_p(repo)}")
         return parse_repo(resp.json())
 
     @action("Create a new repository", dangerous=True)
@@ -232,7 +403,7 @@ class GitHub(BaseConnector):
         if description:
             payload["description"] = description
 
-        path = f"/orgs/{org}/repos" if org else "/user/repos"
+        path = f"/orgs/{_p(org)}/repos" if org else "/user/repos"
         resp = await self._request("POST", path, json=payload)
         return parse_repo(resp.json())
 
@@ -259,7 +430,7 @@ class GitHub(BaseConnector):
 
         resp = await self._request(
             "POST",
-            f"/repos/{owner}/{repo}/forks",
+            f"/repos/{_p(owner)}/{_p(repo)}/forks",
             json=payload,
         )
         return parse_repo(resp.json())
@@ -293,7 +464,7 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Issue objects.
         """
-        path = f"/repos/{owner}/{repo}/issues"
+        path = f"/repos/{_p(owner)}/{_p(repo)}/issues"
         params: dict[str, Any] = {"per_page": min(limit, 100)}
         if state:
             params["state"] = state
@@ -348,7 +519,7 @@ class GitHub(BaseConnector):
 
         resp = await self._request(
             "POST",
-            f"/repos/{owner}/{repo}/issues",
+            f"/repos/{_p(owner)}/{_p(repo)}/issues",
             json=payload,
         )
         return parse_issue(resp.json())
@@ -372,7 +543,7 @@ class GitHub(BaseConnector):
         """
         resp = await self._request(
             "GET",
-            f"/repos/{owner}/{repo}/issues/{issue_number}",
+            f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}",
         )
         return parse_issue(resp.json())
 
@@ -417,7 +588,7 @@ class GitHub(BaseConnector):
 
         resp = await self._request(
             "PATCH",
-            f"/repos/{owner}/{repo}/issues/{issue_number}",
+            f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}",
             json=payload,
         )
         return parse_issue(resp.json())
@@ -429,7 +600,7 @@ class GitHub(BaseConnector):
         repo: str,
         issue_number: int,
         labels: list[str],
-    ) -> list[dict[str, Any]]:
+    ) -> list[GitHubLabel]:
         """Add labels to an issue (without removing existing ones).
 
         Args:
@@ -439,14 +610,17 @@ class GitHub(BaseConnector):
             labels: List of label names to add.
 
         Returns:
-            List of all labels now on the issue.
+            List of all labels now on the issue (typed ``GitHubLabel``
+            objects — was ``list[dict[str, Any]]`` before 0.3.10).
         """
         resp = await self._request(
             "POST",
-            f"/repos/{owner}/{repo}/issues/{issue_number}/labels",
+            f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}/labels",
             json={"labels": labels},
         )
-        return resp.json()
+        # GitHub returns the full list of labels on the issue, not just
+        # the added ones — preserves "after" state for the caller.
+        return parse_labels(resp.json())
 
     @action("Remove a label from an issue", dangerous=True)
     async def remove_label(
@@ -466,7 +640,7 @@ class GitHub(BaseConnector):
         """
         await self._request(
             "DELETE",
-            f"/repos/{owner}/{repo}/issues/{issue_number}/labels/{label_name}",
+            f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}/labels/{_p(label_name)}",
         )
 
     # ======================================================================
@@ -494,7 +668,7 @@ class GitHub(BaseConnector):
         """
         resp = await self._request(
             "POST",
-            f"/repos/{owner}/{repo}/issues/{issue_number}/comments",
+            f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}/comments",
             json={"body": body},
         )
         return parse_comment(resp.json())
@@ -520,7 +694,7 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Comment objects.
         """
-        path = f"/repos/{owner}/{repo}/issues/{issue_number}/comments"
+        path = f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}/comments"
         resp = await self._get_page(
             path,
             params={"per_page": min(limit, 100)},
@@ -563,7 +737,7 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of PullRequest objects.
         """
-        path = f"/repos/{owner}/{repo}/pulls"
+        path = f"/repos/{_p(owner)}/{_p(repo)}/pulls"
         params: dict[str, Any] = {"per_page": min(limit, 100)}
         if state:
             params["state"] = state
@@ -600,7 +774,7 @@ class GitHub(BaseConnector):
         """
         resp = await self._request(
             "GET",
-            f"/repos/{owner}/{repo}/pulls/{pr_number}",
+            f"/repos/{_p(owner)}/{_p(repo)}/pulls/{_p(pr_number)}",
         )
         return PullRequest.from_api(resp.json())
 
@@ -640,7 +814,7 @@ class GitHub(BaseConnector):
 
         resp = await self._request(
             "POST",
-            f"/repos/{owner}/{repo}/pulls",
+            f"/repos/{_p(owner)}/{_p(repo)}/pulls",
             json=payload,
         )
         return PullRequest.from_api(resp.json())
@@ -676,7 +850,7 @@ class GitHub(BaseConnector):
 
         resp = await self._request(
             "PUT",
-            f"/repos/{owner}/{repo}/pulls/{pr_number}/merge",
+            f"/repos/{_p(owner)}/{_p(repo)}/pulls/{_p(pr_number)}/merge",
             json=payload,
         )
         return resp.json()
@@ -710,7 +884,7 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Commit objects.
         """
-        api_path = f"/repos/{owner}/{repo}/commits"
+        api_path = f"/repos/{_p(owner)}/{_p(repo)}/commits"
         params: dict[str, Any] = {"per_page": min(limit, 100)}
         if sha:
             params["sha"] = sha
@@ -756,7 +930,7 @@ class GitHub(BaseConnector):
             Paginated list of Branch objects.
         """
         resp = await self._get_page(
-            f"/repos/{owner}/{repo}/branches",
+            f"/repos/{_p(owner)}/{_p(repo)}/branches",
             params={"per_page": min(limit, 100)},
             cursor=page,
         )
@@ -790,7 +964,7 @@ class GitHub(BaseConnector):
         """
         resp = await self._request(
             "GET",
-            f"/repos/{owner}/{repo}/branches/{branch}",
+            f"/repos/{_p(owner)}/{_p(repo)}/branches/{_p(branch)}",
         )
         return parse_branch(resp.json())
 
@@ -818,7 +992,7 @@ class GitHub(BaseConnector):
             Paginated list of Release objects.
         """
         resp = await self._get_page(
-            f"/repos/{owner}/{repo}/releases",
+            f"/repos/{_p(owner)}/{_p(repo)}/releases",
             params={"per_page": min(limit, 100)},
             cursor=page,
         )
@@ -850,7 +1024,7 @@ class GitHub(BaseConnector):
         """
         resp = await self._request(
             "GET",
-            f"/repos/{owner}/{repo}/releases/latest",
+            f"/repos/{_p(owner)}/{_p(repo)}/releases/latest",
         )
         return parse_release(resp.json())
 
@@ -896,7 +1070,7 @@ class GitHub(BaseConnector):
 
         resp = await self._request(
             "POST",
-            f"/repos/{owner}/{repo}/releases",
+            f"/repos/{_p(owner)}/{_p(repo)}/releases",
             json=payload,
         )
         return parse_release(resp.json())
@@ -933,7 +1107,7 @@ class GitHub(BaseConnector):
 
         resp = await self._request(
             "GET",
-            f"/repos/{owner}/{repo}/contents/{path}",
+            f"/repos/{_p(owner)}/{_p(repo)}/contents/{path}",
             params=params,
         )
         return parse_file_content(resp.json())
@@ -977,7 +1151,7 @@ class GitHub(BaseConnector):
 
         resp = await self._request(
             "PUT",
-            f"/repos/{owner}/{repo}/contents/{path}",
+            f"/repos/{_p(owner)}/{_p(repo)}/contents/{path}",
             json=payload,
         )
         return resp.json()
@@ -1014,7 +1188,7 @@ class GitHub(BaseConnector):
 
         resp = await self._request(
             "DELETE",
-            f"/repos/{owner}/{repo}/contents/{path}",
+            f"/repos/{_p(owner)}/{_p(repo)}/contents/{path}",
             json=payload,
         )
         return resp.json()
@@ -1043,7 +1217,7 @@ class GitHub(BaseConnector):
             Paginated list of Workflow objects.
         """
         resp = await self._get_page(
-            f"/repos/{owner}/{repo}/actions/workflows",
+            f"/repos/{_p(owner)}/{_p(repo)}/actions/workflows",
             params={"per_page": min(limit, 100)},
             cursor=page,
         )
@@ -1091,9 +1265,9 @@ class GitHub(BaseConnector):
             Paginated list of WorkflowRun objects.
         """
         if workflow_id:
-            path = f"/repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs"
+            path = f"/repos/{_p(owner)}/{_p(repo)}/actions/workflows/{_p(workflow_id)}/runs"
         else:
-            path = f"/repos/{owner}/{repo}/actions/runs"
+            path = f"/repos/{_p(owner)}/{_p(repo)}/actions/runs"
 
         params: dict[str, Any] = {"per_page": min(limit, 100)}
         if branch:
@@ -1142,7 +1316,7 @@ class GitHub(BaseConnector):
 
         await self._request(
             "POST",
-            f"/repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches",
+            f"/repos/{_p(owner)}/{_p(repo)}/actions/workflows/{_p(workflow_id)}/dispatches",
             json=payload,
         )
 
@@ -1377,7 +1551,7 @@ class GitHub(BaseConnector):
             owner: Repository owner.
             repo: Repository name.
         """
-        await self._request("PUT", f"/user/starred/{owner}/{repo}")
+        await self._request("PUT", f"/user/starred/{_p(owner)}/{_p(repo)}")
 
     @action("Unstar a repository", dangerous=True)
     async def unstar_repo(self, owner: str, repo: str) -> None:
@@ -1387,4 +1561,4 @@ class GitHub(BaseConnector):
             owner: Repository owner.
             repo: Repository name.
         """
-        await self._request("DELETE", f"/user/starred/{owner}/{repo}")
+        await self._request("DELETE", f"/user/starred/{_p(owner)}/{_p(repo)}")

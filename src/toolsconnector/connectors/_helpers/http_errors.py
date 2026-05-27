@@ -107,7 +107,15 @@ _TOKEN_EXPIRED_MARKERS = (
 # Patterns mirror the ones the CI's secret-leak grep enforces (see
 # .github/workflows/ci.yml + .pre-commit-config.yaml). Keep them in sync.
 _CREDENTIAL_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"ghp_[A-Za-z0-9]{30,}"),  # GitHub PAT
+    # GitHub token family — full coverage of the prefix taxonomy
+    # documented at docs.github.com/en/authentication/keeping-your-
+    # account-and-data-secure/about-authentication-to-github
+    re.compile(r"ghp_[A-Za-z0-9]{30,}"),  # GitHub PAT (classic)
+    re.compile(r"github_pat_[A-Za-z0-9_]{60,}"),  # GitHub fine-grained PAT
+    re.compile(r"gho_[A-Za-z0-9]{30,}"),  # GitHub OAuth access token
+    re.compile(r"ghs_[A-Za-z0-9]{30,}"),  # GitHub App installation token
+    re.compile(r"ghu_[A-Za-z0-9]{30,}"),  # GitHub App user access token
+    re.compile(r"ghr_[A-Za-z0-9]{30,}"),  # GitHub App refresh token
     re.compile(r"xoxb-[0-9]{8,}-[0-9]{8,}-[A-Za-z0-9]{20,}"),  # Slack bot token
     re.compile(r"AKIA[A-Z0-9]{16}"),  # AWS access key
     re.compile(r"sk-ant-api03-[A-Za-z0-9_-]{80,}"),  # Anthropic key
