@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.10](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.9...v0.3.10) (2026-05-27)
+
+
+### ✨ Features
+
+* **github:** Tier 1 live verification + path-traversal fix + GH rate-limit detection ([#34](https://github.com/sachinshelke/ToolsConnector/issues/34)) ([61dec1e](https://github.com/sachinshelke/ToolsConnector/commit/61dec1eddac07002d9590355b9875d7ea8836d7c))
+
 ## [0.3.9](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.8...v0.3.9) (2026-05-23)
 
 
