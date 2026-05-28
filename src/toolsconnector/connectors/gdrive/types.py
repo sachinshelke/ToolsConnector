@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class DriveUser(BaseModel):
     """A Google Drive user reference."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     display_name: str = ""
     email_address: Optional[str] = None
@@ -28,7 +28,7 @@ class DriveUser(BaseModel):
 class DriveFile(BaseModel):
     """A file or folder in Google Drive."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     name: str
@@ -50,7 +50,7 @@ class DriveFile(BaseModel):
 class FilePermission(BaseModel):
     """A permission entry on a Drive file."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     type: str  # "user", "group", "domain", "anyone"
@@ -63,7 +63,7 @@ class FilePermission(BaseModel):
 class FolderId(BaseModel):
     """Result of creating a folder."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     name: str
@@ -73,7 +73,7 @@ class FolderId(BaseModel):
 class FileUploadResult(BaseModel):
     """Result of uploading a file."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     name: str
@@ -85,7 +85,7 @@ class FileUploadResult(BaseModel):
 class FileDownloadResult(BaseModel):
     """Result of downloading a file (metadata + raw bytes)."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     name: str
@@ -97,7 +97,7 @@ class FileDownloadResult(BaseModel):
 class StorageQuota(BaseModel):
     """Google Drive storage quota information."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     limit: Optional[str] = None
     usage: Optional[str] = None
@@ -108,7 +108,7 @@ class StorageQuota(BaseModel):
 class DriveComment(BaseModel):
     """A comment on a Google Drive file."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     content: str = ""
@@ -124,7 +124,7 @@ class DriveComment(BaseModel):
 class DriveRevision(BaseModel):
     """A revision (version) of a Google Drive file."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     mime_type: Optional[str] = None

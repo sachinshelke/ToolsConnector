@@ -79,6 +79,7 @@ class Linear(BaseConnector):
     display_name = "Linear"
     category = ConnectorCategory.PROJECT_MANAGEMENT
     protocol = ProtocolType.GRAPHQL
+    verification_status = "live"  # Tier 1 — 16/19 + 3 probe-verified 2026-05-23
     base_url = "https://api.linear.app"
     description = (
         "Connect to Linear to search, create, and manage issues, projects, and teams via GraphQL."

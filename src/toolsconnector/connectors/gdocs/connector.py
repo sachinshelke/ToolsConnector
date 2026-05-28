@@ -7,14 +7,36 @@ Expects an OAuth 2.0 access token passed as ``credentials``.
 from __future__ import annotations
 
 from typing import Any, Optional
+from urllib.parse import quote as _url_quote
 
 import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.errors import (
+    ConnectionError as ToolsConnectorConnectionError,
+)
+from toolsconnector.errors import (
+    TimeoutError as ToolsConnectorTimeoutError,
+)
+from toolsconnector.errors import (
+    TransportError,
+)
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 
 from .types import BatchUpdateResponse, Document
+
+
+def _p(segment: object) -> str:
+    """Percent-encode a path segment for safe URL-path interpolation.
+
+    Mirrors GitHub's ``_p()`` helper. Google document IDs are URL-safe
+    by convention (alphanumeric + `_` + `-`) but defense-in-depth
+    escaping prevents a hostile or buggy caller from injecting path
+    separators that would redirect a /documents/{id} request to a
+    different endpoint.
+    """
+    return _url_quote(str(segment), safe="")
 
 
 def _extract_plain_text(body: dict[str, Any]) -> str:
@@ -89,6 +111,7 @@ class GoogleDocs(BaseConnector):
     category = ConnectorCategory.PRODUCTIVITY
     protocol = ProtocolType.REST
     base_url = "https://docs.googleapis.com/v1"
+    verification_status = "live"  # Tier 1 — 5/5 actions live-verified 2026-05-28
     description = "Connect to Google Docs to create and manage documents."
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=60)
 
@@ -107,6 +130,10 @@ class GoogleDocs(BaseConnector):
     async def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
         """Execute an authenticated HTTP request against the Docs API.
 
+        Wraps httpx transport-layer errors as typed ToolsConnector
+        exceptions so callers catching ``ToolsConnectorError`` see
+        network failures uniformly instead of raw httpx classes.
+
         Args:
             method: HTTP method (GET, POST, PUT, DELETE).
             path: API path relative to base_url.
@@ -122,19 +149,47 @@ class GoogleDocs(BaseConnector):
                 409 -> ConflictError; 400/422 -> ValidationError; 429 -> RateLimitError;
                 5xx -> ServerError; other 4xx -> APIError. See
                 toolsconnector.connectors._helpers.raise_typed_for_status for the full mapping.
-
+            ToolsConnectorTimeoutError: On request timeout (default 30s).
+            ToolsConnectorConnectionError: On DNS / TCP / TLS failure.
+            TransportError: On mid-stream protocol failure.
         """
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.request(
-                method,
-                f"{self._base_url}{path}",
-                headers=self._get_headers(),
-                **kwargs,
-            )
-            raise_typed_for_status(response, connector=self.name)
-            if response.status_code == 204 or not response.content:
-                return {}
-            return response.json()
+        url = f"{self._base_url}{path}"
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.request(
+                    method,
+                    url,
+                    headers=self._get_headers(),
+                    **kwargs,
+                )
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"Google Docs API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "method": method,
+                    "path": path,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to Google Docs API at docs.googleapis.com",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"Google Docs API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+
+        raise_typed_for_status(response, connector=self.name)
+        if response.status_code == 204 or not response.content:
+            return {}
+        return response.json()
 
     # ------------------------------------------------------------------
     # Actions
@@ -153,7 +208,7 @@ class GoogleDocs(BaseConnector):
         Returns:
             Document object with metadata (title, revision ID).
         """
-        data = await self._request("GET", f"/documents/{document_id}")
+        data = await self._request("GET", f"/documents/{_p(document_id)}")
         return _parse_document(data, include_body=False)
 
     @action("Create a new document", requires_scope="write", dangerous=True)
@@ -194,7 +249,9 @@ class GoogleDocs(BaseConnector):
         body: dict[str, Any] = {"requests": requests}
         data = await self._request(
             "POST",
-            f"/documents/{document_id}:batchUpdate",
+            # `:batchUpdate` is a Google REST custom-verb suffix, not a sub-resource.
+            # Only the document_id gets percent-encoded.
+            f"/documents/{_p(document_id)}:batchUpdate",
             json=body,
         )
         return BatchUpdateResponse(
@@ -233,7 +290,11 @@ class GoogleDocs(BaseConnector):
                 },
             },
         ]
-        return await self.batch_update(document_id, requests)
+        # Must use the `a`-prefixed async variant — after instance __init__,
+        # the bare `self.batch_update` attribute name is rebound to the
+        # sync wrapper (returns the result directly, not a coroutine).
+        # Awaiting that wrapper's return value would raise TypeError.
+        return await self.abatch_update(document_id, requests)
 
     @action("Extract plain text from a document", requires_scope="read")
     async def get_document_text(self, document_id: str) -> str:
@@ -248,6 +309,6 @@ class GoogleDocs(BaseConnector):
         Returns:
             The plain-text content of the document.
         """
-        data = await self._request("GET", f"/documents/{document_id}")
+        data = await self._request("GET", f"/documents/{_p(document_id)}")
         doc = _parse_document(data, include_body=True)
         return doc.body_text or ""

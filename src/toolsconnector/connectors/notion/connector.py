@@ -281,6 +281,7 @@ class Notion(BaseConnector):
     category = ConnectorCategory.KNOWLEDGE
     protocol = ProtocolType.REST
     base_url = "https://api.notion.com/v1"
+    verification_status = "live"  # Tier 1 — 24/24 actions live-verified 2026-05-14
     description = (
         "Connect to Notion to search, create, and manage pages, databases, and content blocks."
     )

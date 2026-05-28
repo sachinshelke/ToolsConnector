@@ -126,6 +126,11 @@ _CREDENTIAL_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"secret_[A-Za-z0-9]{40,}"),  # Notion integration token (legacy)
     re.compile(r"ntn_[A-Za-z0-9_-]{40,}"),  # Notion integration token (current)
     re.compile(r"lin_api_[A-Za-z0-9]{20,}"),  # Linear personal API key
+    # Google credentials — covers the OAuth 2.0 access tokens issued by
+    # gcloud / OAuth playground (used by all 5 Google Workspace connectors)
+    # plus the API-key format used for unauthenticated API surfaces.
+    re.compile(r"ya29\.[A-Za-z0-9_-]{40,}"),  # Google OAuth 2.0 access token
+    re.compile(r"AIza[A-Za-z0-9_-]{35}"),  # Google API key (Maps, Places, etc.)
     re.compile(r"Bearer\s+[A-Za-z0-9._-]{20,}", re.IGNORECASE),  # Bearer tokens
 )
 

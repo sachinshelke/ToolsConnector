@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class Sheet(BaseModel):
     """A single sheet (tab) within a spreadsheet."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: int
     title: str
@@ -29,7 +29,7 @@ class Sheet(BaseModel):
 class Spreadsheet(BaseModel):
     """A Google Sheets spreadsheet."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     title: str
@@ -40,7 +40,7 @@ class Spreadsheet(BaseModel):
 class SheetValues(BaseModel):
     """Values returned from a range in a spreadsheet."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     range: str = ""
     major_dimension: str = "ROWS"
@@ -50,7 +50,7 @@ class SheetValues(BaseModel):
 class UpdateResult(BaseModel):
     """Result of updating values in a spreadsheet."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     updated_range: str = ""
     updated_rows: int = 0
@@ -61,7 +61,7 @@ class UpdateResult(BaseModel):
 class AppendResult(BaseModel):
     """Result of appending values to a spreadsheet."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     updates: Optional[UpdateResult] = None
 
@@ -69,7 +69,7 @@ class AppendResult(BaseModel):
 class ClearResult(BaseModel):
     """Result of clearing values from a spreadsheet range."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     cleared_range: str = ""
 
@@ -77,6 +77,6 @@ class ClearResult(BaseModel):
 class BatchUpdateResult(BaseModel):
     """Result of a batch value update across multiple ranges."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     responses: list[UpdateResult] = Field(default_factory=list)

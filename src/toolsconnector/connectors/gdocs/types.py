@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class Document(BaseModel):
     """A Google Docs document."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     title: str
@@ -28,7 +28,7 @@ class Document(BaseModel):
 class BatchUpdateResponse(BaseModel):
     """Response from a batch update on a document."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     document_id: str = ""
     replies: list[dict[str, Any]] = Field(default_factory=list)

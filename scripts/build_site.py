@@ -290,6 +290,39 @@ def _esc(text: str) -> str:
                 .replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#39;"))
 
 
+def _verification_badge(status: str) -> tuple[str, str, str]:
+    """Map a verification_status value → (icon, color, tooltip text).
+
+    The badge appears on each connector page next to the category chip
+    and on the catalog index. The CSS for ``.verify-badge`` is injected
+    by ``generate_connector_page`` below.
+
+    Args:
+        status: One of ``"live"`` (Tier 1), ``"doc"`` (Tier 2), or
+            ``"pattern"`` (Tier 3, default).
+
+    Returns:
+        Tuple of ``(icon, css_color, hover_tooltip)``.
+    """
+    return {
+        "live": (
+            "●",  # filled circle — high signal
+            "#10b981",  # green-500
+            "Live verified — exercised end-to-end against the real vendor API with a real token.",
+        ),
+        "doc": (
+            "◐",  # half-filled circle
+            "#f59e0b",  # amber-500
+            "Doc verified — every endpoint, header, body shape, and scope cross-checked against the vendor's canonical docs and respx-pinned in tests.",
+        ),
+        "pattern": (
+            "○",  # empty circle
+            "#94a3b8",  # slate-400
+            "Pattern correct — code matches documented API patterns from public knowledge; no active verification sweep run yet.",
+        ),
+    }.get(status, ("○", "#94a3b8", "Unverified"))
+
+
 def generate_connector_page(name: str, data: dict, package_version: str = "") -> str:
     """Return a fully static, SEO-rich HTML page for one connector.
 
@@ -311,6 +344,15 @@ def generate_connector_page(name: str, data: dict, package_version: str = "") ->
     meta         = data.get("meta", {})
     logo_url     = meta.get("logo", "")
     install_pkg  = name.replace("_connector", "")
+
+    # Verification tier — drives the badge shown next to the category chip.
+    verify_status = data.get("verification_status", "pattern")
+    verify_icon, verify_color, verify_tooltip = _verification_badge(verify_status)
+    verify_label = {
+        "live": "Live verified",
+        "doc": "Doc verified",
+        "pattern": "Pattern correct",
+    }.get(verify_status, "Unverified")
 
     page_title = f"{display_name} Python Connector — {n_actions} Actions | ToolsConnector"
     page_desc  = (
@@ -433,6 +475,13 @@ nav a.btn:hover {{ background: #1d4ed8; text-decoration: none; }}
 .hero-top {{ display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }}
 .badge {{ display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
           font-size:.75rem; font-weight:600; color:#fff; background:{cat_color}; }}
+/* Verification tier badge — see ROADMAP.md. The hover tooltip is the */
+/* full text from _verification_badge; visible label is short.       */
+.verify-badge {{ display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .65rem;
+                 margin-left:.5rem; border-radius:20px; font-size:.75rem; font-weight:600;
+                 border:1.5px solid {verify_color}; color:{verify_color}; background:#fff;
+                 cursor:help; user-select:none; }}
+.verify-badge .dot {{ font-size:1rem; line-height:1; }}
 h1 {{ font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }}
 .desc {{ font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }}
 .install-box {{ background: #0f172a; color: #e2e8f0; border-radius: 10px;
@@ -496,6 +545,7 @@ footer a {{ color: #94a3b8; }}
     {logo_html}
     <div>
       <span class="badge">{_esc(category)}</span>
+      <span class="verify-badge" title="{_esc(verify_tooltip)}" aria-label="Verification status: {_esc(verify_label)}"><span class="dot">{verify_icon}</span>{_esc(verify_label)}</span>
       <h1>{_esc(display_name)} Connector</h1>
     </div>
   </div>
@@ -697,6 +747,10 @@ def main():
             "description": sp.get("description", ""),
             "category": sp.get("category", ""),
             "protocol": sp.get("protocol", "rest"),
+            # Verification tier — drives the badge on the catalog + the
+            # per-connector page. "live" = Tier 1, "doc" = Tier 2,
+            # "pattern" = Tier 3 (default). See ROADMAP.md.
+            "verification_status": sp.get("verification_status", "pattern"),
             "actions": actions,
             "readme_md": readme_md,
             "meta": {

@@ -133,6 +133,17 @@ class ConnectorSpec(BaseModel):
         default_factory=list,
         description="Possible error types this connector can produce.",
     )
+    verification_status: str = Field(
+        default="pattern",
+        description=(
+            "Verification tier — see docs/ROADMAP.md 'Verification tiers'. "
+            "One of: 'live' (Tier 1, live-verified against the real vendor "
+            "API), 'doc' (Tier 2, doc-verified + respx-pinned), 'pattern' "
+            "(Tier 3, code matches documented patterns but not actively "
+            "verified). The website and agents key off this field to "
+            "surface a production-readiness badge."
+        ),
+    )
     metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional connector metadata.",

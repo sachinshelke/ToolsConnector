@@ -104,6 +104,7 @@ class GitHub(BaseConnector):
     display_name = "GitHub"
     category = ConnectorCategory.CODE_PLATFORM
     protocol = ProtocolType.REST
+    verification_status = "live"  # Tier 1 — 33/37 + 4 probe-verified 2026-05-27
     base_url = "https://api.github.com"
     description = (
         "Connect to GitHub — manage repositories, issues, PRs, branches, "

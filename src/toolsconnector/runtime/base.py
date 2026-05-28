@@ -67,6 +67,17 @@ class BaseConnector(ABC):
     protocol: ClassVar[ProtocolType] = ProtocolType.REST
     base_url: ClassVar[Optional[str]] = None
 
+    # Verification tier — see docs/ROADMAP.md "Verification tiers".
+    # Connector authors override this to declare promotion status:
+    #   "live"    — Tier 1, exercised end-to-end against the real vendor
+    #               API with a real token. Production-ready.
+    #   "doc"     — Tier 2, every endpoint/header/body/scope cross-checked
+    #               against vendor canonical docs + respx-pinned.
+    #   "pattern" — Tier 3 (default), code matches documented patterns
+    #               from public knowledge but no active verification.
+    # The website + agents key off this field to surface a badge.
+    verification_status: ClassVar[str] = "pattern"
+
     # Overridden by subclasses to declare auth, rate limits
     _auth_providers_config: ClassVar[list[Any]] = []
     _rate_limit_config: ClassVar[Optional[RateLimitSpec]] = None
@@ -242,6 +253,7 @@ class BaseConnector(ABC):
             base_url=cls.base_url,
             actions=action_specs,
             rate_limits=cls._rate_limit_config or RateLimitSpec(),
+            verification_status=cls.verification_status,
         )
 
     def __repr__(self) -> str:

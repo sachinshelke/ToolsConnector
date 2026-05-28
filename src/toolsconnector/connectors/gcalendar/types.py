@@ -22,7 +22,7 @@ class EventTime(BaseModel):
     or ``date`` (for all-day events), plus an optional ``timeZone``.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     date_time: Optional[str] = None
     date: Optional[str] = None
@@ -32,7 +32,7 @@ class EventTime(BaseModel):
 class EventAttendee(BaseModel):
     """An attendee on a calendar event."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     email: str
     display_name: Optional[str] = None
@@ -47,7 +47,7 @@ class EventAttendee(BaseModel):
 class EventReminder(BaseModel):
     """A reminder override on an event."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     method: str = "popup"  # "email" or "popup"
     minutes: int = 10
@@ -61,7 +61,7 @@ class EventReminder(BaseModel):
 class CalendarEvent(BaseModel):
     """A Google Calendar event."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     summary: str = ""
@@ -87,7 +87,7 @@ class CalendarEvent(BaseModel):
 class Calendar(BaseModel):
     """A Google Calendar."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     summary: str = ""
@@ -104,7 +104,7 @@ class Calendar(BaseModel):
 class EventId(BaseModel):
     """Result of creating or updating an event."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     html_link: Optional[str] = None
@@ -114,7 +114,7 @@ class EventId(BaseModel):
 class FreeBusyCalendar(BaseModel):
     """Free/busy information for a single calendar."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     calendar_id: str = ""
     busy: list[dict[str, str]] = Field(default_factory=list)
@@ -124,7 +124,7 @@ class FreeBusyCalendar(BaseModel):
 class CalendarACL(BaseModel):
     """An access-control rule on a Google Calendar."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     role: str  # "none", "freeBusyReader", "reader", "writer", "owner"
@@ -142,7 +142,7 @@ class CalendarColors(BaseModel):
         {"1": {"background": "#ac725e", "foreground": "#1d1d1d"}}
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     calendar: dict[str, dict[str, str]] = Field(default_factory=dict)
     event: dict[str, dict[str, str]] = Field(default_factory=dict)

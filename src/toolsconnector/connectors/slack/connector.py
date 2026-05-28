@@ -54,6 +54,7 @@ class Slack(BaseConnector):
     category = ConnectorCategory.COMMUNICATION
     protocol = ProtocolType.REST
     base_url = "https://slack.com/api"
+    verification_status = "doc"  # Tier 2 — doc-verified + respx-pinned
     description = (
         "Connect to Slack workspaces — send and manage messages, "
         "channels, users, files, reactions, pins, reminders, and more."

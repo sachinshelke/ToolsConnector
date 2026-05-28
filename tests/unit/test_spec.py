@@ -178,6 +178,86 @@ class TestConnectorSpec:
         assert parsed["name"] == "test"
 
 
+class TestVerificationStatus:
+    """Spec-level + class-level checks for the verification_status field.
+
+    The field drives the website's tier badge and lets agents query the
+    production-readiness of each connector at runtime. Pinning the
+    backfilled values here prevents a refactor from silently demoting
+    a Tier 1 connector back to the default.
+    """
+
+    def test_spec_default_is_pattern(self):
+        """Default for any ConnectorSpec is the Tier 3 'pattern' label."""
+        spec = ConnectorSpec(
+            name="test",
+            display_name="Test",
+            category=ConnectorCategory.CUSTOM,
+            description="Test connector",
+        )
+        assert spec.verification_status == "pattern"
+
+    def test_spec_accepts_three_tier_values(self):
+        """The taxonomy is 'live' (Tier 1) / 'doc' (Tier 2) / 'pattern'."""
+        for status in ("live", "doc", "pattern"):
+            spec = ConnectorSpec(
+                name="test",
+                display_name="Test",
+                category=ConnectorCategory.CUSTOM,
+                description="Test",
+                verification_status=status,
+            )
+            assert spec.verification_status == status
+
+    def test_spec_serializes_verification_status(self):
+        """The field must travel through JSON serialization (consumed by
+        build_site.py + agents reading data.json)."""
+        spec = ConnectorSpec(
+            name="test",
+            display_name="Test",
+            category=ConnectorCategory.CUSTOM,
+            description="Test",
+            verification_status="live",
+        )
+        parsed = json.loads(spec.model_dump_json())
+        assert parsed["verification_status"] == "live"
+
+    def test_tier_1_connectors_marked_live(self):
+        """notion / linear / github are the current Tier 1 set."""
+        from toolsconnector.connectors.github import GitHub
+        from toolsconnector.connectors.linear import Linear
+        from toolsconnector.connectors.notion import Notion
+
+        for cls in (Notion, Linear, GitHub):
+            assert cls.verification_status == "live", f"{cls.__name__} should be Tier 1 (live)"
+            assert cls.get_spec().verification_status == "live"
+
+    def test_tier_2_connectors_marked_doc(self):
+        """gmail / slack received the Tier 2 doc-verification sweep."""
+        from toolsconnector.connectors.gmail import Gmail
+        from toolsconnector.connectors.slack import Slack
+
+        for cls in (Gmail, Slack):
+            assert cls.verification_status == "doc", f"{cls.__name__} should be Tier 2 (doc)"
+            assert cls.get_spec().verification_status == "doc"
+
+    def test_unverified_connectors_default_to_pattern(self):
+        """Connectors that haven't been swept default to 'pattern'.
+
+        gdocs was previously in this set but was promoted to Tier 1
+        on 2026-05-28. Pick connectors that are still Tier 3 so this
+        test remains meaningful — Airtable + Hubspot are good samples
+        that haven't received a verification sweep yet.
+        """
+        from toolsconnector.connectors.airtable import Airtable
+        from toolsconnector.connectors.hubspot import HubSpot
+
+        for cls in (Airtable, HubSpot):
+            assert cls.verification_status == "pattern", (
+                f"{cls.__name__} should default to 'pattern' (Tier 3)"
+            )
+
+
 class TestRateLimitSpec:
     def test_default_rate_limit(self):
         rl = RateLimitSpec()

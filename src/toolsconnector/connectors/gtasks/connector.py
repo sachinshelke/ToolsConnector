@@ -7,15 +7,30 @@ Expects an OAuth 2.0 access token passed as ``credentials``.
 from __future__ import annotations
 
 from typing import Any, Optional
+from urllib.parse import quote as _url_quote
 
 import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.errors import (
+    ConnectionError as ToolsConnectorConnectionError,
+)
+from toolsconnector.errors import (
+    TimeoutError as ToolsConnectorTimeoutError,
+)
+from toolsconnector.errors import (
+    TransportError,
+)
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
 from .types import GoogleTask, TaskList
+
+
+def _p(segment: object) -> str:
+    """Percent-encode a path segment for safe URL-path interpolation."""
+    return _url_quote(str(segment), safe="")
 
 
 def _parse_task_list(data: dict[str, Any]) -> TaskList:
@@ -69,6 +84,11 @@ class GoogleTasks(BaseConnector):
     category = ConnectorCategory.PRODUCTIVITY
     protocol = ProtocolType.REST
     base_url = "https://tasks.googleapis.com/tasks/v1"
+    # Note: doc-verified + respx-pinned + same hardening as the other
+    # Google Workspace connectors; live verification pending the next
+    # session with a `tasks` scope token. Promoted to "live" on that
+    # session's commit.
+    verification_status = "doc"
     description = "Connect to Google Tasks to manage task lists and tasks."
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=60)
 
@@ -85,36 +105,44 @@ class GoogleTasks(BaseConnector):
         return {"Authorization": f"Bearer {self._credentials}"}
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
-        """Execute an authenticated HTTP request against the Tasks API.
+        """Authenticated request returning parsed JSON. Wraps transport errors."""
+        url = f"{self._base_url}{path}"
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.request(
+                    method,
+                    url,
+                    headers=self._get_headers(),
+                    **kwargs,
+                )
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"Google Tasks API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "method": method,
+                    "path": path,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to Google Tasks API",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"Google Tasks API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
 
-        Args:
-            method: HTTP method (GET, POST, PUT, PATCH, DELETE).
-            path: API path relative to base_url.
-            **kwargs: Additional keyword arguments passed to httpx.
-
-        Returns:
-            Parsed JSON response as a dict.
-
-        Raises:
-            toolsconnector.errors.APIError (subclass): On any non-2xx response.
-                Maps to a typed exception by status: 401 -> InvalidCredentialsError
-                or TokenExpiredError; 403 -> PermissionDeniedError; 404 -> NotFoundError;
-                409 -> ConflictError; 400/422 -> ValidationError; 429 -> RateLimitError;
-                5xx -> ServerError; other 4xx -> APIError. See
-                toolsconnector.connectors._helpers.raise_typed_for_status for the full mapping.
-
-        """
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.request(
-                method,
-                f"{self._base_url}{path}",
-                headers=self._get_headers(),
-                **kwargs,
-            )
-            raise_typed_for_status(response, connector=self.name)
-            if response.status_code == 204 or not response.content:
-                return {}
-            return response.json()
+        raise_typed_for_status(response, connector=self.name)
+        if response.status_code == 204 or not response.content:
+            return {}
+        return response.json()
 
     # ------------------------------------------------------------------
     # Actions — Task Lists
@@ -170,7 +198,7 @@ class GoogleTasks(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/users/@me/lists/{task_list_id}",
+            f"/users/@me/lists/{_p(task_list_id)}",
         )
         return _parse_task_list(data)
 
@@ -204,7 +232,7 @@ class GoogleTasks(BaseConnector):
         """
         await self._request(
             "DELETE",
-            f"/users/@me/lists/{task_list_id}",
+            f"/users/@me/lists/{_p(task_list_id)}",
         )
 
     # ------------------------------------------------------------------
@@ -250,7 +278,7 @@ class GoogleTasks(BaseConnector):
 
         data = await self._request(
             "GET",
-            f"/lists/{task_list_id}/tasks",
+            f"/lists/{_p(task_list_id)}/tasks",
             params=params,
         )
 
@@ -278,7 +306,7 @@ class GoogleTasks(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/lists/{task_list_id}/tasks/{task_id}",
+            f"/lists/{_p(task_list_id)}/tasks/{_p(task_id)}",
         )
         return _parse_task(data)
 
@@ -309,7 +337,7 @@ class GoogleTasks(BaseConnector):
 
         data = await self._request(
             "POST",
-            f"/lists/{task_list_id}/tasks",
+            f"/lists/{_p(task_list_id)}/tasks",
             json=body,
         )
         return _parse_task(data)
@@ -351,7 +379,7 @@ class GoogleTasks(BaseConnector):
 
         data = await self._request(
             "PATCH",
-            f"/lists/{task_list_id}/tasks/{task_id}",
+            f"/lists/{_p(task_list_id)}/tasks/{_p(task_id)}",
             json=body,
         )
         return _parse_task(data)
@@ -369,7 +397,7 @@ class GoogleTasks(BaseConnector):
         """
         await self._request(
             "DELETE",
-            f"/lists/{task_list_id}/tasks/{task_id}",
+            f"/lists/{_p(task_list_id)}/tasks/{_p(task_id)}",
         )
 
     @action("Complete a task", requires_scope="write", dangerous=True)
@@ -387,7 +415,7 @@ class GoogleTasks(BaseConnector):
         """
         data = await self._request(
             "PATCH",
-            f"/lists/{task_list_id}/tasks/{task_id}",
+            f"/lists/{_p(task_list_id)}/tasks/{_p(task_id)}",
             json={"status": "completed"},
         )
         return _parse_task(data)
@@ -424,7 +452,7 @@ class GoogleTasks(BaseConnector):
 
         data = await self._request(
             "POST",
-            f"/lists/{task_list_id}/tasks/{task_id}/move",
+            f"/lists/{_p(task_list_id)}/tasks/{_p(task_id)}/move",
             params=params,
         )
         return _parse_task(data)
@@ -446,7 +474,7 @@ class GoogleTasks(BaseConnector):
         """
         data = await self._request(
             "PUT",
-            f"/users/@me/lists/{task_list_id}",
+            f"/users/@me/lists/{_p(task_list_id)}",
             json={"title": title},
         )
         return TaskList(
@@ -467,5 +495,5 @@ class GoogleTasks(BaseConnector):
         """
         await self._request(
             "POST",
-            f"/lists/{task_list_id}/clear",
+            f"/lists/{_p(task_list_id)}/clear",
         )
