@@ -205,6 +205,89 @@ async def test_upload_file_transport_error_wraps_typed(gd: GoogleDrive) -> None:
 
 
 @pytest.mark.asyncio
+async def test_upload_file_convert_to_google_docs_sets_native_mime_type(
+    gd: GoogleDrive,
+) -> None:
+    """upload_file(convert_to_google_docs=True): metadata.mimeType is the Google native type.
+
+    Drive uses ``metadata.mimeType`` as the "store as" target. When the
+    target is a Google native type
+    (``application/vnd.google-apps.document``), Drive interprets the body
+    bytes per their ``Content-Type`` and converts them server-side.
+    """
+    content = base64.b64encode(b"sample docx bytes").decode()
+    docx_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    with respx.mock() as mock:
+        route = mock.post("https://www.googleapis.com/upload/drive/v3/files").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    **_FILE,
+                    "id": "converted-doc",
+                    "mimeType": "application/vnd.google-apps.document",
+                },
+            )
+        )
+        result = await gd.aupload_file(
+            name="report.docx",
+            content_base64=content,
+            mime_type=docx_mime,
+            convert_to_google_docs=True,
+        )
+        assert result.id == "converted-doc"
+        assert result.mime_type == "application/vnd.google-apps.document"
+        body = route.calls.last.request.read()
+        # The metadata JSON part must claim the Google native type
+        assert b'"mimeType": "application/vnd.google-apps.document"' in body
+        # AND the source bytes part must keep its original Content-Type
+        assert docx_mime.encode() in body
+
+
+@pytest.mark.asyncio
+async def test_upload_file_convert_to_google_docs_unsupported_mime_raises(
+    gd: GoogleDrive,
+) -> None:
+    """upload_file: convert_to_google_docs with an unmapped mime_type raises ValueError.
+
+    The conversion map is conservative — only formats Drive officially
+    supports. Asking to convert a PDF or arbitrary binary should fail
+    fast at the client rather than silently uploading raw bytes.
+    """
+    content = base64.b64encode(b"pretend pdf").decode()
+    with pytest.raises(ValueError) as exc_info:
+        await gd.aupload_file(
+            name="report.pdf",
+            content_base64=content,
+            mime_type="application/pdf",
+            convert_to_google_docs=True,
+        )
+    assert "no documented Drive conversion" in str(exc_info.value)
+    assert "application/pdf" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_upload_file_convert_to_google_docs_default_false_preserves_mime(
+    gd: GoogleDrive,
+) -> None:
+    """upload_file: default convert_to_google_docs=False preserves source mime_type as storage type."""
+    content = base64.b64encode(b"plain text").decode()
+    with respx.mock() as mock:
+        route = mock.post("https://www.googleapis.com/upload/drive/v3/files").mock(
+            return_value=httpx.Response(200, json={**_FILE, "id": "raw-upload"})
+        )
+        await gd.aupload_file(
+            name="r.txt",
+            content_base64=content,
+            mime_type="text/plain",
+        )
+        body = route.calls.last.request.read()
+        # No conversion: metadata.mimeType stays as source
+        assert b'"mimeType": "text/plain"' in body
+        # And no Google-native marker appears
+        assert b"application/vnd.google-apps." not in body
+
+
+@pytest.mark.asyncio
 async def test_share_file_anyone_type_omits_email_address(gd: GoogleDrive) -> None:
     """Regression test for the production bug fixed in 0.3.11.
 
@@ -755,3 +838,65 @@ async def test_concurrent_get_files(gd: GoogleDrive) -> None:
         )
         assert results[0].id == "a"
         assert results[1].id == "b"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_get_files_high_fanout_10(gd: GoogleDrive) -> None:
+    """10-way concurrent fanout — exercises shared httpx-client + header
+    construction under load, and confirms no per-call state leaks
+    between coroutines.
+
+    A 2-way test (above) catches the obvious "global mutable buffer"
+    bug class; bumping to 10 exercises the asyncio scheduler enough to
+    surface ordering-dependent shared-state bugs (e.g., a header dict
+    being mutated after enqueue but before dispatch).
+    """
+    ids = [f"file-{i}" for i in range(10)]
+    with respx.mock(base_url="https://www.googleapis.com/drive/v3") as mock:
+        for fid in ids:
+            mock.get(f"/files/{fid}").mock(
+                return_value=httpx.Response(200, json={**_FILE, "id": fid})
+            )
+        results = await asyncio.gather(*(gd.aget_file(file_id=fid) for fid in ids))
+        # Each request must return its OWN id — verifies no cross-coroutine
+        # response mixup.
+        for expected_id, file in zip(ids, results):
+            assert file.id == expected_id
+
+
+@pytest.mark.asyncio
+async def test_concurrent_mixed_actions_5_way(gd: GoogleDrive) -> None:
+    """5 distinct actions in flight concurrently — get_file, list_files,
+    get_storage_quota, list_comments, list_revisions. Verifies action
+    routing inside the connector class doesn't share scratch state
+    between dispatched coroutines.
+    """
+    with respx.mock(base_url="https://www.googleapis.com/drive/v3") as mock:
+        mock.get("/files/x").mock(return_value=httpx.Response(200, json={**_FILE, "id": "x"}))
+        mock.get("/files", params={"pageSize": "10"}).mock(
+            return_value=httpx.Response(200, json={"files": [_FILE], "nextPageToken": None})
+        )
+        mock.get("/about", params={"fields": "storageQuota"}).mock(
+            return_value=httpx.Response(
+                200, json={"storageQuota": {"limit": "100", "usage": "10", "usageInDrive": "10"}}
+            )
+        )
+        mock.get("/files/x/comments").mock(
+            return_value=httpx.Response(200, json={"comments": [_COMMENT]})
+        )
+        mock.get("/files/x/revisions").mock(
+            return_value=httpx.Response(200, json={"revisions": [_REV]})
+        )
+        results = await asyncio.gather(
+            gd.aget_file(file_id="x"),
+            gd.alist_files(page_size=10),
+            gd.aget_storage_quota(),
+            gd.alist_comments(file_id="x"),
+            gd.alist_revisions(file_id="x"),
+        )
+        # Each result must have the right shape for its action — no swaps
+        assert results[0].id == "x"  # DriveFile
+        assert len(results[1].items) == 1  # PaginatedList
+        assert results[2].limit == "100"  # StorageQuota (string per Drive API)
+        assert len(results[3].items) == 1  # PaginatedList[Comment]
+        assert len(results[4].items) == 1  # PaginatedList[Revision]

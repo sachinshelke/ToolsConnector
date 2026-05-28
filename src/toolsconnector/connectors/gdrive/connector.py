@@ -52,6 +52,38 @@ _FILE_FIELDS = (
 )
 
 
+# Source MIME type → Google Workspace native MIME type. When
+# ``upload_file(convert_to_google_docs=True)`` is called, Drive performs
+# the conversion server-side based on the metadata ``mimeType`` we set.
+# The file bytes part keeps its source Content-Type so Drive knows how
+# to interpret them.
+#
+# Coverage is conservative — only formats Drive officially supports
+# conversion for. Adding new entries should be cross-checked against
+# https://developers.google.com/drive/api/guides/manage-uploads#import_to_google_docs_types
+_GOOGLE_NATIVE_CONVERSION_MAP: dict[str, str] = {
+    # Word-equivalent → Docs
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "application/vnd.google-apps.document",  # .docx
+    "application/msword": "application/vnd.google-apps.document",  # .doc
+    "application/vnd.oasis.opendocument.text": "application/vnd.google-apps.document",  # .odt
+    "application/rtf": "application/vnd.google-apps.document",
+    "text/rtf": "application/vnd.google-apps.document",
+    "text/plain": "application/vnd.google-apps.document",
+    "text/html": "application/vnd.google-apps.document",
+    "text/markdown": "application/vnd.google-apps.document",
+    # Excel-equivalent → Sheets
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "application/vnd.google-apps.spreadsheet",  # .xlsx
+    "application/vnd.ms-excel": "application/vnd.google-apps.spreadsheet",  # .xls
+    "application/vnd.oasis.opendocument.spreadsheet": "application/vnd.google-apps.spreadsheet",  # .ods
+    "text/csv": "application/vnd.google-apps.spreadsheet",
+    "text/tab-separated-values": "application/vnd.google-apps.spreadsheet",
+    # PowerPoint-equivalent → Slides
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "application/vnd.google-apps.presentation",  # .pptx
+    "application/vnd.ms-powerpoint": "application/vnd.google-apps.presentation",  # .ppt
+    "application/vnd.oasis.opendocument.presentation": "application/vnd.google-apps.presentation",  # .odp
+}
+
+
 def _parse_file(data: dict[str, Any]) -> DriveFile:
     """Parse a Drive API file resource into a DriveFile model.
 
@@ -278,6 +310,7 @@ class GoogleDrive(BaseConnector):
         mime_type: str = "application/octet-stream",
         parent_folder_id: Optional[str] = None,
         description: Optional[str] = None,
+        convert_to_google_docs: bool = False,
     ) -> FileUploadResult:
         """Upload a file to Google Drive using multipart upload.
 
@@ -286,16 +319,53 @@ class GoogleDrive(BaseConnector):
         Args:
             name: The filename for the uploaded file.
             content_base64: Base64-encoded file content.
-            mime_type: MIME type of the file.
+            mime_type: MIME type of the source bytes (e.g.
+                ``application/vnd.openxmlformats-officedocument.wordprocessingml.document``
+                for a .docx). When ``convert_to_google_docs`` is False
+                this is also what Drive stores the file as.
             parent_folder_id: Optional parent folder ID.
             description: Optional file description.
+            convert_to_google_docs: If True, ask Drive to convert the
+                uploaded file to a native Google Workspace format
+                (Docs / Sheets / Slides) based on the source
+                ``mime_type``. The target format is derived from a
+                conservative mapping (see ``_GOOGLE_NATIVE_CONVERSION_MAP``):
+                Word-like → Docs, Excel-like + CSV → Sheets,
+                PowerPoint-like → Slides. Raises ``ValueError`` if the
+                source ``mime_type`` has no documented conversion target.
+                Conversion still happens server-side; Drive will reject
+                with HTTP 400 if the bytes don't actually parse as the
+                claimed source format.
 
         Returns:
-            FileUploadResult with the created file's metadata.
+            FileUploadResult with the created file's metadata. When
+            converted, ``mime_type`` in the result reflects the Google
+            native type (e.g. ``application/vnd.google-apps.document``).
+
+        Raises:
+            ValueError: ``convert_to_google_docs`` was set but ``mime_type``
+                has no documented Drive conversion target.
         """
         import json as json_mod
 
-        metadata: dict[str, Any] = {"name": name, "mimeType": mime_type}
+        # Decide what to tell Drive to store the file as. Default: the
+        # source mime_type (no conversion). With convert_to_google_docs,
+        # this becomes the matching Google native type — Drive then
+        # auto-converts based on the source Content-Type sent in the
+        # multipart body.
+        target_storage_mime = mime_type
+        if convert_to_google_docs:
+            mapped = _GOOGLE_NATIVE_CONVERSION_MAP.get(mime_type)
+            if mapped is None:
+                raise ValueError(
+                    f"convert_to_google_docs=True but no documented Drive "
+                    f"conversion exists for source mime_type={mime_type!r}. "
+                    f"Supported source types: "
+                    f"{sorted(_GOOGLE_NATIVE_CONVERSION_MAP.keys())}"
+                )
+            target_storage_mime = mapped
+
+        metadata: dict[str, Any] = {"name": name, "mimeType": target_storage_mime}
         if parent_folder_id:
             metadata["parents"] = [parent_folder_id]
         if description:

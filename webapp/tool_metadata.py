@@ -44,20 +44,52 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_GOOG}/drive_2020q4_32dp.png",
         "color": "#4285F4",
         "tagline": "Store, share, and collaborate on files",
-        "overview": "The Google Drive API provides programmatic access to Google Drive files and folders. Upload, download, search, and organize files. Manage sharing permissions and collaborate with comments. Export Google Docs/Sheets/Slides to PDF, DOCX, and other formats.",
+        "overview": (
+            "Full coverage of the Google Drive REST v3 API — file CRUD (upload "
+            "with metadata, get, download, update, copy, move, delete), folder "
+            "management, search via the Drive query DSL, sharing CRUD "
+            "(`anyone` / `user` / `group` / `domain` permission types), comment "
+            "threads, revision history, storage-quota lookup, trash management, "
+            "and Google Workspace native-file export. Tier 1 — 20 of 22 actions "
+            "live-verified against drive.googleapis.com (2026-05-28); the 2 "
+            "probe-skipped (`export_file`, `empty_trash`) would require setup "
+            "side-effects on the user's real Drive. BYOK: users supply their own "
+            "OAuth bearer token or service-account access token."
+        ),
         "use_cases": [
-            "File backup and sync",
+            "File backup and sync workflows",
             "Document management systems",
-            "Automated report generation",
-            "File sharing workflows",
-            "Content migration",
+            "Automated report generation + delivery",
+            "File sharing automation (public links, per-user/group/domain ACLs)",
+            "Content migration across Workspaces",
+            "Agent file-staging area (write a document, share it, attach to a Calendar event)",
         ],
-        "auth_methods": ["OAuth 2.0", "Service Account"],
-        "pricing": "Free (15GB), Google Workspace plans for more",
-        "rate_limit": "12,000 requests/minute per project",
-        "prerequisites": ["Google Cloud project with Drive API enabled", "OAuth 2.0 credentials"],
-        "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
-        "get_credentials_steps": "Google Cloud Console > APIs & Services > Credentials",
+        # ToolsConnector is BYOK. We accept any Google Bearer access token —
+        # OAuth 2.0 user tokens (`ya29.*`), service-account access tokens
+        # (obtained externally via `google-auth`), and Workload Identity
+        # Federation tokens. We do not run the OAuth flow ourselves; that's
+        # on the roadmap for the [auth] extra.
+        "auth_methods": [
+            "OAuth 2.0 Bearer Access Token (ya29.*)",
+            "Service Account Access Token (obtained externally)",
+        ],
+        "pricing": "Free (15 GB), Google Workspace plans for more",
+        "rate_limit": "1,000 requests / 100s per user, 10,000 / 100s per project (default project quota)",
+        "prerequisites": [
+            "Google Cloud project with Drive API enabled",
+            "OAuth 2.0 client credentials OR a service account with domain-wide delegation",
+            "Access token with scope `https://www.googleapis.com/auth/drive` (or the more restrictive `drive.file` / `drive.metadata.readonly` for read-only use)",
+        ],
+        "get_credentials_url": "https://developers.google.com/oauthplayground/",
+        "get_credentials_steps": (
+            "Fastest path for testing: OAuth 2.0 Playground "
+            "(developers.google.com/oauthplayground/) > Step 1 select "
+            "`https://www.googleapis.com/auth/drive` > Authorize APIs > "
+            "exchange code for token > copy the `access_token` (ya29.*) > "
+            "expires in 1 hour. For production: Google Cloud Console > "
+            "APIs & Services > Credentials > Create OAuth 2.0 Client ID "
+            "(your app handles the authorization-code flow and refresh tokens)."
+        ),
     },
     "gcalendar": {
         "company": "Google",
@@ -67,20 +99,46 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_GOOG}/calendar_2020q4_32dp.png",
         "color": "#4285F4",
         "tagline": "Schedule events, manage calendars, check availability",
-        "overview": "The Google Calendar API lets you create, modify, and query calendar events. Check free/busy status for scheduling, manage calendar sharing and access control, and build scheduling automation for teams and organizations.",
+        "overview": (
+            "Full coverage of the Google Calendar REST v3 API — event "
+            "lifecycle (create/get/list/update/delete + RFC 5545 RRULE "
+            "recurrence + natural-language quick-add + move between "
+            "calendars + recurring-event instance enumeration), calendar "
+            "CRUD, ACL CRUD (sharing rules), free/busy lookup, color "
+            "enumeration. Tier 1 — 17 of 20 actions live-verified against "
+            "calendar.googleapis.com (2026-05-28); the 3 probe-skipped "
+            "(`subscribe_calendar`, `unsubscribe_calendar`, `clear_calendar`) "
+            "would alter the user's persistent calendarList or erase real "
+            "events. BYOK access tokens."
+        ),
         "use_cases": [
-            "Meeting scheduling automation",
-            "Availability checking",
+            "Meeting scheduling automation (with free/busy pre-check)",
+            "Spreadsheet-driven event creation (gsheets → gcalendar pipeline)",
             "Calendar sync across platforms",
-            "Event reminders and notifications",
-            "Resource booking systems",
+            "Resource booking systems (rooms, equipment) with ACL CRUD",
+            "Recurring event series management",
+            "Agent meeting prep: list today's events → generate Google Docs agenda",
         ],
-        "auth_methods": ["OAuth 2.0", "Service Account"],
+        "auth_methods": [
+            "OAuth 2.0 Bearer Access Token (ya29.*)",
+            "Service Account Access Token (obtained externally)",
+        ],
         "pricing": "Free with Google account",
-        "rate_limit": "500 requests/100 seconds per user",
-        "prerequisites": ["Google Cloud project with Calendar API enabled"],
-        "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
-        "get_credentials_steps": "Google Cloud Console > Credentials",
+        "rate_limit": "1,000,000 queries/day default project quota; 500 queries/100s per user",
+        "prerequisites": [
+            "Google Cloud project with Calendar API enabled",
+            "OAuth 2.0 client credentials OR service account",
+            "Access token with scope `https://www.googleapis.com/auth/calendar` (or `calendar.events.readonly` for read-only use)",
+        ],
+        "get_credentials_url": "https://developers.google.com/oauthplayground/",
+        "get_credentials_steps": (
+            "Fastest path for testing: OAuth 2.0 Playground "
+            "(developers.google.com/oauthplayground/) > Step 1 select "
+            "`https://www.googleapis.com/auth/calendar` > Authorize APIs > "
+            "exchange code for token > copy the `access_token` (ya29.*) > "
+            "expires in 1 hour. For production: Google Cloud Console > "
+            "APIs & Services > Credentials > Create OAuth 2.0 Client ID."
+        ),
     },
     "gsheets": {
         "company": "Google",
@@ -90,20 +148,44 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_GOOG}/sheets_2020q4_32dp.png",
         "color": "#34A853",
         "tagline": "Read, write, and format spreadsheet data",
-        "overview": "The Google Sheets API provides full access to spreadsheet data and structure. Read and write cell values, create and format sheets, apply batch operations, and use Sheets as a lightweight database or reporting layer for your applications.",
+        "overview": (
+            "Full coverage of the Google Sheets REST v4 API — values CRUD "
+            "via A1 ranges (single + batch get/update/append/clear), "
+            "spreadsheet + sheet metadata, tab management (add/rename/copy/"
+            "delete), cell merging, auto-resize, and the generic "
+            "`batchUpdateSpreadsheet` escape hatch for any structural change. "
+            "Tier 1 — all 16 of 16 actions live-verified against "
+            "sheets.googleapis.com (2026-05-28) including unicode `你好 🚀` "
+            "round-trip through values endpoints. BYOK access tokens."
+        ),
         "use_cases": [
-            "Data entry and extraction",
-            "Automated reporting",
-            "Spreadsheet as database",
-            "Data pipelines and ETL",
+            "Spreadsheet as lightweight database",
+            "ETL targets — write pipeline output to a structured sheet",
+            "Automated reporting with batch value updates",
             "Budget and inventory tracking",
+            "Agent-driven analytics dashboards",
+            "Calendar/event seed lists for gcalendar pipelines",
         ],
-        "auth_methods": ["OAuth 2.0", "Service Account"],
+        "auth_methods": [
+            "OAuth 2.0 Bearer Access Token (ya29.*)",
+            "Service Account Access Token (obtained externally)",
+        ],
         "pricing": "Free with Google account",
-        "rate_limit": "300 requests/minute per project",
-        "prerequisites": ["Google Cloud project with Sheets API enabled"],
-        "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
-        "get_credentials_steps": "Google Cloud Console > Credentials",
+        "rate_limit": "300 requests/minute per project, 60/minute per user (read & write each)",
+        "prerequisites": [
+            "Google Cloud project with Sheets API enabled",
+            "OAuth 2.0 client credentials OR service account",
+            "Access token with scope `https://www.googleapis.com/auth/spreadsheets` (or `.readonly` for read-only use)",
+        ],
+        "get_credentials_url": "https://developers.google.com/oauthplayground/",
+        "get_credentials_steps": (
+            "Fastest path for testing: OAuth 2.0 Playground "
+            "(developers.google.com/oauthplayground/) > Step 1 select "
+            "`https://www.googleapis.com/auth/spreadsheets` > Authorize APIs > "
+            "exchange code for token > copy the `access_token` (ya29.*) > "
+            "expires in 1 hour. For production: Google Cloud Console > "
+            "APIs & Services > Credentials > Create OAuth 2.0 Client ID."
+        ),
     },
     "gdocs": {
         "company": "Google",
@@ -113,19 +195,43 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_GOOG}/docs_2020q4_32dp.png",
         "color": "#4285F4",
         "tagline": "Create and edit documents programmatically",
-        "overview": "The Google Docs API lets you create and modify Google Docs programmatically. Insert text, apply formatting, and extract content. Use it for document generation, template-based reports, and content management workflows.",
+        "overview": (
+            "Google Docs REST v1 API — create documents, insert text, run "
+            "batch updates (the underlying primitive for any structural "
+            "edit), and extract plain text. Tier 1 — all 5 of 5 actions "
+            "live-verified against docs.googleapis.com (2026-05-28) with "
+            "unicode round-trip. Live testing also fixed a production bug "
+            "(`insert_text` was awaiting the sync wrapper instead of "
+            "`abatch_update`). BYOK access tokens."
+        ),
         "use_cases": [
-            "Automated document generation",
-            "Template-based reporting",
-            "Content extraction",
-            "Contract and proposal creation",
+            "Automated document generation from templates",
+            "Meeting prep — turn calendar events into agenda docs",
+            "Template-based reporting (proposals, contracts, briefs)",
+            "Content extraction from Google Docs into downstream systems",
+            "Agent scratch-pads for long-form output",
         ],
-        "auth_methods": ["OAuth 2.0", "Service Account"],
+        "auth_methods": [
+            "OAuth 2.0 Bearer Access Token (ya29.*)",
+            "Service Account Access Token (obtained externally)",
+        ],
         "pricing": "Free with Google account",
-        "rate_limit": "300 requests/minute per project",
-        "prerequisites": ["Google Cloud project with Docs API enabled"],
-        "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
-        "get_credentials_steps": "Google Cloud Console > Credentials",
+        "rate_limit": "300 requests/minute per project, 60/minute per user",
+        "prerequisites": [
+            "Google Cloud project with Docs API enabled",
+            "OAuth 2.0 client credentials OR service account",
+            "Access token with scope `https://www.googleapis.com/auth/documents` (plus `drive` for create/delete)",
+        ],
+        "get_credentials_url": "https://developers.google.com/oauthplayground/",
+        "get_credentials_steps": (
+            "Fastest path for testing: OAuth 2.0 Playground "
+            "(developers.google.com/oauthplayground/) > Step 1 select "
+            "`https://www.googleapis.com/auth/documents` AND "
+            "`https://www.googleapis.com/auth/drive.file` > Authorize APIs > "
+            "exchange code for token > copy the `access_token` (ya29.*) > "
+            "expires in 1 hour. For production: Google Cloud Console > "
+            "APIs & Services > Credentials > Create OAuth 2.0 Client ID."
+        ),
     },
     "gtasks": {
         "company": "Google",
@@ -135,19 +241,42 @@ TOOL_META: dict[str, dict] = {
         "logo": f"{_GOOG}/tasks_2021_32dp.png",
         "color": "#4285F4",
         "tagline": "Manage task lists and to-do items",
-        "overview": "The Google Tasks API provides access to task lists and individual tasks. Create, update, complete, and organize tasks programmatically. Integrates naturally with Google Calendar and Gmail for productivity workflows.",
+        "overview": (
+            "Google Tasks REST API — task list CRUD, task CRUD, complete + "
+            "clear-completed semantics, task move (reparent + reorder), and "
+            "ordered-position semantics within a list. Tier 2 — all 13 "
+            "actions doc-verified + respx-pinned; live verification queued, "
+            "requires an OAuth token with the `tasks` scope. Same Phase A "
+            "hardening as the live-verified Google Workspace siblings "
+            '(transport wrap, `_p()` percent-encoding, `extra="ignore"`).'
+        ),
         "use_cases": [
-            "Task automation",
-            "Project tracking",
-            "To-do list sync",
-            "Workflow triggers on task completion",
+            "To-do list sync across personal devices",
+            "Workflow triggers on task completion (poll + react)",
+            "Project tracking with parent/child task hierarchies",
+            "Doc-driven task creation (parse action items from gdocs)",
+            "Calendar-integrated daily-planning pipelines",
         ],
-        "auth_methods": ["OAuth 2.0"],
+        "auth_methods": [
+            "OAuth 2.0 Bearer Access Token (ya29.*)",
+            "Service Account Access Token (obtained externally)",
+        ],
         "pricing": "Free with Google account",
-        "rate_limit": "300 requests/minute per project",
-        "prerequisites": ["Google Cloud project with Tasks API enabled"],
-        "get_credentials_url": "https://console.cloud.google.com/apis/credentials",
-        "get_credentials_steps": "Google Cloud Console > Credentials",
+        "rate_limit": "50,000 requests/day default project quota",
+        "prerequisites": [
+            "Google Cloud project with Tasks API enabled",
+            "OAuth 2.0 client credentials",
+            "Access token with scope `https://www.googleapis.com/auth/tasks` (or `.readonly` for read-only use)",
+        ],
+        "get_credentials_url": "https://developers.google.com/oauthplayground/",
+        "get_credentials_steps": (
+            "Fastest path for testing: OAuth 2.0 Playground "
+            "(developers.google.com/oauthplayground/) > Step 1 select "
+            "`https://www.googleapis.com/auth/tasks` > Authorize APIs > "
+            "exchange code for token > copy the `access_token` (ya29.*) > "
+            "expires in 1 hour. For production: Google Cloud Console > "
+            "APIs & Services > Credentials > Create OAuth 2.0 Client ID."
+        ),
     },
     "slack": {
         "company": "Salesforce (Slack Technologies)",

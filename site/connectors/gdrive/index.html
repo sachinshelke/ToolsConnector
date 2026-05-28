@@ -227,7 +227,7 @@ footer a { color: #94a3b8; }
 <tr><td><code>search_files</code></td><td class="desc">Search files in Google Drive</td><td><span class="req">query</span> &nbsp;<span class="opt">[page_size, page_token]</span></td><td><code>PaginatedList[DriveFile]</code></td></tr>
 <tr><td><code>share_file ⚠</code></td><td class="desc">Share a file with a user or group</td><td><span class="req">file_id, email</span> &nbsp;<span class="opt">[role, type, send_notification, message]</span></td><td><code>FilePermission</code></td></tr>
 <tr><td><code>update_file</code></td><td class="desc">Update file metadata</td><td><span class="req">file_id</span> &nbsp;<span class="opt">[name, description, starred]</span></td><td><code>DriveFile</code></td></tr>
-<tr><td><code>upload_file</code></td><td class="desc">Upload a file to Google Drive</td><td><span class="req">name, content_base64</span> &nbsp;<span class="opt">[mime_type, parent_folder_id, description]</span></td><td><code>FileUploadResult</code></td></tr>
+<tr><td><code>upload_file</code></td><td class="desc">Upload a file to Google Drive</td><td><span class="req">name, content_base64</span> &nbsp;<span class="opt">[mime_type, parent_folder_id, description, convert_to_google_docs]</span></td><td><code>FileUploadResult</code></td></tr>
       </tbody>
     </table>
   </div>
