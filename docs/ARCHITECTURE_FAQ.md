@@ -303,3 +303,27 @@ TypeScript SDK:  1.0.0, 1.0.1, 1.1.0
 - `match` statements (structural pattern matching)
 - `X | Y` union syntax at runtime in Pydantic fields (we use `Optional[X]` instead)
 - `ParamSpec` for advanced decorator typing
+
+---
+
+## 16. Why a verification-tier system (live / doc / pattern)?
+
+**Decision:** Every connector carries a `verification_status: ClassVar[str]` — one of `"live"`, `"doc"`, or `"pattern"` — that propagates through `ConnectorSpec` into `site/data.json` and renders as a color-coded badge on the catalog site.
+
+| Tier | Value | Criteria |
+|---|---|---|
+| **Tier 1 — Live verified** | `"live"` | Doc-verified AND exercised end-to-end against the real vendor API with a real token |
+| **Tier 2 — Doc verified** | `"doc"` | Every endpoint / header / scope / body cross-checked against canonical vendor docs + respx-mocked |
+| **Tier 3 — Pattern correct** | `"pattern"` | Code matches documented API patterns from public knowledge, but no active doc or live verification has happened |
+
+**Why:**
+- **Honest quality claims.** "Verified" has to mean something specific. Shipping 68 connectors and calling them all equally trustworthy would be dishonest — most are pattern-correct, a handful are live-verified. The tier makes the difference legible instead of implied.
+- **Agent-consumable.** The status is a string enum on the spec, so an agent can `kit.list_tools()[0]["verification_status"]` and filter for production-ready connectors at runtime — not just a human-facing docs note.
+- **Drives the roadmap.** The progression Tier 3 → 2 → 1 is the unit of work for each connector-hardening pass. The CHANGELOG records which connectors moved tiers in each release.
+- **Default is honest, not flattering.** New connectors inherit `"pattern"` — the *weakest* claim — so a connector can only earn a stronger tier by explicit promotion, never by omission.
+
+**Why live verification matters (not just respx):** respx mocks assert the connector sends what *we think* the API wants — they can't catch a wrong assumption baked into both the connector and its mock. Live runs against the real API have surfaced bugs respx silently accepted: `gdocs.insert_text` awaiting a sync wrapper, `gdrive.upload_file`'s spurious `Content-Transfer-Encoding`, `gtasks.update_task_list` using PUT where Google demands PATCH. The `"live"` tier certifies that this class of bug was checked for, not just the request-shape.
+
+**Why not a richer scheme (percentages, per-action flags)?** A 3-value enum is the smallest thing that captures the meaningful distinction (real API hit vs. docs only vs. neither). Per-action verification detail lives in each connector's README "Verification Status" table; the spec-level field stays coarse so it's cheap to query and render.
+
+**Reference:** see `ROADMAP.md` → "Verification tiers" for the live registry of which connector sits where.
