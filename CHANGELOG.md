@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.11](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.10...v0.3.11) (2026-05-29)
+
+
+### ✨ Features
+
+* promote Google Workspace suite to Tier 1 — 5 connectors live-verified + badge infra ([#37](https://github.com/sachinshelke/ToolsConnector/issues/37)) ([96247c9](https://github.com/sachinshelke/ToolsConnector/commit/96247c9f81114f4677d87d4f9b66578b10358e08))
+
 ## [0.3.10](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.9...v0.3.10) (2026-05-27)
 
 
