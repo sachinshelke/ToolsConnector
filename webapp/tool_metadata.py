@@ -244,11 +244,15 @@ TOOL_META: dict[str, dict] = {
         "overview": (
             "Google Tasks REST API — task list CRUD, task CRUD, complete + "
             "clear-completed semantics, task move (reparent + reorder), and "
-            "ordered-position semantics within a list. Tier 2 — all 13 "
-            "actions doc-verified + respx-pinned; live verification queued, "
-            "requires an OAuth token with the `tasks` scope. Same Phase A "
-            "hardening as the live-verified Google Workspace siblings "
-            '(transport wrap, `_p()` percent-encoding, `extra="ignore"`).'
+            "ordered-position semantics within a list. Tier 1 — all 13 "
+            "actions live-verified against tasks.googleapis.com "
+            "(2026-05-29). Live testing surfaced + fixed 1 production "
+            "bug: update_task_list was using HTTP PUT with a title-only "
+            "body, which Google's tasklists.update endpoint rejects with "
+            "HTTP 400 because it expects a complete TaskList resource; "
+            "fixed by switching to PATCH which accepts partial bodies. "
+            "Same Phase A hardening as the rest of the Google Workspace "
+            'batch (transport wrap, `_p()` percent-encoding, `extra="ignore"`).'
         ),
         "use_cases": [
             "To-do list sync across personal devices",

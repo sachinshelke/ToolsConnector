@@ -105,20 +105,31 @@ async def test_delete_task_list(gt: GoogleTasks) -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_task_list(gt: GoogleTasks) -> None:
-    """update_task_list: PUT /users/@me/lists/{id} with new title.
+async def test_update_task_list_uses_patch_not_put(gt: GoogleTasks) -> None:
+    """update_task_list: PATCH /users/@me/lists/{id} with new title.
 
-    Note: PUT semantics, not PATCH — the Tasks API expects a full resource
-    body even though title is the only mutable field on a task list.
+    Regression test for the production bug found by live verification
+    on 2026-05-29. The prior implementation used PUT with a
+    title-only body, which Google rejects with HTTP 400 because
+    its ``tasklists.update`` endpoint requires a complete TaskList
+    resource (with ``kind`` / ``id`` / ``etag`` / etc.). The fix
+    is to use PATCH (``tasklists.patch``), which accepts partial
+    bodies — matching the connector's "rename only" intent.
+
+    The prior respx test (mocking PUT) silently passed because the
+    mock accepted any body; only the live API surfaced the mismatch.
+    Pinning PATCH here is the regression guard.
     """
     with respx.mock(base_url="https://tasks.googleapis.com/tasks/v1") as mock:
-        route = mock.put("/users/@me/lists/list-abc").mock(
+        route = mock.patch("/users/@me/lists/list-abc").mock(
             return_value=httpx.Response(200, json={**_LIST, "title": "Renamed"})
         )
         tl = await gt.aupdate_task_list(task_list_id="list-abc", title="Renamed")
         assert tl.title == "Renamed"
         body = route.calls.last.request.read()
         assert b'"title":"Renamed"' in body
+        # Belt and braces: assert NO PUT was issued
+        assert route.call_count == 1
 
 
 @pytest.mark.asyncio
@@ -422,10 +433,12 @@ def test_sync_wrappers_exist() -> None:
         assert hasattr(inst, f"a{action_name}")
 
 
-def test_verification_status_doc() -> None:
-    """Pinned at 'doc' until live verification with `tasks`-scope token."""
-    assert GoogleTasks.verification_status == "doc"
-    assert GoogleTasks.get_spec().verification_status == "doc"
+def test_verification_status_live() -> None:
+    """Pinned at 'live' — all 13 actions live-verified against
+    tasks.googleapis.com on 2026-05-29.
+    """
+    assert GoogleTasks.verification_status == "live"
+    assert GoogleTasks.get_spec().verification_status == "live"
 
 
 @pytest.mark.asyncio

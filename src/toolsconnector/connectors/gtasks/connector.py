@@ -84,11 +84,11 @@ class GoogleTasks(BaseConnector):
     category = ConnectorCategory.PRODUCTIVITY
     protocol = ProtocolType.REST
     base_url = "https://tasks.googleapis.com/tasks/v1"
-    # Note: doc-verified + respx-pinned + same hardening as the other
-    # Google Workspace connectors; live verification pending the next
-    # session with a `tasks` scope token. Promoted to "live" on that
-    # session's commit.
-    verification_status = "doc"
+    # Tier 1 — all 13 actions live-verified against tasks.googleapis.com
+    # on 2026-05-29 (1 production bug surfaced: update_task_list was
+    # using PUT with a title-only body, which Google rejects with HTTP
+    # 400; fixed by switching to PATCH).
+    verification_status = "live"
     description = "Connect to Google Tasks to manage task lists and tasks."
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=60)
 
@@ -471,9 +471,17 @@ class GoogleTasks(BaseConnector):
 
         Returns:
             Updated TaskList.
+
+        Notes:
+            Uses HTTP PATCH (partial update) — sending PUT with only
+            ``{"title": ...}`` causes Google to return HTTP 400 because
+            its ``tasklists.update`` endpoint expects a complete TaskList
+            resource (with ``kind`` / ``id`` / ``etag`` / etc.). PATCH
+            (``tasklists.patch``) accepts a partial body, which matches
+            the connector's "rename only" intent.
         """
         data = await self._request(
-            "PUT",
+            "PATCH",
             f"/users/@me/lists/{_p(task_list_id)}",
             json={"title": title},
         )

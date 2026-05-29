@@ -8,10 +8,10 @@ This category covers the **Google Workspace** family (Calendar, Docs, Sheets, Ta
 
 | Connector | Tier | Live-verified actions |
 |---|---|---|
-| Google Calendar | **Tier 1 — Live verified** | 17 of 20 (2026-05-28) |
+| Google Calendar | **Tier 1 — Live verified** | 17 of 20 + 3 envelope-verified (2026-05-29) |
 | Google Docs | **Tier 1 — Live verified** | 5 of 5 (2026-05-28) |
 | Google Sheets | **Tier 1 — Live verified** | 16 of 16 (2026-05-28) |
-| Google Tasks | Tier 2 — Doc verified | 0 of 13 (live deferred — needs `tasks` scope) |
+| Google Tasks | **Tier 1 — Live verified** | 13 of 13 (2026-05-29) |
 | Calendly | Tier 3 — Pattern correct | — |
 | Figma | Tier 3 — Pattern correct | — |
 
@@ -156,7 +156,7 @@ kit.execute(
 
 ### Google Tasks
 
-**Category:** Productivity | **Auth:** OAuth 2.0 Bearer Token | **Actions:** 13 | **Status:** Tier 2 — Doc verified
+**Category:** Productivity | **Auth:** OAuth 2.0 Bearer Token | **Actions:** 13 | **Status:** ✅ Tier 1 — Live verified
 
 Connect to Google Tasks for to-do management. Each user has one default task list and can create more. Tasks support parent/child nesting and ordered positions within a list.
 
@@ -194,7 +194,7 @@ kit.execute(
 
 **Extras required:** `pip install "toolsconnector[gtasks]"`
 
-**Live verification status:** Tier 2 (doc-verified + respx-pinned). Live promotion is queued — needs an OAuth token that includes the `https://www.googleapis.com/auth/tasks` scope. The connector is pattern-complete with the same Phase A hardening (transport wrap, `_p()` percent-encoding, `extra="ignore"` on all response models) as the live-verified Google Workspace siblings.
+**Live verification:** End-to-end run on a throwaway task list covered every action: `list_task_lists` (baseline read), `create_task_list` (throwaway), `get_task_list` (round-trip), `update_task_list` (rename via PATCH), `list_tasks`, `create_task` (twice with due dates), `get_task` (round-trip), `update_task` (extend due), `move_task` (reparent), `complete_task`, `clear_completed`, `delete_task`, `delete_task_list` (cleanup). Throwaway cleanly deleted, zero artifacts on user's account. **Live testing surfaced + fixed 1 real production bug**: `update_task_list` was using HTTP PUT with a title-only body, which Google rejects with HTTP 400 because `tasklists.update` requires a complete TaskList resource. Fixed by switching to HTTP PATCH which accepts partial bodies. MCP stdio dispatch also verified end-to-end (initialize + tools/list + tools/call). See the [connector README](../../src/toolsconnector/connectors/gtasks/README.md).
 
 ---
 
