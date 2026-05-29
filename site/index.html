@@ -926,6 +926,15 @@ function renderHome(el) {
   <div class="flex flex-col sm:flex-row justify-center gap-3">
     <a href="#/docs/quickstart" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold transition-colors shadow-lg">Get Started <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg></a>
     <a href="#/connectors" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl border border-gray-300 dark:border-gray-700 hover:border-brand-400 font-semibold transition-colors bg-white dark:bg-gray-900">Browse Connectors</a>
+    <a href="https://github.com/sachinshelke/ToolsConnector" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl border border-gray-300 dark:border-gray-700 hover:border-brand-400 font-semibold transition-colors bg-white dark:bg-gray-900"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>Star on GitHub</a>
+  </div>
+  <!-- Social proof badges (live counts via shields.io) -->
+  <div class="flex flex-wrap justify-center items-center gap-2 mt-8">
+    <img src="https://img.shields.io/github/stars/sachinshelke/ToolsConnector?style=flat&logo=github&color=2563eb&label=stars" alt="GitHub stars" height="20" loading="lazy">
+    <img src="https://img.shields.io/pypi/v/toolsconnector?color=2563eb&logo=pypi&logoColor=white&label=PyPI" alt="PyPI version" height="20" loading="lazy">
+    <img src="https://img.shields.io/pypi/dm/toolsconnector?color=10b981&label=downloads" alt="PyPI downloads per month" height="20" loading="lazy">
+    <img src="https://img.shields.io/pypi/pyversions/toolsconnector?color=3776ab&logo=python&logoColor=white" alt="Supported Python versions" height="20" loading="lazy">
+    <img src="https://img.shields.io/badge/license-Apache%202.0-64748b" alt="Apache 2.0 license" height="20" loading="lazy">
   </div>
 </section>
 
@@ -956,6 +965,53 @@ function renderHome(el) {
     <svg class="w-6 h-6 mx-auto text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3"/></svg>
     <p class="text-sm font-semibold text-brand-600 dark:text-brand-400">ToolsConnector solves all three.</p>
   </div>
+</section>
+
+<!-- Section 2b: Comparison -->
+<section class="py-16 sm:py-20">
+  <div class="text-center mb-10">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">How ToolsConnector compares</h2>
+    <p class="text-gray-500 dark:text-gray-400">An open-source, self-hosted primitive — not a hosted platform you rent.</p>
+  </div>
+  <div class="max-w-4xl mx-auto overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-800">
+    <table class="w-full text-sm border-collapse min-w-[640px]">
+      <thead>
+        <tr class="bg-gray-50 dark:bg-gray-900/60">
+          <th class="text-left font-semibold p-4"></th>
+          <th class="p-4 text-center font-bold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-900/20">ToolsConnector</th>
+          <th class="p-4 text-center font-medium text-gray-500 dark:text-gray-400">LangChain Tools</th>
+          <th class="p-4 text-center font-medium text-gray-500 dark:text-gray-400">Composio</th>
+          <th class="p-4 text-center font-medium text-gray-500 dark:text-gray-400">Zapier</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${[
+          ['Open source (Apache 2.0)', true, 'partial', false, false],
+          ['Self-hosted — no vendor lock-in', true, true, false, false],
+          ['Runs in your Python process', true, true, false, false],
+          ['AI-native (MCP + OpenAI/Anthropic/Gemini schemas)', true, 'partial', true, false],
+          ['Works for plain Python apps too (not just agents)', true, false, false, false],
+          ['Sync + async dual-use', true, 'partial', 'partial', false],
+          ['Typed actions + structured errors', true, false, 'partial', false],
+          ['Free', true, true, 'freemium', 'freemium'],
+        ].map(([label, tc, lc, co, za]) => {
+          const cell = (v) => v === true
+            ? '<span class="text-emerald-500 text-lg" title="Yes">●</span>'
+            : (v === false
+              ? '<span class="text-gray-300 dark:text-gray-700 text-lg" title="No">○</span>'
+              : '<span class="text-amber-500 text-xs font-medium" title="Partial / varies">'+v+'</span>');
+          return `<tr class="border-t border-gray-200 dark:border-gray-800">
+            <td class="p-4 text-gray-700 dark:text-gray-300">${label}</td>
+            <td class="p-4 text-center bg-brand-50/50 dark:bg-brand-900/10">${cell(tc)}</td>
+            <td class="p-4 text-center">${cell(lc)}</td>
+            <td class="p-4 text-center">${cell(co)}</td>
+            <td class="p-4 text-center">${cell(za)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-4">Comparison reflects open-source / self-hosting model as of 2026. Feature sets evolve — check each project for current details.</p>
 </section>
 
 <!-- Section 3: How It Works -->
@@ -2435,6 +2491,49 @@ async function init() {
   }
   window.addEventListener('hashchange', router);
   router();
+
+  // Copy-to-clipboard buttons on every code block, including SPA-rendered
+  // ones (rAF-debounced MutationObserver so it's cheap during renders).
+  let copyScheduled = false;
+  const scheduleDecorate = () => {
+    if (copyScheduled) return;
+    copyScheduled = true;
+    requestAnimationFrame(() => { copyScheduled = false; decorateCodeBlocks(document); });
+  };
+  scheduleDecorate();
+  const appEl = document.getElementById('app');
+  if (appEl && 'MutationObserver' in window) {
+    new MutationObserver(scheduleDecorate).observe(appEl, { childList: true, subtree: true });
+  }
+}
+
+// Add a "Copy" button to each <pre> code block (idempotent via data-copy marker).
+function decorateCodeBlocks(root) {
+  (root || document).querySelectorAll('pre:not([data-copy])').forEach((pre) => {
+    pre.setAttribute('data-copy', '1');
+    if (getComputedStyle(pre).position === 'static') pre.style.position = 'relative';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Copy';
+    btn.setAttribute('aria-label', 'Copy code to clipboard');
+    btn.style.cssText = 'position:absolute;top:8px;right:8px;font-size:11px;padding:3px 8px;'
+      + 'border-radius:6px;border:1px solid rgba(148,163,184,.4);background:rgba(15,23,42,.6);'
+      + 'color:#e2e8f0;cursor:pointer;opacity:.7;transition:opacity .15s;z-index:2';
+    btn.addEventListener('mouseenter', () => { btn.style.opacity = '1'; });
+    btn.addEventListener('mouseleave', () => { btn.style.opacity = '.7'; });
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const code = pre.querySelector('code');
+      // Strip leading shell prompts so the pasted command is runnable.
+      const text = (code ? code.innerText : pre.innerText).replace(/^\$ /gm, '');
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+      }).catch(() => { btn.textContent = 'Press Ctrl+C'; });
+    });
+    pre.appendChild(btn);
+  });
 }
 
 init();
