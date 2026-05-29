@@ -522,6 +522,13 @@ function verifyBadge(status) {
   const [color, label, title] = m[status] || m.pattern;
   return `<span class="inline-flex items-center gap-1" title="${title}" aria-label="Verification: ${label}"><span style="color:${color}">●</span>${label}</span>`;
 }
+// Green verified check shown right next to the connector NAME for Tier 1
+// (live-verified) connectors — high-signal "this tool is verified" marker.
+// Returns empty string for doc/pattern tiers (their tier shows in the footer badge).
+function verifyTick(status) {
+  if (status !== 'live') return '';
+  return `<span class="inline-flex flex-none text-emerald-500" title="Live verified — tested end-to-end against the real vendor API with a real token." aria-label="Verified"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg></span>`;
+}
 function catIcon(cat) {
   return `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">${CATEGORY_ICONS[cat] || CATEGORY_ICONS.custom}</svg>`;
 }
@@ -1087,6 +1094,7 @@ function renderConnectors(el) {
   const params = new URLSearchParams(location.hash.includes('?') ? location.hash.split('?')[1] : '');
   const initQ = params.get('q') || '';
   const initCat = params.get('category') || '';
+  const initTier = params.get('tier') || '';
 
   const catOptions = Object.keys(CATEGORIES).sort().map(c =>
     `<option value="${c}" ${c === initCat ? 'selected' : ''}>${CATEGORY_LABELS[c] || c}</option>`
@@ -1105,17 +1113,26 @@ function renderConnectors(el) {
       <select id="conn-cat" class="px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 outline-none">
         <option value="">All Categories</option>${catOptions}
       </select>
+      <select id="conn-tier" class="px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-brand-500 outline-none" title="Filter by verification tier">
+        <option value="" ${initTier === '' ? 'selected' : ''}>All Tiers</option>
+        <option value="live" ${initTier === 'live' ? 'selected' : ''}>✅ Verified — Tier 1</option>
+        <option value="doc" ${initTier === 'doc' ? 'selected' : ''}>◐ Doc verified — Tier 2</option>
+        <option value="pattern" ${initTier === 'pattern' ? 'selected' : ''}>○ Pattern — Tier 3</option>
+      </select>
     </div>
     <div id="conn-grid"></div>
   </div>`;
 
   const searchEl = $('#conn-search');
   const catEl = $('#conn-cat');
+  const tierEl = $('#conn-tier');
   function filter() {
     const q = searchEl.value.toLowerCase().trim();
     const cat = catEl.value;
+    const tier = tierEl.value;
     const filtered = Object.values(DATA).filter(s => {
       if (cat && s.category !== cat) return false;
+      if (tier && (s.verification_status || 'pattern') !== tier) return false;
       if (q && !s.name.includes(q) && !s.display_name.toLowerCase().includes(q) && !s.description.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -1123,6 +1140,7 @@ function renderConnectors(el) {
   }
   searchEl.addEventListener('input', filter);
   catEl.addEventListener('change', filter);
+  tierEl.addEventListener('change', filter);
   filter();
 }
 
@@ -1160,8 +1178,8 @@ function renderConnectorGrid(connectors) {
       html += `<a href="#/connector/${s.name}" class="card-hover flex items-start gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div class="flex-shrink-0 mt-0.5">${logoHtml}</div>
         <div class="flex-1 min-w-0">
-          <div class="flex items-center justify-between mb-1">
-            <h3 class="font-semibold text-sm">${esc(s.display_name)}</h3>
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <h3 class="font-semibold text-sm flex items-center gap-1 min-w-0"><span class="truncate">${esc(s.display_name)}</span>${verifyTick(s.verification_status)}</h3>
             ${catBadge(cat)}
           </div>
           <p class="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">${esc(s.description || meta.tagline || '')}</p>
