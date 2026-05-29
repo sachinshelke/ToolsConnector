@@ -915,8 +915,10 @@ function renderHome(el) {
     <span class="gradient-text">One library, every tool.</span>
   </h1>
   <p class="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed mb-10">
-    Connect AI agents and Python apps to ${STATS.connectors}+ APIs through a single, standardized interface.
-    Open source. Self-hosted. Works everywhere.
+    Stop re-learning ${STATS.connectors} different SDKs, auth flows, and error formats.
+    One typed interface for every API your AI agents and Python apps touch —
+    <span class="font-semibold text-gray-800 dark:text-gray-200">install in 30 seconds, call any tool in one line.</span>
+    Open source, self-hosted, no lock-in.
   </p>
   <div class="flex flex-wrap justify-center gap-8 sm:gap-12 mb-10">
     <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-brand-600">${STATS.connectors}</div><div class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-1">Connectors</div></div>
@@ -936,6 +938,55 @@ function renderHome(el) {
     <img src="https://img.shields.io/pypi/pyversions/toolsconnector?color=3776ab&logo=python&logoColor=white" alt="Supported Python versions" height="20" loading="lazy">
     <img src="https://img.shields.io/badge/license-Apache%202.0-64748b" alt="Apache 2.0 license" height="20" loading="lazy">
   </div>
+</section>
+
+<!-- Section 1b: Interactive "every framework" demo -->
+<section class="pb-8 sm:pb-12">
+  <div class="text-center mb-6">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-2">One interface. Every framework.</h2>
+    <p class="text-gray-500 dark:text-gray-400">The same <code class="text-brand-600 dark:text-brand-400">ToolKit</code> — called directly, handed to an LLM, or served over MCP. Tap a tab.</p>
+  </div>
+  <div class="max-w-3xl mx-auto">
+    <div class="flex flex-wrap gap-2 mb-3 justify-center" role="tablist">
+      <button data-demo-tab="python" class="demo-tab px-4 py-2 rounded-lg text-sm font-semibold border border-brand-500 bg-brand-600 text-white transition-colors">Plain Python</button>
+      <button data-demo-tab="openai" class="demo-tab px-4 py-2 rounded-lg text-sm font-semibold border border-gray-300 dark:border-gray-700 hover:border-brand-400 transition-colors">OpenAI</button>
+      <button data-demo-tab="anthropic" class="demo-tab px-4 py-2 rounded-lg text-sm font-semibold border border-gray-300 dark:border-gray-700 hover:border-brand-400 transition-colors">Anthropic</button>
+      <button data-demo-tab="mcp" class="demo-tab px-4 py-2 rounded-lg text-sm font-semibold border border-gray-300 dark:border-gray-700 hover:border-brand-400 transition-colors">MCP / Claude Desktop</button>
+    </div>
+    <pre data-demo-panel="python" class="bg-gray-900 text-gray-100 rounded-xl p-5 text-xs sm:text-sm overflow-x-auto leading-relaxed"><code><span class="text-purple-400">from</span> toolsconnector.serve <span class="text-purple-400">import</span> ToolKit
+
+kit = ToolKit([<span class="text-emerald-400">"slack"</span>, <span class="text-emerald-400">"github"</span>], credentials={...})
+
+<span class="text-gray-500"># Same one-line call for all 68 connectors</span>
+kit.execute(<span class="text-emerald-400">"slack_send_message"</span>, {<span class="text-emerald-400">"channel"</span>: <span class="text-emerald-400">"#eng"</span>, <span class="text-emerald-400">"text"</span>: <span class="text-emerald-400">"Deploy shipped 🚀"</span>})
+kit.execute(<span class="text-emerald-400">"github_create_issue"</span>, {<span class="text-emerald-400">"owner"</span>: <span class="text-emerald-400">"acme"</span>, <span class="text-emerald-400">"repo"</span>: <span class="text-emerald-400">"api"</span>, <span class="text-emerald-400">"title"</span>: <span class="text-emerald-400">"Add retry"</span>})</code></pre>
+    <pre data-demo-panel="openai" class="hidden bg-gray-900 text-gray-100 rounded-xl p-5 text-xs sm:text-sm overflow-x-auto leading-relaxed"><code>kit = ToolKit([<span class="text-emerald-400">"slack"</span>, <span class="text-emerald-400">"github"</span>], credentials={...})
+tools = kit.to_openai_tools()        <span class="text-gray-500"># auto-generated JSON Schema</span>
+
+resp = openai.chat.completions.create(
+    model=<span class="text-emerald-400">"gpt-4o"</span>, tools=tools,
+    messages=[{<span class="text-emerald-400">"role"</span>: <span class="text-emerald-400">"user"</span>, <span class="text-emerald-400">"content"</span>: <span class="text-emerald-400">"Tell #eng the deploy shipped"</span>}],
+)
+<span class="text-gray-500"># The model picks the tool — you execute it, same one-liner:</span>
+call = resp.choices[<span class="text-amber-300">0</span>].message.tool_calls[<span class="text-amber-300">0</span>].function
+kit.execute(call.name, json.loads(call.arguments))</code></pre>
+    <pre data-demo-panel="anthropic" class="hidden bg-gray-900 text-gray-100 rounded-xl p-5 text-xs sm:text-sm overflow-x-auto leading-relaxed"><code>kit = ToolKit([<span class="text-emerald-400">"slack"</span>, <span class="text-emerald-400">"github"</span>], credentials={...})
+tools = kit.to_anthropic_tools()     <span class="text-gray-500"># Anthropic tool-use schema</span>
+
+msg = anthropic.messages.create(
+    model=<span class="text-emerald-400">"claude-sonnet-4-5"</span>, tools=tools, max_tokens=<span class="text-amber-300">1024</span>,
+    messages=[{<span class="text-emerald-400">"role"</span>: <span class="text-emerald-400">"user"</span>, <span class="text-emerald-400">"content"</span>: <span class="text-emerald-400">"Open a GitHub issue for the flaky test"</span>}],
+)
+<span class="text-gray-500"># Run the tool the model chose:</span>
+block = next(b <span class="text-purple-400">for</span> b <span class="text-purple-400">in</span> msg.content <span class="text-purple-400">if</span> b.type == <span class="text-emerald-400">"tool_use"</span>)
+kit.execute(block.name, block.input)</code></pre>
+    <pre data-demo-panel="mcp" class="hidden bg-gray-900 text-gray-100 rounded-xl p-5 text-xs sm:text-sm overflow-x-auto leading-relaxed"><code>kit = ToolKit([<span class="text-emerald-400">"slack"</span>, <span class="text-emerald-400">"github"</span>], credentials={...})
+kit.serve_mcp()   <span class="text-gray-500"># one line → all tools live in Claude Desktop, Cursor, Windsurf</span>
+
+<span class="text-gray-500"># …or straight from the CLI, no Python file:</span>
+<span class="text-emerald-400">$</span> tc serve mcp slack github --transport stdio</code></pre>
+  </div>
+  <p class="text-center text-sm text-gray-400 dark:text-gray-500 mt-4">Write your tool logic once. Reach it from any framework — or all of them.</p>
 </section>
 
 <!-- Section 2: The Problem -->
@@ -1129,6 +1180,31 @@ tools = kit.to_openai_tools()</code></pre></div>
     </div>
   </div>
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">${catGrid}</div>
+</section>
+
+<!-- Section 8b: FAQ (visible accordion; mirrors the FAQPage JSON-LD) -->
+<section class="py-16 sm:py-20">
+  <div class="text-center mb-10">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-3">Questions, answered</h2>
+    <p class="text-gray-500 dark:text-gray-400">The things developers ask before their first <code class="text-brand-600 dark:text-brand-400">pip install</code>.</p>
+  </div>
+  <div class="max-w-3xl mx-auto space-y-3">
+    ${[
+      ['Is it free, and what\'s the catch?', 'ToolsConnector is Apache-2.0 open source — free for commercial use, modify and redistribute freely. No hosted backend, no seat pricing, no rate-limited free tier. The model is <strong>BYOK</strong>: you bring your own API keys and it runs in your own process. The only "catch" is that you self-host (which is the point — no vendor lock-in).'],
+      ['How is this different from LangChain tools or Composio?', 'LangChain couples you to its framework; Composio and Zapier are hosted platforms you rent and that see your data. ToolsConnector is a <strong>primitive, not a platform</strong> — a plain Python library that runs in your process, works with <em>any</em> framework (or none), and exports schemas for OpenAI, Anthropic, Gemini, and MCP from one ToolKit. Same connectors serve AI agents <em>and</em> ordinary Python apps.'],
+      ['Will it work with my agent stack?', 'Yes. <code>kit.to_openai_tools()</code>, <code>kit.to_anthropic_tools()</code>, and <code>kit.to_gemini_tools()</code> generate native tool schemas; <code>kit.serve_mcp()</code> exposes everything as a one-line MCP server for Claude Desktop, Cursor, and Windsurf. Not using an agent at all? Call <code>kit.execute(...)</code> directly from any script, Django, or Flask app.'],
+      ['How do I install it?', 'One line: <code>pip install "toolsconnector[gmail,slack,github]"</code> (or <code>[all]</code>). Python 3.9+. Core dependencies are just <code>pydantic</code>, <code>httpx</code>, and <code>docstring-parser</code> — no heavyweight SDKs pulled into your environment.'],
+      ['Can I trust a connector to actually work?', 'Every connector carries an honest verification tier. <span class="text-emerald-600 dark:text-emerald-400 font-semibold">● Verified</span> means it was tested end-to-end against the real vendor API with a live token (look for the green check on the card). <span class="text-amber-600 dark:text-amber-400 font-semibold">● Doc</span> means doc-verified + respx-pinned. <span class="text-gray-500 font-semibold">● Pattern</span> means it matches documented patterns but hasn\'t had a live sweep yet. Filter the catalog by tier.'],
+      ['Which APIs are supported today?', 'Currently ${STATS.connectors} connectors across ${STATS.categories} categories — Gmail, Slack, GitHub, Stripe, Notion, Linear, the full Google Workspace suite, OpenAI, Anthropic, 14 AWS services, and many more. Browse the full catalog, or open an issue to request the next one.'],
+    ].map(([q, a]) => `<details class="group rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+      <summary class="flex items-center justify-between gap-4 cursor-pointer list-none p-5 font-semibold hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
+        <span>${q}</span>
+        <svg class="w-5 h-5 flex-none text-gray-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+      </summary>
+      <div class="px-5 pb-5 -mt-1 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">${a}</div>
+    </details>`).join('')}
+  </div>
+  <p class="text-center text-sm text-gray-400 dark:text-gray-500 mt-6">Still curious? <a href="#/docs/introduction" class="text-brand-600 dark:text-brand-400 hover:underline">Read the docs</a> or <a href="https://github.com/sachinshelke/ToolsConnector/issues" target="_blank" rel="noopener" class="text-brand-600 dark:text-brand-400 hover:underline">open an issue</a>.</p>
 </section>
 
 <!-- Section 9: Quick Links -->
@@ -2505,6 +2581,26 @@ async function init() {
   if (appEl && 'MutationObserver' in window) {
     new MutationObserver(scheduleDecorate).observe(appEl, { childList: true, subtree: true });
   }
+
+  // Interactive code-demo tab switcher (delegated → survives SPA re-renders).
+  document.addEventListener('click', (e) => {
+    const tab = e.target.closest('[data-demo-tab]');
+    if (!tab) return;
+    const key = tab.getAttribute('data-demo-tab');
+    const section = tab.closest('section');
+    if (!section) return;
+    section.querySelectorAll('[data-demo-panel]').forEach((p) => {
+      p.classList.toggle('hidden', p.getAttribute('data-demo-panel') !== key);
+    });
+    section.querySelectorAll('[data-demo-tab]').forEach((t) => {
+      const active = t === tab;
+      t.classList.toggle('bg-brand-600', active);
+      t.classList.toggle('text-white', active);
+      t.classList.toggle('border-brand-500', active);
+      t.classList.toggle('border-gray-300', !active);
+      t.classList.toggle('dark:border-gray-700', !active);
+    });
+  });
 }
 
 // Add a "Copy" button to each <pre> code block (idempotent via data-copy marker).
