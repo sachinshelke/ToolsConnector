@@ -390,6 +390,34 @@ def generate_connector_page(name: str, data: dict, package_version: str = "") ->
         jsonld_data["softwareVersion"] = package_version
     jsonld = json.dumps(jsonld_data, indent=2)
 
+    # ── BreadcrumbList JSON-LD (Home → Connectors → <name>) ──────────────────
+    # Drives Google's breadcrumb rich result above the page title in SERPs.
+    breadcrumb_data: dict = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://toolsconnector.github.io/",
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Connectors",
+                "item": "https://toolsconnector.github.io/#/connectors",
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "name": display_name,
+                "item": f"https://toolsconnector.github.io/connectors/{name}/",
+            },
+        ],
+    }
+    breadcrumb_jsonld = json.dumps(breadcrumb_data, indent=2)
+
     # ── Action rows ──────────────────────────────────────────────────────────
     action_rows: list[str] = []
     for aname in sorted(actions.keys()):
@@ -452,6 +480,9 @@ def generate_connector_page(name: str, data: dict, package_version: str = "") ->
 
 <script type="application/ld+json">
 {jsonld}
+</script>
+<script type="application/ld+json">
+{breadcrumb_jsonld}
 </script>
 
 <style>
