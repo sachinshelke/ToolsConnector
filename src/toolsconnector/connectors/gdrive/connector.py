@@ -8,10 +8,20 @@ from __future__ import annotations
 
 import base64
 from typing import Any, Optional
+from urllib.parse import quote as _url_quote
 
 import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.errors import (
+    ConnectionError as ToolsConnectorConnectionError,
+)
+from toolsconnector.errors import (
+    TimeoutError as ToolsConnectorTimeoutError,
+)
+from toolsconnector.errors import (
+    TransportError,
+)
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
@@ -28,12 +38,50 @@ from .types import (
     StorageQuota,
 )
 
+
+def _p(segment: object) -> str:
+    """Percent-encode a path segment for safe URL-path interpolation."""
+    return _url_quote(str(segment), safe="")
+
+
 # Default fields to request from the Drive API for file metadata
 _FILE_FIELDS = (
     "id,name,mimeType,description,starred,trashed,size,"
     "createdTime,modifiedTime,parents,webViewLink,webContentLink,"
     "iconLink,owners(displayName,emailAddress,photoLink),shared"
 )
+
+
+# Source MIME type → Google Workspace native MIME type. When
+# ``upload_file(convert_to_google_docs=True)`` is called, Drive performs
+# the conversion server-side based on the metadata ``mimeType`` we set.
+# The file bytes part keeps its source Content-Type so Drive knows how
+# to interpret them.
+#
+# Coverage is conservative — only formats Drive officially supports
+# conversion for. Adding new entries should be cross-checked against
+# https://developers.google.com/drive/api/guides/manage-uploads#import_to_google_docs_types
+_GOOGLE_NATIVE_CONVERSION_MAP: dict[str, str] = {
+    # Word-equivalent → Docs
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "application/vnd.google-apps.document",  # .docx
+    "application/msword": "application/vnd.google-apps.document",  # .doc
+    "application/vnd.oasis.opendocument.text": "application/vnd.google-apps.document",  # .odt
+    "application/rtf": "application/vnd.google-apps.document",
+    "text/rtf": "application/vnd.google-apps.document",
+    "text/plain": "application/vnd.google-apps.document",
+    "text/html": "application/vnd.google-apps.document",
+    "text/markdown": "application/vnd.google-apps.document",
+    # Excel-equivalent → Sheets
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "application/vnd.google-apps.spreadsheet",  # .xlsx
+    "application/vnd.ms-excel": "application/vnd.google-apps.spreadsheet",  # .xls
+    "application/vnd.oasis.opendocument.spreadsheet": "application/vnd.google-apps.spreadsheet",  # .ods
+    "text/csv": "application/vnd.google-apps.spreadsheet",
+    "text/tab-separated-values": "application/vnd.google-apps.spreadsheet",
+    # PowerPoint-equivalent → Slides
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "application/vnd.google-apps.presentation",  # .pptx
+    "application/vnd.ms-powerpoint": "application/vnd.google-apps.presentation",  # .ppt
+    "application/vnd.oasis.opendocument.presentation": "application/vnd.google-apps.presentation",  # .odp
+}
 
 
 def _parse_file(data: dict[str, Any]) -> DriveFile:
@@ -90,6 +138,7 @@ class GoogleDrive(BaseConnector):
     category = ConnectorCategory.STORAGE
     protocol = ProtocolType.REST
     base_url = "https://www.googleapis.com/drive/v3"
+    verification_status = "live"  # Tier 1 — live-verified 2026-05-28
     description = "Connect to Google Drive to manage files and folders."
     _rate_limit_config = RateLimitSpec(rate=600, period=60, burst=100)
 
@@ -106,68 +155,89 @@ class GoogleDrive(BaseConnector):
         return {"Authorization": f"Bearer {self._credentials}"}
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
-        """Execute an authenticated HTTP request against the Drive API.
-
-        Args:
-            method: HTTP method (GET, POST, PATCH, DELETE, etc.).
-            path: API path relative to base_url.
-            **kwargs: Additional keyword arguments passed to httpx.
-
-        Returns:
-            Parsed JSON response as a dict.
+        """Authenticated request returning parsed JSON. Wraps transport errors.
 
         Raises:
-            toolsconnector.errors.APIError (subclass): On any non-2xx response.
-                Maps to a typed exception by status: 401 -> InvalidCredentialsError
-                or TokenExpiredError; 403 -> PermissionDeniedError; 404 -> NotFoundError;
-                409 -> ConflictError; 400/422 -> ValidationError; 429 -> RateLimitError;
-                5xx -> ServerError; other 4xx -> APIError. See
-                toolsconnector.connectors._helpers.raise_typed_for_status for the full mapping.
-
+            APIError subclasses on non-2xx.
+            ToolsConnectorTimeoutError / ConnectionError / TransportError on network failures.
         """
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.request(
-                method,
-                f"{self._base_url}{path}",
-                headers=self._get_headers(),
-                **kwargs,
-            )
-            raise_typed_for_status(response, connector=self.name)
-            if response.status_code == 204 or not response.content:
-                return {}
-            return response.json()
+        url = f"{self._base_url}{path}"
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.request(
+                    method,
+                    url,
+                    headers=self._get_headers(),
+                    **kwargs,
+                )
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"Google Drive API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "method": method,
+                    "path": path,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to Google Drive API",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"Google Drive API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+
+        raise_typed_for_status(response, connector=self.name)
+        if response.status_code == 204 or not response.content:
+            return {}
+        return response.json()
 
     async def _request_raw(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
-        """Execute an authenticated HTTP request returning the raw response.
-
-        Used for file downloads and uploads that require binary handling.
-
-        Args:
-            method: HTTP method.
-            url: Full URL (not relative path).
-            **kwargs: Additional keyword arguments passed to httpx.
-
-        Returns:
-            Raw httpx Response object.
-
-        Raises:
-            toolsconnector.errors.APIError (subclass): On any non-2xx response.
-                Maps to a typed exception by status: 401 -> InvalidCredentialsError
-                or TokenExpiredError; 403 -> PermissionDeniedError; 404 -> NotFoundError;
-                409 -> ConflictError; 400/422 -> ValidationError; 429 -> RateLimitError;
-                5xx -> ServerError; other 4xx -> APIError. See
-                toolsconnector.connectors._helpers.raise_typed_for_status for the full mapping.
-
+        """Authenticated request returning the raw response. Used for
+        file downloads (alt=media) and multipart uploads. Wraps transport
+        errors with the same typed exceptions as ``_request``.
         """
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.request(
-                method,
-                url,
-                headers=self._get_headers(),
-                **kwargs,
-            )
-            raise_typed_for_status(response, connector=self.name)
-            return response
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.request(
+                    method,
+                    url,
+                    headers=self._get_headers(),
+                    **kwargs,
+                )
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"Google Drive API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "method": method,
+                    "url": url,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to Google Drive API",
+                connector=self.name,
+                details={"method": method, "url": url, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"Google Drive API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"method": method, "url": url, "underlying": str(e)},
+            ) from e
+
+        raise_typed_for_status(response, connector=self.name)
+        return response
 
     # ------------------------------------------------------------------
     # Actions
@@ -227,7 +297,7 @@ class GoogleDrive(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/files/{file_id}",
+            f"/files/{_p(file_id)}",
             params={"fields": _FILE_FIELDS},
         )
         return _parse_file(data)
@@ -240,6 +310,7 @@ class GoogleDrive(BaseConnector):
         mime_type: str = "application/octet-stream",
         parent_folder_id: Optional[str] = None,
         description: Optional[str] = None,
+        convert_to_google_docs: bool = False,
     ) -> FileUploadResult:
         """Upload a file to Google Drive using multipart upload.
 
@@ -248,16 +319,53 @@ class GoogleDrive(BaseConnector):
         Args:
             name: The filename for the uploaded file.
             content_base64: Base64-encoded file content.
-            mime_type: MIME type of the file.
+            mime_type: MIME type of the source bytes (e.g.
+                ``application/vnd.openxmlformats-officedocument.wordprocessingml.document``
+                for a .docx). When ``convert_to_google_docs`` is False
+                this is also what Drive stores the file as.
             parent_folder_id: Optional parent folder ID.
             description: Optional file description.
+            convert_to_google_docs: If True, ask Drive to convert the
+                uploaded file to a native Google Workspace format
+                (Docs / Sheets / Slides) based on the source
+                ``mime_type``. The target format is derived from a
+                conservative mapping (see ``_GOOGLE_NATIVE_CONVERSION_MAP``):
+                Word-like → Docs, Excel-like + CSV → Sheets,
+                PowerPoint-like → Slides. Raises ``ValueError`` if the
+                source ``mime_type`` has no documented conversion target.
+                Conversion still happens server-side; Drive will reject
+                with HTTP 400 if the bytes don't actually parse as the
+                claimed source format.
 
         Returns:
-            FileUploadResult with the created file's metadata.
+            FileUploadResult with the created file's metadata. When
+            converted, ``mime_type`` in the result reflects the Google
+            native type (e.g. ``application/vnd.google-apps.document``).
+
+        Raises:
+            ValueError: ``convert_to_google_docs`` was set but ``mime_type``
+                has no documented Drive conversion target.
         """
         import json as json_mod
 
-        metadata: dict[str, Any] = {"name": name, "mimeType": mime_type}
+        # Decide what to tell Drive to store the file as. Default: the
+        # source mime_type (no conversion). With convert_to_google_docs,
+        # this becomes the matching Google native type — Drive then
+        # auto-converts based on the source Content-Type sent in the
+        # multipart body.
+        target_storage_mime = mime_type
+        if convert_to_google_docs:
+            mapped = _GOOGLE_NATIVE_CONVERSION_MAP.get(mime_type)
+            if mapped is None:
+                raise ValueError(
+                    f"convert_to_google_docs=True but no documented Drive "
+                    f"conversion exists for source mime_type={mime_type!r}. "
+                    f"Supported source types: "
+                    f"{sorted(_GOOGLE_NATIVE_CONVERSION_MAP.keys())}"
+                )
+            target_storage_mime = mapped
+
+        metadata: dict[str, Any] = {"name": name, "mimeType": target_storage_mime}
         if parent_folder_id:
             metadata["parents"] = [parent_folder_id]
         if description:
@@ -268,31 +376,62 @@ class GoogleDrive(BaseConnector):
         # Use multipart upload endpoint
         upload_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
 
-        # Build multipart body manually for proper boundary handling
+        # Build multipart/related body per RFC 2387 — two parts:
+        #   1) JSON metadata
+        #   2) Raw file bytes
+        # CRITICAL: do NOT declare Content-Transfer-Encoding: base64 when
+        # sending raw decoded bytes. Google's upload endpoint takes that
+        # header literally — it expects the part to BE base64-encoded
+        # text, then tries to decode it again, which fails with HTTP 400.
+        # We send raw binary in the body; the Content-Type header tells
+        # the server how to interpret those bytes.
         boundary = "toolsconnector_boundary"
-        body_parts = [
+        metadata_part = (
             f"--{boundary}\r\n"
             f"Content-Type: application/json; charset=UTF-8\r\n\r\n"
             f"{json_mod.dumps(metadata)}\r\n"
             f"--{boundary}\r\n"
-            f"Content-Type: {mime_type}\r\n"
-            f"Content-Transfer-Encoding: base64\r\n\r\n".encode(),
-            file_bytes,
-            f"\r\n--{boundary}--".encode(),
-        ]
-
-        content = (
-            body_parts[0] if isinstance(body_parts[0], bytes) else body_parts[0].encode("utf-8")
-        )
-        content += body_parts[1] + body_parts[2]
+            f"Content-Type: {mime_type}\r\n\r\n"
+        ).encode()
+        closing = f"\r\n--{boundary}--".encode()
+        content = metadata_part + file_bytes + closing
 
         headers = self._get_headers()
         headers["Content-Type"] = f"multipart/related; boundary={boundary}"
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(upload_url, headers=headers, content=content)
-            raise_typed_for_status(response, connector=self.name)
-            data = response.json()
+        # Transport-error wrapping matches `_request` / `_request_raw` so
+        # network failures during upload surface as typed exceptions
+        # instead of raw httpx classes. Mirrors the helper but inlined
+        # because the multipart body + custom Content-Type don't fit
+        # the standard kwargs API.
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.post(upload_url, headers=headers, content=content)
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"Google Drive upload timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "url": upload_url,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to Google Drive upload endpoint",
+                connector=self.name,
+                details={"url": upload_url, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"Google Drive upload transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"url": upload_url, "underlying": str(e)},
+            ) from e
+
+        raise_typed_for_status(response, connector=self.name)
+        data = response.json()
 
         return FileUploadResult(
             id=data.get("id", ""),
@@ -319,12 +458,12 @@ class GoogleDrive(BaseConnector):
         # First, get file metadata
         meta = await self._request(
             "GET",
-            f"/files/{file_id}",
+            f"/files/{_p(file_id)}",
             params={"fields": "id,name,mimeType,size"},
         )
 
         # Download the file content
-        download_url = f"{self._base_url}/files/{file_id}?alt=media"
+        download_url = f"{self._base_url}/files/{_p(file_id)}?alt=media"
         response = await self._request_raw("GET", download_url)
         content_b64 = base64.b64encode(response.content).decode("ascii")
 
@@ -388,7 +527,7 @@ class GoogleDrive(BaseConnector):
         Warning:
             This action permanently deletes the file. It cannot be undone.
         """
-        await self._request("DELETE", f"/files/{file_id}")
+        await self._request("DELETE", f"/files/{_p(file_id)}")
 
     @action("Search files in Google Drive", requires_scope="read")
     async def search_files(
@@ -458,11 +597,18 @@ class GoogleDrive(BaseConnector):
         Returns:
             FilePermission with the created permission details.
         """
-        permission_body: dict[str, Any] = {
-            "type": type,
-            "role": role,
-            "emailAddress": email,
-        }
+        # The `emailAddress` field is ONLY valid when type is "user" or
+        # "group". When type="anyone" (public link) or "domain" (G-Suite
+        # domain-wide), including emailAddress causes the Drive API to
+        # reject the request with HTTP 400 "Invalid permission". For
+        # type="domain", set the `domain` field instead. type="anyone"
+        # uses neither — just role.
+        permission_body: dict[str, Any] = {"type": type, "role": role}
+        if type in ("user", "group"):
+            permission_body["emailAddress"] = email
+        elif type == "domain":
+            # `email` doubles as the domain identifier when type=domain
+            permission_body["domain"] = email
 
         params: dict[str, Any] = {
             "sendNotificationEmail": str(send_notification).lower(),
@@ -473,7 +619,7 @@ class GoogleDrive(BaseConnector):
 
         data = await self._request(
             "POST",
-            f"/files/{file_id}/permissions",
+            f"/files/{_p(file_id)}/permissions",
             json=permission_body,
             params=params,
         )
@@ -509,14 +655,14 @@ class GoogleDrive(BaseConnector):
         # Get current parents to remove
         current = await self._request(
             "GET",
-            f"/files/{file_id}",
+            f"/files/{_p(file_id)}",
             params={"fields": "parents"},
         )
         previous_parents = ",".join(current.get("parents", []))
 
         data = await self._request(
             "PATCH",
-            f"/files/{file_id}",
+            f"/files/{_p(file_id)}",
             params={
                 "addParents": new_parent_id,
                 "removeParents": previous_parents,
@@ -545,7 +691,7 @@ class GoogleDrive(BaseConnector):
             body["name"] = name
         data = await self._request(
             "POST",
-            f"/files/{file_id}/copy",
+            f"/files/{_p(file_id)}/copy",
             json=body or None,
             params={"fields": _FILE_FIELDS},
         )
@@ -566,7 +712,7 @@ class GoogleDrive(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/files/{file_id}/permissions",
+            f"/files/{_p(file_id)}/permissions",
             params={"fields": "permissions(id,type,role,emailAddress,displayName,domain)"},
         )
         return [
@@ -636,7 +782,7 @@ class GoogleDrive(BaseConnector):
 
         data = await self._request(
             "PATCH",
-            f"/files/{file_id}",
+            f"/files/{_p(file_id)}",
             json=body,
             params={"fields": _FILE_FIELDS},
         )
@@ -661,7 +807,7 @@ class GoogleDrive(BaseConnector):
         Returns:
             Base64-encoded string of the exported file content.
         """
-        export_url = f"{self._base_url}/files/{file_id}/export"
+        export_url = f"{self._base_url}/files/{_p(file_id)}/export"
         response = await self._request_raw(
             "GET",
             export_url,
@@ -713,7 +859,7 @@ class GoogleDrive(BaseConnector):
 
         data = await self._request(
             "GET",
-            f"/files/{file_id}/comments",
+            f"/files/{_p(file_id)}/comments",
             params=params,
         )
 
@@ -760,7 +906,7 @@ class GoogleDrive(BaseConnector):
         """
         data = await self._request(
             "POST",
-            f"/files/{file_id}/comments",
+            f"/files/{_p(file_id)}/comments",
             json={"content": content},
             params={
                 "fields": (
@@ -798,7 +944,7 @@ class GoogleDrive(BaseConnector):
         Warning:
             This action permanently deletes the comment. It cannot be undone.
         """
-        await self._request("DELETE", f"/files/{file_id}/comments/{comment_id}")
+        await self._request("DELETE", f"/files/{_p(file_id)}/comments/{_p(comment_id)}")
 
     # ------------------------------------------------------------------
     # Actions — Revisions
@@ -834,7 +980,7 @@ class GoogleDrive(BaseConnector):
 
         data = await self._request(
             "GET",
-            f"/files/{file_id}/revisions",
+            f"/files/{_p(file_id)}/revisions",
             params=params,
         )
 
@@ -882,7 +1028,7 @@ class GoogleDrive(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/files/{file_id}/revisions/{revision_id}",
+            f"/files/{_p(file_id)}/revisions/{_p(revision_id)}",
             params={
                 "fields": (
                     "id,mimeType,modifiedTime,keepForever,published,"
@@ -926,7 +1072,7 @@ class GoogleDrive(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/files/{file_id}/permissions/{permission_id}",
+            f"/files/{_p(file_id)}/permissions/{_p(permission_id)}",
             params={
                 "fields": "id,type,role,emailAddress,displayName,domain",
             },
@@ -958,5 +1104,5 @@ class GoogleDrive(BaseConnector):
         """
         await self._request(
             "DELETE",
-            f"/files/{file_id}/permissions/{permission_id}",
+            f"/files/{_p(file_id)}/permissions/{_p(permission_id)}",
         )

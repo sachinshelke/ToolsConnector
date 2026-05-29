@@ -288,6 +288,8 @@ jobs:
             -e 'secret_[A-Za-z0-9]{40,}' \
             -e 'ntn_[A-Za-z0-9_-]{40,}' \
             -e 'lin_api_[A-Za-z0-9]{20,}' \
+            -e 'ya29\.[A-Za-z0-9_-]{40,}' \
+            -e 'AIza[A-Za-z0-9_-]{35}' \
             src/ --include='*.py' \
             | grep -viE 'xxxx|\.\.\.|redacted|<redacted>|example|placeholder|your[_-]?(token|key)' \
             || true)

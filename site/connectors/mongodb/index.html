@@ -91,6 +91,13 @@ nav a.btn:hover { background: #1d4ed8; text-decoration: none; }
 .hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; }
 .badge { display:inline-flex; align-items:center; padding:.25rem .75rem; border-radius:20px;
           font-size:.75rem; font-weight:600; color:#fff; background:#10B981; }
+/* Verification tier badge — see ROADMAP.md. The hover tooltip is the */
+/* full text from _verification_badge; visible label is short.       */
+.verify-badge { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .65rem;
+                 margin-left:.5rem; border-radius:20px; font-size:.75rem; font-weight:600;
+                 border:1.5px solid #94a3b8; color:#94a3b8; background:#fff;
+                 cursor:help; user-select:none; }
+.verify-badge .dot { font-size:1rem; line-height:1; }
 h1 { font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: .5rem; }
 .desc { font-size: 1.05rem; color: #475569; max-width: 700px; margin-bottom: 1.5rem; }
 .install-box { background: #0f172a; color: #e2e8f0; border-radius: 10px;
@@ -154,6 +161,7 @@ footer a { color: #94a3b8; }
     <img src="https://cdn.brandfetch.io/mongodb.com?c=1idiVFVAawYfs0vBpzR" alt="MongoDB Atlas" width="56" height="56" style="border-radius:14px;object-fit:contain;background:#f8fafc;padding:4px">
     <div>
       <span class="badge">Database</span>
+      <span class="verify-badge" title="Pattern correct — code matches documented API patterns from public knowledge; no active verification sweep run yet." aria-label="Verification status: Pattern correct"><span class="dot">○</span>Pattern correct</span>
       <h1>MongoDB Atlas Connector</h1>
     </div>
   </div>

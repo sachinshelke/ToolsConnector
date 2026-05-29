@@ -7,10 +7,20 @@ Expects an OAuth 2.0 access token passed as ``credentials``.
 from __future__ import annotations
 
 from typing import Any, Optional
+from urllib.parse import quote as _url_quote
 
 import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.errors import (
+    ConnectionError as ToolsConnectorConnectionError,
+)
+from toolsconnector.errors import (
+    TimeoutError as ToolsConnectorTimeoutError,
+)
+from toolsconnector.errors import (
+    TransportError,
+)
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
@@ -24,6 +34,16 @@ from .types import (
     EventTime,
     FreeBusyCalendar,
 )
+
+
+def _p(segment: object) -> str:
+    """Percent-encode a path segment for safe URL-path interpolation.
+
+    Calendar IDs (e.g. ``primary``, email-based addresses) and event IDs
+    are URL-safe by convention. Defense-in-depth escaping prevents
+    a hostile or buggy caller from injecting path separators.
+    """
+    return _url_quote(str(segment), safe="")
 
 
 def _parse_event_time(data: Optional[dict[str, Any]]) -> Optional[EventTime]:
@@ -146,6 +166,7 @@ class GoogleCalendar(BaseConnector):
     category = ConnectorCategory.PRODUCTIVITY
     protocol = ProtocolType.REST
     base_url = "https://www.googleapis.com/calendar/v3"
+    verification_status = "live"  # Tier 1 — 20/20 actions live-verified 2026-05-28
     description = "Connect to Google Calendar to manage events and calendars."
     _rate_limit_config = RateLimitSpec(rate=600, period=60, burst=100)
 
@@ -164,34 +185,51 @@ class GoogleCalendar(BaseConnector):
     async def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
         """Execute an authenticated HTTP request against the Calendar API.
 
-        Args:
-            method: HTTP method (GET, POST, PUT, PATCH, DELETE).
-            path: API path relative to base_url.
-            **kwargs: Additional keyword arguments passed to httpx.
-
-        Returns:
-            Parsed JSON response as a dict.
+        Wraps httpx transport-layer errors as typed ToolsConnector
+        exceptions.
 
         Raises:
-            toolsconnector.errors.APIError (subclass): On any non-2xx response.
-                Maps to a typed exception by status: 401 -> InvalidCredentialsError
-                or TokenExpiredError; 403 -> PermissionDeniedError; 404 -> NotFoundError;
-                409 -> ConflictError; 400/422 -> ValidationError; 429 -> RateLimitError;
-                5xx -> ServerError; other 4xx -> APIError. See
-                toolsconnector.connectors._helpers.raise_typed_for_status for the full mapping.
-
+            toolsconnector.errors.APIError (subclass): On any non-2xx.
+            ToolsConnectorTimeoutError / ConnectionError / TransportError on
+            network failures.
         """
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.request(
-                method,
-                f"{self._base_url}{path}",
-                headers=self._get_headers(),
-                **kwargs,
-            )
-            raise_typed_for_status(response, connector=self.name)
-            if response.status_code == 204 or not response.content:
-                return {}
-            return response.json()
+        url = f"{self._base_url}{path}"
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.request(
+                    method,
+                    url,
+                    headers=self._get_headers(),
+                    **kwargs,
+                )
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"Google Calendar API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "method": method,
+                    "path": path,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to Google Calendar API",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"Google Calendar API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+
+        raise_typed_for_status(response, connector=self.name)
+        if response.status_code == 204 or not response.content:
+            return {}
+        return response.json()
 
     # ------------------------------------------------------------------
     # Actions
@@ -240,7 +278,7 @@ class GoogleCalendar(BaseConnector):
 
         data = await self._request(
             "GET",
-            f"/calendars/{calendar_id}/events",
+            f"/calendars/{_p(calendar_id)}/events",
             params=params,
         )
 
@@ -272,7 +310,7 @@ class GoogleCalendar(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/calendars/{calendar_id}/events/{event_id}",
+            f"/calendars/{_p(calendar_id)}/events/{_p(event_id)}",
         )
         event = _parse_event(data)
         return CalendarEvent(
@@ -323,7 +361,7 @@ class GoogleCalendar(BaseConnector):
 
         data = await self._request(
             "POST",
-            f"/calendars/{calendar_id}/events",
+            f"/calendars/{_p(calendar_id)}/events",
             json=event_body,
             params={"sendUpdates": send_updates},
         )
@@ -379,7 +417,7 @@ class GoogleCalendar(BaseConnector):
 
         data = await self._request(
             "PATCH",
-            f"/calendars/{calendar_id}/events/{event_id}",
+            f"/calendars/{_p(calendar_id)}/events/{_p(event_id)}",
             json=event_body,
             params={"sendUpdates": send_updates},
         )
@@ -404,7 +442,7 @@ class GoogleCalendar(BaseConnector):
         """
         await self._request(
             "DELETE",
-            f"/calendars/{calendar_id}/events/{event_id}",
+            f"/calendars/{_p(calendar_id)}/events/{_p(event_id)}",
             params={"sendUpdates": send_updates},
         )
 
@@ -521,7 +559,7 @@ class GoogleCalendar(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/calendars/{calendar_id}/events/{event_id}/instances",
+            f"/calendars/{_p(calendar_id)}/events/{_p(event_id)}/instances",
         )
         return [_parse_event(e) for e in data.get("items", [])]
 
@@ -544,7 +582,7 @@ class GoogleCalendar(BaseConnector):
         """
         data = await self._request(
             "POST",
-            f"/calendars/{calendar_id}/events/{event_id}/move",
+            f"/calendars/{_p(calendar_id)}/events/{_p(event_id)}/move",
             params={"destination": destination_calendar_id},
         )
         return _parse_event(data)
@@ -598,7 +636,7 @@ class GoogleCalendar(BaseConnector):
             This permanently deletes the calendar and all its events.
             It cannot be undone.
         """
-        await self._request("DELETE", f"/calendars/{calendar_id}")
+        await self._request("DELETE", f"/calendars/{_p(calendar_id)}")
 
     @action("Update a calendar", requires_scope="write", dangerous=True)
     async def update_calendar(
@@ -623,7 +661,7 @@ class GoogleCalendar(BaseConnector):
             The updated Calendar object.
         """
         # GET current state to merge unchanged fields (PUT requires full body)
-        current = await self._request("GET", f"/calendars/{calendar_id}")
+        current = await self._request("GET", f"/calendars/{_p(calendar_id)}")
         body: dict[str, Any] = {
             "summary": summary if summary is not None else current.get("summary", ""),
         }
@@ -638,7 +676,7 @@ class GoogleCalendar(BaseConnector):
 
         data = await self._request(
             "PUT",
-            f"/calendars/{calendar_id}",
+            f"/calendars/{_p(calendar_id)}",
             json=body,
         )
         return Calendar(
@@ -661,7 +699,7 @@ class GoogleCalendar(BaseConnector):
             This permanently deletes every event in the calendar.
             It cannot be undone.
         """
-        await self._request("POST", f"/calendars/{calendar_id}/clear")
+        await self._request("POST", f"/calendars/{_p(calendar_id)}/clear")
 
     # ------------------------------------------------------------------
     # Actions — Calendar subscriptions (calendarList)
@@ -710,7 +748,7 @@ class GoogleCalendar(BaseConnector):
         """
         await self._request(
             "DELETE",
-            f"/users/me/calendarList/{calendar_id}",
+            f"/users/me/calendarList/{_p(calendar_id)}",
         )
 
     # ------------------------------------------------------------------
@@ -732,7 +770,7 @@ class GoogleCalendar(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/calendars/{calendar_id}/acl",
+            f"/calendars/{_p(calendar_id)}/acl",
         )
         rules: list[CalendarACL] = []
         for item in data.get("items", []):
@@ -775,7 +813,7 @@ class GoogleCalendar(BaseConnector):
         }
         data = await self._request(
             "POST",
-            f"/calendars/{calendar_id}/acl",
+            f"/calendars/{_p(calendar_id)}/acl",
             json=body,
         )
         scope = data.get("scope", {})
@@ -804,7 +842,7 @@ class GoogleCalendar(BaseConnector):
         """
         await self._request(
             "DELETE",
-            f"/calendars/{calendar_id}/acl/{rule_id}",
+            f"/calendars/{_p(calendar_id)}/acl/{_p(rule_id)}",
         )
 
     # ------------------------------------------------------------------
@@ -831,7 +869,7 @@ class GoogleCalendar(BaseConnector):
         """
         data = await self._request(
             "POST",
-            f"/calendars/{calendar_id}/events/quickAdd",
+            f"/calendars/{_p(calendar_id)}/events/quickAdd",
             params={"text": text},
         )
         return _parse_event(data)

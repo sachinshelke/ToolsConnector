@@ -7,10 +7,20 @@ Expects an OAuth 2.0 access token passed as ``credentials``.
 from __future__ import annotations
 
 from typing import Any, Optional
+from urllib.parse import quote as _url_quote
 
 import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.errors import (
+    ConnectionError as ToolsConnectorConnectionError,
+)
+from toolsconnector.errors import (
+    TimeoutError as ToolsConnectorTimeoutError,
+)
+from toolsconnector.errors import (
+    TransportError,
+)
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 
@@ -23,6 +33,19 @@ from .types import (
     Spreadsheet,
     UpdateResult,
 )
+
+
+def _p(segment: object) -> str:
+    """Percent-encode a path segment for safe URL-path interpolation.
+
+    Mirrors gdocs/github ``_p()``. Spreadsheet IDs are URL-safe by
+    convention but defense-in-depth escaping prevents a hostile or
+    buggy caller from injecting path separators. Range strings
+    (``Sheet1!A1:B5``) contain ``!`` and ``:`` which are URL-unsafe
+    sub-delims; Google's API accepts both literal and percent-encoded
+    forms.
+    """
+    return _url_quote(str(segment), safe="")
 
 
 def _parse_sheet_properties(props: dict[str, Any]) -> Sheet:
@@ -94,6 +117,7 @@ class GoogleSheets(BaseConnector):
     category = ConnectorCategory.PRODUCTIVITY
     protocol = ProtocolType.REST
     base_url = "https://sheets.googleapis.com/v4"
+    verification_status = "live"  # Tier 1 — 16/16 actions live-verified 2026-05-28
     description = "Connect to Google Sheets to manage spreadsheets and cell data."
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=60)
 
@@ -112,6 +136,10 @@ class GoogleSheets(BaseConnector):
     async def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
         """Execute an authenticated HTTP request against the Sheets API.
 
+        Wraps httpx transport-layer errors as typed ToolsConnector
+        exceptions so callers catching ``ToolsConnectorError`` see
+        network failures uniformly instead of raw httpx classes.
+
         Args:
             method: HTTP method (GET, POST, PUT, DELETE).
             path: API path relative to base_url.
@@ -122,24 +150,48 @@ class GoogleSheets(BaseConnector):
 
         Raises:
             toolsconnector.errors.APIError (subclass): On any non-2xx response.
-                Maps to a typed exception by status: 401 -> InvalidCredentialsError
-                or TokenExpiredError; 403 -> PermissionDeniedError; 404 -> NotFoundError;
-                409 -> ConflictError; 400/422 -> ValidationError; 429 -> RateLimitError;
-                5xx -> ServerError; other 4xx -> APIError. See
-                toolsconnector.connectors._helpers.raise_typed_for_status for the full mapping.
-
+                See raise_typed_for_status for the full mapping.
+            ToolsConnectorTimeoutError: On request timeout (default 30s).
+            ToolsConnectorConnectionError: On DNS / TCP / TLS failure.
+            TransportError: On mid-stream protocol failure.
         """
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.request(
-                method,
-                f"{self._base_url}{path}",
-                headers=self._get_headers(),
-                **kwargs,
-            )
-            raise_typed_for_status(response, connector=self.name)
-            if response.status_code == 204 or not response.content:
-                return {}
-            return response.json()
+        url = f"{self._base_url}{path}"
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.request(
+                    method,
+                    url,
+                    headers=self._get_headers(),
+                    **kwargs,
+                )
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"Google Sheets API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "method": method,
+                    "path": path,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to Google Sheets API at sheets.googleapis.com",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"Google Sheets API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+
+        raise_typed_for_status(response, connector=self.name)
+        if response.status_code == 204 or not response.content:
+            return {}
+        return response.json()
 
     # ------------------------------------------------------------------
     # Actions — Spreadsheet-level
@@ -157,7 +209,7 @@ class GoogleSheets(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/spreadsheets/{spreadsheet_id}",
+            f"/spreadsheets/{_p(spreadsheet_id)}",
         )
         return _parse_spreadsheet(data)
 
@@ -198,7 +250,7 @@ class GoogleSheets(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/spreadsheets/{spreadsheet_id}",
+            f"/spreadsheets/{_p(spreadsheet_id)}",
             params={"fields": "sheets.properties"},
         )
         return [_parse_sheet_properties(s.get("properties", {})) for s in data.get("sheets", [])]
@@ -224,7 +276,7 @@ class GoogleSheets(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/spreadsheets/{spreadsheet_id}/values/{range}",
+            f"/spreadsheets/{_p(spreadsheet_id)}/values/{_p(range)}",
         )
         return SheetValues(
             range=data.get("range", ""),
@@ -249,7 +301,7 @@ class GoogleSheets(BaseConnector):
         """
         data = await self._request(
             "GET",
-            f"/spreadsheets/{spreadsheet_id}/values:batchGet",
+            f"/spreadsheets/{_p(spreadsheet_id)}/values:batchGet",
             params={"ranges": ranges},
         )
         results: list[SheetValues] = []
@@ -295,7 +347,7 @@ class GoogleSheets(BaseConnector):
         }
         data = await self._request(
             "PUT",
-            f"/spreadsheets/{spreadsheet_id}/values/{range}",
+            f"/spreadsheets/{_p(spreadsheet_id)}/values/{_p(range)}",
             json=body,
             params={"valueInputOption": input_option},
         )
@@ -329,7 +381,7 @@ class GoogleSheets(BaseConnector):
         }
         data = await self._request(
             "POST",
-            f"/spreadsheets/{spreadsheet_id}/values/{range}:append",
+            f"/spreadsheets/{_p(spreadsheet_id)}/values/{_p(range)}:append",
             json=body,
             params={"valueInputOption": input_option},
         )
@@ -355,7 +407,7 @@ class GoogleSheets(BaseConnector):
         """
         data = await self._request(
             "POST",
-            f"/spreadsheets/{spreadsheet_id}/values/{range}:clear",
+            f"/spreadsheets/{_p(spreadsheet_id)}/values/{_p(range)}:clear",
         )
         return ClearResult(
             cleared_range=data.get("clearedRange", ""),
@@ -398,7 +450,7 @@ class GoogleSheets(BaseConnector):
         }
         resp = await self._request(
             "POST",
-            f"/spreadsheets/{spreadsheet_id}/values:batchUpdate",
+            f"/spreadsheets/{_p(spreadsheet_id)}/values:batchUpdate",
             json=body,
         )
         responses = [_parse_update_result(r) for r in resp.get("responses", [])]
@@ -443,7 +495,7 @@ class GoogleSheets(BaseConnector):
         }
         data = await self._request(
             "POST",
-            f"/spreadsheets/{spreadsheet_id}:batchUpdate",
+            f"/spreadsheets/{_p(spreadsheet_id)}:batchUpdate",
             json=body,
         )
         reply = data.get("replies", [{}])[0]
@@ -472,7 +524,7 @@ class GoogleSheets(BaseConnector):
         }
         await self._request(
             "POST",
-            f"/spreadsheets/{spreadsheet_id}:batchUpdate",
+            f"/spreadsheets/{_p(spreadsheet_id)}:batchUpdate",
             json=body,
         )
 
@@ -498,7 +550,7 @@ class GoogleSheets(BaseConnector):
         }
         data = await self._request(
             "POST",
-            f"/spreadsheets/{spreadsheet_id}/sheets/{sheet_id}:copyTo",
+            f"/spreadsheets/{_p(spreadsheet_id)}/sheets/{_p(sheet_id)}:copyTo",
             json=body,
         )
         return Sheet(
@@ -554,7 +606,7 @@ class GoogleSheets(BaseConnector):
         """
         data = await self._request(
             "POST",
-            f"/spreadsheets/{spreadsheet_id}:batchUpdate",
+            f"/spreadsheets/{_p(spreadsheet_id)}:batchUpdate",
             json={"requests": requests},
         )
         return {

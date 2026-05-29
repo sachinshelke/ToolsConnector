@@ -216,6 +216,111 @@ def test_429_http_date_format_falls_back_to_default() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 429 — Google Workspace edge cases
+# ---------------------------------------------------------------------------
+#
+# Google APIs (Drive/Sheets/Docs/Calendar/Tasks) have a per-user AND a
+# per-project quota. When either is exhausted, the 429 body distinguishes
+# the cause via ``error.errors[*].reason``. The shared helper preserves
+# the structured body in ``details["body_preview"]`` so callers (or AI
+# agents) can branch — these tests pin that contract.
+
+
+def test_429_google_user_rate_limit_exceeded_preserves_reason_in_body() -> None:
+    """Google's per-user 429 — body carries ``reason: userRateLimitExceeded``.
+
+    The shared helper does not parse the structured body (that would be
+    vendor-specific). It DOES copy the body into ``details["body_preview"]``
+    so a caller catching ``RateLimitError`` can inspect it and distinguish
+    per-user from per-project throttling.
+    """
+    body = (
+        '{"error":{"code":429,"message":"User Rate Limit Exceeded",'
+        '"errors":[{"reason":"userRateLimitExceeded","domain":"usageLimits"}]}}'
+    )
+    with pytest.raises(RateLimitError) as exc_info:
+        raise_typed_for_status(
+            _resp(429, body=body, headers={"Retry-After": "30"}),
+            connector="gdrive",
+        )
+    assert exc_info.value.retry_after_seconds == 30.0
+    assert "userRateLimitExceeded" in exc_info.value.details["body_preview"]
+
+
+def test_429_google_quota_exceeded_preserves_reason_in_body() -> None:
+    """Google's per-project quota 429 — body carries ``reason: quotaExceeded``.
+
+    Distinct from ``userRateLimitExceeded`` — recovery here means
+    contacting the Cloud Console project owner / raising a quota
+    increase, not just backing off. We pin that the body distinguishes
+    these so caller code can branch.
+    """
+    body = (
+        '{"error":{"code":429,"message":"Quota exceeded for the project",'
+        '"errors":[{"reason":"quotaExceeded","domain":"usageLimits"}]}}'
+    )
+    with pytest.raises(RateLimitError) as exc_info:
+        raise_typed_for_status(_resp(429, body=body), connector="gcalendar")
+    assert "quotaExceeded" in exc_info.value.details["body_preview"]
+    # No Retry-After header → defaults to 60s
+    assert exc_info.value.retry_after_seconds == 60.0
+
+
+def test_429_retry_after_whitespace_padded() -> None:
+    """Some proxies pad header values (`Retry-After:  30  `). The parser
+    strips before float-conversion so padding doesn't fall through to
+    the default.
+    """
+    with pytest.raises(RateLimitError) as exc_info:
+        raise_typed_for_status(
+            _resp(429, headers={"Retry-After": "  30  "}),
+            connector="gdrive",
+        )
+    assert exc_info.value.retry_after_seconds == 30.0
+
+
+def test_429_retry_after_fractional_seconds() -> None:
+    """Some upstreams emit fractional seconds (`Retry-After: 1.5`). Spec
+    permits delta-seconds as ``1*DIGIT`` (integer-only), but the parser
+    accepts float so we don't double-down on a hostile-upstream interop
+    bug and end up with the 60s default.
+    """
+    with pytest.raises(RateLimitError) as exc_info:
+        raise_typed_for_status(
+            _resp(429, headers={"Retry-After": "1.5"}),
+            connector="gsheets",
+        )
+    assert exc_info.value.retry_after_seconds == 1.5
+
+
+def test_429_retry_after_zero_means_retry_immediately() -> None:
+    """``Retry-After: 0`` is a valid signal meaning "retry now". The
+    parser must round-trip it as 0.0, not coerce to the default 60s.
+    Otherwise a caller that respects the hint sleeps an unwarranted
+    minute on every soft-throttle.
+    """
+    with pytest.raises(RateLimitError) as exc_info:
+        raise_typed_for_status(
+            _resp(429, headers={"Retry-After": "0"}),
+            connector="gdrive",
+        )
+    assert exc_info.value.retry_after_seconds == 0.0
+
+
+def test_429_retry_after_garbage_value_uses_default() -> None:
+    """A non-numeric, non-HTTP-date value (`Retry-After: soon`) cannot
+    be honored. The parser returns None, the class default (60s) kicks
+    in — no exception leaks out of the parser itself.
+    """
+    with pytest.raises(RateLimitError) as exc_info:
+        raise_typed_for_status(
+            _resp(429, headers={"Retry-After": "soon"}),
+            connector="gdrive",
+        )
+    assert exc_info.value.retry_after_seconds == 60.0
+
+
+# ---------------------------------------------------------------------------
 # Body preview truncation
 # ---------------------------------------------------------------------------
 
@@ -252,6 +357,10 @@ _FAKE_BEARER = "Bearer ya29.a0AfH6SMB" + "x" * 24  # fake test credential
 _FAKE_NOTION_LEGACY = "secret_" + "A" * 43  # fake test credential — Notion legacy token shape
 _FAKE_NOTION_NTN = "ntn_" + "B" * 46  # fake test credential — Notion ntn_ token shape
 _FAKE_LINEAR = "lin_api_" + "C" * 32  # fake test credential — Linear personal API key shape
+_FAKE_GOOGLE_OAUTH = (
+    "ya29." + "I" * 80
+)  # fake test credential — Google OAuth 2.0 access token shape
+_FAKE_GOOGLE_APIKEY = "AIza" + "J" * 35  # fake test credential — Google API key shape
 
 
 @pytest.mark.parametrize(
@@ -272,6 +381,8 @@ _FAKE_LINEAR = "lin_api_" + "C" * 32  # fake test credential — Linear personal
         (_FAKE_NOTION_LEGACY, "Notion integration token (legacy secret_*)"),
         (_FAKE_NOTION_NTN, "Notion integration token (current ntn_*)"),
         (_FAKE_LINEAR, "Linear personal API key (lin_api_*)"),
+        (_FAKE_GOOGLE_OAUTH, "Google OAuth 2.0 access token (ya29.*)"),
+        (_FAKE_GOOGLE_APIKEY, "Google API key (AIza*)"),
     ],
 )
 def test_body_preview_redacts_echoed_credentials(secret_in_body: str, description: str) -> None:

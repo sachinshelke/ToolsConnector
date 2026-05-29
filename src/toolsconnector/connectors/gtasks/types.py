@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class TaskList(BaseModel):
     """A Google Tasks task list."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     title: str
@@ -27,7 +27,7 @@ class TaskList(BaseModel):
 class GoogleTask(BaseModel):
     """A single task in Google Tasks."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     title: str = ""

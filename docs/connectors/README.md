@@ -1,6 +1,6 @@
 # All Connectors
 
-ToolsConnector ships with 53 connectors organized into 17 categories, providing 1,179 total actions across communication, CRM, databases, DevOps, AI/ML, finance, and more.
+ToolsConnector ships with 68 connectors organized into 20 categories, providing 1,402 total actions across communication, CRM, databases, DevOps, AI/ML, finance, productivity, and more.
 
 ## How Connectors Work
 
@@ -27,22 +27,25 @@ result = kit.execute("gmail_list_emails", {"query": "is:unread"})
 
 | Category | Connectors | Actions |
 |---|---|---|
-| [Communication](communication.md) | Gmail, Slack, Discord, Outlook, Teams, Twilio, Telegram | 200 |
-| [Code Platforms](code-platforms.md) | GitHub, GitLab | 85 |
-| [Project Management](project-management.md) | Jira, Asana, Linear, Trello | 121 |
-| [CRM & Support](crm.md) | HubSpot, Salesforce, Zendesk, Freshdesk, Intercom | 95 |
-| [Database](database.md) | Airtable, Firestore, MongoDB, Redis, Supabase | 93 |
-| [DevOps & Cloud](devops.md) | Cloudflare, Datadog, Docker Hub, PagerDuty, Vercel | 91 |
-| Productivity | Google Calendar, Docs, Sheets, Tasks, Calendly, Figma | 96 |
-| [AI/ML](ai-ml.md) | OpenAI, Anthropic, Pinecone | 55 |
-| [Finance & Payments](finance.md) | Stripe, Plaid | 57 |
-| [Knowledge](knowledge.md) | Notion, Confluence | 49 |
+| [Communication](communication.md) | Gmail, Slack, Discord, Outlook, Teams, Twilio, Telegram | 228 |
+| [DevOps & Cloud](devops.md) | Cloudflare, CloudWatch, Datadog, Docker Hub, ECR, PagerDuty, Vercel | 123 |
+| [Database](database.md) | Airtable, Firestore, MongoDB, RDS, Redis, Supabase | 118 |
+| [Project Management](project-management.md) | Asana, Jira, Linear, Trello | 110 |
+| [Productivity](productivity.md) | Google Calendar, Docs, Sheets, Tasks, Calendly, Figma | 96 |
+| [CRM & Support](crm.md) | Freshdesk, HubSpot, Intercom, Salesforce, Zendesk | 95 |
+| Security & Identity | ACM, Auth0, IAM, Okta, Secrets Manager | 90 |
+| Compute | EC2, ECS, Lambda | 70 |
+| [Code Platforms](code-platforms.md) | GitHub, GitLab | 58 |
+| [Finance & Payments](finance.md) | Plaid, Stripe | 57 |
+| [AI/ML](ai-ml.md) | Anthropic, OpenAI, Pinecone | 55 |
+| [Knowledge](knowledge.md) | Confluence, Notion | 49 |
 | Marketing | Mailchimp, SendGrid | 43 |
+| Networking | ALB, CloudFront, Route53 | 43 |
 | [Storage](storage.md) | Google Drive, S3 | 42 |
-| Security & Identity | Auth0, Okta | 48 |
-| Message Queue | SQS, RabbitMQ | 37 |
+| Message Queue | RabbitMQ, SQS | 37 |
 | Analytics | Mixpanel, Segment | 28 |
 | E-Commerce | Shopify | 27 |
+| Social | LinkedIn, Medium, X | 21 |
 | Custom | Webhook | 12 |
 
 ## Authentication
