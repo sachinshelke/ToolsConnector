@@ -138,7 +138,15 @@ def _cmd_serve_mcp(args: argparse.Namespace) -> int:
 
     try:
         kit = ToolKit(args.connectors)
-        print(f"Starting MCP server with {len(kit.list_tools())} tools...")
+        # STDOUT is the JSON-RPC channel for transport=stdio (default for
+        # the Claude Desktop / Cursor / VS Code MCP clients). Writing the
+        # startup banner there corrupts the wire format — the client tries
+        # to json.loads("Starting MCP server with...") and disconnects.
+        # Route the informational banner to stderr unconditionally.
+        print(
+            f"Starting MCP server with {len(kit.list_tools())} tools...",
+            file=sys.stderr,
+        )
         kit.serve_mcp(
             transport=args.transport,
             name=args.name,
