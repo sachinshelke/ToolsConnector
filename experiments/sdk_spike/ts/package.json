@@ -1,0 +1,9 @@
+{
+  "name": "@toolsconnector/sdk-ts-spike",
+  "private": true,
+  "type": "module",
+  "description": "Generated TS SDK (de-risking spike) — do not publish.",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
