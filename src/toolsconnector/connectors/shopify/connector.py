@@ -77,7 +77,12 @@ class Shopify(BaseConnector):
         access_token = parts[0]
         store = parts[1] if len(parts) > 1 else ""
 
-        resolved_url = self._base_url or self.__class__.base_url.format(store=store)
+        # NB: BaseConnector.__init__ pre-fills self._base_url with the class
+        # template, so `or` never falls through — substitute {store} on whatever
+        # base we have (matches the freshdesk/okta idiom). A caller-supplied
+        # override without {store} is used verbatim.
+        base_template = self._base_url or self.__class__.base_url
+        resolved_url = base_template.replace("{store}", store)
 
         headers: dict[str, str] = {
             "X-Shopify-Access-Token": access_token,

@@ -177,6 +177,25 @@ class Twilio(BaseConnector):
         next_uri = body.get("next_page_uri")
         return PageState(has_more=next_uri is not None, cursor=next_uri)
 
+    def _page_url(self, uri: str) -> httpx.URL:
+        """Resolve a server-returned ``next_page_uri`` to an absolute URL.
+
+        Twilio returns version-prefixed absolute paths (e.g.
+        ``/2010-04-01/Accounts/AC.../Messages.json?Page=1``). The main client's
+        ``base_url`` already carries the ``/2010-04-01`` prefix, and httpx merges
+        ``base_url`` by *concatenation* (not RFC-3986 join), so passing the URI
+        straight to the client would double the prefix
+        (``/2010-04-01/2010-04-01/...``) and 404. RFC-3986 ``join`` resolves the
+        absolute path against the client origin correctly.
+
+        Args:
+            uri: The ``next_page_uri`` returned by a previous response.
+
+        Returns:
+            An absolute ``httpx.URL`` safe to pass to ``self._client.get``.
+        """
+        return self._client.base_url.join(uri)
+
     # ------------------------------------------------------------------
     # Actions — Messages (SMS/MMS)
     # ------------------------------------------------------------------
@@ -251,7 +270,7 @@ class Twilio(BaseConnector):
         Returns:
             Paginated list of TwilioMessage objects.
         """
-        resp = await self._client.get(uri)
+        resp = await self._client.get(self._page_url(uri))
         raise_typed_for_status(resp, connector=self.name)
         body = resp.json()
         items = [parse_message(m) for m in body.get("messages", [])]
@@ -323,7 +342,7 @@ class Twilio(BaseConnector):
         Returns:
             Paginated list of TwilioCall objects.
         """
-        resp = await self._client.get(uri)
+        resp = await self._client.get(self._page_url(uri))
         raise_typed_for_status(resp, connector=self.name)
         body = resp.json()
         items = [parse_call(c) for c in body.get("calls", [])]
