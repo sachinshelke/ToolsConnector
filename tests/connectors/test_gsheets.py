@@ -178,6 +178,39 @@ async def test_update_values_sends_correct_body(gs: GoogleSheets) -> None:
 
 
 @pytest.mark.asyncio
+async def test_update_values_overflow_surfaces_google_reason(gs: GoogleSheets) -> None:
+    """Bounded-range overflow → Google 400, with the reason surfaced on the
+    exception message (not a bare 'HTTP 400').
+
+    Confirmed live 2026-06-03: ``update``/``batch_update`` reject values wider or
+    taller than a *bounded* range ("tried writing to column [C]"); ``append`` is
+    exempt. This was the real cause behind "append works, update/batch 400" — not
+    a request-shape bug. The shared error-surfacing helper now folds Google's
+    ``error.message`` into the exception so the cause is self-evident.
+    """
+    from toolsconnector.errors import ValidationError
+
+    google_400 = {
+        "error": {
+            "code": 400,
+            "message": "Requested writing within range [Sheet1!A1:B2], "
+            "but tried writing to column [C]",
+            "status": "INVALID_ARGUMENT",
+        }
+    }
+    with respx.mock(base_url="https://sheets.googleapis.com/v4") as mock:
+        mock.put(host="sheets.googleapis.com").mock(
+            return_value=httpx.Response(400, json=google_400)
+        )
+        with pytest.raises(ValidationError) as exc_info:
+            await gs.aupdate_values(
+                spreadsheet_id="sht", range="Sheet1!A1:B2", values=[[1, 2, 3], [4, 5, 6]]
+            )
+    assert "tried writing to column [C]" in exc_info.value.message
+    assert "INVALID_ARGUMENT" in exc_info.value.message
+
+
+@pytest.mark.asyncio
 async def test_append_values_with_correct_endpoint(gs: GoogleSheets) -> None:
     """append_values: POST .../values/{range}:append → AppendResult."""
     with respx.mock(base_url="https://sheets.googleapis.com/v4") as mock:

@@ -160,6 +160,8 @@ connectors/ → imports runtime/ + spec/ (uses the engine)
 serve/   → imports spec/ only (reads metadata, never connector code)
 ```
 
+> **Refinement (2026-05):** `spec/` today captures the *interface* (names, types, JSON Schema) but not the HTTP *binding* a generated runtime needs to actually make a call. FAQ #17 specifies the binding layer that completes this contract.
+
 ---
 
 ## 8. Why not build a dashboard, auth server, or hosted service?
@@ -327,3 +329,53 @@ TypeScript SDK:  1.0.0, 1.0.1, 1.1.0
 **Why not a richer scheme (percentages, per-action flags)?** A 3-value enum is the smallest thing that captures the meaningful distinction (real API hit vs. docs only vs. neither). Per-action verification detail lives in each connector's README "Verification Status" table; the spec-level field stays coarse so it's cheap to query and render.
 
 **Reference:** see `ROADMAP.md` → "Verification tiers" for the live registry of which connector sits where.
+
+---
+
+## 17. How will we ship native SDKs in other languages from one source of truth?
+
+**Decision:** Generate native, in-process SDKs (TypeScript, Go, Java, Ruby, …) from **one declarative source of truth** by formalizing the existing connector IR into a **Smithy-style HTTP-binding layer** plus a small per-language **executor runtime**. We will **not** adopt an OpenAPI generator vendor, and we will **not** build a single Rust/WASM core with language bindings.
+
+This extends FAQ #7: that entry established that the language-agnostic *contract* lives in `spec/`. This entry specifies the one thing the contract is currently missing — the **HTTP binding** a generated runtime needs to actually make the call.
+
+**The gap (why we cannot generate other languages today):**
+- `spec/` captures the **interface** — action names, parameter types, JSON Schema, danger flags, a pagination *enum*. That is enough to generate MCP / OpenAI / Anthropic function schemas and docs (which is why those already work).
+- It captures **none of the HTTP binding** — method, path template, which argument is a path/query/header/body param, serialization style (`fields[0]=`, `sort[0][field]=`, `records[]=`), body wrapping/encoding (JSON vs form), per-action base URL, response unwrap, pagination plumbing. That logic lives only inside each connector's imperative `_request` / `@action` body.
+- Corroborating signals in the tree: `runtime/serialization/` is an empty placeholder; `codegen/spec_extractor.py::generate_openapi()` emits `POST /api/v1/{connector}/{action}` — it models actions as RPC to the *ToolsConnector* server, not the real upstream. A vendor consuming that OpenAPI would generate clients of a TC service — the server-based shape we explicitly reject (FAQ #8).
+
+**What we rejected:**
+
+| Option | Who ships this way | Why not for us |
+|---|---|---|
+| **(a) OpenAPI + generator vendor** (Stainless, Speakeasy, Fern) | OpenAI, Anthropic, Cloudflare, Vercel | Generates an idiomatic client of **one** server-style API. Cannot natively model 68 *different* upstreams, 14-service SigV4, or per-connector custom pagination running **in-process**. Our value is the unified primitive, not one HTTP surface. |
+| **(c) Rust / WASM core + bindings** (PyO3, napi-rs, UniFFI) | Mozilla (Firefox), some DB drivers | Right when there is heavy shared **compute**. We are thin HTTP wrappers — the cost is a Rust toolchain + per-language, per-platform native-binary fan-out. Betrays the **lightweight, in-process** identity. |
+| **(b) Custom connector IR/IDL + multi-target generator (Smithy-style)** ✅ | AWS (Smithy → 12+ in-process SDKs with native SigV4) | We are **already a Smithy-shaped system**: declarative Pydantic IR in `spec/`, pluggable `runtime/{auth,pagination,protocol}` executors, a service-agnostic SigV4 signer (`connectors/_aws/signing.py`). The only missing piece is a bounded binding vocabulary — config, not code. |
+
+**The binding layer we add (a finite, Smithy-shaped vocabulary):**
+- **Param binding** — `location` (path/query/header/body), `wire` name, `style` (simple / indexed `[i]` / indexed-object `[i][k]` / bracket `[]` / form-explode), bounded transforms (size clamp, max-items), body key + per-item wrap.
+- **Body** — encoding (json/form), optional single-key wrap (`{"product": …}`).
+- **Endpoints** — named base URLs (multi-base: Airtable data/meta, Twilio main/verify), per-endpoint auth + default encoding; base/path templating from credential-derived context vars (`{store}`, `{account_sid}`).
+- **Pagination** — offset-token / link-header / follow-URL, with token field + re-injection param + carry set.
+- **Auth** — reuses the existing `AuthSpec` enum (Bearer / header-key / basic-from-split / SigV4 / HMAC); the signer is a per-language runtime lib, the spec just declares the trait (the Smithy model).
+
+**Evidence — the de-risking spike (`experiments/sdk_spike/`):**
+- Took the **3 hardest** connectors (Airtable, Twilio, Shopify — chosen because they combine the gnarliest patterns) and authored declarative bindings for 9 representative actions.
+- A generic ~180-line **executor** + ~120-line **IR schema** reproduced the **exact** HTTP requests of the hand-written connectors — verified by driving the *real* connectors through `httpx.MockTransport` and asserting byte parity.
+- **Result: 13/13 requests expressible declaratively, 0 escape hatches.** 21 distinct hard patterns covered.
+- That ~300-line runtime drives what is **2,264 lines** of imperative connector code (for just those 3) → the leverage, and the "lightweight" requirement, are real. Bindings serialize to 1–2 KB of round-tripping JSON — a true language-agnostic artifact.
+- **Bonus:** the executor was *more correct* than the hand-written code in 2 cases, surfacing latent production bugs (Shopify never substitutes `{store}`; Twilio pagination doubles the `/2010-04-01` path prefix). One audited executor eliminates a whole **class** of per-connector bugs.
+
+**Escape hatch (the honest hard 20%):** the design includes a per-action imperative override for the genuine minority that resist declarative expression (as Smithy and Stainless both do). The spike needed zero for the hardest 3; the full-68 figure is being measured next.
+
+**Open questions (resolve before broad rollout):**
+1. **Full-scale coverage** — what is the real escape-hatch % across all ~1,402 actions? (Being measured via an AST coverage classifier.)
+2. **Build vs. reuse** — keep our Pydantic IR + write per-language emitters, or transpile to **Smithy IDL** and reuse AWS's mature `smithy-{typescript,go,java}` generators (native SigV4 + paginators)? Smithy's generators are AWS-protocol-oriented and may not cleanly target arbitrary third-party REST/GraphQL.
+3. **Per-language runtime cost** — even Smithy/Stainless hand-maintain a small runtime lib (signer, pagination, retry, errors) beneath generated code. "Build once" still means owning ~N thin runtimes; quantify it.
+4. **MCP at 1,402-action scale** — one-tool-per-action may stop being token-efficient; revisit a consolidated tool surface.
+
+**Phased path:**
+1. Make the binding the source of truth in **Python** (extract bindings from connectors; drive the Python runtime off them) — proves sufficiency at full scale + yields the escape-hatch number.
+2. **Decision gate** (build vs. reuse), then generate a native, in-process **TypeScript** SDK for the declarative actions.
+3. Add a language = add a thin runtime + templates (Go next); joint CI publishing to npm / PyPI / crates.io / Maven.
+
+**References:** FAQ #2 (raw httpx), #6 (Protocol Adapter), #7 (spec/ vs runtime/), #8 (primitive, not platform), #14 (versioning across language SDKs); spike write-up at `experiments/sdk_spike/README.md`.

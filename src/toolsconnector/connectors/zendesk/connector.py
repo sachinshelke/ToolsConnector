@@ -71,7 +71,11 @@ class Zendesk(BaseConnector):
         auth_string = f"{email}/token:{api_token}"
         token = base64.b64encode(auth_string.encode()).decode()
 
-        resolved_url = self._base_url or self.__class__.base_url.format(subdomain=subdomain)
+        # BaseConnector.__init__ pre-fills self._base_url with the class template,
+        # so substitute {subdomain} on whatever base we have rather than relying on
+        # `or` to fall through to .format (it never does).
+        base_template = self._base_url or self.__class__.base_url
+        resolved_url = base_template.replace("{subdomain}", subdomain)
 
         headers: dict[str, str] = {
             "Authorization": f"Basic {token}",

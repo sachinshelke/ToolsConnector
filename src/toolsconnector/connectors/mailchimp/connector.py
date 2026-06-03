@@ -71,7 +71,11 @@ class Mailchimp(BaseConnector):
         else:
             dc = "us1"
 
-        resolved_url = self._base_url or self.__class__.base_url.format(dc=dc)
+        # BaseConnector.__init__ pre-fills self._base_url with the class template,
+        # so substitute {dc} on whatever base we have rather than relying on `or`
+        # to fall through to .format (it never does).
+        base_template = self._base_url or self.__class__.base_url
+        resolved_url = base_template.replace("{dc}", dc)
 
         auth_string = f"anystring:{api_key}"
         token = base64.b64encode(auth_string.encode()).decode()
