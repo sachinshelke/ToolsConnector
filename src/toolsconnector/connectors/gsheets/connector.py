@@ -339,6 +339,14 @@ class GoogleSheets(BaseConnector):
 
         Returns:
             UpdateResult with details about the update operation.
+
+        Note:
+            ``values`` must fit within ``range``. A *bounded* range like
+            ``'Sheet1!A1:B2'`` rejects wider/taller data with HTTP 400
+            ("Requested writing within range ..., but tried writing to
+            column [C]"). Pass a *start-cell* range such as ``'Sheet1!A1'``
+            to let Sheets size the write to the data — the same forgiving
+            behaviour as :meth:`append_values`.
         """
         body: dict[str, Any] = {
             "range": range,
@@ -436,6 +444,12 @@ class GoogleSheets(BaseConnector):
 
         Returns:
             BatchUpdateResult with per-range update details.
+
+        Note:
+            Each block's ``values`` must fit its ``range`` — a bounded range
+            rejects overflowing data with HTTP 400, surfaced as
+            "Invalid data[i]: ... tried writing to column [..]". Use start-cell
+            ranges to let Sheets size each write to its data.
         """
         body: dict[str, Any] = {
             "valueInputOption": input_option,

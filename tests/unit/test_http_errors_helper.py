@@ -428,3 +428,65 @@ def test_undecodable_body_does_not_break_helper() -> None:
     # Must raise ServerError, not crash on body decode
     with pytest.raises(ServerError):
         raise_typed_for_status(response, connector="testconn")
+
+
+# ---------------------------------------------------------------------------
+# Upstream error.message folded into the exception MESSAGE (not just details)
+# ---------------------------------------------------------------------------
+
+
+def test_google_error_message_folded_into_message() -> None:
+    """Google's ``{"error":{"message","status"}}`` reason lands on the exception
+    message so the *why* is visible to whoever reads ``str(exc)`` — previously
+    it was only on ``details["body_preview"]`` and got swallowed."""
+    body = (
+        '{"error":{"code":400,"message":"Requested writing within range '
+        '[Sheet1!A1:C2], but tried writing to column [D].","status":"INVALID_ARGUMENT"}}'
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        raise_typed_for_status(_resp(400, body=body), connector="gsheets")
+    msg = exc_info.value.message
+    assert "Requested writing within range" in msg
+    assert "(INVALID_ARGUMENT)" in msg
+    # Full body still preserved for deep inspection.
+    assert "INVALID_ARGUMENT" in exc_info.value.details["body_preview"]
+
+
+def test_oauth_error_shape_folded_into_message() -> None:
+    """OAuth token-endpoint shape ``{"error","error_description"}`` → "error: desc"."""
+    body = '{"error":"invalid_grant","error_description":"Token has been expired or revoked."}'
+    with pytest.raises(TokenExpiredError) as exc_info:  # "expired" marker → TokenExpired
+        raise_typed_for_status(_resp(401, body=body), connector="gdrive")
+    msg = exc_info.value.message
+    assert "invalid_grant" in msg
+    assert "Token has been expired or revoked" in msg
+
+
+def test_generic_message_shape_folded_into_message() -> None:
+    """Bare ``{"message": "..."}`` envelope (Notion-style) is folded too."""
+    with pytest.raises(NotFoundError) as exc_info:
+        raise_typed_for_status(
+            _resp(404, body='{"message":"Could not find page with ID xyz."}'),
+            connector="notion",
+        )
+    assert "Could not find page with ID xyz." in exc_info.value.message
+
+
+def test_non_json_body_leaves_message_bare() -> None:
+    """A non-JSON error body → message is just the status line (no crash, no
+    reason). Drop-in safety for HTML error pages / empty bodies."""
+    with pytest.raises(ServerError) as exc_info:
+        raise_typed_for_status(_resp(500, body="<html>502 Bad Gateway</html>"), connector="x")
+    assert exc_info.value.message == "x API returned HTTP 500"
+
+
+def test_reason_in_message_is_credential_redacted() -> None:
+    """A secret echoed inside ``error.message`` must be redacted from the
+    *message* too — the message is the most log-exposed surface."""
+    leaked = "ya29." + "Z" * 80  # fake test credential — Google OAuth token shape
+    body = f'{{"error":{{"message":"bad token {leaked}","status":"UNAUTHENTICATED"}}}}'
+    with pytest.raises(InvalidCredentialsError) as exc_info:
+        raise_typed_for_status(_resp(401, body=body), connector="gsheets")
+    msg = exc_info.value.message
+    assert leaked not in msg
+    assert "[REDACTED]" in msg

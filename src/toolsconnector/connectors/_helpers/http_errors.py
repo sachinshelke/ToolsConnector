@@ -89,6 +89,11 @@ from toolsconnector.errors import (
 # or exception repr() output.
 _MAX_BODY_PREVIEW = 500
 
+# Maximum chars of the upstream "reason" folded into the exception *message*.
+# Shorter than the body preview — the message stays a one-liner; the full body
+# remains on ``details["body_preview"]``.
+_MAX_REASON = 200
+
 # Substrings in the 401 response body that strongly indicate the access
 # token expired (vs. being malformed or revoked). Matched case-insensitively.
 _TOKEN_EXPIRED_MARKERS = (
@@ -194,7 +199,13 @@ def raise_typed_for_status(
         "details": details,
         "upstream_status": status,
     }
+    # Fold the upstream's own reason (e.g. Google's error.message) into the
+    # exception message so the *why* is visible to whoever reads str(exc) —
+    # previously it was only on details["body_preview"] and got "swallowed".
+    reason = _extract_error_reason(response)
     message = f"{connector} API returned HTTP {status}"
+    if reason:
+        message = f"{message}: {reason}"
 
     if status == 401:
         if _looks_like_expired_token(body_preview):
@@ -286,6 +297,60 @@ def _redact_credentials(text: str) -> str:
     for pattern in _CREDENTIAL_PATTERNS:
         text = pattern.sub(_REDACTION_PLACEHOLDER, text)
     return text
+
+
+def _extract_error_reason(response: httpx.Response) -> Optional[str]:
+    """Pull a concise, human-readable reason from a JSON error body.
+
+    Folds *why* the upstream rejected the request into the typed exception's
+    message (not just the status code). Handles the dominant REST error shapes:
+
+      - Google / Google-style:  ``{"error": {"message": "...", "status": "..."}}``
+      - OAuth 2.0 token errors:  ``{"error": "invalid_grant", "error_description": "..."}``
+      - Generic envelope:        ``{"message": "..."}`` / ``{"error": "..."}``
+
+    Returns ``None`` for non-JSON or unrecognized bodies (the message then stays
+    the bare status line — no crash). The reason is **credential-redacted**
+    (same patterns as the body preview) and length-bounded: it lands in the
+    exception message — the most log-exposed surface — so it must never carry a
+    live secret.
+    """
+    try:
+        data = response.json()
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    reason: Optional[str] = None
+    err = data.get("error")
+    if isinstance(err, dict):
+        msg = err.get("message")
+        if isinstance(msg, str) and msg.strip():
+            api_status = err.get("status")
+            reason = (
+                f"{msg.strip()} ({api_status})"
+                if isinstance(api_status, str) and api_status
+                else msg.strip()
+            )
+    elif isinstance(err, str) and err.strip():
+        desc = data.get("error_description")
+        reason = (
+            f"{err.strip()}: {desc.strip()}"
+            if isinstance(desc, str) and desc.strip()
+            else err.strip()
+        )
+    if reason is None:
+        msg = data.get("message")
+        if isinstance(msg, str) and msg.strip():
+            reason = msg.strip()
+    if not reason:
+        return None
+
+    reason = " ".join(reason.split())  # collapse newlines / runs of whitespace
+    if len(reason) > _MAX_REASON:
+        reason = reason[:_MAX_REASON] + "…"
+    return _redact_credentials(reason)
 
 
 def _looks_like_expired_token(body_preview: str) -> bool:
