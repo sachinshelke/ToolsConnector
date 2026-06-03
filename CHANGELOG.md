@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.13](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.12...v0.3.13) (2026-06-03)
+
+
+### ✨ Features
+
+* multi-language SDK spike (ADR [#17](https://github.com/sachinshelke/ToolsConnector/issues/17)), connector URL/pagination fixes, and error surfacing ([#47](https://github.com/sachinshelke/ToolsConnector/issues/47)) ([7da2e04](https://github.com/sachinshelke/ToolsConnector/commit/7da2e046dfc0fc4fc6bdc93fd9a3b410a74858f5))
+
 ## [0.3.12](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.11...v0.3.12) (2026-05-30)
 
 
