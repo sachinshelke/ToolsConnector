@@ -47,3 +47,6 @@ service-account.json
 *.tar.gz
 .cursor/
 .windsurf/
+
+# Codevira tool cache
+.codevira-cache/
