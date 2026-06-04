@@ -351,6 +351,20 @@ class ToolKit:
         connector_name = entry.connector_name
         action_name = entry.action_name
 
+        # Drop omitted-optional arguments that arrive as ``None``. Schema-driven
+        # MCP frontends fill every omitted optional with its signature default of
+        # ``None`` (FastMCP builds a Pydantic model from the handler signature —
+        # see ``serve/mcp.py``) and pass it through. That ``None`` would override
+        # the connector action's own default and make it emit an empty/missing
+        # query param the upstream API rejects (e.g. gsheets emitting
+        # ``valueInputOption=""`` → HTTP 400). An omitted optional means "use the
+        # action's default", so strip it here at the single execution choke point
+        # (covers MCP, REST, and direct calls). Required keys are kept so a
+        # genuine ``null`` for a required field still surfaces as a clear
+        # validation error rather than a silent drop.
+        required_keys = set(entry.input_schema.get("required", []))
+        arguments = {k: v for k, v in arguments.items() if v is not None or k in required_keys}
+
         self._logger.info(
             "tool.call.start",
             extra={
