@@ -211,6 +211,38 @@ async def test_update_values_overflow_surfaces_google_reason(gs: GoogleSheets) -
 
 
 @pytest.mark.asyncio
+async def test_aexecute_drops_none_optional_so_action_default_applies() -> None:
+    """Regression (HTTP 400 in 0.3.12 & 0.3.13): schema-driven MCP frontends fill
+    every *omitted* optional with its signature default of ``None`` (FastMCP — see
+    serve/mcp.py) and pass it through. ``ToolKit.aexecute`` must drop those Nones so
+    the action's own default applies — otherwise ``update_values`` emits an
+    empty/missing ``valueInputOption`` that Google rejects.
+
+    Repro of the exact bug: ``input_option=None`` (as injected for an omitted arg)
+    must still send ``valueInputOption=USER_ENTERED`` (the action default), 200.
+    """
+    from toolsconnector.serve import ToolKit
+
+    kit = ToolKit(["gsheets"], credentials={"gsheets": "ya29.fake"})
+    with respx.mock(base_url="https://sheets.googleapis.com/v4") as mock:
+        route = mock.put(host="sheets.googleapis.com").mock(
+            return_value=httpx.Response(200, json=_UPDATE_RESP)
+        )
+        await kit.aexecute(
+            "gsheets_update_values",
+            {
+                "spreadsheet_id": "sht-abc-123",
+                "range": "Sheet1!A1:C2",
+                "values": [["a", "b", "c"], ["d", "e", "f"]],
+                "input_option": None,  # injected by FastMCP for an omitted optional
+            },
+        )
+        # Fix: None dropped → action default "USER_ENTERED" applies (not "" / missing).
+        params = dict(route.calls.last.request.url.params)
+        assert params["valueInputOption"] == "USER_ENTERED"
+
+
+@pytest.mark.asyncio
 async def test_append_values_with_correct_endpoint(gs: GoogleSheets) -> None:
     """append_values: POST .../values/{range}:append → AppendResult."""
     with respx.mock(base_url="https://sheets.googleapis.com/v4") as mock:

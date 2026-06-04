@@ -81,6 +81,11 @@ def _make_tool_handler(
             inspect.Parameter(
                 param_name,
                 inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                # Omitted optionals surface here (and to FastMCP's Pydantic model)
+                # as None. ToolKit.aexecute strips None-valued optionals so the
+                # connector action's own default applies — otherwise the action
+                # would emit an empty/missing param that upstream APIs reject
+                # (HTTP 400). See ToolKit.aexecute for the strip.
                 default=inspect.Parameter.empty if is_required else None,
                 annotation=_json_type_to_python(param_schema, is_required),
             )
