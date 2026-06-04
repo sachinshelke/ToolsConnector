@@ -1,3 +1,3 @@
 """ToolsConnector — A foundational primitive for standardizing external API tool connections."""
 
-__version__ = "0.3.13"
+__version__ = "0.3.14"
