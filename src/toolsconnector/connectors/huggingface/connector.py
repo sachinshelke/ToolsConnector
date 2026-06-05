@@ -1040,6 +1040,8 @@ class HuggingFace(BaseConnector):
         search: Optional[str] = None,
         author: Optional[str] = None,
         filter: Optional[str] = None,
+        pipeline_tag: Optional[str] = None,
+        library: Optional[str] = None,
         sort: Optional[str] = None,
         direction: Optional[int] = None,
         limit: Optional[int] = None,
@@ -1050,11 +1052,20 @@ class HuggingFace(BaseConnector):
             search: Free-text search query over model IDs.
             author: Restrict to a given author/organisation.
             filter: Filter tag (e.g. ``'text-classification'``, ``'pytorch'``).
+            pipeline_tag: Restrict to a single pipeline/task (e.g.
+                ``'text-classification'``, ``'text-to-image'``). Unlike
+                ``filter`` (which matches any tag, so e.g. text-ranking models
+                tagged ``text-classification`` slip in), ``pipeline_tag``
+                matches the model's canonical task -- prefer it for clean
+                task-based discovery.
+            library: Restrict to a framework/library (e.g. ``'transformers'``,
+                ``'diffusers'``, ``'sentence-transformers'``).
             sort: Field to sort by (e.g. ``'downloads'``, ``'likes'``).
             direction: Sort direction; ``-1`` for descending.
             limit: Maximum number of models to return.
         """
         params = self._hub_search_params(search, author, filter, sort, direction, limit)
+        params.update(self._clean({"pipeline_tag": pipeline_tag, "library": library}))
         data = await self._request("GET", "/models", base=_HUB_BASE, params=params or None)
         rows = data if isinstance(data, list) else []
         return [p.parse_model_info(m) for m in rows]

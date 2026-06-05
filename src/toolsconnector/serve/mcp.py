@@ -9,7 +9,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 if TYPE_CHECKING:
     from toolsconnector.serve.toolkit import ToolKit
@@ -27,7 +27,6 @@ def _json_type_to_python(param_schema: dict[str, Any], required: bool) -> Any:
     Returns:
         A Python type suitable for use as an ``inspect.Parameter`` annotation.
     """
-    json_type = param_schema.get("type", "string")
     type_map: dict[str, Any] = {
         "integer": int,
         "number": float,
@@ -36,7 +35,27 @@ def _json_type_to_python(param_schema: dict[str, Any], required: bool) -> Any:
         "array": list,
         "object": dict,
     }
-    py_type = type_map.get(json_type, Any)
+
+    # Multi-type union params are rendered as ``anyOf`` in the input schema
+    # (e.g. ``Union[str, list[str]]`` for batch embeddings). Build a Python
+    # ``Union`` annotation so FastMCP's derived Pydantic model accepts every
+    # member shape; collapsing to a single type here would make FastMCP reject
+    # the other forms (e.g. a list arg) before the handler ever runs.
+    any_of = param_schema.get("anyOf")
+    if any_of:
+        members: list[Any] = []
+        for sub in any_of:
+            member = type_map.get(sub.get("type"), Any)
+            if member not in members:
+                members.append(member)
+        if len(members) == 1:
+            py_type: Any = members[0]
+        else:
+            py_type = Union[tuple(members)]
+    else:
+        json_type = param_schema.get("type", "string")
+        py_type = type_map.get(json_type, Any)
+
     return py_type if required else Optional[py_type]
 
 

@@ -417,6 +417,21 @@ async def test_feature_extraction_batch_inputs(hf: HuggingFace) -> None:
         body = route.calls.last.request.read()
         assert b'"inputs":["a","b","c"]' in body
 
+
+@pytest.mark.asyncio
+async def test_feature_extraction_empty_batch_returns_empty(hf: HuggingFace) -> None:
+    """An empty response (e.g. empty batch) is returned as ``[]`` rather than
+    tripping the flat-vector normaliser — degenerate input stays graceful.
+    """
+    with respx.mock(base_url=_ROUTER) as mock:
+        mock.post(_pipeline("some/model", "feature-extraction")).mock(
+            return_value=httpx.Response(200, json=[])
+        )
+
+        result = await hf.afeature_extraction(model="some/model", inputs=[])
+
+        assert result == []
+
     # The serve-layer schema must advertise both string and array forms.
     inputs_schema = (
         HuggingFace.get_spec().actions["feature_extraction"].input_schema["properties"]["inputs"]
@@ -461,6 +476,25 @@ async def test_list_models_happy_path(hf: HuggingFace) -> None:
         assert request.url.params["filter"] == "fill-mask"
         assert request.url.params["sort"] == "downloads"
         assert request.url.params["limit"] == "5"
+
+
+@pytest.mark.asyncio
+async def test_list_models_forwards_pipeline_tag_and_library(hf: HuggingFace) -> None:
+    """list_models forwards the dedicated ``pipeline_tag`` and ``library``
+    query params (cleaner task/framework filtering than the generic ``filter``).
+    """
+    with respx.mock(base_url=_HUB, assert_all_called=True) as mock:
+        route = mock.get("/models").mock(return_value=httpx.Response(200, json=[]))
+
+        await hf.alist_models(pipeline_tag="text-to-image", library="diffusers", limit=3)
+
+        params = route.calls.last.request.url.params
+        assert params["pipeline_tag"] == "text-to-image"
+        assert params["library"] == "diffusers"
+        assert params["limit"] == "3"
+        # Unset optional params must not leak as empty/null query values.
+        assert "filter" not in params
+        assert "search" not in params
 
 
 @pytest.mark.asyncio
