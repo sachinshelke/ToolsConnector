@@ -33,7 +33,7 @@ result = kit.execute("gmail_list_emails", {"query": "is:unread", "max_results": 
 
 ## Key Features
 
-- **73 connectors, 1,515 actions** across 20 categories -- communication, CRM, databases, DevOps, AI/ML, finance, productivity, and more.
+- **73 connectors, 1,518 actions** across 20 categories -- communication, CRM, databases, DevOps, AI/ML, finance, productivity, and more.
 - **One interface for everything.** `ToolKit.execute()` works the same whether you are sending a Slack message or querying MongoDB.
 - **AI-native schema generation.** Export tool definitions for OpenAI, Anthropic, Gemini, or MCP with a single method call.
 - **Built-in MCP server.** Serve any combination of connectors to Claude Desktop, Cursor, or any MCP-compatible client.

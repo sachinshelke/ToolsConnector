@@ -22,7 +22,7 @@ Every connector in the registry falls into one of these tiers:
 |---|---|---|
 | **Tier 1 — Live verified** | Doc-verified AND tested against the real vendor API with a real token. | `linkedin` (3 of 8 actions live-verified as of 2026-04); `notion` (**all 24 of 24 actions + full error matrix live-verified as of 2026-05-14**) |
 | **Tier 2 — Doc verified** | Every endpoint, header, scope, and body shape cross-checked against the vendor's canonical docs and verified with respx mocks. | `x` (Twitter) |
-| **Tier 3 — Pattern correct** | Code reads sensibly, matches documented API patterns from public knowledge, but no active doc or live verification has happened. This is where most of the 68 connectors currently sit. | `medium`, the 14 AWS connectors, the 51 pre-existing ones |
+| **Tier 3 — Pattern correct** | Code reads sensibly, matches documented API patterns from public knowledge, but no active doc or live verification has happened. This is where most of the 73 connectors currently sit. | `medium`, the 14 AWS connectors, the 51 pre-existing ones |
 
 The goal is to progressively promote connectors from Tier 3 → Tier 2 → Tier 1. The CHANGELOG tracks which connectors moved tiers in each release.
 
