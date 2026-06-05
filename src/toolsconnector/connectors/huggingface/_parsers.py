@@ -144,11 +144,22 @@ def parse_zero_shot(data: Any) -> HFZeroShotResult:
     Returns:
         An HFZeroShotResult with index-aligned labels and scores.
     """
+    # Classic shape: {"sequence", "labels", "scores"} (optionally list-wrapped).
     d = first_dict(data)
+    if "labels" in d or "scores" in d:
+        return HFZeroShotResult(
+            sequence=d.get("sequence", ""),
+            labels=d.get("labels", []),
+            scores=d.get("scores", []),
+        )
+    # Router / hf-inference shape (confirmed live): a score-sorted list of
+    # {"label", "score"} rows, like text-classification. Flatten into the
+    # index-aligned labels/scores contract.
+    rows = as_rows(data)
     return HFZeroShotResult(
-        sequence=d.get("sequence", ""),
-        labels=d.get("labels", []),
-        scores=d.get("scores", []),
+        sequence="",
+        labels=[r.get("label", "") for r in rows],
+        scores=[r.get("score", 0.0) for r in rows],
     )
 
 

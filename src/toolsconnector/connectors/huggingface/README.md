@@ -8,16 +8,19 @@
 | **Category** | Ai Ml |
 | **Protocol** | REST |
 | **Website** | [huggingface.co](https://huggingface.co) |
-| **API Docs** | [huggingface.co/docs](https://huggingface.co/docs/api-inference) |
+| **API Docs** | [huggingface.co/docs](https://huggingface.co/docs/inference-providers) |
 | **Auth** | API Key (user access token) |
 | **Rate Limit** | Varies by plan (free Inference API is throttled) |
 | **Pricing** | Free tier + pay-as-you-go Inference |
+| **Verification** | ✅ Tier 1 — Live verified (21/27 actions on `hf-inference`, 2026-06-05; 6 generative/audio actions are partner-provider-dependent) |
 
 ---
 
 ## Overview
 
-The Hugging Face connector runs hosted model inference via the Inference API (`api-inference.huggingface.co`) — text generation, embeddings, summarization, translation, fill-mask, classification, zero-shot classification, and question answering — and browses model and dataset metadata via the Hub API (`huggingface.co/api`). Bring your own user access token (`hf_...`).
+The Hugging Face connector runs hosted model inference via the Inference Providers router (`router.huggingface.co`) — text generation, embeddings, summarization, translation, fill-mask, classification, zero-shot classification, question answering, table-QA, sentence similarity, and vision tasks — and browses model, dataset, and Space metadata via the Hub API (`huggingface.co/api`). Task inference posts to `/{provider}/models/{model}/pipeline/{task}`; the `provider` defaults to `hf-inference` (HF's serverless pool) and can be switched per call (e.g. `fal-ai`, `replicate`, `together`) to route heavier tasks elsewhere. Bring your own user access token (`hf_...`).
+
+> **Provider coverage.** The default `hf-inference` provider serves the lighter "traditional ML" tasks (chat, summarize, translate, fill-mask, classification, NER, zero-shot, QA, table-QA, embeddings, sentence-similarity, and image classification/detection/segmentation) — all **live verified** below. The heavier generative + audio tasks (`text_generation` of large LLMs, `text_to_image`, `text_to_speech`, `image_to_text`, `automatic_speech_recognition`, `audio_classification`) route to **partner providers**: pass `provider=` pointing at a provider that hosts your chosen model. For chat-style generation, prefer `chat_completion` (it auto-routes). Always use a model's **canonical, org-prefixed** repo ID for inference (e.g. `google-bert/bert-base-uncased`, not `bert-base-uncased`) — the router does not resolve legacy aliases the way the Hub API does.
 
 ## Use Cases
 
@@ -89,6 +92,44 @@ except AuthError as e:
     print(f"Auth failed: {e.suggestion}")
 ```
 
+## Verification Status
+
+All 27 actions are pinned by **38 respx tests** in [tests/connectors/test_huggingface.py](../../../tests/connectors/test_huggingface.py): happy path per action, two-host routing (router vs Hub), pipeline-path pinning, custom-provider routing, heterogeneous inference shapes (list-of-dicts, list-of-lists, single dict, raw bytes), base64 binary inputs, optional-param omission, the error matrix (auth / rate-limit / not-found / validation), and the MCP + OpenAI-schema sweeps. Two regression tests cover the live-confirmed quirks fixed during verification (the zero-shot router list shape and the Hub legacy-alias redirect).
+
+**21 of 27 actions are Live verified** — exercised end-to-end against the real Hugging Face API on **2026-06-05** with a real user access token (`hf_...`), routed through the default `hf-inference` provider. The remaining **6 are partner-provider-dependent**: they route correctly (the router forwards the request and returns a clean provider-level response), but `hf-inference` does not serve them — they require a partner provider (e.g. `fal-ai`, `replicate`, `together`) that hosts the chosen model, supplied via `provider=`. This is Hugging Face's multi-provider architecture, not a connector limitation.
+
+| Action | Task / Endpoint | Status |
+|---|---|---|
+| `whoami` | `GET /api/whoami-v2` | ✅ Live verified |
+| `list_models` | `GET /api/models` | ✅ Live verified |
+| `get_model` | `GET /api/models/{id}` (follows legacy-alias 307) | ✅ Live verified |
+| `list_datasets` | `GET /api/datasets` | ✅ Live verified |
+| `get_dataset` | `GET /api/datasets/{id}` (follows legacy-alias 307) | ✅ Live verified |
+| `list_spaces` | `GET /api/spaces` | ✅ Live verified |
+| `get_space` | `GET /api/spaces/{id}` | ✅ Live verified |
+| `chat_completion` | `POST /v1/chat/completions` (auto-routes) | ✅ Live verified |
+| `summarize` | `…/pipeline/summarization` | ✅ Live verified |
+| `translate` | `…/pipeline/translation` | ✅ Live verified |
+| `fill_mask` | `…/pipeline/fill-mask` | ✅ Live verified |
+| `text_classification` | `…/pipeline/text-classification` | ✅ Live verified |
+| `token_classification` | `…/pipeline/token-classification` | ✅ Live verified |
+| `zero_shot_classification` | `…/pipeline/zero-shot-classification` | ✅ Live verified |
+| `question_answering` | `…/pipeline/question-answering` | ✅ Live verified |
+| `table_question_answering` | `…/pipeline/table-question-answering` | ✅ Live verified |
+| `feature_extraction` | `…/pipeline/feature-extraction` | ✅ Live verified |
+| `sentence_similarity` | `…/pipeline/sentence-similarity` | ✅ Live verified |
+| `image_classification` | `…/pipeline/image-classification` | ✅ Live verified |
+| `object_detection` | `…/pipeline/object-detection` | ✅ Live verified |
+| `image_segmentation` | `…/pipeline/image-segmentation` | ✅ Live verified |
+| `text_generation` | `…/pipeline/text-generation` | 🔌 Provider-dependent (large LLMs route to a partner; or use `chat_completion`) |
+| `text_to_image` | `…/pipeline/text-to-image` | 🔌 Provider-dependent (`provider="fal-ai"`, etc.) |
+| `text_to_speech` | `…/pipeline/text-to-speech` | 🔌 Provider-dependent |
+| `image_to_text` | `…/pipeline/image-to-text` | 🔌 Provider-dependent |
+| `automatic_speech_recognition` | `…/pipeline/automatic-speech-recognition` | 🔌 Provider-dependent |
+| `audio_classification` | `…/pipeline/audio-classification` | 🔌 Provider-dependent |
+
+Two bugs were found and fixed during live verification: (1) `zero_shot_classification` returned empty labels because the `hf-inference` router emits a score-sorted list of `{label, score}` rather than the classic `{sequence, labels, scores}` object — the parser now handles both; (2) `get_model`/`get_dataset` failed to parse because the Hub `307`-redirects legacy repo aliases (`bert-base-uncased` → `google-bert/bert-base-uncased`) and the client wasn't following redirects — it now does.
+
 ## Actions
 
 <!-- ACTIONS_START -->
@@ -98,8 +139,9 @@ except AuthError as e:
 ## Tips
 
 - Inference outputs are heterogeneous per task — each action returns a typed model for its stable shape (e.g. `HFGeneratedText`, `HFClassification`); embeddings return raw `list[list[float]]`
+- For inference, always pass a model's **canonical, org-prefixed** repo ID (e.g. `google-bert/bert-base-uncased`, `distilbert/distilbert-base-uncased-finetuned-sst-2-english`) — the router does not resolve legacy aliases, and a bare alias returns `Model not supported by provider`. The Hub metadata actions (`get_model`/`get_dataset`) *do* resolve aliases (the connector follows the Hub's `307` redirect)
 - Pass `wait_for_model=True` on `text_generation` to block while a cold model warms up instead of getting a 503
-- The free Inference API is throttled — cache results and prefer batching where possible
+- Serverless inference (the default `hf-inference` provider) is throttled — cache results and prefer batching where possible; route heavy/generative tasks to a partner provider via `provider=` (e.g. `"fal-ai"`, `"replicate"`, `"together"`)
 
 ## Related Connectors
 

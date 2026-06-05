@@ -1,14 +1,18 @@
 """Hugging Face connector -- Inference tasks, chat completion, and Hub metadata.
 
-Uses httpx for direct HTTP calls against three Hugging Face hosts:
+Uses httpx for direct HTTP calls against two Hugging Face hosts:
 
-- the **Inference API** (``api-inference.huggingface.co``) for running
-  hosted models on a task (text generation, embeddings, classification,
-  vision, audio, ...),
-- the **Inference Providers router** (``router.huggingface.co``) for the
-  OpenAI-compatible ``/v1/chat/completions`` and ``/v1/models`` endpoints,
+- the **Inference Providers router** (``router.huggingface.co``) for
+  running hosted models on a task and for the OpenAI-compatible
+  ``/v1/chat/completions`` and ``/v1/models`` endpoints. Task inference
+  posts to ``/{provider}/models/{model}/pipeline/{task}`` -- the explicit
+  ``/pipeline/{task}`` segment pins routing to the requested pipeline
+  (the bare ``/models/{model}`` form mis-routes some tasks). The
+  ``provider`` defaults to ``hf-inference`` (HF's own serverless CPU/GPU
+  pool) and may be switched to a partner provider (e.g. ``fal-ai``) to
+  route heavy tasks elsewhere.
 - the **Hub API** (``huggingface.co/api``) for model / dataset / Space
-  metadata.
+  metadata and identity.
 
 Expects a user-access token (``hf_...``) as ``credentials`` (Bring Your
 Own Key), sent via the ``Authorization: Bearer`` header on every call.
@@ -51,11 +55,15 @@ from .types import (
 
 logger = logging.getLogger("toolsconnector.huggingface")
 
-# The Inference API serves hosted models; the router serves the
+# The Inference Providers router serves both hosted-model task inference
+# (``/{provider}/models/{model}/pipeline/{task}``) and the
 # OpenAI-compatible chat endpoint; the Hub API serves metadata.
-_INFERENCE_BASE = "https://api-inference.huggingface.co"
 _ROUTER_BASE = "https://router.huggingface.co"
 _HUB_BASE = "https://huggingface.co/api"
+
+# Default inference provider: HF's own serverless pool. Callers may route
+# heavy tasks to a partner provider (e.g. ``fal-ai``) per action.
+_DEFAULT_PROVIDER = "hf-inference"
 
 
 class HuggingFace(BaseConnector):
@@ -63,24 +71,39 @@ class HuggingFace(BaseConnector):
 
     Supports Bearer token authentication. Pass a user-access token
     (``hf_...``) as ``credentials`` when instantiating. Runs hosted
-    models via the Inference API, OpenAI-compatible chat completions via
-    the Inference Providers router, and browses model / dataset / Space
-    metadata via the Hub API -- all with direct httpx calls.
+    models and OpenAI-compatible chat completions via the Inference
+    Providers router, and browses model / dataset / Space metadata via
+    the Hub API -- all with direct httpx calls.
+
+    Provider coverage. The default ``hf-inference`` provider (HF's own
+    serverless pool) serves the lighter "traditional ML" tasks -- chat,
+    summarization, translation, fill-mask, text/token/zero-shot
+    classification, QA, table-QA, embeddings, sentence-similarity, and
+    image classification / detection / segmentation -- which are all
+    live-verified end to end. The heavier generative and audio tasks
+    (``text_generation`` of large LLMs, ``text_to_image``,
+    ``text_to_speech``, ``image_to_text``, ``automatic_speech_recognition``,
+    ``audio_classification``) are routed to **partner providers**: pass
+    ``provider=`` (e.g. ``'fal-ai'``, ``'replicate'``, ``'together'``) to
+    a provider that hosts your chosen model. (For chat-style text
+    generation, prefer ``chat_completion``, which auto-routes.) Always use
+    a model's canonical org-prefixed repo ID for inference -- the router
+    does not resolve legacy aliases the way the Hub API does.
     """
 
     name = "huggingface"
     display_name = "Hugging Face"
     category = ConnectorCategory.AI_ML
     protocol = ProtocolType.REST
-    base_url = _INFERENCE_BASE
+    base_url = _ROUTER_BASE
     description = (
         "Connect to Hugging Face to run hosted model inference across the "
         "full task set (text generation, chat completion, embeddings, "
         "classification, NER, vision, and audio) and to search models, "
         "datasets, and Spaces on the Hub."
     )
-    verification_status = "pattern"
-    # Hugging Face's free Inference API is throttled; keep requests modest.
+    verification_status = "live"
+    # Hugging Face's serverless inference is throttled; keep requests modest.
     _rate_limit_config = RateLimitSpec(rate=60, period=60, burst=10)
 
     # ------------------------------------------------------------------
@@ -99,6 +122,11 @@ class HuggingFace(BaseConnector):
                 "Content-Type": "application/json",
             },
             timeout=self._timeout,
+            # The Hub 307-redirects legacy repo aliases to their canonical
+            # ID (e.g. ``bert-base-uncased`` -> ``google-bert/bert-base-uncased``,
+            # ``squad`` -> ``rajpurkar/squad``). Follow redirects so single-repo
+            # GETs resolve instead of trying to parse the redirect body as JSON.
+            follow_redirects=True,
         )
 
     async def _teardown(self) -> None:
@@ -115,7 +143,7 @@ class HuggingFace(BaseConnector):
         method: str,
         path: str,
         *,
-        base: str = _INFERENCE_BASE,
+        base: str = _ROUTER_BASE,
         params: Optional[dict[str, Any]] = None,
         json_body: Optional[Any] = None,
     ) -> Any:
@@ -124,8 +152,8 @@ class HuggingFace(BaseConnector):
         Args:
             method: HTTP method (GET, POST, etc.).
             path: API path relative to ``base`` (must start with ``/``).
-            base: Host to target -- the Inference API (default), the
-                router (``_ROUTER_BASE``), or the Hub API (``_HUB_BASE``).
+            base: Host to target -- the Inference Providers router
+                (default, ``_ROUTER_BASE``) or the Hub API (``_HUB_BASE``).
             params: Optional query parameters.
             json_body: Optional JSON request body.
 
@@ -155,7 +183,7 @@ class HuggingFace(BaseConnector):
         path: str,
         *,
         json_body: Any,
-        base: str = _INFERENCE_BASE,
+        base: str = _ROUTER_BASE,
     ) -> bytes:
         """POST to a host and return the raw response bytes.
 
@@ -165,7 +193,7 @@ class HuggingFace(BaseConnector):
         Args:
             path: API path relative to ``base`` (must start with ``/``).
             json_body: JSON request body.
-            base: Host to target (defaults to the Inference API).
+            base: Host to target (defaults to the router, ``_ROUTER_BASE``).
 
         Returns:
             The raw response body bytes.
@@ -177,40 +205,77 @@ class HuggingFace(BaseConnector):
         raise_typed_for_status(response, connector=self.name)
         return response.content
 
+    @staticmethod
+    def _pipeline_path(provider: str, model: str, task: str) -> str:
+        """Build the router pipeline path for a task inference call.
+
+        Returns ``/{provider}/models/{model}/pipeline/{task}``. The
+        explicit ``/pipeline/{task}`` segment pins routing to the
+        requested HF pipeline -- the bare ``/models/{model}`` form
+        mis-routes some tasks (e.g. feature-extraction).
+        """
+        return f"/{provider}/models/{model}/pipeline/{task}"
+
     async def _infer(
         self,
         model: str,
         inputs: Any,
+        task: str,
         parameters: Optional[dict[str, Any]] = None,
         options: Optional[dict[str, Any]] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> Any:
-        """Run a model on the Inference API and return the raw payload.
+        """Run a task on the Inference Providers router; return the payload.
 
-        Builds the ``{"inputs", "parameters", "options"}`` body, omitting
+        POSTs to ``{_ROUTER_BASE}/{provider}/models/{model}/pipeline/{task}``
+        with the ``{"inputs", "parameters", "options"}`` body, omitting
         empty blocks. Returns the parsed JSON (shape varies by task).
+
+        Args:
+            model: Model repo ID to run.
+            inputs: Task inputs (shape varies by task).
+            task: HF pipeline tag (e.g. ``'text-generation'``,
+                ``'feature-extraction'``); pins the routing path.
+            parameters: Optional task-specific parameters.
+            options: Optional request options (e.g. ``wait_for_model``).
+            provider: Inference provider to route through (default
+                ``hf-inference``).
         """
         body: dict[str, Any] = {"inputs": inputs}
         if parameters:
             body["parameters"] = parameters
         if options:
             body["options"] = options
-        return await self._request("POST", f"/models/{model}", json_body=body)
+        return await self._request(
+            "POST", self._pipeline_path(provider, model, task), json_body=body
+        )
 
     async def _infer_bytes(
         self,
         model: str,
         inputs: Any,
+        task: str,
         parameters: Optional[dict[str, Any]] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> bytes:
-        """Run a binary-output model on the Inference API; return raw bytes.
+        """Run a binary-output task on the router; return raw bytes.
 
-        Builds the ``{"inputs", "parameters"}`` body, omitting an empty
+        POSTs to ``{_ROUTER_BASE}/{provider}/models/{model}/pipeline/{task}``
+        with the ``{"inputs", "parameters"}`` body, omitting an empty
         ``parameters`` block, and returns the response media bytes.
+
+        Args:
+            model: Model repo ID to run.
+            inputs: Task inputs (the prompt or text).
+            task: HF pipeline tag (e.g. ``'text-to-image'``); pins routing.
+            parameters: Optional task-specific parameters.
+            provider: Inference provider to route through (default
+                ``hf-inference``).
         """
         body: dict[str, Any] = {"inputs": inputs}
         if parameters:
             body["parameters"] = parameters
-        return await self._request_bytes(f"/models/{model}", json_body=body)
+        return await self._request_bytes(self._pipeline_path(provider, model, task), json_body=body)
 
     @staticmethod
     def _to_base64(data: Union[bytes, str]) -> str:
@@ -277,8 +342,11 @@ class HuggingFace(BaseConnector):
         do_sample: Optional[bool] = None,
         return_full_text: Optional[bool] = None,
         wait_for_model: Optional[bool] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[HFGeneratedText]:
-        """Run a text-generation model; returns HFGeneratedText list.
+        """Run a text-generation model via the Inference Providers router.
+
+        Returns a list of HFGeneratedText (``generated_text`` populated).
 
         Args:
             model: Model repo ID (e.g. ``'gpt2'``, ``'bigscience/bloom'``).
@@ -293,6 +361,9 @@ class HuggingFace(BaseConnector):
                 text rather than the prompt plus continuation.
             wait_for_model: If True, block until the model is loaded
                 instead of returning a 503 while it warms up.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         parameters = self._clean(
             {
@@ -307,7 +378,14 @@ class HuggingFace(BaseConnector):
         )
         options = {} if wait_for_model is None else {"wait_for_model": wait_for_model}
 
-        data = await self._infer(model, inputs, parameters or None, options or None)
+        data = await self._infer(
+            model,
+            inputs,
+            "text-generation",
+            parameters or None,
+            options or None,
+            provider=provider,
+        )
         return p.parse_generated_rows(data, "generated_text")
 
     @action("Create a chat completion via the OpenAI-compatible router")
@@ -392,8 +470,9 @@ class HuggingFace(BaseConnector):
         inputs: str,
         min_length: Optional[int] = None,
         max_length: Optional[int] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[HFGeneratedText]:
-        """Run a summarization model on the Inference API.
+        """Run a summarization model via the Inference Providers router.
 
         Returns a list of HFGeneratedText (``summary_text`` populated).
 
@@ -402,9 +481,14 @@ class HuggingFace(BaseConnector):
             inputs: The text to summarize.
             min_length: Minimum length (in tokens) of the summary.
             max_length: Maximum length (in tokens) of the summary.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         parameters = self._clean({"min_length": min_length, "max_length": max_length})
-        data = await self._infer(model, inputs, parameters or None)
+        data = await self._infer(
+            model, inputs, "summarization", parameters or None, provider=provider
+        )
         return p.parse_generated_rows(data, "summary_text")
 
     @action("Translate text with a hosted model")
@@ -414,8 +498,9 @@ class HuggingFace(BaseConnector):
         inputs: str,
         src_lang: Optional[str] = None,
         tgt_lang: Optional[str] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[HFGeneratedText]:
-        """Run a translation model on the Inference API.
+        """Run a translation model via the Inference Providers router.
 
         Returns a list of HFGeneratedText (``translation_text`` populated).
 
@@ -426,9 +511,14 @@ class HuggingFace(BaseConnector):
                 require it (e.g. ``'en_XX'`` for mBART).
             tgt_lang: Target language code, for multilingual models that
                 require it (e.g. ``'fr_XX'`` for mBART).
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         parameters = self._clean({"src_lang": src_lang, "tgt_lang": tgt_lang})
-        data = await self._infer(model, inputs, parameters or None)
+        data = await self._infer(
+            model, inputs, "translation", parameters or None, provider=provider
+        )
         return p.parse_generated_rows(data, "translation_text")
 
     # ==================================================================
@@ -440,16 +530,25 @@ class HuggingFace(BaseConnector):
         self,
         model: str,
         inputs: str,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[HFFillMaskToken]:
-        """Run a fill-mask model; returns HFFillMaskToken candidates by score.
+        """Fill a masked token via the Inference Providers router.
 
-        The input must contain the model's mask token (e.g. ``<mask>`` or ``[MASK]``).
+        Returns HFFillMaskToken candidates ordered by score. The input
+        must contain the model's mask token (e.g. ``<mask>`` or ``[MASK]``).
 
         Args:
-            model: Fill-mask model repo ID (e.g. ``'bert-base-uncased'``).
-            inputs: Text containing exactly one mask token.
+            model: Fill-mask model repo ID (e.g.
+                ``'google-bert/bert-base-uncased'``). Use the model's
+                canonical (org-prefixed) ID -- the router does not resolve
+                legacy aliases.
+            inputs: Text containing exactly one mask token -- ``[MASK]`` for
+                BERT-family models, ``<mask>`` for RoBERTa-family models.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
-        data = await self._infer(model, inputs)
+        data = await self._infer(model, inputs, "fill-mask", provider=provider)
         return p.parse_fill_mask(data)
 
     @action("Classify text with a hosted model")
@@ -457,16 +556,22 @@ class HuggingFace(BaseConnector):
         self,
         model: str,
         inputs: str,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[HFClassification]:
-        """Run a text-classification model; returns HFClassification pairs.
+        """Classify text via the Inference Providers router.
+
+        Returns HFClassification (label, score) pairs.
 
         Args:
             model: Classification model repo ID, e.g.
-                ``'distilbert-base-uncased-finetuned-sst-2-english'``.
+                ``'distilbert/distilbert-base-uncased-finetuned-sst-2-english'``.
             inputs: The text to classify.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         # The API nests results one level for single inputs; parse_classification flattens.
-        data = await self._infer(model, inputs)
+        data = await self._infer(model, inputs, "text-classification", provider=provider)
         return p.parse_classification(data)
 
     @action("Tag tokens in text (NER / part-of-speech)")
@@ -475,10 +580,12 @@ class HuggingFace(BaseConnector):
         model: str,
         inputs: str,
         aggregation_strategy: Optional[str] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[HFTokenClassification]:
-        """Run a token-classification model; returns HFTokenClassification spans.
+        """Tag tokens via the Inference Providers router.
 
-        Useful for named-entity recognition and part-of-speech tagging.
+        Returns HFTokenClassification spans. Useful for named-entity
+        recognition and part-of-speech tagging.
 
         Args:
             model: Token-classification model repo ID (e.g.
@@ -487,9 +594,14 @@ class HuggingFace(BaseConnector):
             aggregation_strategy: How to group sub-word tokens into
                 entities -- one of ``'none'``, ``'simple'``, ``'first'``,
                 ``'average'``, or ``'max'``.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         parameters = self._clean({"aggregation_strategy": aggregation_strategy})
-        data = await self._infer(model, inputs, parameters or None)
+        data = await self._infer(
+            model, inputs, "token-classification", parameters or None, provider=provider
+        )
         return p.parse_token_classification(data)
 
     @action("Classify text against candidate labels without training")
@@ -499,10 +611,12 @@ class HuggingFace(BaseConnector):
         inputs: str,
         candidate_labels: list[str],
         multi_label: Optional[bool] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> HFZeroShotResult:
-        """Run zero-shot classification; returns HFZeroShotResult.
+        """Run zero-shot classification via the Inference Providers router.
 
-        ``labels`` and ``scores`` on the result are index-aligned.
+        Returns HFZeroShotResult; ``labels`` and ``scores`` are
+        index-aligned.
 
         Args:
             model: Zero-shot model repo ID (e.g. ``'facebook/bart-large-mnli'``).
@@ -510,12 +624,17 @@ class HuggingFace(BaseConnector):
             candidate_labels: Candidate labels to score the text against.
             multi_label: If True, scores are independent per label rather
                 than forming a single distribution.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         parameters: dict[str, Any] = {"candidate_labels": candidate_labels}
         if multi_label is not None:
             parameters["multi_label"] = multi_label
 
-        data = await self._infer(model, inputs, parameters)
+        data = await self._infer(
+            model, inputs, "zero-shot-classification", parameters, provider=provider
+        )
         return p.parse_zero_shot(data)
 
     @action("Answer a question from a context passage")
@@ -524,15 +643,26 @@ class HuggingFace(BaseConnector):
         model: str,
         question: str,
         context: str,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> HFQuestionAnswer:
-        """Run extractive QA; returns HFQuestionAnswer (span, score, offsets).
+        """Run extractive QA via the Inference Providers router.
+
+        Returns HFQuestionAnswer (answer span, score, offsets).
 
         Args:
             model: QA model repo ID (e.g. ``'deepset/roberta-base-squad2'``).
             question: The question to answer.
             context: The passage to extract the answer from.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
-        data = await self._infer(model, {"question": question, "context": context})
+        data = await self._infer(
+            model,
+            {"question": question, "context": context},
+            "question-answering",
+            provider=provider,
+        )
         return p.parse_question_answer(data)
 
     @action("Answer a question about a table")
@@ -541,8 +671,12 @@ class HuggingFace(BaseConnector):
         model: str,
         query: str,
         table: dict[str, list[str]],
+        provider: str = _DEFAULT_PROVIDER,
     ) -> HFTableQuestionAnswer:
-        """Run table QA over a column-oriented table; returns HFTableQuestionAnswer.
+        """Run table QA via the Inference Providers router.
+
+        Answers a query over a column-oriented table; returns
+        HFTableQuestionAnswer.
 
         Args:
             model: Table-QA model repo ID (e.g. ``'google/tapas-base-finetuned-wtq'``).
@@ -550,8 +684,13 @@ class HuggingFace(BaseConnector):
             table: The table as a dict mapping each column name to its
                 list of cell values (all values are strings). Every column
                 must have the same number of rows.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
-        data = await self._infer(model, {"query": query, "table": table})
+        data = await self._infer(
+            model, {"query": query, "table": table}, "table-question-answering", provider=provider
+        )
         return p.parse_table_question_answer(data)
 
     # ==================================================================
@@ -563,8 +702,9 @@ class HuggingFace(BaseConnector):
         self,
         model: str,
         inputs: str,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[list[float]]:
-        """Run a feature-extraction (embedding) model on the Inference API.
+        """Extract embeddings via the Inference Providers router.
 
         Embedding shape is model-specific, so raw nested float lists are
         returned. A flat ``list[float]`` is normalised to a single-row
@@ -574,8 +714,11 @@ class HuggingFace(BaseConnector):
             model: Embedding model repo ID, e.g.
                 ``'sentence-transformers/all-MiniLM-L6-v2'``.
             inputs: The text to embed.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
-        data = await self._infer(model, inputs)
+        data = await self._infer(model, inputs, "feature-extraction", provider=provider)
         if isinstance(data, list) and data and isinstance(data[0], (int, float)):
             return [[float(x) for x in data]]
         return data
@@ -586,21 +729,27 @@ class HuggingFace(BaseConnector):
         model: str,
         source_sentence: str,
         sentences: list[str],
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[float]:
-        """Run sentence-similarity; returns a similarity score per candidate.
+        """Score sentence similarity via the Inference Providers router.
 
-        Scores are index-aligned with ``sentences`` (cosine similarity in
-        [0, 1], higher is more similar).
+        Returns a similarity score per candidate, index-aligned with
+        ``sentences`` (cosine similarity in [0, 1], higher is more similar).
 
         Args:
             model: Sentence-similarity model repo ID, e.g.
                 ``'sentence-transformers/all-MiniLM-L6-v2'``.
             source_sentence: The sentence to compare against.
             sentences: Candidate sentences to score for similarity.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         data = await self._infer(
             model,
             {"source_sentence": source_sentence, "sentences": sentences},
+            "sentence-similarity",
+            provider=provider,
         )
         if isinstance(data, list):
             return [float(x) for x in data]
@@ -621,12 +770,13 @@ class HuggingFace(BaseConnector):
         width: Optional[int] = None,
         height: Optional[int] = None,
         seed: Optional[int] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> bytes:
-        """Run a text-to-image model; returns the generated image bytes.
+        """Generate an image via the Inference Providers router.
 
-        The Inference API returns the rendered image as raw bytes (e.g. a
-        PNG), which are returned unchanged for the caller to save or
-        re-encode.
+        Returns the rendered image as raw bytes (e.g. a PNG), unchanged
+        for the caller to save or re-encode. Heavy diffusion models are
+        often best routed to a partner provider via ``provider``.
 
         Args:
             model: Text-to-image model repo ID (e.g.
@@ -640,6 +790,9 @@ class HuggingFace(BaseConnector):
             width: Output image width in pixels.
             height: Output image height in pixels.
             seed: Seed for the random number generator (for reproducibility).
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         parameters = self._clean(
             {
@@ -651,23 +804,31 @@ class HuggingFace(BaseConnector):
                 "seed": seed,
             }
         )
-        return await self._infer_bytes(model, inputs, parameters or None)
+        return await self._infer_bytes(
+            model, inputs, "text-to-image", parameters or None, provider=provider
+        )
 
     @action("Generate a caption for an image")
     async def image_to_text(
         self,
         model: str,
         image: Union[bytes, str],
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[HFGeneratedText]:
-        """Run an image-to-text (captioning) model; returns HFGeneratedText.
+        """Caption an image via the Inference Providers router.
+
+        Returns HFGeneratedText (``generated_text`` populated).
 
         Args:
             model: Image-to-text model repo ID (e.g.
                 ``'Salesforce/blip-image-captioning-large'``).
             image: The image to caption, as raw ``bytes`` or a
                 base64-encoded string.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
-        data = await self._infer(model, self._to_base64(image))
+        data = await self._infer(model, self._to_base64(image), "image-to-text", provider=provider)
         return p.parse_generated_rows(data, "generated_text")
 
     @action("Classify an image into labels")
@@ -676,8 +837,11 @@ class HuggingFace(BaseConnector):
         model: str,
         image: Union[bytes, str],
         top_k: Optional[int] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[HFClassification]:
-        """Run an image-classification model; returns HFClassification pairs.
+        """Classify an image via the Inference Providers router.
+
+        Returns HFClassification (label, score) pairs.
 
         Args:
             model: Image-classification model repo ID (e.g.
@@ -685,9 +849,18 @@ class HuggingFace(BaseConnector):
             image: The image to classify, as raw ``bytes`` or a
                 base64-encoded string.
             top_k: Limit the output to the top-k most probable classes.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         parameters = self._clean({"top_k": top_k})
-        data = await self._infer(model, self._to_base64(image), parameters or None)
+        data = await self._infer(
+            model,
+            self._to_base64(image),
+            "image-classification",
+            parameters or None,
+            provider=provider,
+        )
         return p.parse_classification(data)
 
     @action("Detect objects and bounding boxes in an image")
@@ -696,8 +869,11 @@ class HuggingFace(BaseConnector):
         model: str,
         image: Union[bytes, str],
         threshold: Optional[float] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[HFObjectDetection]:
-        """Run an object-detection model; returns HFObjectDetection rows.
+        """Detect objects via the Inference Providers router.
+
+        Returns HFObjectDetection rows with bounding boxes.
 
         Args:
             model: Object-detection model repo ID (e.g.
@@ -705,9 +881,14 @@ class HuggingFace(BaseConnector):
             image: The image to analyse, as raw ``bytes`` or a
                 base64-encoded string.
             threshold: Minimum confidence required to report a detection.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         parameters = self._clean({"threshold": threshold})
-        data = await self._infer(model, self._to_base64(image), parameters or None)
+        data = await self._infer(
+            model, self._to_base64(image), "object-detection", parameters or None, provider=provider
+        )
         return p.parse_object_detection(data)
 
     @action("Segment an image into labelled masks")
@@ -718,10 +899,12 @@ class HuggingFace(BaseConnector):
         mask_threshold: Optional[float] = None,
         threshold: Optional[float] = None,
         subtask: Optional[str] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[HFImageSegment]:
-        """Run an image-segmentation model; returns HFImageSegment rows.
+        """Segment an image via the Inference Providers router.
 
-        Each segment carries a base64-encoded black-and-white PNG mask.
+        Returns HFImageSegment rows; each segment carries a base64-encoded
+        black-and-white PNG mask.
 
         Args:
             model: Image-segmentation model repo ID (e.g.
@@ -732,6 +915,9 @@ class HuggingFace(BaseConnector):
             threshold: Probability threshold to filter predicted masks.
             subtask: Segmentation subtask -- ``'instance'``,
                 ``'panoptic'``, or ``'semantic'``.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         parameters = self._clean(
             {
@@ -740,7 +926,13 @@ class HuggingFace(BaseConnector):
                 "subtask": subtask,
             }
         )
-        data = await self._infer(model, self._to_base64(image), parameters or None)
+        data = await self._infer(
+            model,
+            self._to_base64(image),
+            "image-segmentation",
+            parameters or None,
+            provider=provider,
+        )
         return p.parse_image_segments(data)
 
     # ==================================================================
@@ -753,17 +945,29 @@ class HuggingFace(BaseConnector):
         model: str,
         audio: Union[bytes, str],
         return_timestamps: Optional[bool] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> HFTranscription:
-        """Run an ASR (speech-to-text) model; returns HFTranscription.
+        """Transcribe speech via the Inference Providers router.
+
+        Runs an ASR (speech-to-text) model; returns HFTranscription.
 
         Args:
             model: ASR model repo ID (e.g. ``'openai/whisper-large-v3'``).
             audio: The audio to transcribe, as raw ``bytes`` or a
                 base64-encoded string.
             return_timestamps: If True, also return per-chunk timestamps.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         parameters = self._clean({"return_timestamps": return_timestamps})
-        data = await self._infer(model, self._to_base64(audio), parameters or None)
+        data = await self._infer(
+            model,
+            self._to_base64(audio),
+            "automatic-speech-recognition",
+            parameters or None,
+            provider=provider,
+        )
         return p.parse_transcription(data)
 
     @action("Classify audio into labels")
@@ -772,8 +976,11 @@ class HuggingFace(BaseConnector):
         model: str,
         audio: Union[bytes, str],
         top_k: Optional[int] = None,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> list[HFClassification]:
-        """Run an audio-classification model; returns HFClassification pairs.
+        """Classify audio via the Inference Providers router.
+
+        Returns HFClassification (label, score) pairs.
 
         Args:
             model: Audio-classification model repo ID (e.g.
@@ -781,9 +988,18 @@ class HuggingFace(BaseConnector):
             audio: The audio to classify, as raw ``bytes`` or a
                 base64-encoded string.
             top_k: Limit the output to the top-k most probable classes.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
         parameters = self._clean({"top_k": top_k})
-        data = await self._infer(model, self._to_base64(audio), parameters or None)
+        data = await self._infer(
+            model,
+            self._to_base64(audio),
+            "audio-classification",
+            parameters or None,
+            provider=provider,
+        )
         return p.parse_classification(data)
 
     @action("Synthesize speech audio from text")
@@ -791,18 +1007,22 @@ class HuggingFace(BaseConnector):
         self,
         model: str,
         inputs: str,
+        provider: str = _DEFAULT_PROVIDER,
     ) -> bytes:
-        """Run a text-to-speech model; returns the synthesized audio bytes.
+        """Synthesize speech via the Inference Providers router.
 
-        The Inference API returns the audio as raw bytes (e.g. a FLAC or
-        WAV payload), which are returned unchanged.
+        Returns the audio as raw bytes (e.g. a FLAC or WAV payload),
+        unchanged.
 
         Args:
             model: Text-to-speech model repo ID (e.g.
                 ``'espnet/kan-bayashi_ljspeech_vits'``).
             inputs: The text to synthesize into speech.
+            provider: Inference provider to route through (default
+                ``'hf-inference'``); set to a partner provider (e.g.
+                ``'fal-ai'``) to run heavy models elsewhere.
         """
-        return await self._infer_bytes(model, inputs)
+        return await self._infer_bytes(model, inputs, "text-to-speech", provider=provider)
 
     # ==================================================================
     # Actions -- Hub: models

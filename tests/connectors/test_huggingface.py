@@ -2,11 +2,15 @@
 
 Same pattern as test_openai.py. Exercises Hugging Face's specifics:
 
-  - **Three hosts** — the Inference API (``api-inference.huggingface.co``),
-    the OpenAI-compatible router (``router.huggingface.co``) for chat
-    completion, and the Hub API (``huggingface.co/api``). Each test mocks
-    the host the action under test targets, asserting the request lands
-    on the right base.
+  - **Two hosts** — the Inference Providers router (``router.huggingface.co``)
+    for both task inference and the OpenAI-compatible ``/v1/chat/completions``
+    endpoint, and the Hub API (``huggingface.co/api``) for metadata. Each
+    test mocks the host the action under test targets, asserting the request
+    lands on the right base.
+  - **Pipeline routing** — task inference posts to
+    ``/{provider}/models/{model}/pipeline/{task}`` on the router. The
+    explicit ``/pipeline/{task}`` segment pins routing; ``provider`` defaults
+    to ``hf-inference`` and may be overridden (e.g. ``fal-ai``).
   - **Heterogeneous inference shapes** — text-to-text tasks return a
     ``list`` of dicts; classification returns a list-of-lists; zero-shot
     and QA return a single dict. The connector normalises each into a
@@ -35,9 +39,18 @@ from toolsconnector.errors import (
     ValidationError,
 )
 
-_INFERENCE = "https://api-inference.huggingface.co"
 _ROUTER = "https://router.huggingface.co"
 _HUB = "https://huggingface.co/api"
+
+# Default serverless provider for task inference; the pipeline path is
+# ``/{provider}/models/{model}/pipeline/{task}``.
+_HF = "hf-inference"
+
+
+def _pipeline(model: str, task: str, provider: str = _HF) -> str:
+    """Build the router pipeline path a task action is expected to hit."""
+    return f"/{provider}/models/{model}/pipeline/{task}"
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -57,19 +70,20 @@ async def hf() -> HuggingFace:
 
 
 # ---------------------------------------------------------------------------
-# 1. Inference — text generation
+# 1. Inference — text generation (pipeline routing + provider default)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_text_generation_happy_path(hf: HuggingFace) -> None:
-    """text_generation: POST /models/{model} → [HFGeneratedText].
+    """text_generation: POST /hf-inference/models/{model}/pipeline/text-generation.
 
-    Verifies host, auth header, that inputs land in the body, and that
-    the list-of-dicts response is parsed.
+    Verifies host, the default ``hf-inference`` provider, the explicit
+    ``/pipeline/text-generation`` segment, auth header, that inputs land
+    in the body, and that the list-of-dicts response is parsed.
     """
-    with respx.mock(base_url=_INFERENCE, assert_all_called=True) as mock:
-        route = mock.post("/models/gpt2").mock(
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline("gpt2", "text-generation")).mock(
             return_value=httpx.Response(
                 200,
                 json=[{"generated_text": "Hello, world! And then some."}],
@@ -87,6 +101,8 @@ async def test_text_generation_happy_path(hf: HuggingFace) -> None:
         assert result[0].generated_text == "Hello, world! And then some."
 
         request = route.calls.last.request
+        # Default provider + explicit pipeline segment.
+        assert request.url.path == "/hf-inference/models/gpt2/pipeline/text-generation"
         assert request.headers["authorization"] == "Bearer hf_fake_test_token"
         body = request.read()
         assert b'"inputs"' in body
@@ -97,8 +113,8 @@ async def test_text_generation_happy_path(hf: HuggingFace) -> None:
 @pytest.mark.asyncio
 async def test_text_generation_omits_optional_params_when_none(hf: HuggingFace) -> None:
     """When generation params are None, no ``parameters`` block is sent."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        route = mock.post("/models/gpt2").mock(
+    with respx.mock(base_url=_ROUTER) as mock:
+        route = mock.post(_pipeline("gpt2", "text-generation")).mock(
             return_value=httpx.Response(200, json=[{"generated_text": "x"}])
         )
 
@@ -112,6 +128,37 @@ async def test_text_generation_omits_optional_params_when_none(hf: HuggingFace) 
         assert b'"max_new_tokens"' not in body
 
 
+@pytest.mark.asyncio
+async def test_task_routes_to_custom_provider(hf: HuggingFace) -> None:
+    """A custom ``provider`` swaps the leading path segment to that provider.
+
+    ``provider='fal-ai'`` must route to ``/fal-ai/models/.../pipeline/...``
+    instead of the default ``/hf-inference/...``.
+    """
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(
+            _pipeline("black-forest-labs/FLUX.1-schnell", "text-to-image", provider="fal-ai")
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                content=b"\x89PNG\r\n\x1a\nimg",
+                headers={"Content-Type": "image/png"},
+            )
+        )
+
+        result = await hf.atext_to_image(
+            model="black-forest-labs/FLUX.1-schnell",
+            inputs="a serene lake at sunset",
+            provider="fal-ai",
+        )
+
+        assert result == b"\x89PNG\r\n\x1a\nimg"
+        assert (
+            route.calls.last.request.url.path
+            == "/fal-ai/models/black-forest-labs/FLUX.1-schnell/pipeline/text-to-image"
+        )
+
+
 # ---------------------------------------------------------------------------
 # 2. Inference — summarize / translate (shared text-to-text shape)
 # ---------------------------------------------------------------------------
@@ -119,28 +166,33 @@ async def test_text_generation_omits_optional_params_when_none(hf: HuggingFace) 
 
 @pytest.mark.asyncio
 async def test_summarize_happy_path(hf: HuggingFace) -> None:
-    """summarize: parses ``summary_text`` from the response list."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        mock.post("/models/facebook/bart-large-cnn").mock(
+    """summarize: hits the summarization pipeline; parses ``summary_text``."""
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline("facebook/bart-large-cnn", "summarization")).mock(
             return_value=httpx.Response(200, json=[{"summary_text": "Short version."}])
         )
 
         result = await hf.asummarize(model="facebook/bart-large-cnn", inputs="long text...")
 
         assert result[0].summary_text == "Short version."
+        assert (
+            route.calls.last.request.url.path
+            == "/hf-inference/models/facebook/bart-large-cnn/pipeline/summarization"
+        )
 
 
 @pytest.mark.asyncio
 async def test_translate_happy_path(hf: HuggingFace) -> None:
-    """translate: parses ``translation_text`` from the response list."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        mock.post("/models/Helsinki-NLP/opus-mt-en-fr").mock(
+    """translate: hits the translation pipeline; parses ``translation_text``."""
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline("Helsinki-NLP/opus-mt-en-fr", "translation")).mock(
             return_value=httpx.Response(200, json=[{"translation_text": "Bonjour"}])
         )
 
         result = await hf.atranslate(model="Helsinki-NLP/opus-mt-en-fr", inputs="Hello")
 
         assert result[0].translation_text == "Bonjour"
+        assert "/pipeline/translation" in route.calls.last.request.url.path
 
 
 # ---------------------------------------------------------------------------
@@ -150,9 +202,9 @@ async def test_translate_happy_path(hf: HuggingFace) -> None:
 
 @pytest.mark.asyncio
 async def test_fill_mask_happy_path(hf: HuggingFace) -> None:
-    """fill_mask: parses a list of candidate tokens."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        mock.post("/models/bert-base-uncased").mock(
+    """fill_mask: hits the fill-mask pipeline; parses candidate tokens."""
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline("bert-base-uncased", "fill-mask")).mock(
             return_value=httpx.Response(
                 200,
                 json=[
@@ -174,6 +226,7 @@ async def test_fill_mask_happy_path(hf: HuggingFace) -> None:
         assert result[0].token_str == "paris"
         assert result[0].score == 0.9
         assert result[0].token == 3000
+        assert "/pipeline/fill-mask" in route.calls.last.request.url.path
 
 
 # ---------------------------------------------------------------------------
@@ -184,8 +237,9 @@ async def test_fill_mask_happy_path(hf: HuggingFace) -> None:
 @pytest.mark.asyncio
 async def test_text_classification_flattens_nested_list(hf: HuggingFace) -> None:
     """text_classification: a [[{...}]] response is flattened to [HFClassification]."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        mock.post("/models/distilbert-base-uncased-finetuned-sst-2-english").mock(
+    model = "distilbert-base-uncased-finetuned-sst-2-english"
+    with respx.mock(base_url=_ROUTER) as mock:
+        mock.post(_pipeline(model, "text-classification")).mock(
             return_value=httpx.Response(
                 200,
                 json=[
@@ -197,10 +251,7 @@ async def test_text_classification_flattens_nested_list(hf: HuggingFace) -> None
             )
         )
 
-        result = await hf.atext_classification(
-            model="distilbert-base-uncased-finetuned-sst-2-english",
-            inputs="I love this!",
-        )
+        result = await hf.atext_classification(model=model, inputs="I love this!")
 
         assert len(result) == 2
         assert result[0].label == "POSITIVE"
@@ -216,8 +267,8 @@ async def test_text_classification_flattens_nested_list(hf: HuggingFace) -> None
 @pytest.mark.asyncio
 async def test_zero_shot_classification_happy_path(hf: HuggingFace) -> None:
     """zero_shot_classification: candidate_labels land in body; result parsed."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        route = mock.post("/models/facebook/bart-large-mnli").mock(
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline("facebook/bart-large-mnli", "zero-shot-classification")).mock(
             return_value=httpx.Response(
                 200,
                 json={
@@ -237,9 +288,39 @@ async def test_zero_shot_classification_happy_path(hf: HuggingFace) -> None:
         assert result.labels == ["billing", "tech support"]
         assert result.scores[0] == 0.92
 
-        body = route.calls.last.request.read()
+        request = route.calls.last.request
+        assert "/pipeline/zero-shot-classification" in request.url.path
+        body = request.read()
         assert b'"candidate_labels"' in body
         assert b"billing" in body
+
+
+@pytest.mark.asyncio
+async def test_zero_shot_classification_router_list_shape(hf: HuggingFace) -> None:
+    """The hf-inference router returns a score-sorted list of {label, score}
+    (not the classic {sequence, labels, scores} object); the parser must
+    flatten it into the index-aligned labels/scores contract. Regression for
+    the live-confirmed shape that previously parsed to empty lists.
+    """
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        mock.post(_pipeline("facebook/bart-large-mnli", "zero-shot-classification")).mock(
+            return_value=httpx.Response(
+                200,
+                json=[
+                    {"label": "technology", "score": 0.97},
+                    {"label": "cooking", "score": 0.03},
+                ],
+            )
+        )
+
+        result = await hf.azero_shot_classification(
+            model="facebook/bart-large-mnli",
+            inputs="I love python programming",
+            candidate_labels=["technology", "cooking"],
+        )
+
+        assert result.labels == ["technology", "cooking"]
+        assert result.scores == [0.97, 0.03]
 
 
 # ---------------------------------------------------------------------------
@@ -250,8 +331,8 @@ async def test_zero_shot_classification_happy_path(hf: HuggingFace) -> None:
 @pytest.mark.asyncio
 async def test_question_answering_happy_path(hf: HuggingFace) -> None:
     """question_answering: question+context in body; answer span parsed."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        route = mock.post("/models/deepset/roberta-base-squad2").mock(
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline("deepset/roberta-base-squad2", "question-answering")).mock(
             return_value=httpx.Response(
                 200,
                 json={"answer": "Paris", "score": 0.98, "start": 17, "end": 22},
@@ -268,7 +349,9 @@ async def test_question_answering_happy_path(hf: HuggingFace) -> None:
         assert result.start == 17
         assert result.end == 22
 
-        body = route.calls.last.request.read()
+        request = route.calls.last.request
+        assert "/pipeline/question-answering" in request.url.path
+        body = request.read()
         assert b'"question"' in body
         assert b'"context"' in body
 
@@ -280,25 +363,32 @@ async def test_question_answering_happy_path(hf: HuggingFace) -> None:
 
 @pytest.mark.asyncio
 async def test_feature_extraction_normalises_flat_vector(hf: HuggingFace) -> None:
-    """A flat [float, ...] embedding is wrapped into [[float, ...]]."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        mock.post("/models/sentence-transformers/all-MiniLM-L6-v2").mock(
+    """A flat [float, ...] embedding is wrapped into [[float, ...]].
+
+    Also asserts the explicit ``/pipeline/feature-extraction`` segment is
+    present — the bare ``/models/{model}`` form mis-routes this task to
+    sentence-similarity, so the pipeline tag is load-bearing here.
+    """
+    model = "sentence-transformers/all-MiniLM-L6-v2"
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline(model, "feature-extraction")).mock(
             return_value=httpx.Response(200, json=[0.1, 0.2, 0.3])
         )
 
-        result = await hf.afeature_extraction(
-            model="sentence-transformers/all-MiniLM-L6-v2",
-            inputs="hello",
-        )
+        result = await hf.afeature_extraction(model=model, inputs="hello")
 
         assert result == [[0.1, 0.2, 0.3]]
+        assert (
+            route.calls.last.request.url.path
+            == "/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
+        )
 
 
 @pytest.mark.asyncio
 async def test_feature_extraction_passes_nested_through(hf: HuggingFace) -> None:
     """An already-nested embedding response is returned unchanged."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        mock.post("/models/some/model").mock(
+    with respx.mock(base_url=_ROUTER) as mock:
+        mock.post(_pipeline("some/model", "feature-extraction")).mock(
             return_value=httpx.Response(200, json=[[0.1, 0.2], [0.3, 0.4]])
         )
 
@@ -364,6 +454,34 @@ async def test_get_model_happy_path(hf: HuggingFace) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_model_follows_legacy_alias_redirect(hf: HuggingFace) -> None:
+    """The Hub 307-redirects legacy repo aliases to their canonical ID
+    (``bert-base-uncased`` -> ``google-bert/bert-base-uncased``); the client
+    must follow the redirect rather than try to parse the redirect body as
+    JSON. Regression for the live-confirmed ``Expecting value`` failure.
+    """
+    with respx.mock(base_url=_HUB, assert_all_called=True) as mock:
+        mock.get("/models/bert-base-uncased").mock(
+            return_value=httpx.Response(
+                307,
+                headers={"Location": "/api/models/google-bert/bert-base-uncased"},
+                text="Temporary Redirect",
+            )
+        )
+        canonical = mock.get("/models/google-bert/bert-base-uncased").mock(
+            return_value=httpx.Response(
+                200,
+                json={"id": "google-bert/bert-base-uncased", "author": "google-bert"},
+            )
+        )
+
+        result = await hf.aget_model(model_id="bert-base-uncased")
+
+        assert result.id == "google-bert/bert-base-uncased"
+        assert canonical.called
+
+
+@pytest.mark.asyncio
 async def test_list_datasets_happy_path(hf: HuggingFace) -> None:
     """list_datasets: GET /datasets on the Hub → [HFDatasetInfo]."""
     with respx.mock(base_url=_HUB) as mock:
@@ -420,9 +538,9 @@ async def test_invalid_token_raises_invalid_credentials_error(hf: HuggingFace) -
 
 @pytest.mark.asyncio
 async def test_rate_limit_raises_rate_limit_error(hf: HuggingFace) -> None:
-    """Inference 429 → typed :class:`RateLimitError` with parsed Retry-After."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        mock.post("/models/gpt2").mock(
+    """Router 429 → typed :class:`RateLimitError` with parsed Retry-After."""
+    with respx.mock(base_url=_ROUTER) as mock:
+        mock.post(_pipeline("gpt2", "text-generation")).mock(
             return_value=httpx.Response(
                 429,
                 headers={"Retry-After": "30"},
@@ -439,7 +557,7 @@ async def test_rate_limit_raises_rate_limit_error(hf: HuggingFace) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 10. Chat completion — OpenAI-compatible router host
+# 10. Chat completion — OpenAI-compatible router host (unchanged surface)
 # ---------------------------------------------------------------------------
 
 
@@ -491,6 +609,7 @@ async def test_chat_completion_happy_path(hf: HuggingFace) -> None:
         assert result.system_fingerprint == "fp_abc"
 
         request = route.calls.last.request
+        assert request.url.path == "/v1/chat/completions"
         assert request.headers["authorization"] == "Bearer hf_fake_test_token"
         body = request.read()
         assert b'"messages"' in body
@@ -563,8 +682,8 @@ async def test_chat_completion_passes_tools(hf: HuggingFace) -> None:
 @pytest.mark.asyncio
 async def test_token_classification_happy_path(hf: HuggingFace) -> None:
     """token_classification: parses entity spans; aggregation strategy in body."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        route = mock.post("/models/dslim/bert-base-NER").mock(
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline("dslim/bert-base-NER", "token-classification")).mock(
             return_value=httpx.Response(
                 200,
                 json=[
@@ -598,7 +717,9 @@ async def test_token_classification_happy_path(hf: HuggingFace) -> None:
         assert result[1].entity_group == "LOC"
         assert result[1].end == 21
 
-        body = route.calls.last.request.read()
+        request = route.calls.last.request
+        assert "/pipeline/token-classification" in request.url.path
+        body = request.read()
         assert b'"aggregation_strategy":"simple"' in body
 
 
@@ -610,8 +731,10 @@ async def test_token_classification_happy_path(hf: HuggingFace) -> None:
 @pytest.mark.asyncio
 async def test_table_question_answering_happy_path(hf: HuggingFace) -> None:
     """table_question_answering: query+table in body; answer/cells parsed."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        route = mock.post("/models/google/tapas-base-finetuned-wtq").mock(
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(
+            _pipeline("google/tapas-base-finetuned-wtq", "table-question-answering")
+        ).mock(
             return_value=httpx.Response(
                 200,
                 json={
@@ -634,7 +757,9 @@ async def test_table_question_answering_happy_path(hf: HuggingFace) -> None:
         assert result.cells == ["500", "450"]
         assert result.coordinates == [[0, 1], [1, 1]]
 
-        body = route.calls.last.request.read()
+        request = route.calls.last.request
+        assert "/pipeline/table-question-answering" in request.url.path
+        body = request.read()
         assert b'"query"' in body
         assert b'"table"' in body
         assert b"Revenue" in body
@@ -648,20 +773,23 @@ async def test_table_question_answering_happy_path(hf: HuggingFace) -> None:
 @pytest.mark.asyncio
 async def test_sentence_similarity_happy_path(hf: HuggingFace) -> None:
     """sentence_similarity: source+candidates in body; float scores returned."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        route = mock.post("/models/sentence-transformers/all-MiniLM-L6-v2").mock(
+    model = "sentence-transformers/all-MiniLM-L6-v2"
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline(model, "sentence-similarity")).mock(
             return_value=httpx.Response(200, json=[0.91, 0.12, 0.55])
         )
 
         result = await hf.asentence_similarity(
-            model="sentence-transformers/all-MiniLM-L6-v2",
+            model=model,
             source_sentence="That is a happy dog",
             sentences=["That is a joyful puppy", "An apple a day", "The sky is blue"],
         )
 
         assert result == [0.91, 0.12, 0.55]
 
-        body = route.calls.last.request.read()
+        request = route.calls.last.request
+        assert "/pipeline/sentence-similarity" in request.url.path
+        body = request.read()
         assert b'"source_sentence"' in body
         assert b'"sentences"' in body
 
@@ -675,8 +803,8 @@ async def test_sentence_similarity_happy_path(hf: HuggingFace) -> None:
 async def test_text_to_image_returns_raw_bytes(hf: HuggingFace) -> None:
     """text_to_image: returns the raw image bytes from the response body."""
     png_bytes = b"\x89PNG\r\n\x1a\nfakeimage"
-    with respx.mock(base_url=_INFERENCE) as mock:
-        route = mock.post("/models/black-forest-labs/FLUX.1-schnell").mock(
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline("black-forest-labs/FLUX.1-schnell", "text-to-image")).mock(
             return_value=httpx.Response(
                 200,
                 content=png_bytes,
@@ -695,7 +823,9 @@ async def test_text_to_image_returns_raw_bytes(hf: HuggingFace) -> None:
 
         assert result == png_bytes
 
-        body = route.calls.last.request.read()
+        request = route.calls.last.request
+        assert "/pipeline/text-to-image" in request.url.path
+        body = request.read()
         assert b'"inputs"' in body
         assert b'"guidance_scale"' in body
         assert b'"num_inference_steps":20' in body
@@ -705,8 +835,10 @@ async def test_text_to_image_returns_raw_bytes(hf: HuggingFace) -> None:
 async def test_image_to_text_happy_path(hf: HuggingFace) -> None:
     """image_to_text: base64-encodes bytes input; parses generated_text."""
     raw = b"\xff\xd8\xff\xe0jpegdata"
-    with respx.mock(base_url=_INFERENCE) as mock:
-        route = mock.post("/models/Salesforce/blip-image-captioning-large").mock(
+    with respx.mock(base_url=_ROUTER) as mock:
+        route = mock.post(
+            _pipeline("Salesforce/blip-image-captioning-large", "image-to-text")
+        ).mock(
             return_value=httpx.Response(200, json=[{"generated_text": "a cat sitting on a sofa"}])
         )
 
@@ -727,8 +859,8 @@ async def test_image_to_text_happy_path(hf: HuggingFace) -> None:
 async def test_image_classification_passes_base64_string_through(hf: HuggingFace) -> None:
     """image_classification: an already-base64 str input is sent unchanged."""
     b64 = base64.b64encode(b"imgbytes").decode("ascii")
-    with respx.mock(base_url=_INFERENCE) as mock:
-        route = mock.post("/models/google/vit-base-patch16-224").mock(
+    with respx.mock(base_url=_ROUTER) as mock:
+        route = mock.post(_pipeline("google/vit-base-patch16-224", "image-classification")).mock(
             return_value=httpx.Response(
                 200,
                 json=[
@@ -755,8 +887,8 @@ async def test_image_classification_passes_base64_string_through(hf: HuggingFace
 @pytest.mark.asyncio
 async def test_object_detection_happy_path(hf: HuggingFace) -> None:
     """object_detection: parses label/score/box rows."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        mock.post("/models/facebook/detr-resnet-50").mock(
+    with respx.mock(base_url=_ROUTER) as mock:
+        mock.post(_pipeline("facebook/detr-resnet-50", "object-detection")).mock(
             return_value=httpx.Response(
                 200,
                 json=[
@@ -782,8 +914,9 @@ async def test_object_detection_happy_path(hf: HuggingFace) -> None:
 @pytest.mark.asyncio
 async def test_image_segmentation_happy_path(hf: HuggingFace) -> None:
     """image_segmentation: parses label/score and a base64 mask string."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        mock.post("/models/facebook/mask2former-swin-large-coco-panoptic").mock(
+    model = "facebook/mask2former-swin-large-coco-panoptic"
+    with respx.mock(base_url=_ROUTER) as mock:
+        mock.post(_pipeline(model, "image-segmentation")).mock(
             return_value=httpx.Response(
                 200,
                 json=[{"label": "sky", "score": 0.97, "mask": "aW1hZ2VtYXNr"}],
@@ -791,7 +924,7 @@ async def test_image_segmentation_happy_path(hf: HuggingFace) -> None:
         )
 
         result = await hf.aimage_segmentation(
-            model="facebook/mask2former-swin-large-coco-panoptic",
+            model=model,
             image=b"imgbytes",
             subtask="panoptic",
         )
@@ -809,10 +942,10 @@ async def test_image_segmentation_happy_path(hf: HuggingFace) -> None:
 async def test_automatic_speech_recognition_happy_path(hf: HuggingFace) -> None:
     """automatic_speech_recognition: base64-encodes audio; parses {text}."""
     raw = b"RIFFfakeaudio"
-    with respx.mock(base_url=_INFERENCE) as mock:
-        route = mock.post("/models/openai/whisper-large-v3").mock(
-            return_value=httpx.Response(200, json={"text": "hello world"})
-        )
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(
+            _pipeline("openai/whisper-large-v3", "automatic-speech-recognition")
+        ).mock(return_value=httpx.Response(200, json={"text": "hello world"}))
 
         result = await hf.aautomatic_speech_recognition(
             model="openai/whisper-large-v3",
@@ -821,15 +954,17 @@ async def test_automatic_speech_recognition_happy_path(hf: HuggingFace) -> None:
 
         assert result.text == "hello world"
 
-        body = route.calls.last.request.read()
+        request = route.calls.last.request
+        assert "/pipeline/automatic-speech-recognition" in request.url.path
+        body = request.read()
         assert base64.b64encode(raw).decode("ascii").encode() in body
 
 
 @pytest.mark.asyncio
 async def test_audio_classification_happy_path(hf: HuggingFace) -> None:
     """audio_classification: parses label/score pairs."""
-    with respx.mock(base_url=_INFERENCE) as mock:
-        mock.post("/models/superb/hubert-large-superb-er").mock(
+    with respx.mock(base_url=_ROUTER) as mock:
+        mock.post(_pipeline("superb/hubert-large-superb-er", "audio-classification")).mock(
             return_value=httpx.Response(
                 200,
                 json=[
@@ -852,8 +987,8 @@ async def test_audio_classification_happy_path(hf: HuggingFace) -> None:
 async def test_text_to_speech_returns_raw_bytes(hf: HuggingFace) -> None:
     """text_to_speech: returns the raw synthesized audio bytes."""
     audio_bytes = b"fLaCfakeaudiopayload"
-    with respx.mock(base_url=_INFERENCE) as mock:
-        route = mock.post("/models/espnet/kan-bayashi_ljspeech_vits").mock(
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline("espnet/kan-bayashi_ljspeech_vits", "text-to-speech")).mock(
             return_value=httpx.Response(
                 200, content=audio_bytes, headers={"Content-Type": "audio/flac"}
             )
@@ -865,8 +1000,9 @@ async def test_text_to_speech_returns_raw_bytes(hf: HuggingFace) -> None:
         )
 
         assert result == audio_bytes
-        body = route.calls.last.request.read()
-        assert b'"inputs"' in body
+        request = route.calls.last.request
+        assert "/pipeline/text-to-speech" in request.url.path
+        assert b'"inputs"' in request.read()
 
 
 # ---------------------------------------------------------------------------
@@ -988,7 +1124,7 @@ def test_spec_metadata() -> None:
     spec = HuggingFace.get_spec()
     assert spec.name == "huggingface"
     assert spec.display_name == "Hugging Face"
-    assert spec.verification_status == "pattern"
+    assert spec.verification_status == "live"
     # All actions are read/generate — none should be flagged dangerous.
     assert all(not a.dangerous for a in spec.actions.values())
     # Idempotent search/lookup actions are flagged as such.
