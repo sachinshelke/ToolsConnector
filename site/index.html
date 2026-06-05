@@ -6,7 +6,7 @@
 
 <!-- ═══ Primary SEO ══════════════════════════════════════════════════════════ -->
 <title>ToolsConnector — Python Library for 73 API Connectors | AI Agents &amp; MCP</title>
-<meta name="description" content="Open-source Python library giving AI agents and Python apps a unified interface to 73 APIs — Gmail, Slack, GitHub, Stripe, OpenAI, Anthropic, LinkedIn, X (Twitter), and 65 more. 1,515 typed actions. MCP server, OpenAI function calling, Anthropic tool use built in. Apache 2.0.">
+<meta name="description" content="Open-source Python library giving AI agents and Python apps a unified interface to 73 APIs — Gmail, Slack, GitHub, Stripe, OpenAI, Anthropic, LinkedIn, X (Twitter), and 65 more. 1,518 typed actions. MCP server, OpenAI function calling, Anthropic tool use built in. Apache 2.0.">
 <meta name="keywords" content="Python API library, AI agent tools, OpenAI function calling, Anthropic tool use, MCP server, LLM tool calling, Gmail API Python, Slack API Python, GitHub API Python, API connector Python, tool integration Python, AI function calling library, Model Context Protocol Python">
 <meta name="author" content="ToolsConnector">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -202,7 +202,7 @@ tailwind.config = {
       "@type": "SoftwareApplication",
       "@id": "https://toolsconnector.github.io/#software",
       "name": "ToolsConnector",
-      "description": "Open-source Python library providing a unified interface to 73 API connectors (1,515 typed actions) for AI agents and Python apps. Supports MCP server, OpenAI function calling, Anthropic tool use, and Google Gemini.",
+      "description": "Open-source Python library providing a unified interface to 73 API connectors (1,518 typed actions) for AI agents and Python apps. Supports MCP server, OpenAI function calling, Anthropic tool use, and Google Gemini.",
       "url": "https://toolsconnector.github.io/",
       "downloadUrl": "https://pypi.org/project/toolsconnector/",
       "applicationCategory": "DeveloperApplication",
@@ -216,7 +216,7 @@ tailwind.config = {
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "featureList": [
         "73 API connectors across 20 categories",
-        "1,515 typed actions",
+        "1,518 typed actions",
         "MCP server — one line to serve Claude Desktop or Cursor",
         "OpenAI function calling schema generation",
         "Anthropic tool use schema generation",
@@ -302,7 +302,7 @@ tailwind.config = {
 <noscript>
 <div style="max-width:900px;margin:2rem auto;padding:1.5rem 1rem;font-family:system-ui,sans-serif;line-height:1.6">
   <h1 style="font-size:2rem;font-weight:800;margin-bottom:.5rem">ToolsConnector — Python Library for 73 API Connectors</h1>
-  <p style="font-size:1.1rem;color:#444;margin-bottom:1.5rem">Open-source Python library giving AI agents and Python apps a unified interface to 73 APIs with 1,515 typed actions. Works with OpenAI function calling, Anthropic tool use, Google Gemini, MCP servers, and any Python framework. Apache 2.0. Free forever.</p>
+  <p style="font-size:1.1rem;color:#444;margin-bottom:1.5rem">Open-source Python library giving AI agents and Python apps a unified interface to 73 APIs with 1,518 typed actions. Works with OpenAI function calling, Anthropic tool use, Google Gemini, MCP servers, and any Python framework. Apache 2.0. Free forever.</p>
   <p><code style="background:#f1f5f9;padding:.2em .5em;border-radius:4px">pip install toolsconnector</code></p>
   <h2 style="margin-top:2rem">Supported Connectors (68 across 20 categories)</h2>
   <ul style="columns:2;gap:2rem">
@@ -811,7 +811,7 @@ function router() {
   if (hash === '/' || hash === '/home') {
     updatePageMeta(
       'ToolsConnector — Python Library for 73 API Connectors | AI Agents & MCP',
-      'Open-source Python library for AI agents and Python apps. Unified interface to 73 APIs with 1,515 typed actions — Gmail, Slack, GitHub, Stripe, OpenAI, Anthropic, LinkedIn, X (Twitter), and 65 more. MCP server, function calling, and tool use built in.'
+      'Open-source Python library for AI agents and Python apps. Unified interface to 73 APIs with 1,518 typed actions — Gmail, Slack, GitHub, Stripe, OpenAI, Anthropic, LinkedIn, X (Twitter), and 65 more. MCP server, function calling, and tool use built in.'
     );
     renderHome(app); window.scrollTo(0,0); return;
   }
@@ -878,7 +878,7 @@ function renderHome(el) {
   <div class="hero-stats">
     <div class="hstat"><b>73</b><span>connectors</span></div>
     <span class="hdiv"></span>
-    <div class="hstat"><b>1,515</b><span>actions</span></div>
+    <div class="hstat"><b>1,518</b><span>actions</span></div>
     <span class="hdiv"></span>
     <div class="hstat"><b>20</b><span>categories</span></div>
   </div>
@@ -984,7 +984,7 @@ function renderHome(el) {
 </section>
 
 <section class="statement">
-  <div class="rise"><div class="big-num" data-count="1515">0</div></div>
+  <div class="rise"><div class="big-num" data-count="1518">0</div></div>
   <h2 class="rise"><span class="g">typed actions.</span></h2>
   <p class="rise">Across 73 connectors and 20 categories — every one introspectable, every one ready for your agent.</p>
 </section>
@@ -1125,7 +1125,7 @@ function renderHome(el) {
     <details><summary>Will it work with my agent stack?</summary><p>Yes. One method exports native tool schemas for OpenAI, Anthropic, and Gemini, and <code>kit.serve_mcp()</code> exposes any set of connectors as an MCP server for Claude Desktop, Cursor, and Windsurf.</p></details>
     <details><summary>How do I install it?</summary><p>Pick the connectors you want: <code>pip install "toolsconnector[slack,github,stripe]"</code>. The core stays tiny — pydantic, httpx, docstring-parser — and no vendor SDK ever lands in your environment.</p></details>
     <details><summary>Can I trust a connector to actually work?</summary><p>Every connector carries a verification tier: live (exercised end-to-end against the real API), doc (cross-checked against vendor docs and pinned in tests), or pattern (matches documented patterns). The catalog shows each tier, with a green tick on live-verified connectors.</p></details>
-    <details><summary>Which APIs are supported today?</summary><p>73 connectors across 20 categories — Gmail, Slack, GitHub, Stripe, Notion, the full Google Workspace, 14 AWS services, and dozens more, totaling 1,515 typed actions. <a href="#/connectors">Browse the catalog →</a></p></details>
+    <details><summary>Which APIs are supported today?</summary><p>73 connectors across 20 categories — Gmail, Slack, GitHub, Stripe, Notion, the full Google Workspace, 14 AWS services, and dozens more, totaling 1,518 typed actions. <a href="#/connectors">Browse the catalog →</a></p></details>
   </div>
 </section>
 

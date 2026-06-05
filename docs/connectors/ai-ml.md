@@ -1,6 +1,6 @@
 # AI/ML
 
-Connectors for AI model providers and vector databases. 8 connectors, 168 actions.
+Connectors for AI model providers and vector databases. 8 connectors, 171 actions.
 
 ---
 
@@ -85,11 +85,11 @@ result = kit.execute("pinecone_query", {"index": "my-index", "vector": [0.1, 0.2
 
 ### Hugging Face
 
-**Category:** AI/ML | **Auth:** API Key | **Actions:** 27 | **Verification:** ✅ Tier 1 (Live verified — 21/27 on `hf-inference`)
+**Category:** AI/ML | **Auth:** API Key | **Actions:** 30 | **Verification:** ✅ Tier 1 (Live verified — 24/30)
 
 Connect to Hugging Face to run hosted model inference across the full task set (text generation, chat completion, embeddings, classification, NER, vision, and audio) and to search models, datasets, and Spaces on the Hub.
 
-**Actions (27 total — sample):**
+**Actions (30 total — sample):**
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|

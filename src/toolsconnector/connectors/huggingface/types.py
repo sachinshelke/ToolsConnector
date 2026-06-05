@@ -222,7 +222,13 @@ class HFChatCompletion(BaseModel):
 
 
 class HFModelInfo(BaseModel):
-    """Metadata for a model on the Hugging Face Hub."""
+    """Metadata for a model on the Hugging Face Hub.
+
+    The ``downloads_all_time``, ``safetensors``, ``config``, ``card_data``,
+    and ``inference_provider_mapping`` fields are only populated when the
+    matching ``expand`` value is requested via ``get_model(expand=[...])``;
+    they stay ``None`` otherwise.
+    """
 
     model_config = ConfigDict(frozen=True)
 
@@ -235,11 +241,104 @@ class HFModelInfo(BaseModel):
     gated: Any = False
     disabled: bool = False
     downloads: int = 0
+    downloads_all_time: Optional[int] = None
     likes: int = 0
     last_modified: Optional[str] = None
     created_at: Optional[str] = None
     tags: list[str] = Field(default_factory=list)
     siblings: list[dict[str, Any]] = Field(default_factory=list)
+    # Populated only when requested via ``get_model(expand=[...])``.
+    safetensors: Optional[dict[str, Any]] = None
+    config: Optional[dict[str, Any]] = None
+    card_data: Optional[dict[str, Any]] = None
+    inference_provider_mapping: Optional[dict[str, Any]] = None
+
+
+class HFProviderPricing(BaseModel):
+    """Per-token pricing for a model on a given inference provider.
+
+    Values are USD per 1M tokens, as reported by the Inference Providers
+    router catalog. Either field may be ``None`` if the provider does not
+    report it.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    input: Optional[float] = None
+    output: Optional[float] = None
+
+
+class HFModelProvider(BaseModel):
+    """A provider offering a model in the Inference Providers router catalog.
+
+    Carries the routing status, the provider's max context window, per-token
+    pricing, capability flags, and observed latency/throughput.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    provider: str = ""
+    status: Optional[str] = None
+    context_length: Optional[int] = None
+    pricing: Optional[HFProviderPricing] = None
+    supports_tools: Optional[bool] = None
+    supports_structured_output: Optional[bool] = None
+    first_token_latency_ms: Optional[float] = None
+    throughput: Optional[float] = None
+    is_model_author: bool = False
+
+
+class HFCatalogModel(BaseModel):
+    """A model entry in the Inference Providers router catalog (``/v1/models``).
+
+    Aggregates every provider serving the model, each with its own pricing,
+    context window, and capabilities -- the basis for model / provider /
+    cost comparison.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str = ""
+    owned_by: Optional[str] = None
+    created: Optional[int] = None
+    input_modalities: list[str] = Field(default_factory=list)
+    output_modalities: list[str] = Field(default_factory=list)
+    providers: list[HFModelProvider] = Field(default_factory=list)
+
+
+class HFInferenceProvider(BaseModel):
+    """A single inference provider that serves a given Hub model.
+
+    Flattened from the Hub's ``inferenceProviderMapping`` object: ``provider``
+    is the partner name (e.g. ``'novita'``, ``'together'``), ``status`` is its
+    routing state (``'live'`` / ``'staging'``), ``provider_id`` is the model id
+    on the provider's own side, and ``task`` is the served pipeline.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    provider: str = ""
+    status: Optional[str] = None
+    provider_id: Optional[str] = None
+    task: Optional[str] = None
+    is_model_author: bool = False
+
+
+class HFRepoFile(BaseModel):
+    """A file or directory entry in a Hub repo's file tree.
+
+    ``type`` is ``'file'`` or ``'directory'``; ``size`` is in bytes (the
+    resolved LFS size for large files); ``lfs`` carries the LFS pointer
+    metadata when the file is stored via Git LFS.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    path: str = ""
+    type: str = ""
+    size: int = 0
+    oid: Optional[str] = None
+    lfs: Optional[dict[str, Any]] = None
 
 
 class HFDatasetInfo(BaseModel):

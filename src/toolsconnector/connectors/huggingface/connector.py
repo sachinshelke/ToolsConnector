@@ -36,15 +36,18 @@ from toolsconnector.spec.connector import (
 
 from . import _parsers as p
 from .types import (
+    HFCatalogModel,
     HFChatCompletion,
     HFClassification,
     HFDatasetInfo,
     HFFillMaskToken,
     HFGeneratedText,
     HFImageSegment,
+    HFInferenceProvider,
     HFModelInfo,
     HFObjectDetection,
     HFQuestionAnswer,
+    HFRepoFile,
     HFSpaceInfo,
     HFTableQuestionAnswer,
     HFTokenClassification,
@@ -458,6 +461,25 @@ class HuggingFace(BaseConnector):
             json_body=payload,
         )
         return p.parse_chat_completion(data)
+
+    @action("List the Inference Providers model catalog with pricing", idempotent=True)
+    async def list_inference_catalog(self) -> list[HFCatalogModel]:
+        """List every model available through the Inference Providers router.
+
+        Calls ``GET https://router.huggingface.co/v1/models`` and returns one
+        HFCatalogModel per model, each aggregating the providers that serve it
+        with their **per-token pricing** (USD per 1M input/output tokens),
+        context window, capability flags (tools / structured output), and
+        observed latency/throughput. This is the basis for model / provider /
+        cost comparison -- e.g. "which provider runs Llama-3.1-8B cheapest, and
+        what context length do I get?".
+
+        Returns:
+            A list of HFCatalogModel entries (the full routable catalog).
+        """
+        data = await self._request("GET", "/v1/models", base=_ROUTER_BASE)
+        rows = data.get("data", []) if isinstance(data, dict) else (data or [])
+        return [p.parse_catalog_model(m) for m in rows]
 
     # ==================================================================
     # Actions -- Text-to-text (summarize, translate)
@@ -1071,14 +1093,74 @@ class HuggingFace(BaseConnector):
         return [p.parse_model_info(m) for m in rows]
 
     @action("Get metadata for a model on the Hub", idempotent=True)
-    async def get_model(self, model_id: str) -> HFModelInfo:
+    async def get_model(self, model_id: str, expand: Optional[list[str]] = None) -> HFModelInfo:
         """Retrieve metadata for a single model on the Hub (HFModelInfo).
 
         Args:
-            model_id: Model repo ID (e.g. ``'bert-base-uncased'``).
+            model_id: Model repo ID (e.g. ``'bert-base-uncased'``). Legacy
+                aliases are resolved automatically (the client follows the
+                Hub's redirect to the canonical id).
+            expand: Optional list of extra fields to include, each requested
+                as an ``expand[]`` query param. Useful values:
+                ``'inferenceProviderMapping'`` (which providers serve the
+                model), ``'safetensors'`` (parameter counts), ``'config'``,
+                ``'cardData'`` (the model card front-matter), and
+                ``'downloadsAllTime'``. These populate the matching
+                (otherwise-``None``) fields on HFModelInfo.
         """
-        data = await self._request("GET", f"/models/{model_id}", base=_HUB_BASE)
+        params = [("expand[]", field) for field in expand] if expand else None
+        data = await self._request("GET", f"/models/{model_id}", base=_HUB_BASE, params=params)
         return p.parse_model_info(data)
+
+    @action("List the inference providers that serve a Hub model", idempotent=True)
+    async def get_model_providers(self, model_id: str) -> list[HFInferenceProvider]:
+        """List which inference providers serve a model, and their status.
+
+        Reads the model's ``inferenceProviderMapping`` from the Hub and
+        flattens it into HFInferenceProvider rows -- one per partner provider
+        (e.g. ``novita``, ``together``, ``cerebras``), each with its routing
+        ``status`` (``'live'``/``'staging'``), the model id on the provider's
+        side, and the served task. Use this to discover where a model can run
+        and which ``provider=`` value to pass to the inference actions.
+
+        Args:
+            model_id: Model repo ID (e.g.
+                ``'meta-llama/Llama-3.1-8B-Instruct'``).
+        """
+        data = await self._request(
+            "GET",
+            f"/models/{model_id}",
+            base=_HUB_BASE,
+            params=[("expand[]", "inferenceProviderMapping")],
+        )
+        return p.parse_model_provider_mapping(data)
+
+    @action("List files in a Hub repository's tree", idempotent=True)
+    async def list_repo_files(
+        self,
+        repo_id: str,
+        repo_type: str = "model",
+        revision: str = "main",
+    ) -> list[HFRepoFile]:
+        """List the files and directories in a Hub repo at a given revision.
+
+        Returns HFRepoFile rows (path, type, byte size, blob oid, and LFS
+        metadata for large files) -- useful for inspecting a model's weights,
+        configs, and tokenizer files before downloading.
+
+        Args:
+            repo_id: Repo ID (e.g. ``'google-bert/bert-base-uncased'``).
+            repo_type: One of ``'model'``, ``'dataset'``, or ``'space'``
+                (default ``'model'``).
+            revision: Git revision (branch, tag, or commit SHA); defaults to
+                ``'main'``.
+        """
+        prefix = {"model": "models", "dataset": "datasets", "space": "spaces"}.get(
+            repo_type, "models"
+        )
+        data = await self._request("GET", f"/{prefix}/{repo_id}/tree/{revision}", base=_HUB_BASE)
+        rows = data if isinstance(data, list) else []
+        return [p.parse_repo_file(f) for f in rows]
 
     # ==================================================================
     # Actions -- Hub: datasets

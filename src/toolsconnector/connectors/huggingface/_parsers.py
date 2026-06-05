@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from .types import (
+    HFCatalogModel,
     HFChatChoice,
     HFChatCompletion,
     HFChatMessage,
@@ -18,9 +19,13 @@ from .types import (
     HFFillMaskToken,
     HFGeneratedText,
     HFImageSegment,
+    HFInferenceProvider,
     HFModelInfo,
+    HFModelProvider,
     HFObjectDetection,
+    HFProviderPricing,
     HFQuestionAnswer,
+    HFRepoFile,
     HFSpaceInfo,
     HFTableQuestionAnswer,
     HFTokenClassification,
@@ -341,11 +346,108 @@ def parse_model_info(m: dict[str, Any]) -> HFModelInfo:
         gated=m.get("gated", False),
         disabled=m.get("disabled", False),
         downloads=m.get("downloads", 0),
+        downloads_all_time=m.get("downloadsAllTime"),
         likes=m.get("likes", 0),
         last_modified=m.get("lastModified"),
         created_at=m.get("createdAt"),
         tags=m.get("tags", []),
         siblings=m.get("siblings") or [],
+        # Expand-only fields (None unless requested via get_model(expand=...)).
+        safetensors=m.get("safetensors"),
+        config=m.get("config"),
+        card_data=m.get("cardData"),
+        inference_provider_mapping=m.get("inferenceProviderMapping"),
+    )
+
+
+def parse_model_provider_mapping(data: Any) -> list[HFInferenceProvider]:
+    """Flatten a model's ``inferenceProviderMapping`` into HFInferenceProvider rows.
+
+    The Hub returns provider info as an object keyed by provider name
+    (``{"novita": {"status": ..., "providerId": ..., "task": ...}, ...}``);
+    this flattens it to a list with the provider name folded in.
+
+    Args:
+        data: The raw ``inferenceProviderMapping`` object (or the full model
+            dict containing it).
+
+    Returns:
+        A list of HFInferenceProvider rows, one per serving provider.
+    """
+    if isinstance(data, dict) and "inferenceProviderMapping" in data:
+        data = data.get("inferenceProviderMapping")
+    if not isinstance(data, dict):
+        return []
+    return [
+        HFInferenceProvider(
+            provider=name,
+            status=info.get("status") if isinstance(info, dict) else None,
+            provider_id=info.get("providerId") if isinstance(info, dict) else None,
+            task=info.get("task") if isinstance(info, dict) else None,
+            is_model_author=(info.get("isModelAuthor", False) if isinstance(info, dict) else False),
+        )
+        for name, info in data.items()
+    ]
+
+
+def parse_catalog_model(m: dict[str, Any]) -> HFCatalogModel:
+    """Parse one ``/v1/models`` router-catalog entry into HFCatalogModel.
+
+    Args:
+        m: Raw catalog entry (id, owned_by, architecture, providers[]).
+
+    Returns:
+        An HFCatalogModel with each provider's pricing/context/capabilities.
+    """
+    arch = m.get("architecture") or {}
+    providers = []
+    for p in m.get("providers") or []:
+        if not isinstance(p, dict):
+            continue
+        price = p.get("pricing")
+        providers.append(
+            HFModelProvider(
+                provider=p.get("provider", ""),
+                status=p.get("status"),
+                context_length=p.get("context_length"),
+                pricing=(
+                    HFProviderPricing(input=price.get("input"), output=price.get("output"))
+                    if isinstance(price, dict)
+                    else None
+                ),
+                supports_tools=p.get("supports_tools"),
+                supports_structured_output=p.get("supports_structured_output"),
+                first_token_latency_ms=p.get("first_token_latency_ms"),
+                throughput=p.get("throughput"),
+                is_model_author=p.get("is_model_author", False),
+            )
+        )
+    return HFCatalogModel(
+        id=m.get("id", ""),
+        owned_by=m.get("owned_by"),
+        created=m.get("created"),
+        input_modalities=arch.get("input_modalities", []),
+        output_modalities=arch.get("output_modalities", []),
+        providers=providers,
+    )
+
+
+def parse_repo_file(f: dict[str, Any]) -> HFRepoFile:
+    """Parse one Hub repo file-tree entry into HFRepoFile.
+
+    Args:
+        f: Raw tree entry (path, type, size, oid, optional lfs).
+
+    Returns:
+        An HFRepoFile.
+    """
+    lfs = f.get("lfs")
+    return HFRepoFile(
+        path=f.get("path", ""),
+        type=f.get("type", ""),
+        size=(lfs.get("size") if isinstance(lfs, dict) and lfs.get("size") else f.get("size", 0)),
+        oid=f.get("oid"),
+        lfs=lfs if isinstance(lfs, dict) else None,
     )
 
 

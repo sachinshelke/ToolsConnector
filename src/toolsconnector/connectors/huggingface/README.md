@@ -12,7 +12,7 @@
 | **Auth** | API Key (user access token) |
 | **Rate Limit** | Varies by plan (free Inference API is throttled) |
 | **Pricing** | Free tier + pay-as-you-go Inference |
-| **Verification** | ✅ Tier 1 — Live verified (21/27 actions on `hf-inference`, 2026-06-05; 6 generative/audio actions are partner-provider-dependent) |
+| **Verification** | ✅ Tier 1 — Live verified (24/30 actions, 2026-06-05; 6 generative/audio inference actions are partner-provider-dependent) |
 
 ---
 
@@ -25,10 +25,12 @@ The Hugging Face connector runs hosted model inference via the Inference Provide
 ## Use Cases
 
 - Text generation and summarization
-- Sentence embeddings for semantic search
+- Sentence embeddings for semantic search (single or batch)
 - Translation and fill-mask
 - Text and zero-shot classification
-- Model and dataset discovery on the Hub
+- Model, dataset, and Space discovery on the Hub
+- **Model / provider / cost comparison** — list which providers serve a model, their routing status, context window, and per-token pricing (`get_model_providers`, `list_inference_catalog`)
+- **Model inspection** — parameter counts, config, model-card metadata, and the repo file tree (`get_model(expand=...)`, `list_repo_files`)
 
 ## Installation
 
@@ -94,9 +96,9 @@ except AuthError as e:
 
 ## Verification Status
 
-All 27 actions are pinned by **38 respx tests** in [tests/connectors/test_huggingface.py](../../../tests/connectors/test_huggingface.py): happy path per action, two-host routing (router vs Hub), pipeline-path pinning, custom-provider routing, heterogeneous inference shapes (list-of-dicts, list-of-lists, single dict, raw bytes), base64 binary inputs, optional-param omission, the error matrix (auth / rate-limit / not-found / validation), and the MCP + OpenAI-schema sweeps. Two regression tests cover the live-confirmed quirks fixed during verification (the zero-shot router list shape and the Hub legacy-alias redirect).
+All 30 actions are pinned by **46 respx tests** in [tests/connectors/test_huggingface.py](../../../tests/connectors/test_huggingface.py): happy path per action, two-host routing (router vs Hub), pipeline-path pinning, custom-provider routing, heterogeneous inference shapes (list-of-dicts, list-of-lists, single dict, raw bytes), base64 binary inputs, optional-param omission, the error matrix (auth / rate-limit / not-found / validation / cold-start 503), and the MCP + OpenAI-schema sweeps. Regression tests cover the live-confirmed quirks fixed during verification (zero-shot router list shape, Hub legacy-alias redirect, batch-embedding union schema, and the discovery actions).
 
-**21 of 27 actions are Live verified** — exercised end-to-end against the real Hugging Face API on **2026-06-05** with a real user access token (`hf_...`), routed through the default `hf-inference` provider. The remaining **6 are partner-provider-dependent**: they route correctly (the router forwards the request and returns a clean provider-level response), but `hf-inference` does not serve them — they require a partner provider (e.g. `fal-ai`, `replicate`, `together`) that hosts the chosen model, supplied via `provider=`. This is Hugging Face's multi-provider architecture, not a connector limitation.
+**24 of 30 actions are Live verified** — exercised end-to-end against the real Hugging Face API on **2026-06-05** with a real user access token (`hf_...`), routed through the default `hf-inference` provider (Hub metadata, the model/provider/pricing discovery actions, chat, and the `hf-inference` task set). The remaining **6 are partner-provider-dependent**: they route correctly (the router forwards the request and returns a clean provider-level response), but `hf-inference` does not serve them — they require a partner provider (e.g. `fal-ai`, `replicate`, `together`) that hosts the chosen model, supplied via `provider=`. This is Hugging Face's multi-provider architecture, not a connector limitation.
 
 | Action | Task / Endpoint | Status |
 |---|---|---|
@@ -107,6 +109,9 @@ All 27 actions are pinned by **38 respx tests** in [tests/connectors/test_huggin
 | `get_dataset` | `GET /api/datasets/{id}` (follows legacy-alias 307) | ✅ Live verified |
 | `list_spaces` | `GET /api/spaces` | ✅ Live verified |
 | `get_space` | `GET /api/spaces/{id}` | ✅ Live verified |
+| `get_model_providers` | `GET /api/models/{id}?expand[]=inferenceProviderMapping` | ✅ Live verified |
+| `list_repo_files` | `GET /api/{models,datasets,spaces}/{id}/tree/{rev}` | ✅ Live verified |
+| `list_inference_catalog` | `GET /v1/models` (providers + pricing) | ✅ Live verified |
 | `chat_completion` | `POST /v1/chat/completions` (auto-routes) | ✅ Live verified |
 | `summarize` | `…/pipeline/summarization` | ✅ Live verified |
 | `translate` | `…/pipeline/translation` | ✅ Live verified |

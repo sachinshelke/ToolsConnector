@@ -544,6 +544,162 @@ async def test_get_model_follows_legacy_alias_redirect(hf: HuggingFace) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_model_expand_sends_params_and_parses_fields(hf: HuggingFace) -> None:
+    """get_model(expand=[...]) sends repeated ``expand[]`` params and parses the
+    extra (otherwise-None) fields into HFModelInfo.
+    """
+    with respx.mock(base_url=_HUB, assert_all_called=True) as mock:
+        route = mock.get("/models/google-bert/bert-base-uncased").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": "google-bert/bert-base-uncased",
+                    "downloadsAllTime": 2954670650,
+                    "safetensors": {"total": 110106428, "parameters": {"F32": 110106428}},
+                    "cardData": {"license": "apache-2.0", "language": ["en"]},
+                    "inferenceProviderMapping": {"hf-inference": {"status": "live"}},
+                },
+            )
+        )
+
+        result = await hf.aget_model(
+            model_id="google-bert/bert-base-uncased",
+            expand=["safetensors", "downloadsAllTime", "cardData", "inferenceProviderMapping"],
+        )
+
+        assert result.downloads_all_time == 2954670650
+        assert result.safetensors["total"] == 110106428
+        assert result.card_data["license"] == "apache-2.0"
+        assert result.inference_provider_mapping["hf-inference"]["status"] == "live"
+        # Repeated expand[] query params are forwarded.
+        expands = route.calls.last.request.url.params.get_list("expand[]")
+        assert set(expands) == {
+            "safetensors",
+            "downloadsAllTime",
+            "cardData",
+            "inferenceProviderMapping",
+        }
+
+
+@pytest.mark.asyncio
+async def test_get_model_providers_flattens_mapping(hf: HuggingFace) -> None:
+    """get_model_providers flattens inferenceProviderMapping into provider rows."""
+    with respx.mock(base_url=_HUB, assert_all_called=True) as mock:
+        route = mock.get("/models/meta-llama/Llama-3.1-8B-Instruct").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": "meta-llama/Llama-3.1-8B-Instruct",
+                    "inferenceProviderMapping": {
+                        "novita": {
+                            "status": "live",
+                            "providerId": "meta-llama/llama-3.1-8b-instruct",
+                            "task": "conversational",
+                            "isModelAuthor": False,
+                        },
+                        "cerebras": {
+                            "status": "staging",
+                            "providerId": "llama3.1-8b",
+                            "task": "conversational",
+                            "isModelAuthor": False,
+                        },
+                    },
+                },
+            )
+        )
+
+        providers = await hf.aget_model_providers(model_id="meta-llama/Llama-3.1-8B-Instruct")
+
+        by_name = {p.provider: p for p in providers}
+        assert set(by_name) == {"novita", "cerebras"}
+        assert by_name["novita"].status == "live"
+        assert by_name["novita"].task == "conversational"
+        assert by_name["cerebras"].status == "staging"
+        assert route.calls.last.request.url.params["expand[]"] == "inferenceProviderMapping"
+
+
+@pytest.mark.asyncio
+async def test_list_inference_catalog_parses_pricing(hf: HuggingFace) -> None:
+    """list_inference_catalog parses the router /v1/models catalog including
+    per-provider pricing, context window, and capability flags.
+    """
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        mock.get("/v1/models").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {
+                            "id": "deepseek-ai/DeepSeek-V4-Pro",
+                            "owned_by": "deepseek-ai",
+                            "architecture": {
+                                "input_modalities": ["text"],
+                                "output_modalities": ["text"],
+                            },
+                            "providers": [
+                                {
+                                    "provider": "novita",
+                                    "status": "live",
+                                    "context_length": 1048576,
+                                    "pricing": {"input": 1.6, "output": 3.38},
+                                    "supports_tools": True,
+                                }
+                            ],
+                        }
+                    ]
+                },
+            )
+        )
+
+        catalog = await hf.alist_inference_catalog()
+
+        assert len(catalog) == 1
+        model = catalog[0]
+        assert model.id == "deepseek-ai/DeepSeek-V4-Pro"
+        assert model.input_modalities == ["text"]
+        prov = model.providers[0]
+        assert prov.provider == "novita"
+        assert prov.context_length == 1048576
+        assert prov.pricing.input == 1.6
+        assert prov.pricing.output == 3.38
+        assert prov.supports_tools is True
+
+
+@pytest.mark.asyncio
+async def test_list_repo_files_parses_tree(hf: HuggingFace) -> None:
+    """list_repo_files parses the Hub tree, using LFS size for large files and
+    routing repo_type to the right path prefix.
+    """
+    with respx.mock(base_url=_HUB, assert_all_called=True) as mock:
+        route = mock.get("/datasets/rajpurkar/squad/tree/main").mock(
+            return_value=httpx.Response(
+                200,
+                json=[
+                    {"type": "directory", "path": "data", "size": 0, "oid": "abc"},
+                    {"type": "file", "path": "README.md", "size": 1234, "oid": "def"},
+                    {
+                        "type": "file",
+                        "path": "model.safetensors",
+                        "size": 100,
+                        "oid": "ghi",
+                        "lfs": {"size": 999999, "oid": "sha256:x", "pointerSize": 134},
+                    },
+                ],
+            )
+        )
+
+        files = await hf.alist_repo_files(repo_id="rajpurkar/squad", repo_type="dataset")
+
+        by_path = {f.path: f for f in files}
+        assert by_path["data"].type == "directory"
+        assert by_path["README.md"].size == 1234
+        # LFS file reports the resolved LFS size, not the pointer size.
+        assert by_path["model.safetensors"].size == 999999
+        assert by_path["model.safetensors"].lfs["pointerSize"] == 134
+        assert "/datasets/rajpurkar/squad/tree/main" in str(route.calls.last.request.url)
+
+
+@pytest.mark.asyncio
 async def test_list_datasets_happy_path(hf: HuggingFace) -> None:
     """list_datasets: GET /datasets on the Hub → [HFDatasetInfo]."""
     with respx.mock(base_url=_HUB) as mock:

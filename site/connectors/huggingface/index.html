@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hugging Face Python Connector — 27 Actions | ToolsConnector</title>
-<meta name="description" content="Connect Hugging Face to Python apps and AI agents with 27 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[huggingface]&quot;. Apache 2.0. Free.">
+<title>Hugging Face Python Connector — 30 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Hugging Face to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[huggingface]&quot;. Apache 2.0. Free.">
 <meta name="keywords" content="Hugging Face Python, Hugging Face API Python, Hugging Face connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
 <meta name="author" content="ToolsConnector">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -15,15 +15,15 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://toolsconnector.github.io/connectors/huggingface/">
 <meta property="og:site_name" content="ToolsConnector">
-<meta property="og:title" content="Hugging Face Python Connector — 27 Actions | ToolsConnector">
-<meta property="og:description" content="Connect Hugging Face to Python apps and AI agents with 27 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[huggingface]&quot;. Apache 2.0. Free.">
+<meta property="og:title" content="Hugging Face Python Connector — 30 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Hugging Face to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[huggingface]&quot;. Apache 2.0. Free.">
 <meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@toolsconnector">
-<meta name="twitter:title" content="Hugging Face Python Connector — 27 Actions | ToolsConnector">
-<meta name="twitter:description" content="Connect Hugging Face to Python apps and AI agents with 27 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[huggingface]&quot;. Apache 2.0. Free.">
+<meta name="twitter:title" content="Hugging Face Python Connector — 30 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Hugging Face to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[huggingface]&quot;. Apache 2.0. Free.">
 <meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
 
 <script type="application/ld+json">
@@ -31,7 +31,7 @@
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "ToolsConnector \u2014 Hugging Face Connector",
-  "description": "Connect Hugging Face to Python apps and AI agents with 27 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[huggingface]\". Apache 2.0. Free.",
+  "description": "Connect Hugging Face to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[huggingface]\". Apache 2.0. Free.",
   "url": "https://toolsconnector.github.io/connectors/huggingface/",
   "downloadUrl": "https://pypi.org/project/toolsconnector/",
   "applicationCategory": "DeveloperApplication",
@@ -51,12 +51,15 @@
     "fill_mask",
     "get_dataset",
     "get_model",
+    "get_model_providers",
     "get_space",
     "image_classification",
     "image_segmentation",
     "image_to_text",
     "list_datasets",
+    "list_inference_catalog",
     "list_models",
+    "list_repo_files",
     "list_spaces",
     "object_detection",
     "question_answering",
@@ -220,7 +223,7 @@ footer a { color: #8a8a93; }
 
   <div class="stats">
     <div class="stat">
-      <div class="stat-num">27</div>
+      <div class="stat-num">30</div>
       <div class="stat-lbl">Actions</div>
     </div>
     <div class="stat">
@@ -235,7 +238,7 @@ footer a { color: #8a8a93; }
 </div>
 
 <div class="section">
-  <h2>All 27 Actions</h2>
+  <h2>All 30 Actions</h2>
   <div class="tbl-wrap">
     <table>
       <thead>
@@ -253,13 +256,16 @@ footer a { color: #8a8a93; }
 <tr><td><code>feature_extraction</code></td><td class="desc">Extract embedding vectors from text</td><td><span class="req">model, inputs</span> &nbsp;<span class="opt">[provider]</span></td><td><code>list</code></td></tr>
 <tr><td><code>fill_mask</code></td><td class="desc">Fill a masked token in text with a hosted model</td><td><span class="req">model, inputs</span> &nbsp;<span class="opt">[provider]</span></td><td><code>list</code></td></tr>
 <tr><td><code>get_dataset</code></td><td class="desc">Get metadata for a dataset on the Hub</td><td><span class="req">dataset_id</span></td><td><code>HFDatasetInfo</code></td></tr>
-<tr><td><code>get_model</code></td><td class="desc">Get metadata for a model on the Hub</td><td><span class="req">model_id</span></td><td><code>HFModelInfo</code></td></tr>
+<tr><td><code>get_model</code></td><td class="desc">Get metadata for a model on the Hub</td><td><span class="req">model_id</span> &nbsp;<span class="opt">[expand]</span></td><td><code>HFModelInfo</code></td></tr>
+<tr><td><code>get_model_providers</code></td><td class="desc">List the inference providers that serve a Hub model</td><td><span class="req">model_id</span></td><td><code>list</code></td></tr>
 <tr><td><code>get_space</code></td><td class="desc">Get metadata for a Space on the Hub</td><td><span class="req">space_id</span></td><td><code>HFSpaceInfo</code></td></tr>
 <tr><td><code>image_classification</code></td><td class="desc">Classify an image into labels</td><td><span class="req">model, image</span> &nbsp;<span class="opt">[top_k, provider]</span></td><td><code>list</code></td></tr>
 <tr><td><code>image_segmentation</code></td><td class="desc">Segment an image into labelled masks</td><td><span class="req">model, image</span> &nbsp;<span class="opt">[mask_threshold, threshold, subtask, provider]</span></td><td><code>list</code></td></tr>
 <tr><td><code>image_to_text</code></td><td class="desc">Generate a caption for an image</td><td><span class="req">model, image</span> &nbsp;<span class="opt">[provider]</span></td><td><code>list</code></td></tr>
 <tr><td><code>list_datasets</code></td><td class="desc">Search datasets on the Hugging Face Hub</td><td><span class="opt">[search, author, filter, sort, direction, limit]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_inference_catalog</code></td><td class="desc">List the Inference Providers model catalog with pricing</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
 <tr><td><code>list_models</code></td><td class="desc">Search models on the Hugging Face Hub</td><td><span class="opt">[search, author, filter, pipeline_tag, library, sort, direction, limit]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_repo_files</code></td><td class="desc">List files in a Hub repository&#39;s tree</td><td><span class="req">repo_id</span> &nbsp;<span class="opt">[repo_type, revision]</span></td><td><code>list</code></td></tr>
 <tr><td><code>list_spaces</code></td><td class="desc">Search Spaces on the Hugging Face Hub</td><td><span class="opt">[search, author, filter, sort, direction, limit]</span></td><td><code>list</code></td></tr>
 <tr><td><code>object_detection</code></td><td class="desc">Detect objects and bounding boxes in an image</td><td><span class="req">model, image</span> &nbsp;<span class="opt">[threshold, provider]</span></td><td><code>list</code></td></tr>
 <tr><td><code>question_answering</code></td><td class="desc">Answer a question from a context passage</td><td><span class="req">model, question, context</span> &nbsp;<span class="opt">[provider]</span></td><td><code>HFQuestionAnswer</code></td></tr>
