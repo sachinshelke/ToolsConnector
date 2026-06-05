@@ -144,6 +144,7 @@ Three gaps were found and fixed during the live verification + adversarial re-te
 - For inference, always pass a model's **canonical, org-prefixed** repo ID (e.g. `google-bert/bert-base-uncased`, `distilbert/distilbert-base-uncased-finetuned-sst-2-english`) — the router does not resolve legacy aliases, and a bare alias returns `Model not supported by provider`. The Hub metadata actions (`get_model`/`get_dataset`) *do* resolve aliases (the connector follows the Hub's `307` redirect)
 - Pass `wait_for_model=True` on `text_generation` to block while a cold model warms up instead of getting a 503
 - Serverless inference (the default `hf-inference` provider) is throttled — cache results and prefer batching where possible; route heavy/generative tasks to a partner provider via `provider=` (e.g. `"fal-ai"`, `"replicate"`, `"together"`)
+- **Resilience contract:** a cold model returns `503` → typed `ServerError` with `retry_eligible=True` and the "currently loading" reason in the message (back off and retry; the router usually auto-loads within seconds). A `429` → `RateLimitError` with `retry_after_seconds` parsed from `Retry-After`. Both are credential-redacted. The default request timeout is **30 s** — raise it for slow/cold inference with `HuggingFace(timeout=120)` (or the equivalent ToolKit credential config)
 
 ## Related Connectors
 

@@ -36,6 +36,7 @@ from toolsconnector.errors import (
     InvalidCredentialsError,
     NotFoundError,
     RateLimitError,
+    ServerError,
     ValidationError,
 )
 
@@ -615,6 +616,34 @@ async def test_rate_limit_raises_rate_limit_error(hf: HuggingFace) -> None:
         assert exc_info.value.connector == "huggingface"
         assert exc_info.value.upstream_status == 429
         assert exc_info.value.retry_after_seconds == 30.0
+
+
+@pytest.mark.asyncio
+async def test_cold_model_503_raises_retry_eligible_server_error(hf: HuggingFace) -> None:
+    """A cold hf-inference model returns 503 with a 'loading' body. It must
+    surface as a retry-eligible :class:`ServerError` with the load reason in
+    the message, so callers can back off and retry while the model warms up.
+    """
+    with respx.mock(base_url=_ROUTER) as mock:
+        mock.post(_pipeline("google-bert/bert-base-uncased", "fill-mask")).mock(
+            return_value=httpx.Response(
+                503,
+                json={
+                    "error": "Model google-bert/bert-base-uncased is currently loading",
+                    "estimated_time": 20.0,
+                },
+            )
+        )
+
+        with pytest.raises(ServerError) as exc_info:
+            await hf.afill_mask(
+                model="google-bert/bert-base-uncased", inputs="Paris is the [MASK]."
+            )
+
+        assert exc_info.value.upstream_status == 503
+        assert exc_info.value.retry_eligible is True
+        # The error-surfacing layer folds the upstream reason into the message.
+        assert "loading" in str(exc_info.value).lower()
 
 
 # ---------------------------------------------------------------------------
