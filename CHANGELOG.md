@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.15](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.14...v0.3.15) (2026-06-05)
+
+
+### ✨ Features
+
+* add 5 AI provider connectors with HuggingFace Tier-1 + schema/MCP fixes ([#51](https://github.com/sachinshelke/ToolsConnector/issues/51)) ([ee2611a](https://github.com/sachinshelke/ToolsConnector/commit/ee2611a47c892b5bdaabf2d32db3de21f84b198a))
+
 ## [0.3.14](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.13...v0.3.14) (2026-06-04)
 
 
