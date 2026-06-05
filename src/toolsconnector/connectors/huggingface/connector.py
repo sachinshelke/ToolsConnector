@@ -701,19 +701,25 @@ class HuggingFace(BaseConnector):
     async def feature_extraction(
         self,
         model: str,
-        inputs: str,
+        inputs: Union[str, list[str]],
         provider: str = _DEFAULT_PROVIDER,
     ) -> list[list[float]]:
         """Extract embeddings via the Inference Providers router.
 
-        Embedding shape is model-specific, so raw nested float lists are
-        returned. A flat ``list[float]`` is normalised to a single-row
-        ``list[list[float]]`` for a consistent return type.
+        Pass a single string to embed one text, or a list of strings to
+        embed a batch in one request (the router supports both). The
+        return type is always row-per-input: a single input yields one
+        ``list[float]`` row, a batch yields one row per input. Embedding
+        shape is model-specific, so raw nested float lists are returned;
+        a flat ``list[float]`` (the single-input sentence-embedding shape)
+        is normalised to a single-row ``list[list[float]]`` for a
+        consistent return type.
 
         Args:
             model: Embedding model repo ID, e.g.
                 ``'sentence-transformers/all-MiniLM-L6-v2'``.
-            inputs: The text to embed.
+            inputs: The text to embed, or a list of texts to embed as a
+                batch (one row per input, index-aligned).
             provider: Inference provider to route through (default
                 ``'hf-inference'``); set to a partner provider (e.g.
                 ``'fal-ai'``) to run heavy models elsewhere.

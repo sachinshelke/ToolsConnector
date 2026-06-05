@@ -20,6 +20,7 @@ from typing import (
     Any,
     Callable,
     Optional,
+    Union,
     get_type_hints,
 )
 
@@ -72,6 +73,9 @@ def _python_type_to_json_type(annotation: Any) -> str:
     origin = getattr(annotation, "__origin__", None)
     if annotation is str:
         return "string"
+    if annotation is bytes:
+        # Binary inputs travel as base64 strings over JSON transport.
+        return "string"
     if annotation is int:
         return "integer"
     if annotation is float:
@@ -107,17 +111,31 @@ def _build_parameter_specs(
         is_required = param.default is inspect.Parameter.empty
         default_val = None if is_required else param.default
 
-        # Detect Optional/None union
+        # Detect Optional/None unions and genuine multi-type unions.
         nullable = False
         inner_type = annotation
+        type_options: Optional[list[str]] = None
         origin = getattr(annotation, "__origin__", None)
         args = getattr(annotation, "__args__", ())
-        if origin is type(Optional[str]):  # Union
-            # Check if it's Optional (Union[X, None])
+        if origin is Union:
+            nullable = type(None) in args
             non_none = [a for a in args if a is not type(None)]
-            if len(non_none) == 1 and type(None) in args:
-                nullable = True
+            if len(non_none) == 1:
+                # Optional[X] / Union[X, None] -> the single underlying type.
                 inner_type = non_none[0]
+            elif len(non_none) >= 2:
+                # Multi-type union (e.g. Union[str, list[str]]): collect the
+                # distinct JSON Schema types so the schema can render an
+                # ``anyOf``. Unions that collapse to one JSON type (e.g.
+                # Union[bytes, str] -> "string") keep a single type.
+                distinct: list[str] = []
+                for a in non_none:
+                    jt = _python_type_to_json_type(a)
+                    if jt not in distinct:
+                        distinct.append(jt)
+                inner_type = non_none[0]
+                if len(distinct) > 1:
+                    type_options = distinct
 
         json_type = _python_type_to_json_type(inner_type)
 
@@ -128,6 +146,7 @@ def _build_parameter_specs(
             required=is_required,
             default=default_val,
             nullable=nullable,
+            type_options=type_options,
         )
         params.append(ps)
 
@@ -143,7 +162,15 @@ def _build_input_schema(
     required: list[str] = []
 
     for ps in param_specs:
-        prop: dict[str, Any] = {"type": ps.type}
+        # Multi-type union params render as ``anyOf`` so the schema (and
+        # downstream MCP/OpenAI tool definitions) advertise every accepted
+        # shape instead of collapsing to a single type. The lightweight
+        # arg validator treats an ``anyOf`` (no top-level ``type``) as
+        # permissive, so both forms pass validation.
+        if ps.type_options:
+            prop: dict[str, Any] = {"anyOf": [{"type": t} for t in ps.type_options]}
+        else:
+            prop = {"type": ps.type}
         if ps.description:
             prop["description"] = ps.description
         if ps.default is not None:

@@ -128,7 +128,7 @@ All 27 actions are pinned by **38 respx tests** in [tests/connectors/test_huggin
 | `automatic_speech_recognition` | `…/pipeline/automatic-speech-recognition` | 🔌 Provider-dependent |
 | `audio_classification` | `…/pipeline/audio-classification` | 🔌 Provider-dependent |
 
-Two bugs were found and fixed during live verification: (1) `zero_shot_classification` returned empty labels because the `hf-inference` router emits a score-sorted list of `{label, score}` rather than the classic `{sequence, labels, scores}` object — the parser now handles both; (2) `get_model`/`get_dataset` failed to parse because the Hub `307`-redirects legacy repo aliases (`bert-base-uncased` → `google-bert/bert-base-uncased`) and the client wasn't following redirects — it now does.
+Three gaps were found and fixed during the live verification + adversarial re-test sweep: (1) `zero_shot_classification` returned empty labels because the `hf-inference` router emits a score-sorted list of `{label, score}` rather than the classic `{sequence, labels, scores}` object — the parser now handles both; (2) `get_model`/`get_dataset` failed to parse because the Hub `307`-redirects legacy repo aliases (`bert-base-uncased` → `google-bert/bert-base-uncased`) and the client wasn't following redirects — it now does; (3) **batch embeddings** were impossible via the typed/MCP interface — `feature_extraction(inputs)` is now `Union[str, list[str]]`, and the schema generator renders multi-type unions as `anyOf` so a list passes validation instead of being rejected as "expects string" (a cross-cutting fix that also unblocked Mistral batch embeddings and Gemini structured `contents`).
 
 ## Actions
 
@@ -139,6 +139,7 @@ Two bugs were found and fixed during live verification: (1) `zero_shot_classific
 ## Tips
 
 - Inference outputs are heterogeneous per task — each action returns a typed model for its stable shape (e.g. `HFGeneratedText`, `HFClassification`); embeddings return raw `list[list[float]]`
+- `feature_extraction` accepts a single string **or a list of strings** — pass a list to embed a batch in one request (one `list[float]` row per input, index-aligned), which is far cheaper than one call per text
 - For inference, always pass a model's **canonical, org-prefixed** repo ID (e.g. `google-bert/bert-base-uncased`, `distilbert/distilbert-base-uncased-finetuned-sst-2-english`) — the router does not resolve legacy aliases, and a bare alias returns `Model not supported by provider`. The Hub metadata actions (`get_model`/`get_dataset`) *do* resolve aliases (the connector follows the Hub's `307` redirect)
 - Pass `wait_for_model=True` on `text_generation` to block while a cold model warms up instead of getting a 503
 - Serverless inference (the default `hf-inference` provider) is throttled — cache results and prefer batching where possible; route heavy/generative tasks to a partner provider via `provider=` (e.g. `"fal-ai"`, `"replicate"`, `"together"`)

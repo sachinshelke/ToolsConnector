@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional, Union
 
 import pytest
 from pydantic import BaseModel
@@ -67,6 +67,22 @@ class SampleConnector(BaseConnector):
         """
         pass
 
+    @action("Exercise union-typed parameters")
+    async def union_params(
+        self,
+        text: Union[str, list[str]],
+        blob: Union[bytes, str],
+        selector: Optional[Union[str, dict[str, Any]]] = None,
+    ) -> TestItem:
+        """Union parameter shapes.
+
+        Args:
+            text: A single string or a batch list of strings.
+            blob: Binary data as raw bytes or a base64 string.
+            selector: A string or a structured selector dict.
+        """
+        return TestItem(id="u", value=1)
+
 
 class TestActionDecorator:
     def test_action_meta_attached(self):
@@ -121,6 +137,55 @@ class TestActionDecorator:
         params = {p.name: p for p in meta.parameters}
         assert "Filter" in params["query"].description
         assert "Maximum" in params["limit"].description
+
+
+class TestUnionSchemaGeneration:
+    """Multi-type unions must render as ``anyOf`` so every accepted shape is
+    advertised (and accepted by the validator), while unions that collapse to
+    one JSON type stay single-typed. Regression for batch inputs (e.g.
+    ``feature_extraction``, Mistral embeddings, Gemini ``contents``) silently
+    rejected because the schema only advertised ``string``.
+    """
+
+    def _props(self):
+        return SampleConnector.union_params.__action_meta__.input_schema["properties"]
+
+    def test_string_or_array_union_is_anyof(self):
+        text = self._props()["text"]
+        assert "type" not in text
+        assert text["anyOf"] == [{"type": "string"}, {"type": "array"}]
+
+    def test_optional_string_or_object_union_is_anyof_and_nullable(self):
+        sel = self._props()["selector"]
+        assert sel["anyOf"] == [{"type": "string"}, {"type": "object"}]
+        assert sel.get("nullable") is True
+
+    def test_bytes_str_union_collapses_to_single_string(self):
+        # Union[bytes, str] -> both map to "string", so no anyOf (no regression
+        # for image/audio base64 params).
+        blob = self._props()["blob"]
+        assert blob["type"] == "string"
+        assert "anyOf" not in blob
+
+    def test_required_union_param_still_required(self):
+        schema = SampleConnector.union_params.__action_meta__.input_schema
+        assert set(schema["required"]) == {"text", "blob"}
+
+    def test_validator_accepts_both_union_shapes(self):
+        from toolsconnector.serve._validation import validate_arguments
+
+        schema = SampleConnector.union_params.__action_meta__.input_schema
+        # string form
+        assert validate_arguments(schema, {"text": "hi", "blob": "x"}) == []
+        # array (batch) form — previously rejected as "expects string"
+        assert validate_arguments(schema, {"text": ["a", "b"], "blob": "x"}) == []
+        # object selector form
+        assert (
+            validate_arguments(
+                schema, {"text": "hi", "blob": "x", "selector": {"type": "function"}}
+            )
+            == []
+        )
 
 
 class TestBaseConnector:

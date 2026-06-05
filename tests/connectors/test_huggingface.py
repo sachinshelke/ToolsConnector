@@ -397,6 +397,33 @@ async def test_feature_extraction_passes_nested_through(hf: HuggingFace) -> None
         assert result == [[0.1, 0.2], [0.3, 0.4]]
 
 
+@pytest.mark.asyncio
+async def test_feature_extraction_batch_inputs(hf: HuggingFace) -> None:
+    """A list of inputs is sent as a batch and returns one row per input.
+
+    Regression: ``inputs`` is ``Union[str, list[str]]`` so batch embedding
+    works both via the typed method and through the serve layer (the schema
+    advertises ``anyOf`` of string/array).
+    """
+    model = "sentence-transformers/all-MiniLM-L6-v2"
+    with respx.mock(base_url=_ROUTER, assert_all_called=True) as mock:
+        route = mock.post(_pipeline(model, "feature-extraction")).mock(
+            return_value=httpx.Response(200, json=[[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
+        )
+
+        result = await hf.afeature_extraction(model=model, inputs=["a", "b", "c"])
+
+        assert result == [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]
+        body = route.calls.last.request.read()
+        assert b'"inputs":["a","b","c"]' in body
+
+    # The serve-layer schema must advertise both string and array forms.
+    inputs_schema = (
+        HuggingFace.get_spec().actions["feature_extraction"].input_schema["properties"]["inputs"]
+    )
+    assert inputs_schema.get("anyOf") == [{"type": "string"}, {"type": "array"}]
+
+
 # ---------------------------------------------------------------------------
 # 8. Hub — list models / get model / list datasets / whoami
 # ---------------------------------------------------------------------------
