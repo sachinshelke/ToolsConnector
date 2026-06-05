@@ -7,10 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.15](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.14...v0.3.15) (2026-06-05)
 
+Adds **5 AI/ML provider connectors** with **HuggingFace promoted to Tier 1 (live verified, 24/30 actions)**, plus two cross-cutting schema/MCP fixes. Catalog: 68 → 73 connectors, 1,402 → 1,518 actions; AI/ML category 3 → 8. ([#51](https://github.com/sachinshelke/ToolsConnector/pull/51), [ee2611a](https://github.com/sachinshelke/ToolsConnector/commit/ee2611a47c892b5bdaabf2d32db3de21f84b198a))
 
 ### ✨ Features
 
-* add 5 AI provider connectors with HuggingFace Tier-1 + schema/MCP fixes ([#51](https://github.com/sachinshelke/ToolsConnector/issues/51)) ([ee2611a](https://github.com/sachinshelke/ToolsConnector/commit/ee2611a47c892b5bdaabf2d32db3de21f84b198a))
+* **connectors:** add HuggingFace, Gemini, Cohere, Mistral, Groq AI providers (raw httpx + BYOK, no provider SDKs)
+* **huggingface:** Tier-1 live verification (24/30 actions) + model/provider/pricing discovery — inference catalog with per-token pricing, provider mapping, repo file tree, and expandable model details
+* **huggingface:** add `list_models` `pipeline_tag` / `library` filters for clean model discovery
+* **runtime:** render multi-type union params as `anyOf` — unblocks batch inputs (HuggingFace/Mistral embeddings, Gemini structured `contents`)
+* **serve:** honor `anyOf` unions in the MCP handler so batch lists pass over stdio (and `Optional[list[...]]` arrays advertise their item type)
+
+### 🐛 Bug Fixes
+
+* **huggingface:** zero-shot parser now handles the `hf-inference` router list shape; follow Hub `307` legacy-alias redirects for `get_model` / `get_dataset`
+* **runtime:** `Optional[list[...]]` params were mis-typed as `string` (MCP clients sent a comma-string, iterated character-by-character) — they now emit `array` with inferred `items` element types + PEP 604 union robustness
 
 ## [0.3.14](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.13...v0.3.14) (2026-06-04)
 
