@@ -125,4 +125,4 @@ of parsing strings.
 
 ---
 
-*Part of [ToolsConnector](https://toolsconnector.github.io) — one open-source Python interface to 68 APIs, for AI agents and apps.*
+*Part of [ToolsConnector](https://toolsconnector.github.io) — one open-source Python interface to 73 APIs, for AI agents and apps.*

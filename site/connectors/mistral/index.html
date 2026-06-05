@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mistral Python Connector — 30 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Mistral to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[mistral]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="Mistral Python, Mistral API Python, Mistral connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/mistral/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#000005">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/mistral/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="Mistral Python Connector — 30 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Mistral to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[mistral]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="Mistral Python Connector — 30 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Mistral to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[mistral]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 Mistral Connector",
+  "description": "Connect Mistral to Python apps and AI agents with 30 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[mistral]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/mistral/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "agents_completion",
+    "archive_model",
+    "cancel_batch_job",
+    "cancel_finetuning_job",
+    "chat_completion",
+    "chat_moderations",
+    "classifications",
+    "create_batch_job",
+    "create_finetuning_job",
+    "delete_batch_job",
+    "delete_file",
+    "delete_model",
+    "embeddings",
+    "fim_completion",
+    "get_batch_job",
+    "get_file",
+    "get_file_content",
+    "get_file_signed_url",
+    "get_finetuning_job",
+    "get_model",
+    "list_batch_jobs",
+    "list_files",
+    "list_finetuning_jobs",
+    "list_models",
+    "moderations",
+    "ocr_process",
+    "start_finetuning_job",
+    "unarchive_model",
+    "update_finetuned_model",
+    "upload_file"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  },
+  "softwareVersion": "0.3.14"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://toolsconnector.github.io/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Connectors",
+      "item": "https://toolsconnector.github.io/#/connectors"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Mistral",
+      "item": "https://toolsconnector.github.io/connectors/mistral/"
+    }
+  ]
+}
+</script>
+
+<style>
+/* Self-contained dark cinematic theme — fully styled and visible without any
+   external CSS/JS (SEO-safe, robust, standalone; matches the cinematic site
+   via shared design tokens rather than a shared stylesheet dependency). */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --b:#000005; --ink:#f5f5f7; --dim:#86868b; --accent:#7c8cff; --line:rgba(255,255,255,.09); }
+body { font-family:"Inter",-apple-system,system-ui,sans-serif; color:var(--ink); background:var(--b);
+        line-height:1.6; -webkit-font-smoothing:antialiased; letter-spacing:-.01em; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: rgba(255,255,255,.07);
+        padding: .15em .4em; border-radius: 4px; color:#dfe3ff; }
+
+/* ── Nav (sticky, glassy) ── */
+nav { position:sticky; top:0; z-index:50; border-bottom: 1px solid var(--line);
+      padding: .85rem clamp(1rem,4vw,1.6rem); display: flex; align-items: center; gap: .75rem;
+      background:rgba(0,0,5,.72); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+.nav-logo { font-weight: 700; font-size: 1.05rem; color: var(--ink); display:flex; align-items:center; gap:.5rem; }
+.nav-logo img { width:26px; height:26px; }
+nav a.back { color: var(--dim); font-size: .875rem; }
+nav a.back:hover { color: var(--ink); text-decoration:none; }
+nav a.btn { margin-left: auto; background: var(--ink); color: var(--b); padding: .5rem 1.15rem;
+             border-radius: 980px; font-size: .85rem; font-weight: 600; }
+nav a.btn:hover { background: #fff; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 960px; margin: 3.5rem auto 2rem; padding: 0 clamp(1rem,4vw,1.5rem); }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.25rem; }
+.badge { display:inline-flex; align-items:center; padding:.28rem .8rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#7C3AED; }
+.verify-badge { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .65rem;
+                 margin-left:.5rem; border-radius:20px; font-size:.75rem; font-weight:600;
+                 border:1.5px solid #94a3b8; color:#94a3b8; background:rgba(255,255,255,.02);
+                 cursor:help; user-select:none; }
+.verify-badge .dot { font-size:1rem; line-height:1; }
+h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing:-.02em; margin: .6rem 0 .5rem; }
+.desc { font-size: 1.08rem; color: var(--dim); max-width: 720px; margin-bottom: 1.6rem; }
+.install-box { background: #0c0c14; color: #e2e8f0; border:1px solid var(--line); border-radius: 12px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .9rem; display:inline-block; margin-bottom:1.75rem; }
+.install-box .dollar { color: #34d399; margin-right:.5rem; }
+.install-box .pkg { color: #ffb37c; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2.4rem; margin-bottom: .5rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.85rem; font-weight: 700; letter-spacing:-.02em;
+             background:linear-gradient(180deg,#fff,#bcb6ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing:.12em; margin-top:.3rem; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 2.5rem auto 3rem; padding: 0 clamp(1rem,4vw,1.5rem); }
+.section h2 { font-size: 1.5rem; font-weight: 700; letter-spacing:-.02em; margin-bottom: 1.1rem; padding-bottom: .6rem;
+               border-bottom: 1px solid var(--line); }
+.tbl-wrap { overflow-x: auto; border:1px solid var(--line); border-radius:14px; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th { text-align: left; padding: .7rem .9rem; background: rgba(255,255,255,.03); color: var(--dim);
+      font-weight: 600; font-size: .72rem; text-transform: uppercase; letter-spacing:.06em;
+      border-bottom: 1px solid var(--line); }
+td { padding: .7rem .9rem; border-bottom: 1px solid rgba(255,255,255,.05); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,.02); }
+td.desc { color: var(--dim); max-width: 420px; }
+td code { background:rgba(124,140,255,.12); color:#cdd2ff; }
+.req { color: #f9a8a8; }
+.opt { color: #6b6b75; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 3rem 1.5rem 2rem; border-top: 1px solid var(--line); margin-top: 1.5rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: var(--ink); color: var(--b);
+          padding: .8rem 1.9rem; border-radius: 980px; font-weight: 600; font-size: 1rem; }
+.cta a:hover { background: #fff; text-decoration: none; }
+.cta p { margin-top: .85rem; color: var(--dim); font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid var(--line); padding: 1.5rem; text-align:center;
+          color: #5a5a63; font-size: .8rem; }
+footer a { color: #8a8a93; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1.4rem; } .stat-num { font-size: 1.45rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" class="back">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/mistral" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+
+    <div>
+      <span class="badge">AI / ML</span>
+      <span class="verify-badge" title="Pattern correct — code matches documented API patterns from public knowledge; no active verification sweep run yet." aria-label="Verification status: Pattern correct"><span class="dot">○</span>Pattern correct</span>
+      <h1>Mistral Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to Mistral AI for chat, embeddings, FIM and agent completions, content moderation and classification, OCR, plus file, fine-tuning-job, batch-job, and model management.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[mistral]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">30</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">AI / ML</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 30 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>agents_completion</code></td><td class="desc">Create an agent completion</td><td><span class="req">agent_id, messages</span> &nbsp;<span class="opt">[max_tokens, tools, response_format]</span></td><td><code>AgentsCompletion</code></td></tr>
+<tr><td><code>archive_model</code></td><td class="desc">Archive a fine-tuned model</td><td><span class="req">model_id</span></td><td><code>ArchiveModelResult</code></td></tr>
+<tr><td><code>cancel_batch_job ⚠</code></td><td class="desc">Cancel a batch job</td><td><span class="req">job_id</span></td><td><code>BatchJob</code></td></tr>
+<tr><td><code>cancel_finetuning_job ⚠</code></td><td class="desc">Cancel a fine-tuning job</td><td><span class="req">job_id</span></td><td><code>FineTuningJob</code></td></tr>
+<tr><td><code>chat_completion</code></td><td class="desc">Create a chat completion</td><td><span class="req">model, messages</span> &nbsp;<span class="opt">[temperature, max_tokens, top_p]</span></td><td><code>ChatCompletion</code></td></tr>
+<tr><td><code>chat_moderations</code></td><td class="desc">Run content moderation on a conversation</td><td><span class="req">model, inputs</span></td><td><code>ModerationResult</code></td></tr>
+<tr><td><code>classifications</code></td><td class="desc">Classify text with a classifier model</td><td><span class="req">model, input</span></td><td><code>ClassificationResult</code></td></tr>
+<tr><td><code>create_batch_job</code></td><td class="desc">Create a batch job</td><td><span class="req">endpoint</span> &nbsp;<span class="opt">[input_files, requests, model, metadata, timeout_hours]</span></td><td><code>BatchJob</code></td></tr>
+<tr><td><code>create_finetuning_job</code></td><td class="desc">Create a fine-tuning job</td><td><span class="req">model, hyperparameters</span> &nbsp;<span class="opt">[training_files, validation_files, suffix, auto_start]</span></td><td><code>FineTuningJob</code></td></tr>
+<tr><td><code>delete_batch_job ⚠</code></td><td class="desc">Delete a batch job</td><td><span class="req">job_id</span></td><td><code>BatchJobDeleted</code></td></tr>
+<tr><td><code>delete_file ⚠</code></td><td class="desc">Delete an uploaded file</td><td><span class="req">file_id</span></td><td><code>FileDeleted</code></td></tr>
+<tr><td><code>delete_model ⚠</code></td><td class="desc">Delete a fine-tuned model</td><td><span class="req">model_id</span></td><td><code>ModelDeleted</code></td></tr>
+<tr><td><code>embeddings</code></td><td class="desc">Create text embeddings</td><td><span class="req">model, input</span></td><td><code>Embedding</code></td></tr>
+<tr><td><code>fim_completion</code></td><td class="desc">Create a fill-in-the-middle (FIM) code completion</td><td><span class="req">model, prompt</span> &nbsp;<span class="opt">[suffix, max_tokens]</span></td><td><code>FIMCompletion</code></td></tr>
+<tr><td><code>get_batch_job</code></td><td class="desc">Get a batch job by ID</td><td><span class="req">job_id</span></td><td><code>BatchJob</code></td></tr>
+<tr><td><code>get_file</code></td><td class="desc">Get file metadata by ID</td><td><span class="req">file_id</span></td><td><code>MistralFile</code></td></tr>
+<tr><td><code>get_file_content</code></td><td class="desc">Download file content by ID</td><td><span class="req">file_id</span></td><td><code>bytes</code></td></tr>
+<tr><td><code>get_file_signed_url</code></td><td class="desc">Get a temporary signed download URL for a file</td><td><span class="req">file_id</span> &nbsp;<span class="opt">[expiry]</span></td><td><code>FileSignedURL</code></td></tr>
+<tr><td><code>get_finetuning_job</code></td><td class="desc">Get a fine-tuning job by ID</td><td><span class="req">job_id</span></td><td><code>FineTuningJob</code></td></tr>
+<tr><td><code>get_model</code></td><td class="desc">Get a model by ID</td><td><span class="req">model_id</span></td><td><code>MistralModel</code></td></tr>
+<tr><td><code>list_batch_jobs</code></td><td class="desc">List batch jobs</td><td><span class="opt">[page, page_size, model, status]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_files</code></td><td class="desc">List uploaded files</td><td><span class="opt">[page, page_size, purpose]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_finetuning_jobs</code></td><td class="desc">List fine-tuning jobs</td><td><span class="opt">[page, page_size, model, status]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_models</code></td><td class="desc">List available models</td><td><span class="opt">—</span></td><td><code>list</code></td></tr>
+<tr><td><code>moderations</code></td><td class="desc">Run content moderation on text</td><td><span class="req">model, input</span></td><td><code>ModerationResult</code></td></tr>
+<tr><td><code>ocr_process</code></td><td class="desc">Run OCR on a document</td><td><span class="req">model, document</span> &nbsp;<span class="opt">[pages, include_image_base64, image_limit, document_annotation_format]</span></td><td><code>OCRResult</code></td></tr>
+<tr><td><code>start_finetuning_job</code></td><td class="desc">Start a validated fine-tuning job</td><td><span class="req">job_id</span></td><td><code>FineTuningJob</code></td></tr>
+<tr><td><code>unarchive_model</code></td><td class="desc">Unarchive a fine-tuned model</td><td><span class="req">model_id</span></td><td><code>ArchiveModelResult</code></td></tr>
+<tr><td><code>update_finetuned_model</code></td><td class="desc">Update a fine-tuned model&#39;s name or description</td><td><span class="req">model_id</span> &nbsp;<span class="opt">[name, description]</span></td><td><code>MistralModel</code></td></tr>
+<tr><td><code>upload_file</code></td><td class="desc">Upload a file</td><td><span class="req">file_content, purpose</span> &nbsp;<span class="opt">[filename]</span></td><td><code>MistralFile</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/mistral">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/sachinshelke/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a> · v0.3.14
+</footer>
+
+</body>
+</html>

@@ -1,6 +1,6 @@
 # All Connectors
 
-ToolsConnector ships with 68 connectors organized into 20 categories, providing 1,402 total actions across communication, CRM, databases, DevOps, AI/ML, finance, productivity, and more.
+ToolsConnector ships with 73 connectors organized into 20 categories, providing 1,515 total actions across communication, CRM, databases, DevOps, AI/ML, finance, productivity, and more.
 
 ## How Connectors Work
 

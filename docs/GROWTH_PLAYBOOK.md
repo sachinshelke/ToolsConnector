@@ -33,7 +33,7 @@ The PyPI page is where pip users land. Make it sell.
       `connectors`, `integrations`, `function-calling`, `model-context-protocol`,
       `langchain`. Topics are GitHub-searchable and SEO-indexed.
 - [ ] **Social preview image** (Settings → Social preview, 1280×640): a branded
-      card with the logo + "68 connectors, one interface" + the 3 framework logos.
+      card with the logo + "73 connectors, one interface" + the 3 framework logos.
       This is what renders when the repo is shared on X/LinkedIn/Slack.
 - [ ] **README badges** (top of README): PyPI version, downloads, Python versions,
       license, CI status, **stars**. Same shields.io set now on the site hero.
@@ -47,7 +47,7 @@ The PyPI page is where pip users land. Make it sell.
 These are high-authority backlinks + targeted discovery. Submit once, benefit forever.
 
 - [ ] **MCP registry / awesome-mcp-servers** — ToolsConnector is an MCP server
-      provider for 68 tools. This is the single most on-target list given the
+      provider for 73 tools. This is the single most on-target list given the
       MCP positioning. (github.com/punkpeye/awesome-mcp-servers and the official
       modelcontextprotocol/servers list.)
 - [ ] **awesome-python** (vinta/awesome-python) — under "Third-party APIs" or "RESTful API".
@@ -62,7 +62,7 @@ These are high-authority backlinks + targeted discovery. Submit once, benefit fo
 Do these once the docs + a couple of tutorials are polished. Each drives a traffic
 spike and (if it lands) durable backlinks.
 
-- [ ] **Show HN: "ToolsConnector – one open-source Python interface to 68 APIs for AI agents"**
+- [ ] **Show HN: "ToolsConnector – one open-source Python interface to 73 APIs for AI agents"**
       — Tuesday–Thursday, ~9am ET. Lead with the problem (fragmented SDKs), the
       primitive-not-platform angle, and a 6-line code sample. Be in the thread to answer.
 - [ ] **r/Python** ("I built…" — show, don't sell), **r/LocalLLaMA** and **r/LLMDevs**
@@ -110,7 +110,7 @@ they're in the sitemap.
 One message, repeated across PyPI / GitHub / posts / site, ranks and converts better
 than five clever ones:
 
-> **ToolsConnector — one open-source Python interface to 68 APIs, for AI agents and apps.**
+> **ToolsConnector — one open-source Python interface to 73 APIs, for AI agents and apps.**
 > A *primitive, not a platform*: runs in your process, BYOK, no vendor lock-in.
 > Works with OpenAI function calling, Anthropic tool use, Gemini, and MCP.
 
