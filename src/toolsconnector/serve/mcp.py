@@ -55,6 +55,14 @@ def _json_type_to_python(param_schema: dict[str, Any], required: bool) -> Any:
     else:
         json_type = param_schema.get("type", "string")
         py_type = type_map.get(json_type, Any)
+        # Preserve the element type for typed arrays (``items: {type: ...}``)
+        # so FastMCP regenerates ``list[str]`` rather than an untyped ``list``
+        # (which would emit ``items: {}`` and drop the element type). A bare
+        # array with no item type stays plain ``list``.
+        if json_type == "array":
+            item_type = (param_schema.get("items") or {}).get("type")
+            if item_type:
+                py_type = list[type_map.get(item_type, Any)]
 
     return py_type if required else Optional[py_type]
 

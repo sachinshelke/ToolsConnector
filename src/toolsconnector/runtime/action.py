@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import functools
 import inspect
+import types
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import (
@@ -21,6 +22,8 @@ from typing import (
     Callable,
     Optional,
     Union,
+    get_args,
+    get_origin,
     get_type_hints,
 )
 
@@ -29,6 +32,12 @@ from docstring_parser import parse as parse_docstring
 from toolsconnector.runtime._sync import run_sync
 from toolsconnector.spec.action import ParameterSpec
 from toolsconnector.spec.pagination import PaginationSpec
+
+# Union origins to unwrap: ``typing.Union`` (``Optional[X]`` / ``Union[...]``)
+# and, on 3.10+, ``types.UnionType`` (PEP 604 ``X | None``). Filter out a
+# missing ``UnionType`` on 3.9 so a non-union ``get_origin`` of ``None`` never
+# matches a plain type.
+_UNION_ORIGINS = tuple(o for o in (Union, getattr(types, "UnionType", None)) if o is not None)
 
 
 @dataclass(frozen=True)
@@ -70,7 +79,7 @@ class ActionMeta:
 
 def _python_type_to_json_type(annotation: Any) -> str:
     """Map a Python type annotation to a JSON Schema type string."""
-    origin = getattr(annotation, "__origin__", None)
+    origin = get_origin(annotation)
     if annotation is str:
         return "string"
     if annotation is bytes:
@@ -87,6 +96,20 @@ def _python_type_to_json_type(annotation: Any) -> str:
     if origin is dict or annotation is dict:
         return "object"
     return "string"
+
+
+def _array_item_schema(annotation: Any) -> Optional[dict[str, Any]]:
+    """Return the JSON Schema for a ``list[X]`` annotation's items, or None.
+
+    Lets an array param advertise its element type (e.g. ``list[str]`` ->
+    ``{"items": {"type": "string"}}``) instead of an untyped array, so MCP /
+    OpenAI clients (and downstream arg coercion) know what the elements are.
+    Bare ``list`` (no parameter) yields ``None``.
+    """
+    item_args = get_args(annotation)
+    if not item_args:
+        return None
+    return {"type": _python_type_to_json_type(item_args[0])}
 
 
 def _build_parameter_specs(
@@ -111,13 +134,17 @@ def _build_parameter_specs(
         is_required = param.default is inspect.Parameter.empty
         default_val = None if is_required else param.default
 
-        # Detect Optional/None unions and genuine multi-type unions.
+        # Detect Optional/None unions and genuine multi-type unions. Use
+        # ``get_origin``/``get_args`` so both ``typing.Union`` (``Optional[X]``)
+        # and PEP 604 ``X | None`` (``types.UnionType``) are unwrapped -- the
+        # old ``__origin__ is type(Optional[str])`` predicate never matched, so
+        # every ``Optional[list[...]]`` fell through to the "string" default.
         nullable = False
         inner_type = annotation
         type_options: Optional[list[str]] = None
-        origin = getattr(annotation, "__origin__", None)
-        args = getattr(annotation, "__args__", ())
-        if origin is Union:
+        origin = get_origin(annotation)
+        args = get_args(annotation)
+        if origin in _UNION_ORIGINS:
             nullable = type(None) in args
             non_none = [a for a in args if a is not type(None)]
             if len(non_none) == 1:
@@ -138,6 +165,13 @@ def _build_parameter_specs(
                     type_options = distinct
 
         json_type = _python_type_to_json_type(inner_type)
+        # Advertise element type for a single-type array param (e.g.
+        # ``Optional[list[str]]`` -> array with ``items: {type: string}``).
+        item_schema = (
+            _array_item_schema(inner_type)
+            if type_options is None and json_type == "array"
+            else None
+        )
 
         ps = ParameterSpec(
             name=name,
@@ -147,6 +181,7 @@ def _build_parameter_specs(
             default=default_val,
             nullable=nullable,
             type_options=type_options,
+            items=item_schema,
         )
         params.append(ps)
 

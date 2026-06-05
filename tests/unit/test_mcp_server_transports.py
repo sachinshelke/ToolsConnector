@@ -267,3 +267,20 @@ def test_make_tool_handler_signature_accepts_union_param() -> None:
 
     assert params["model"].default is _inspect.Parameter.empty
     assert params["provider"].default is None
+
+
+def test_json_type_typed_array_preserves_item_type() -> None:
+    """A typed array schema (``items: {type: ...}``) maps to ``list[<item>]`` so
+    FastMCP regenerates a typed array; a bare array stays plain ``list``.
+    """
+    from typing import Optional, get_args
+
+    from toolsconnector.serve.mcp import _json_type_to_python
+
+    ann = _json_type_to_python({"type": "array", "items": {"type": "string"}}, False)
+    assert ann == Optional[list[str]]
+    assert list[str] in get_args(ann)
+
+    assert _json_type_to_python({"type": "array", "items": {"type": "integer"}}, True) == list[int]
+    # Bare array (no item type) stays plain ``list`` — unchanged behaviour.
+    assert _json_type_to_python({"type": "array"}, True) is list

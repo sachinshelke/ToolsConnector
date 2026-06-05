@@ -132,6 +132,19 @@ class TestActionDecorator:
         assert "query" in schema["properties"]
         assert "limit" in schema["properties"]
 
+    def test_optional_list_param_is_array_with_typed_items(self):
+        """``Optional[list[str]]`` -> ``{type: array, nullable, items: {type:
+        string}}``. Regression for the Optional-union predicate that mis-typed
+        every optional-list param as ``"string"`` (so MCP clients sent a comma
+        string and the connector iterated it character-by-character).
+        """
+        schema = SampleConnector.list_items.__action_meta__.input_schema
+        tags = schema["properties"]["tags"]
+        assert tags["type"] == "array"
+        assert tags.get("nullable") is True
+        assert tags.get("items") == {"type": "string"}
+        assert "tags" not in schema.get("required", [])
+
     def test_docstring_descriptions(self):
         meta = SampleConnector.list_items.__action_meta__
         params = {p.name: p for p in meta.parameters}
