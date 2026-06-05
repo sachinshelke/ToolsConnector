@@ -319,7 +319,7 @@ TypeScript SDK:  1.0.0, 1.0.1, 1.1.0
 | **Tier 3 — Pattern correct** | `"pattern"` | Code matches documented API patterns from public knowledge, but no active doc or live verification has happened |
 
 **Why:**
-- **Honest quality claims.** "Verified" has to mean something specific. Shipping 68 connectors and calling them all equally trustworthy would be dishonest — most are pattern-correct, a handful are live-verified. The tier makes the difference legible instead of implied.
+- **Honest quality claims.** "Verified" has to mean something specific. Shipping 73 connectors and calling them all equally trustworthy would be dishonest — most are pattern-correct, a handful are live-verified. The tier makes the difference legible instead of implied.
 - **Agent-consumable.** The status is a string enum on the spec, so an agent can `kit.list_tools()[0]["verification_status"]` and filter for production-ready connectors at runtime — not just a human-facing docs note.
 - **Drives the roadmap.** The progression Tier 3 → 2 → 1 is the unit of work for each connector-hardening pass. The CHANGELOG records which connectors moved tiers in each release.
 - **Default is honest, not flattering.** New connectors inherit `"pattern"` — the *weakest* claim — so a connector can only earn a stronger tier by explicit promotion, never by omission.

@@ -206,3 +206,81 @@ def test_explicit_host_override_propagates(monkeypatch: pytest.MonkeyPatch) -> N
     )
 
     assert fastmcp_class.call_args.kwargs["host"] == "0.0.0.0"
+
+
+# ---------------------------------------------------------------------------
+# anyOf union params — the MCP handler signature must accept every member
+# shape, or FastMCP's derived Pydantic model rejects e.g. a batch list before
+# the handler runs. Regression for batch embeddings via MCP stdio.
+# ---------------------------------------------------------------------------
+
+
+def test_json_type_anyof_builds_union_annotation() -> None:
+    from typing import Union, get_args
+
+    from toolsconnector.serve.mcp import _json_type_to_python
+
+    # required str|array -> Union[str, list] (no None)
+    ann = _json_type_to_python({"anyOf": [{"type": "string"}, {"type": "array"}]}, True)
+    assert ann == Union[str, list]
+    assert list in get_args(ann)
+
+    # optional str|object -> Union[str, dict, None]
+    ann_opt = _json_type_to_python({"anyOf": [{"type": "string"}, {"type": "object"}]}, False)
+    assert str in get_args(ann_opt) and dict in get_args(ann_opt)
+    assert type(None) in get_args(ann_opt)
+
+    # single-member anyOf collapses (no spurious Union)
+    assert _json_type_to_python({"anyOf": [{"type": "string"}]}, True) is str
+
+    # plain typed params are unchanged
+    assert _json_type_to_python({"type": "string"}, True) is str
+    assert _json_type_to_python({"type": "integer"}, True) is int
+
+
+def test_make_tool_handler_signature_accepts_union_param() -> None:
+    """The dynamically-built handler signature exposes a Union annotation for
+    an ``anyOf`` param, so FastMCP accepts both the string and array forms.
+    """
+    from typing import Union, get_args
+    from unittest.mock import MagicMock
+
+    from toolsconnector.serve.mcp import _make_tool_handler
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "model": {"type": "string"},
+            "inputs": {"anyOf": [{"type": "string"}, {"type": "array"}]},
+            "provider": {"type": "string", "default": "hf-inference"},
+        },
+        "required": ["model", "inputs"],
+    }
+    handler = _make_tool_handler(
+        MagicMock(name="toolkit"), "huggingface_feature_extraction", schema
+    )
+    params = handler.__signature__.parameters
+    assert params["inputs"].annotation == Union[str, list]
+    assert list in get_args(params["inputs"].annotation)
+    # required param has no default; optional one defaults to None (None-strip).
+    import inspect as _inspect
+
+    assert params["model"].default is _inspect.Parameter.empty
+    assert params["provider"].default is None
+
+
+def test_json_type_typed_array_preserves_item_type() -> None:
+    """A typed array schema (``items: {type: ...}``) maps to ``list[<item>]`` so
+    FastMCP regenerates a typed array; a bare array stays plain ``list``.
+    """
+    from typing import Optional, get_args
+
+    from toolsconnector.serve.mcp import _json_type_to_python
+
+    ann = _json_type_to_python({"type": "array", "items": {"type": "string"}}, False)
+    assert ann == Optional[list[str]]
+    assert list[str] in get_args(ann)
+
+    assert _json_type_to_python({"type": "array", "items": {"type": "integer"}}, True) == list[int]
+    # Bare array (no item type) stays plain ``list`` — unchanged behaviour.
+    assert _json_type_to_python({"type": "array"}, True) is list

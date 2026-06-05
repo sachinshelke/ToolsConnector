@@ -28,6 +28,14 @@ class ParameterSpec(BaseModel):
         default=None, description="Schema for array items (if type is 'array')."
     )
     nullable: bool = Field(default=False, description="Whether None/null is allowed.")
+    type_options: Optional[list[str]] = Field(
+        default=None,
+        description=(
+            "For union-typed params (e.g. ``Union[str, list[str]]``): the distinct "
+            "JSON Schema types the value may take, rendered as ``anyOf`` in the input "
+            "schema. ``None`` for ordinary single-type params."
+        ),
+    )
 
 
 class ActionSpec(BaseModel):

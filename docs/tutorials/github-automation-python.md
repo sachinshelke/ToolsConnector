@@ -121,4 +121,4 @@ so you don't mistake throttling for a permissions problem.
 
 ---
 
-*Part of [ToolsConnector](https://toolsconnector.github.io) — one open-source Python interface to 68 APIs, for AI agents and apps.*
+*Part of [ToolsConnector](https://toolsconnector.github.io) — one open-source Python interface to 73 APIs, for AI agents and apps.*
