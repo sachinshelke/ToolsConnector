@@ -62,7 +62,10 @@ def _json_type_to_python(param_schema: dict[str, Any], required: bool) -> Any:
         if json_type == "array":
             item_type = (param_schema.get("items") or {}).get("type")
             if item_type:
-                py_type = list[type_map.get(item_type, Any)]
+                # Runtime construction of the handler's ``list[<item>]``
+                # annotation; mypy can't statically resolve the dynamic
+                # subscript, so build it via the parametrized-generic API.
+                py_type = list[type_map.get(item_type, Any)]  # type: ignore[misc]
 
     return py_type if required else Optional[py_type]
 
