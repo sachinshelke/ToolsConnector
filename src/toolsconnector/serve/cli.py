@@ -63,6 +63,15 @@ def main(argv: Optional[list[str]] = None) -> int:
     rest_parser.add_argument("connectors", nargs="+", help="Connectors to serve")
     rest_parser.add_argument("--port", type=int, default=8000, help="Port")
     rest_parser.add_argument("--prefix", default="/api/v1", help="URL prefix")
+    rest_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help=(
+            "Bind address (default: 127.0.0.1, loopback only). Set to 0.0.0.0 to "
+            "expose on all interfaces — only do this behind a reverse proxy with "
+            "auth; the REST server has no built-in authentication."
+        ),
+    )
 
     # Try dynamic connector command FIRST (before argparse)
     # This handles: tc gmail actions, tc gmail list_emails --query "..."
@@ -182,8 +191,16 @@ def _cmd_serve_rest(args: argparse.Namespace) -> int:
     try:
         kit = ToolKit(args.connectors)
         app = kit.create_rest_app(prefix=args.prefix)
-        print(f"Starting REST server with {len(kit.list_tools())} tools on port {args.port}...")
-        uvicorn.run(app, host="0.0.0.0", port=args.port)
+        host = getattr(args, "host", "127.0.0.1")
+        if host not in ("127.0.0.1", "localhost", "::1"):
+            print(
+                f"WARNING: binding the REST server to {host} exposes it on all "
+                "interfaces with NO built-in authentication. Only do this behind "
+                "an authenticating reverse proxy.",
+                file=sys.stderr,
+            )
+        print(f"Starting REST server with {len(kit.list_tools())} tools on {host}:{args.port}...")
+        uvicorn.run(app, host=host, port=args.port)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
