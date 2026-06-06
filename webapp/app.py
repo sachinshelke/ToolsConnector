@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -1926,15 +1925,13 @@ def docs_page(slug: str):
 
 @app.route("/docs/example/<name>")
 def docs_example(name: str):
-    # Guard against path traversal (CodeQL py/path-injection): example names are
-    # bare identifiers. Reject anything else, then confirm the resolved path is
-    # still inside _EXAMPLES_DIR before reading — defends even if the route
-    # converter or URL decoding is ever bypassed.
-    base = _EXAMPLES_DIR.resolve()
-    filepath = (base / f"{name}.py").resolve()
-    if not re.fullmatch(r"[A-Za-z0-9_-]+", name) or base not in filepath.parents:
-        return _r("Not Found", "<p class='text-red-500'>Example not found.</p>"), 404
-    if not filepath.is_file():
+    # Select the file from a trusted directory listing instead of building a
+    # path out of the user-supplied name. ``name`` is only ever compared (==),
+    # never interpolated into a filesystem path, so traversal is impossible —
+    # this removes the tainted path at the source (CodeQL py/path-injection),
+    # rather than relying on a guard CodeQL can't prove sanitizes the flow.
+    filepath = next((p for p in _EXAMPLES_DIR.glob("*.py") if p.stem == name), None)
+    if filepath is None:
         return _r("Not Found", "<p class='text-red-500'>Example not found.</p>"), 404
 
     code = filepath.read_text(encoding="utf-8")
