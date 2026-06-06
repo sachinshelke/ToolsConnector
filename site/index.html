@@ -566,8 +566,12 @@ function applyLogos(root) {
     if (cached && cached !== 'loading' && cached !== 'err') {
       img.src = cached; // instant from memory
     } else {
-      img.src = url;    // browser HTTP-cache may serve it immediately
-      _fetchAndCache(url); // async upgrade to blob URL
+      // data-logo values are build-time https URLs from data.json; gate on the
+      // scheme so only safe absolute URLs ever reach img.src.
+      if (/^https:\/\//i.test(url)) {
+        img.src = url;    // browser HTTP-cache may serve it immediately
+        _fetchAndCache(url); // async upgrade to blob URL
+      }
     }
   });
 }
@@ -591,7 +595,10 @@ function computeStats() {
 let mermaidReady = false;
 function initMermaid() {
   if (mermaidReady) return;
-  mermaid.initialize({ startOnLoad: false, theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default', securityLevel: 'loose' });
+  // securityLevel 'strict' makes mermaid sanitize its rendered SVG before we
+  // assign it via innerHTML (the old 'loose' disabled that). Our diagrams use
+  // plain-text labels only, so strict renders them identically.
+  mermaid.initialize({ startOnLoad: false, theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default', securityLevel: 'strict' });
   mermaidReady = true;
 }
 
@@ -713,9 +720,13 @@ function renderMarkdown(md) {
       title = titleArg || '';
       alt = altArg || '';
     }
-    // Shields.io badges — render inline, no figure
-    if (href.includes('shields.io') || href.includes('img.shields.io')) {
-      return `<img src="${href}" alt="${esc(alt)}" title="${esc(title)}">`;
+    // Shields.io badges — render inline, no figure. Parse the hostname rather
+    // than substring-match (`includes('shields.io')` is bypassable, e.g.
+    // https://evil.example/shields.io) and escape the URL in the src.
+    let imgHost = '';
+    try { imgHost = new URL(href, location.href).hostname; } catch (e) {}
+    if (imgHost === 'shields.io' || imgHost === 'img.shields.io') {
+      return `<img src="${esc(href)}" alt="${esc(alt)}" title="${esc(title)}">`;
     }
     // Regular images — wrap in figure with optional caption
     const caption = alt && alt !== href ? `<figcaption>${esc(alt)}</figcaption>` : '';
@@ -1263,9 +1274,13 @@ function renderConnectorDetail(el, name) {
   // Add IDs to h2 headings for sidebar scroll-spy
   let sidebarLinks = '';
   html = html.replace(/<h2(.*?)>(.*?)<\/h2>/gi, function(match, attrs, text) {
-    const plainText = text.replace(/<[^>]+>/g, '');
+    // Strip tags to a fixed point — a single regex pass can leave nested or
+    // overlapping tags behind (e.g. "<<b>b>") — then escape on output so the
+    // sidebar label is always inert plain text.
+    let plainText = text, prev;
+    do { prev = plainText; plainText = plainText.replace(/<[^>]+>/g, ''); } while (plainText !== prev);
     const id = plainText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    sidebarLinks += `<a href="#" onclick="event.preventDefault();document.getElementById('${id}')?.scrollIntoView({behavior:'smooth',block:'start'})" class="block px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 rounded truncate">${plainText}</a>\n`;
+    sidebarLinks += `<a href="#" onclick="event.preventDefault();document.getElementById('${id}')?.scrollIntoView({behavior:'smooth',block:'start'})" class="block px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 rounded truncate">${esc(plainText)}</a>\n`;
     return `<h2 id="${id}" class="scroll-mt-20"${attrs}>${text}</h2>`;
   });
 
