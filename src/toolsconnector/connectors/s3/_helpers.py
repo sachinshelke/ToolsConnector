@@ -147,5 +147,5 @@ def compute_content_md5(body: bytes) -> str:
         Base64-encoded MD5 string.
     """
     return base64.b64encode(
-        hashlib.md5(body).digest(),  # noqa: S324
+        hashlib.md5(body, usedforsecurity=False).digest(),
     ).decode("ascii")

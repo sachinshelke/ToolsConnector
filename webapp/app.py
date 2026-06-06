@@ -1925,8 +1925,13 @@ def docs_page(slug: str):
 
 @app.route("/docs/example/<name>")
 def docs_example(name: str):
-    filepath = _EXAMPLES_DIR / f"{name}.py"
-    if not filepath.exists():
+    # Select the file from a trusted directory listing instead of building a
+    # path out of the user-supplied name. ``name`` is only ever compared (==),
+    # never interpolated into a filesystem path, so traversal is impossible —
+    # this removes the tainted path at the source (CodeQL py/path-injection),
+    # rather than relying on a guard CodeQL can't prove sanitizes the flow.
+    filepath = next((p for p in _EXAMPLES_DIR.glob("*.py") if p.stem == name), None)
+    if filepath is None:
         return _r("Not Found", "<p class='text-red-500'>Example not found.</p>"), 404
 
     code = filepath.read_text(encoding="utf-8")

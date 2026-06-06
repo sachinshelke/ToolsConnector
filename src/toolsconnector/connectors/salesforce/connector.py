@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 
 import httpx
@@ -28,6 +29,33 @@ from .types import (
     SObjectDescription,
     SObjectInfo,
 )
+
+_SOBJECT_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+
+
+def _validate_sobject(sobject: str) -> str:
+    """Validate an sObject API name before it is interpolated into a path or SOQL.
+
+    Salesforce sObject API names are alphanumeric, must start with a letter, and
+    may contain underscores (custom objects end in ``__c``). Rejecting anything
+    outside that set prevents SOQL injection / URL-path traversal when the name
+    is interpolated into a ``FROM`` clause or a ``/sobjects/{name}`` REST path.
+
+    Args:
+        sobject: The sObject API name supplied by the caller.
+
+    Returns:
+        The same name, unchanged, for convenient inline use.
+
+    Raises:
+        ValueError: If the name does not match ``[A-Za-z][A-Za-z0-9_]*``.
+    """
+    if not _SOBJECT_NAME_RE.fullmatch(sobject):
+        raise ValueError(
+            f"Invalid sObject name {sobject!r}: expected an API name matching "
+            "[A-Za-z][A-Za-z0-9_]* (letters, digits, underscores; starts with a letter)"
+        )
+    return sobject
 
 
 class Salesforce(BaseConnector):
@@ -213,7 +241,7 @@ class Salesforce(BaseConnector):
         Returns:
             The requested SalesforceRecord.
         """
-        data = await self._request("GET", f"/sobjects/{sobject}/{record_id}")
+        data = await self._request("GET", f"/sobjects/{_validate_sobject(sobject)}/{record_id}")
         return parse_record(data)
 
     @action("Create a new sObject record", dangerous=True)
@@ -231,7 +259,7 @@ class Salesforce(BaseConnector):
         Returns:
             A SalesforceRecordId with the new record's ID.
         """
-        data = await self._request("POST", f"/sobjects/{sobject}", json=fields)
+        data = await self._request("POST", f"/sobjects/{_validate_sobject(sobject)}", json=fields)
         return SalesforceRecordId(
             id=data.get("id", ""),
             success=data.get("success", True),
@@ -252,7 +280,9 @@ class Salesforce(BaseConnector):
             record_id: The Salesforce record ID.
             fields: Dict of field API names to new values.
         """
-        await self._request("PATCH", f"/sobjects/{sobject}/{record_id}", json=fields)
+        await self._request(
+            "PATCH", f"/sobjects/{_validate_sobject(sobject)}/{record_id}", json=fields
+        )
 
     @action("Delete an sObject record", dangerous=True)
     async def delete_record(
@@ -269,7 +299,7 @@ class Salesforce(BaseConnector):
             sobject: sObject API name (e.g., ``"Account"``).
             record_id: The Salesforce record ID to delete.
         """
-        await self._request("DELETE", f"/sobjects/{sobject}/{record_id}")
+        await self._request("DELETE", f"/sobjects/{_validate_sobject(sobject)}/{record_id}")
 
     @action("Upsert a record using an external ID", dangerous=True)
     async def upsert_record(
@@ -290,7 +320,7 @@ class Salesforce(BaseConnector):
         Returns:
             A SalesforceRecordId with the upserted record's ID.
         """
-        path = f"/sobjects/{sobject}/{external_id_field}/{external_id}"
+        path = f"/sobjects/{_validate_sobject(sobject)}/{external_id_field}/{external_id}"
         data = await self._request("PATCH", path, json=fields)
         record_id = data.get("id", "")
         return SalesforceRecordId(
@@ -313,7 +343,7 @@ class Salesforce(BaseConnector):
         Returns:
             An SObjectDescription with full schema details.
         """
-        data = await self._request("GET", f"/sobjects/{sobject}/describe")
+        data = await self._request("GET", f"/sobjects/{_validate_sobject(sobject)}/describe")
         return parse_describe(data)
 
     @action("List all sObjects in the org")
@@ -553,8 +583,11 @@ class Salesforce(BaseConnector):
             Paginated list of recently viewed SalesforceRecord objects.
         """
         capped_limit = min(limit, 200)
+        # sobject is validated to [A-Za-z][A-Za-z0-9_]*; capped_limit is an int —
+        # so this SOQL cannot be injected despite the f-string construction.
+        safe_sobject = _validate_sobject(sobject)
         soql = (
-            f"SELECT Id, Name, LastViewedDate FROM {sobject} "
+            f"SELECT Id, Name, LastViewedDate FROM {safe_sobject} "  # nosec B608
             f"WHERE LastViewedDate != null "
             f"ORDER BY LastViewedDate DESC "
             f"LIMIT {capped_limit}"

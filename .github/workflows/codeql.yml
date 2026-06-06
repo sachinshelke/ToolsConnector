@@ -1,28 +1,29 @@
 name: CodeQL
 
-# GitHub-native semantic code scanner. Runs CodeQL queries for Python
-# security issues (SQL injection, command injection, deserialisation,
-# crypto misuse, hardcoded credentials, etc.) and surfaces findings on
-# the repo's Security tab.
+# GitHub-native semantic code scanner. Runs CodeQL queries for Python,
+# JavaScript/TypeScript, and GitHub Actions (SQL/command injection, XSS,
+# path traversal, deserialisation, crypto misuse, hardcoded credentials,
+# missing SRI on third-party scripts, etc.) and surfaces findings on the
+# repo's Security tab.
+#
+# This is the "advanced setup" — it replaces GitHub Default Setup so we get
+# the broader security-extended query suite AND on-demand branch scans
+# (workflow_dispatch), which Default Setup does not support.
 #
 # Triggers:
-#   • Every push to main touching Python source
-#   • Every PR to those branches touching Python source
+#   • Every push to main
+#   • Every PR to main
 #   • Weekly schedule (Sundays at 03:00 UTC) so newly-published advisories
 #     against pinned dependencies surface even without code changes
+#   • Manual (workflow_dispatch) — scan any branch on demand, no PR needed
 #
 # Findings appear at: https://github.com/sachinshelke/ToolsConnector/security/code-scanning
 
 on:
   push:
     branches: [main]
-    paths:
-      - '**.py'
-      - '.github/workflows/codeql.yml'
   pull_request:
     branches: [main]
-    paths:
-      - '**.py'
   schedule:
     - cron: '0 3 * * 0'   # Sunday 03:00 UTC
   workflow_dispatch:
@@ -34,21 +35,31 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze (Python)
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Match (and exceed) what GitHub Default Setup covered, so moving to
+        # this advanced workflow loses no language coverage:
+        #   python                → the connector library + Flask webapp
+        #   javascript-typescript → the static site (site/) + webapp JS
+        #   actions               → the GitHub Actions workflows themselves
+        language: [python, javascript-typescript, actions]
     steps:
       - uses: actions/checkout@v6
 
-      # Set up the language toolchain so CodeQL can build / extract.
-      - uses: actions/setup-python@v6
+      # Python toolchain is only needed for the Python extraction/autobuild.
+      - if: matrix.language == 'python'
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
-          languages: python
+          languages: ${{ matrix.language }}
           # security-extended = all default security queries + extra
           # security-relevant rules. Drops the 'quality' queries (unused
           # imports, cyclic imports, style hints) that ruff + our CI
@@ -63,4 +74,4 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
         with:
-          category: '/language:python'
+          category: '/language:${{ matrix.language }}'

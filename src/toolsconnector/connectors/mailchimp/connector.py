@@ -147,7 +147,7 @@ class Mailchimp(BaseConnector):
         Returns:
             MD5 hex digest of the lowercased email.
         """
-        return hashlib.md5(email.lower().encode()).hexdigest()
+        return hashlib.md5(email.lower().encode(), usedforsecurity=False).hexdigest()
 
     def _build_offset_page_state(
         self,
@@ -469,7 +469,7 @@ class Mailchimp(BaseConnector):
         Returns:
             True if the member was deleted successfully.
         """
-        subscriber_hash = hashlib.md5(email.lower().encode()).hexdigest()
+        subscriber_hash = hashlib.md5(email.lower().encode(), usedforsecurity=False).hexdigest()
         resp = await self._request(
             "DELETE",
             f"/lists/{list_id}/members/{subscriber_hash}/actions/delete-permanent",

@@ -9,7 +9,7 @@ server side corrupts the channel and the client disconnects.
 from __future__ import annotations
 
 import argparse
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -81,3 +81,56 @@ def test_serve_mcp_error_path_writes_to_stderr_too(
         f"All output must go to stderr on stdio transport."
     )
     assert "Error: simulated startup failure" in captured.err
+
+
+def _build_rest_args(
+    connectors: list[str],
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    prefix: str = "/api/v1",
+) -> argparse.Namespace:
+    """Construct the argparse.Namespace shape ``_cmd_serve_rest`` expects."""
+    return argparse.Namespace(
+        connectors=connectors,
+        host=host,
+        port=port,
+        prefix=prefix,
+    )
+
+
+def test_serve_rest_binds_loopback_by_default() -> None:
+    """SECURITY: ``tc serve rest`` must default to 127.0.0.1, not 0.0.0.0.
+
+    The REST transport ships without built-in auth, so binding all interfaces
+    by default would expose every connector action to the local network.
+    """
+    fake_uvicorn = MagicMock()
+    with (
+        patch.dict("sys.modules", {"uvicorn": fake_uvicorn}),
+        patch("toolsconnector.serve.toolkit.ToolKit") as mock_kit,
+    ):
+        mock_kit.return_value.list_tools.return_value = []
+        mock_kit.return_value.create_rest_app.return_value = object()
+        rc = cli._cmd_serve_rest(_build_rest_args(["webhook"]))
+
+    assert rc == 0
+    fake_uvicorn.run.assert_called_once()
+    assert fake_uvicorn.run.call_args.kwargs["host"] == "127.0.0.1"
+
+
+def test_serve_rest_warns_when_exposing_all_interfaces(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Opting into 0.0.0.0 is allowed but must print a no-auth warning to stderr."""
+    fake_uvicorn = MagicMock()
+    with (
+        patch.dict("sys.modules", {"uvicorn": fake_uvicorn}),
+        patch("toolsconnector.serve.toolkit.ToolKit") as mock_kit,
+    ):
+        mock_kit.return_value.list_tools.return_value = []
+        mock_kit.return_value.create_rest_app.return_value = object()
+        rc = cli._cmd_serve_rest(_build_rest_args(["webhook"], host="0.0.0.0"))
+
+    assert rc == 0
+    assert fake_uvicorn.run.call_args.kwargs["host"] == "0.0.0.0"
+    assert "NO built-in authentication" in capsys.readouterr().err

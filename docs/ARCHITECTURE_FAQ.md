@@ -379,3 +379,26 @@ This extends FAQ #7: that entry established that the language-agnostic *contract
 3. Add a language = add a thin runtime + templates (Go next); joint CI publishing to npm / PyPI / crates.io / Maven.
 
 **References:** FAQ #2 (raw httpx), #6 (Protocol Adapter), #7 (spec/ vs runtime/), #8 (primitive, not platform), #14 (versioning across language SDKs); spike write-up at `experiments/sdk_spike/README.md`.
+
+## 18. Why CodeQL "advanced setup" (committed `codeql.yml`) instead of GitHub Default Setup?
+
+**Decision:** Run code scanning via the **advanced workflow** (`.github/workflows/codeql.yml`) with the **`security-extended`** query suite across **three languages** (`python`, `javascript-typescript`, `actions`), and **SHA-pin all third-party GitHub Actions**. We disabled GitHub **Default Setup** to do this.
+
+**Context — the two modes are mutually exclusive.** GitHub offers Default Setup (UI-managed, zero-config) and Advanced Setup (a workflow file you own). Enabling Default Setup *auto-disables* any committed `codeql.yml`. For a period this repo had **both registered** — Default Setup active on the narrower **`default`** suite, while the committed advanced `codeql.yml` sat `disabled_manually`. So the repo *shipped* a workflow claiming `security-extended` that **wasn't actually running**, and live coverage was shallower than intended.
+
+**Why advanced wins for us:**
+
+| Need | Default Setup | Advanced (`codeql.yml`) |
+|---|---|---|
+| Query depth | `default` suite only | **`security-extended`** (catches e.g. `actions/unpinned-tag`, more injection/sanitization sinks) |
+| On-demand branch scan | ❌ push-to-main + PRs only | ✅ **`workflow_dispatch`** — scan any branch with no PR |
+| Config in version control | ❌ UI state | ✅ reviewed in-repo, same as any code |
+| Language set | implicit | **explicit matrix** — guarantees we don't silently drop a language |
+
+**Trade-off (accepted):** `security-extended` + 3 languages surfaces *more* findings than Default Setup did, and we now own the workflow file (Dependabot keeps the pinned action SHAs current). We accept the small maintenance cost for deeper, on-demand, version-controlled scanning — consistent with the Foundation-grade bar.
+
+**Action-pinning policy:** third-party actions are pinned to a **full commit SHA** (with the version as a trailing comment so Dependabot can bump them); first-party `actions/*` and `github/*` are left tag-pinned (GitHub-owned, not flagged by CodeQL). This closes the `actions/unpinned-tag` supply-chain class — a moved/hijacked tag can't silently change what runs in CI.
+
+**Operational note:** when switching modes, disable Default Setup **before** enabling the advanced workflow (GitHub rejects an advanced run while Default Setup owns scanning). After the switch, `main` is re-scanned by the advanced workflow on its next push to `main`.
+
+**References:** FAQ #8 (primitive, not platform — the scanner is CI-only, never ships), #14 (versioning); `SECURITY.md` (disclosure + design principles); `.github/workflows/codeql.yml`.
