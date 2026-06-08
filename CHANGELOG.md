@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.16](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.15...v0.3.16) (2026-06-06)
+
+
+### 🐛 Bug Fixes
+
+* security & quality hardening + CodeQL advanced setup (0 open) ([#53](https://github.com/sachinshelke/ToolsConnector/issues/53)) ([363ef3a](https://github.com/sachinshelke/ToolsConnector/commit/363ef3abf98fce30d0a114c7b2588d9e4abdffea))
+
 ## [0.3.15](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.14...v0.3.15) (2026-06-05)
 
 Adds **5 AI/ML provider connectors** with **HuggingFace promoted to Tier 1 (live verified, 24/30 actions)**, plus two cross-cutting schema/MCP fixes. Catalog: 68 → 73 connectors, 1,402 → 1,518 actions; AI/ML category 3 → 8. ([#51](https://github.com/sachinshelke/ToolsConnector/pull/51), [ee2611a](https://github.com/sachinshelke/ToolsConnector/commit/ee2611a47c892b5bdaabf2d32db3de21f84b198a))
