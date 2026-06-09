@@ -14,6 +14,7 @@ delete), context caching (``cachedContents``), and tuned models.
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any, Optional, Union
 
@@ -28,6 +29,7 @@ from toolsconnector.spec.connector import (
 )
 
 from ._parsers import (
+    assemble_stream_result,
     parse_cached_content,
     parse_file,
     parse_generate_response,
@@ -43,6 +45,7 @@ from .types import (
     GeminiFile,
     GeminiModel,
     GeminiResponse,
+    GeminiStreamResult,
     TokenCount,
     TunedModel,
     TunedModelList,
@@ -100,15 +103,16 @@ class Gemini(BaseConnector):
         Returns:
             The base URL ending in ``/upload/v1beta``.
         """
-        if self._base_url.endswith("/v1beta"):
-            return self._base_url[: -len("/v1beta")] + "/upload/v1beta"
-        return self._base_url
+        base = self._base_url or self.__class__.base_url
+        if base.endswith("/v1beta"):
+            return base[: -len("/v1beta")] + "/upload/v1beta"
+        return base
 
     @staticmethod
     def _model_path(model: str) -> str:
         """Normalise a model identifier into a ``models/{id}`` path segment.
 
-        Accepts a bare model id (``'gemini-1.5-flash'``), one already
+        Accepts a bare model id (``'gemini-2.0-flash'``), one already
         carrying the ``models/`` prefix, or a tuned model reference
         (``'tunedModels/{id}'``), and returns the canonical resource path.
         Tuned model references are passed through untouched so generation
@@ -188,6 +192,55 @@ class Gemini(BaseConnector):
             return [{"parts": [{"text": contents}]}]
         return contents
 
+    def _build_generation_payload(
+        self,
+        *,
+        contents: Union[str, list[dict[str, Any]]],
+        system_instruction: Optional[str],
+        temperature: Optional[float],
+        max_output_tokens: Optional[int],
+        tools: Optional[list[dict[str, Any]]],
+        tool_config: Optional[dict[str, Any]],
+        safety_settings: Optional[list[dict[str, Any]]],
+        generation_config: Optional[dict[str, Any]],
+        cached_content: Optional[str],
+    ) -> dict[str, Any]:
+        """Build the request body shared by generate / stream generate.
+
+        ``temperature`` and ``max_output_tokens`` are conveniences folded
+        into ``generationConfig``; any keys in the caller-supplied
+        ``generation_config`` (API camelCase, e.g. ``responseMimeType``,
+        ``responseSchema``, ``stopSequences``, ``topP``, ``topK``,
+        ``candidateCount``) are merged on top and win on conflict.
+
+        Returns:
+            The assembled ``generateContent`` / ``streamGenerateContent``
+            request body.
+        """
+        payload: dict[str, Any] = {"contents": self._wrap_contents(contents)}
+
+        gen_config: dict[str, Any] = {}
+        if temperature is not None:
+            gen_config["temperature"] = temperature
+        if max_output_tokens is not None:
+            gen_config["maxOutputTokens"] = max_output_tokens
+        if generation_config:
+            gen_config.update(generation_config)
+        if gen_config:
+            payload["generationConfig"] = gen_config
+
+        if system_instruction is not None:
+            payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+        if tools is not None:
+            payload["tools"] = tools
+        if tool_config is not None:
+            payload["toolConfig"] = tool_config
+        if safety_settings is not None:
+            payload["safetySettings"] = safety_settings
+        if cached_content is not None:
+            payload["cachedContent"] = self._cache_path(cached_content)
+        return payload
+
     async def _request(
         self,
         method: str,
@@ -225,6 +278,57 @@ class Gemini(BaseConnector):
                 return {}
             return response.json()
 
+    async def _stream_request(
+        self,
+        path: str,
+        *,
+        json_body: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """POST to an SSE streaming endpoint and collect the parsed chunks.
+
+        Reads the ``text/event-stream`` response line by line, parsing each
+        ``data: {...}`` line into a chunk dict. On a non-2xx status the body
+        is materialised so the shared typed-error mapper produces the same
+        exceptions as :meth:`_request`.
+
+        Args:
+            path: API path relative to base_url (incl. ``?alt=sse``).
+            json_body: JSON request body.
+
+        Returns:
+            The list of parsed ``GenerateContentResponse`` chunk dicts.
+
+        Raises:
+            toolsconnector.errors.APIError (subclass): On any non-2xx response
+                (same mapping as :meth:`_request`).
+        """
+        chunks: list[dict[str, Any]] = []
+        async with (
+            httpx.AsyncClient(timeout=self._timeout) as client,
+            client.stream(
+                "POST",
+                f"{self._base_url}{path}",
+                headers=self._get_headers(),
+                json=json_body,
+            ) as response,
+        ):
+            if response.status_code >= 400:
+                # Materialise the body so raise_typed_for_status can read it.
+                await response.aread()
+                raise_typed_for_status(response, connector=self.name)
+            async for raw_line in response.aiter_lines():
+                line = raw_line.strip()
+                if not line.startswith("data:"):
+                    continue
+                payload = line[len("data:") :].strip()
+                if not payload:
+                    continue
+                try:
+                    chunks.append(json.loads(payload))
+                except json.JSONDecodeError:
+                    continue
+        return chunks
+
     # ------------------------------------------------------------------
     # Actions -- Content generation
     # ------------------------------------------------------------------
@@ -238,11 +342,15 @@ class Gemini(BaseConnector):
         temperature: Optional[float] = None,
         max_output_tokens: Optional[int] = None,
         cached_content: Optional[str] = None,
+        tools: Optional[list[dict[str, Any]]] = None,
+        tool_config: Optional[dict[str, Any]] = None,
+        safety_settings: Optional[list[dict[str, Any]]] = None,
+        generation_config: Optional[dict[str, Any]] = None,
     ) -> GeminiResponse:
         """Generate content (text) from a prompt using the specified model.
 
         Args:
-            model: Model id to use (e.g. ``'gemini-1.5-flash'``). May include
+            model: Model id to use (e.g. ``'gemini-2.0-flash'``). May include
                 the ``models/`` prefix or be a ``tunedModels/{id}`` reference.
             contents: Either a plain prompt string (wrapped automatically into
                 a single user turn) or a pre-built list of content dicts, each
@@ -254,26 +362,35 @@ class Gemini(BaseConnector):
             cached_content: Optional ``cachedContents/{id}`` reference. When
                 set, the cached context is prepended and billed at the cached
                 rate (the cache's model must match ``model``).
+            tools: Optional list of tool declarations for function calling
+                (each typically ``{"functionDeclarations": [...]}``). The model
+                may then return a ``functionCall`` part in the response.
+            tool_config: Optional ``toolConfig`` controlling function-calling
+                mode (e.g. ``{"functionCallingConfig": {"mode": "ANY"}}``).
+            safety_settings: Optional list of ``{"category": ..., "threshold":
+                ...}`` dicts overriding the default safety thresholds.
+            generation_config: Optional extra ``generationConfig`` keys (API
+                camelCase) merged over ``temperature``/``max_output_tokens`` —
+                e.g. ``responseMimeType`` + ``responseSchema`` for structured
+                JSON output, ``stopSequences``, ``topP``, ``topK``,
+                ``candidateCount``.
 
         Returns:
             GeminiResponse with the concatenated text, finish reason, token
-            usage, and the raw candidate list.
+            usage, typed safety/citation/block-reason fields, and the raw
+            candidate list.
         """
-        payload: dict[str, Any] = {"contents": self._wrap_contents(contents)}
-
-        generation_config: dict[str, Any] = {}
-        if temperature is not None:
-            generation_config["temperature"] = temperature
-        if max_output_tokens is not None:
-            generation_config["maxOutputTokens"] = max_output_tokens
-        if generation_config:
-            payload["generationConfig"] = generation_config
-
-        if system_instruction is not None:
-            payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
-
-        if cached_content is not None:
-            payload["cachedContent"] = self._cache_path(cached_content)
+        payload = self._build_generation_payload(
+            contents=contents,
+            system_instruction=system_instruction,
+            temperature=temperature,
+            max_output_tokens=max_output_tokens,
+            tools=tools,
+            tool_config=tool_config,
+            safety_settings=safety_settings,
+            generation_config=generation_config,
+            cached_content=cached_content,
+        )
 
         data = await self._request(
             "POST",
@@ -295,7 +412,7 @@ class Gemini(BaseConnector):
         model's context window before calling ``generate_content``.
 
         Args:
-            model: Model id to count tokens for (e.g. ``'gemini-1.5-flash'``).
+            model: Model id to count tokens for (e.g. ``'gemini-2.0-flash'``).
                 May include the ``models/`` prefix or not.
             contents: Either a plain prompt string or a pre-built list of
                 content dicts with ``role`` and ``parts`` keys.
@@ -314,6 +431,69 @@ class Gemini(BaseConnector):
             cached_content_token_count=data.get("cachedContentTokenCount", 0),
         )
 
+    @action("Stream content generation with a Gemini model (server-sent events)")
+    async def stream_generate_content(
+        self,
+        model: str,
+        contents: Union[str, list[dict[str, Any]]],
+        system_instruction: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_output_tokens: Optional[int] = None,
+        cached_content: Optional[str] = None,
+        tools: Optional[list[dict[str, Any]]] = None,
+        tool_config: Optional[dict[str, Any]] = None,
+        safety_settings: Optional[list[dict[str, Any]]] = None,
+        generation_config: Optional[dict[str, Any]] = None,
+    ) -> GeminiStreamResult:
+        """Generate content via the streaming endpoint (``:streamGenerateContent``).
+
+        Calls the SSE streaming endpoint and assembles the partial chunks into
+        a single :class:`GeminiStreamResult`: ``text`` is the full output,
+        ``chunks`` holds each text delta in order, and ``finish_reason`` /
+        ``usage`` come from the final chunk. Accepts the same generation,
+        tools, and safety options as :meth:`generate_content`.
+
+        Returning one assembled value (rather than an async iterator) keeps the
+        action consistent with the typed / MCP contract; the SSE endpoint is
+        still used end to end.
+
+        Args:
+            model: Model id to use (e.g. ``'gemini-2.0-flash'``).
+            contents: A prompt string or a list of content dicts.
+            system_instruction: Optional system prompt.
+            temperature: Sampling temperature between 0.0 and 2.0.
+            max_output_tokens: Maximum number of tokens to generate.
+            cached_content: Optional ``cachedContents/{id}`` reference.
+            tools: Optional function-calling tool declarations.
+            tool_config: Optional ``toolConfig`` for function-calling mode.
+            safety_settings: Optional safety-threshold overrides.
+            generation_config: Optional extra ``generationConfig`` keys
+                (API camelCase), merged over ``temperature`` /
+                ``max_output_tokens``.
+
+        Returns:
+            GeminiStreamResult with the assembled text, per-chunk deltas,
+            finish reason, and token usage.
+        """
+        payload = self._build_generation_payload(
+            contents=contents,
+            system_instruction=system_instruction,
+            temperature=temperature,
+            max_output_tokens=max_output_tokens,
+            tools=tools,
+            tool_config=tool_config,
+            safety_settings=safety_settings,
+            generation_config=generation_config,
+            cached_content=cached_content,
+        )
+
+        chunks = await self._stream_request(
+            f"/{self._model_path(model)}:streamGenerateContent?alt=sse",
+            json_body=payload,
+        )
+
+        return assemble_stream_result(chunks)
+
     # ------------------------------------------------------------------
     # Actions -- Embeddings
     # ------------------------------------------------------------------
@@ -330,13 +510,13 @@ class Gemini(BaseConnector):
         """Create an embedding vector for a single piece of text.
 
         Args:
-            model: Embedding model id (e.g. ``'text-embedding-004'``). May
+            model: Embedding model id (e.g. ``'gemini-embedding-001'``). May
                 include the ``models/`` prefix or not.
             text: The text to embed.
             task_type: Optional intended task, e.g. ``'RETRIEVAL_QUERY'``,
                 ``'RETRIEVAL_DOCUMENT'``, ``'SEMANTIC_SIMILARITY'``,
                 ``'CLASSIFICATION'``, ``'CLUSTERING'``, ``'QUESTION_ANSWERING'``,
-                or ``'FACT_VERIFICATION'``.
+                ``'FACT_VERIFICATION'``, or ``'CODE_RETRIEVAL_QUERY'``.
             title: Optional document title, only used with the
                 ``'RETRIEVAL_DOCUMENT'`` task type.
             output_dimensionality: Optional reduced output dimension; truncates
@@ -372,7 +552,7 @@ class Gemini(BaseConnector):
         """Create embedding vectors for several texts in a single request.
 
         Args:
-            model: Embedding model id (e.g. ``'text-embedding-004'``). May
+            model: Embedding model id (e.g. ``'gemini-embedding-001'``). May
                 include the ``models/`` prefix or not.
             texts: The list of texts to embed.
             task_type: Optional task type applied to every text in the batch
@@ -420,7 +600,7 @@ class Gemini(BaseConnector):
         """Retrieve metadata about a specific Gemini model.
 
         Args:
-            model: The model id (e.g. ``'gemini-1.5-flash'``). May include the
+            model: The model id (e.g. ``'gemini-2.0-flash'``). May include the
                 ``models/`` prefix or not.
 
         Returns:
@@ -574,7 +754,7 @@ class Gemini(BaseConnector):
 
         Args:
             model: The model the cache is bound to (e.g.
-                ``'gemini-1.5-flash-001'``). The cache is immutable to this
+                ``'gemini-2.0-flash-001'``). The cache is immutable to this
                 model. May include the ``models/`` prefix or not.
             contents: Cached conversation turns, each a content dict with
                 ``role`` and ``parts`` keys.
@@ -774,7 +954,7 @@ class Gemini(BaseConnector):
         ``ACTIVE`` before using it for generation.
 
         Args:
-            base_model: Foundation model to tune (e.g. ``'gemini-1.5-flash'``).
+            base_model: Foundation model to tune (e.g. ``'gemini-2.0-flash'``).
                 May include the ``models/`` prefix or not.
             training_data: Training examples, each a dict with ``text_input``
                 and ``output`` keys.

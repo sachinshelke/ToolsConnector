@@ -18,6 +18,8 @@ specifics:
 
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 import pytest_asyncio
@@ -28,6 +30,7 @@ from toolsconnector.errors import (
     InvalidCredentialsError,
     NotFoundError,
     RateLimitError,
+    ServerError,
     ValidationError,
 )
 
@@ -918,3 +921,268 @@ def test_spec_metadata() -> None:
     assert spec.actions["list_caches"].idempotent is True
     assert spec.actions["list_tuned_models"].idempotent is True
     assert spec.actions["get_tuned_model"].idempotent is True
+
+
+# ---------------------------------------------------------------------------
+# Tier-1 prep: tools / generation_config / safety / streaming / errors
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_generate_content_passes_tools_safety_and_generation_config(gemini: Gemini) -> None:
+    """tools, tool_config, safety_settings and generation_config all reach the body.
+
+    Function calling is the headline agent capability; the explicit
+    ``temperature`` convenience must merge into ``generationConfig`` alongside
+    the caller's extra keys, and a returned ``functionCall`` part survives in
+    the raw candidate list.
+    """
+    with respx.mock(base_url=_BASE_URL) as respx_mock:
+        route = respx_mock.post("/models/gemini-2.0-flash:generateContent").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "candidates": [
+                        {
+                            "content": {
+                                "parts": [
+                                    {
+                                        "functionCall": {
+                                            "name": "get_weather",
+                                            "args": {"city": "SF"},
+                                        }
+                                    }
+                                ]
+                            },
+                            "finishReason": "STOP",
+                        }
+                    ]
+                },
+            )
+        )
+
+        tools = [
+            {"functionDeclarations": [{"name": "get_weather", "parameters": {"type": "object"}}]}
+        ]
+        result = await gemini.agenerate_content(
+            model="gemini-2.0-flash",
+            contents="weather in SF?",
+            temperature=0.2,
+            tools=tools,
+            tool_config={"functionCallingConfig": {"mode": "ANY"}},
+            safety_settings=[{"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"}],
+            generation_config={
+                "responseMimeType": "application/json",
+                "stopSequences": ["END"],
+                "topP": 0.9,
+            },
+        )
+
+        body = json.loads(route.calls.last.request.read())
+        assert body["tools"] == tools
+        assert body["toolConfig"] == {"functionCallingConfig": {"mode": "ANY"}}
+        assert body["safetySettings"][0]["category"] == "HARM_CATEGORY_HATE_SPEECH"
+        gen_config = body["generationConfig"]
+        assert gen_config["responseMimeType"] == "application/json"
+        assert gen_config["stopSequences"] == ["END"]
+        assert gen_config["topP"] == 0.9
+        assert gen_config["temperature"] == 0.2  # convenience merged in
+
+        # functionCall part preserved for the caller to dispatch.
+        part = result.candidates[0]["content"]["parts"][0]
+        assert part["functionCall"]["name"] == "get_weather"
+
+
+@pytest.mark.asyncio
+async def test_generate_content_surfaces_safety_block(gemini: Gemini) -> None:
+    """A prompt-level safety block surfaces as a typed ``block_reason``.
+
+    The API returns ``promptFeedback.blockReason`` with empty candidates; the
+    connector must expose it on a typed field rather than a silently-empty
+    result.
+    """
+    with respx.mock(base_url=_BASE_URL) as respx_mock:
+        respx_mock.post("/models/gemini-2.0-flash:generateContent").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "promptFeedback": {
+                        "blockReason": "SAFETY",
+                        "safetyRatings": [
+                            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "probability": "HIGH"}
+                        ],
+                    },
+                    "candidates": [],
+                },
+            )
+        )
+
+        result = await gemini.agenerate_content(model="gemini-2.0-flash", contents="...")
+        assert result.block_reason == "SAFETY"
+        assert result.text == ""
+        assert result.finish_reason is None
+        assert result.prompt_feedback["blockReason"] == "SAFETY"
+
+
+@pytest.mark.asyncio
+async def test_generate_content_surfaces_safety_citation_thoughts(gemini: Gemini) -> None:
+    """Candidate safety/citation + thinking-model token usage are typed."""
+    with respx.mock(base_url=_BASE_URL) as respx_mock:
+        respx_mock.post("/models/gemini-2.0-flash:generateContent").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "candidates": [
+                        {
+                            "content": {"parts": [{"text": "ok"}]},
+                            "finishReason": "STOP",
+                            "safetyRatings": [
+                                {
+                                    "category": "HARM_CATEGORY_HARASSMENT",
+                                    "probability": "NEGLIGIBLE",
+                                }
+                            ],
+                            "citationMetadata": {
+                                "citationSources": [{"uri": "https://example.com"}]
+                            },
+                        }
+                    ],
+                    "usageMetadata": {
+                        "promptTokenCount": 4,
+                        "candidatesTokenCount": 1,
+                        "totalTokenCount": 12,
+                        "thoughtsTokenCount": 7,
+                    },
+                    "responseId": "resp-xyz",
+                    "modelVersion": "gemini-2.0-flash-001",
+                },
+            )
+        )
+
+        result = await gemini.agenerate_content(model="gemini-2.0-flash", contents="hi")
+        assert result.safety_ratings[0]["category"] == "HARM_CATEGORY_HARASSMENT"
+        assert result.citation_metadata["citationSources"][0]["uri"] == "https://example.com"
+        assert result.usage.thoughts_token_count == 7
+        assert result.response_id == "resp-xyz"
+        assert result.block_reason is None
+
+
+@pytest.mark.asyncio
+async def test_stream_generate_content_assembles_sse_chunks(gemini: Gemini) -> None:
+    """streamGenerateContent SSE chunks are assembled into one GeminiStreamResult.
+
+    Verifies ``?alt=sse`` is used, the key stays in the header, text deltas are
+    concatenated in order, and finish_reason/usage come from the final chunk.
+    """
+    sse_body = (
+        'data: {"candidates":[{"content":{"parts":[{"text":"Hel"}]}}]}\n\n'
+        'data: {"candidates":[{"content":{"parts":[{"text":"lo world"}]},'
+        '"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":3,'
+        '"candidatesTokenCount":2,"totalTokenCount":5},'
+        '"modelVersion":"gemini-2.0-flash-001"}\n\n'
+    )
+    with respx.mock(base_url=_BASE_URL) as respx_mock:
+        route = respx_mock.post("/models/gemini-2.0-flash:streamGenerateContent").mock(
+            return_value=httpx.Response(
+                200,
+                headers={"content-type": "text/event-stream"},
+                content=sse_body.encode(),
+            )
+        )
+
+        result = await gemini.astream_generate_content(
+            model="gemini-2.0-flash", contents="say hello"
+        )
+        assert result.text == "Hello world"
+        assert result.chunks == ["Hel", "lo world"]
+        assert result.chunk_count == 2
+        assert result.finish_reason == "STOP"
+        assert result.usage is not None and result.usage.total_token_count == 5
+        assert result.model_version == "gemini-2.0-flash-001"
+
+        req = route.calls.last.request
+        assert "alt=sse" in str(req.url)
+        assert req.headers["x-goog-api-key"] == "AIza-fake-test-key"
+        assert "AIza-fake-test-key" not in str(req.url)
+
+
+@pytest.mark.asyncio
+async def test_stream_generate_content_surfaces_block_reason(gemini: Gemini) -> None:
+    """A safety block during streaming surfaces as ``block_reason``."""
+    sse_body = 'data: {"promptFeedback":{"blockReason":"SAFETY"},"candidates":[]}\n\n'
+    with respx.mock(base_url=_BASE_URL) as respx_mock:
+        respx_mock.post("/models/gemini-2.0-flash:streamGenerateContent").mock(
+            return_value=httpx.Response(
+                200,
+                headers={"content-type": "text/event-stream"},
+                content=sse_body.encode(),
+            )
+        )
+
+        result = await gemini.astream_generate_content(model="gemini-2.0-flash", contents="...")
+        assert result.block_reason == "SAFETY"
+        assert result.text == ""
+        assert result.chunk_count == 1
+
+
+@pytest.mark.asyncio
+async def test_generate_content_server_error(gemini: Gemini) -> None:
+    """A 503 from generateContent maps to a (retry-eligible) ServerError."""
+    with respx.mock(base_url=_BASE_URL) as respx_mock:
+        respx_mock.post("/models/gemini-2.0-flash:generateContent").mock(
+            return_value=httpx.Response(
+                503,
+                json={"error": {"code": 503, "message": "overloaded", "status": "UNAVAILABLE"}},
+            )
+        )
+        with pytest.raises(ServerError):
+            await gemini.agenerate_content(model="gemini-2.0-flash", contents="hi")
+
+
+@pytest.mark.asyncio
+async def test_stream_generate_content_server_error(gemini: Gemini) -> None:
+    """The streaming path maps a 5xx to ServerError (error body materialised)."""
+    with respx.mock(base_url=_BASE_URL) as respx_mock:
+        respx_mock.post("/models/gemini-2.0-flash:streamGenerateContent").mock(
+            return_value=httpx.Response(
+                500,
+                json={"error": {"code": 500, "message": "boom", "status": "INTERNAL"}},
+            )
+        )
+        with pytest.raises(ServerError):
+            await gemini.astream_generate_content(model="gemini-2.0-flash", contents="hi")
+
+
+@pytest.mark.asyncio
+async def test_embed_content_validation_error(gemini: Gemini) -> None:
+    """Failure-path coverage for embeddings: 400 → ValidationError."""
+    with respx.mock(base_url=_BASE_URL) as respx_mock:
+        respx_mock.post("/models/gemini-embedding-001:embedContent").mock(
+            return_value=httpx.Response(
+                400,
+                json={"error": {"code": 400, "message": "bad", "status": "INVALID_ARGUMENT"}},
+            )
+        )
+        with pytest.raises(ValidationError):
+            await gemini.aembed_content(model="gemini-embedding-001", text="hi")
+
+
+@pytest.mark.asyncio
+async def test_list_files_server_error(gemini: Gemini) -> None:
+    """Failure-path coverage for the Files API: 5xx → ServerError."""
+    with respx.mock(base_url=_BASE_URL) as respx_mock:
+        respx_mock.get("/files").mock(
+            return_value=httpx.Response(
+                500,
+                json={"error": {"code": 500, "message": "x", "status": "INTERNAL"}},
+            )
+        )
+        with pytest.raises(ServerError):
+            await gemini.alist_files()
+
+
+def test_stream_generate_content_in_spec() -> None:
+    """The new streaming action is registered and non-destructive."""
+    spec = Gemini.get_spec()
+    assert "stream_generate_content" in spec.actions
+    assert spec.actions["stream_generate_content"].dangerous is False

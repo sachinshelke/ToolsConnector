@@ -17,11 +17,13 @@
 
 ## Overview
 
-The Google Gemini API provides access to Gemini models for text generation, token counting, and text embeddings via the `generativelanguage.googleapis.com` REST API (v1beta). The API key is sent in the `x-goog-api-key` header (never in the URL).
+The Google Gemini API provides access to Gemini models for content generation — with **function calling**, **streaming** (`stream_generate_content`), and structured **JSON output** — plus token counting, text embeddings, the Files API, context caching, and tuned models, via the `generativelanguage.googleapis.com` REST API (v1beta). The API key is sent in the `x-goog-api-key` header (never in the URL).
 
 ## Use Cases
 
-- Text and content generation
+- Text and content generation (synchronous or streaming)
+- Agent tool use via Gemini **function calling** (`tools` / `tool_config`)
+- Structured **JSON output** (response schema) and per-request safety controls
 - Semantic search with embeddings
 - Token counting and cost estimation
 - Multi-turn conversations with system instructions
@@ -48,7 +50,7 @@ kit = ToolKit(["gemini"], credentials={"gemini": "your-api-key"})
 # Generate content
 result = kit.execute(
     "gemini_generate_content",
-    {"model": "gemini-1.5-flash", "contents": "Explain quantum computing in one sentence."},
+    {"model": "gemini-2.0-flash", "contents": "Explain quantum computing in one sentence."},
 )
 print(result)
 ```
@@ -100,7 +102,10 @@ except AuthError as e:
 ## Tips
 
 - Pass `contents` as a plain string for a single prompt, or a list of content dicts for multi-turn conversations.
-- A `model` id works with or without the `models/` prefix — both `gemini-1.5-flash` and `models/gemini-1.5-flash` are accepted.
+- A `model` id works with or without the `models/` prefix — both `gemini-2.0-flash` and `models/gemini-2.0-flash` are accepted.
+- Drive **function calling** by passing `tools` (and optionally `tool_config`) to `generate_content` — the model can return a `functionCall` part.
+- Use `stream_generate_content` for incremental output, or `generation_config={"responseMimeType": "application/json", "responseSchema": {...}}` for structured JSON.
+- Inspect `safety_ratings` / `block_reason` on the response to detect and handle safety blocks.
 - Rate limit is Varies by model and tier — use caching to minimize API calls.
 
 ## Related Connectors

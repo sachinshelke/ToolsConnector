@@ -30,6 +30,10 @@ class GeminiUsage(BaseModel):
     candidates_token_count: int = 0
     total_token_count: int = 0
     cached_content_token_count: int = 0
+    # Gemini 2.x "thinking" models bill internal reasoning tokens separately;
+    # without this a caller under-reports the true (billed) token cost.
+    thoughts_token_count: int = 0
+    tool_use_prompt_token_count: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -43,6 +47,12 @@ class GeminiResponse(BaseModel):
     The concatenated text of every part in the first candidate is exposed
     as ``text``; the raw candidate list is preserved on ``candidates`` for
     callers that need multi-candidate or non-text parts.
+
+    Safety is surfaced as typed fields so callers can branch on a block
+    without digging through raw dicts: ``block_reason`` is set when the
+    prompt was rejected (``promptFeedback.blockReason``), and
+    ``safety_ratings`` / ``citation_metadata`` carry the first candidate's
+    safety and attribution detail.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -50,7 +60,11 @@ class GeminiResponse(BaseModel):
     text: str = ""
     finish_reason: Optional[str] = None
     model_version: Optional[str] = None
+    response_id: Optional[str] = None
     usage: Optional[GeminiUsage] = None
+    safety_ratings: list[dict[str, Any]] = Field(default_factory=list)
+    citation_metadata: Optional[dict[str, Any]] = None
+    block_reason: Optional[str] = None
     candidates: list[dict[str, Any]] = Field(default_factory=list)
     prompt_feedback: Optional[dict[str, Any]] = None
 
@@ -78,6 +92,31 @@ class BatchEmbeddings(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     embeddings: list[Embedding] = Field(default_factory=list)
+
+
+class GeminiStreamResult(BaseModel):
+    """Assembled result of a ``streamGenerateContent`` (SSE) call.
+
+    The streaming endpoint emits a sequence of partial
+    ``GenerateContentResponse`` chunks. This collects them into one typed
+    result: ``text`` is the full concatenation, ``chunks`` holds each
+    chunk's text delta in arrival order (useful for inspecting the token
+    stream), and ``finish_reason`` / ``usage`` come from the final chunk.
+
+    Returning a single assembled value (rather than an async iterator)
+    keeps the action consistent with the typed ``@action`` / MCP contract;
+    the SSE endpoint is still used end to end.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    text: str = ""
+    chunks: list[str] = Field(default_factory=list)
+    chunk_count: int = 0
+    finish_reason: Optional[str] = None
+    model_version: Optional[str] = None
+    usage: Optional[GeminiUsage] = None
+    block_reason: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
