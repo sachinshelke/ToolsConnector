@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.18](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.17...v0.3.18) (2026-06-12)
+
+
+### ✨ Features
+
+* **stripe:** promote to Tier 1 — 38/40 live-verified + 2/40 envelope-verified (test mode) ([#58](https://github.com/sachinshelke/ToolsConnector/issues/58)) ([c7aa879](https://github.com/sachinshelke/ToolsConnector/commit/c7aa8799552cbda7df4c39e4bdc2cc5477c9d367))
+
 ## [0.3.17](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.16...v0.3.17) (2026-06-12)
 
 
