@@ -15,6 +15,18 @@ from .auth import (
     ScopeSet,
     ServiceAccountSpec,
 )
+from .binding import (
+    ActionBinding,
+    AuthKind,
+    ConnectorBinding,
+    ContextVar,
+    EndpointBinding,
+    Location,
+    PaginationBinding,
+    PaginationKind,
+    ParamBinding,
+    Style,
+)
 from .connector import (
     ConnectorCategory,
     ConnectorSpec,
@@ -35,6 +47,17 @@ __all__ = [
     # Action
     "ActionSpec",
     "ParameterSpec",
+    # Binding (HTTP-binding IR — drives the runtime executor + multi-language codegen)
+    "ActionBinding",
+    "ConnectorBinding",
+    "EndpointBinding",
+    "ParamBinding",
+    "PaginationBinding",
+    "ContextVar",
+    "Location",
+    "Style",
+    "AuthKind",
+    "PaginationKind",
     # Auth
     "AuthSpec",
     "AuthProviderSpec",
