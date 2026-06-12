@@ -17,11 +17,11 @@ Example output:
 ```
 Connector       Category          Actions
 ──────────────────────────────────────────
-gmail           communication     8
-slack           communication     8
-github          code-platforms    10
-jira            project-mgmt     8
-stripe          finance           8
+gmail           communication     66
+slack           communication     51
+github          code-platforms    37
+jira            project-mgmt      28
+stripe          finance           40
 ...
 ```
 

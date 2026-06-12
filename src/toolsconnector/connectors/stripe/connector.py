@@ -14,10 +14,20 @@ from __future__ import annotations
 import base64
 import logging
 from typing import Any, Optional
+from urllib.parse import quote as _url_quote
 
 import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.errors import (
+    ConnectionError as ToolsConnectorConnectionError,
+)
+from toolsconnector.errors import (
+    TimeoutError as ToolsConnectorTimeoutError,
+)
+from toolsconnector.errors import (
+    TransportError,
+)
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import (
     ConnectorCategory,
@@ -67,6 +77,19 @@ from .types import (
 logger = logging.getLogger("toolsconnector.stripe")
 
 
+def _p(segment: object) -> str:
+    """Percent-encode a path segment for safe URL-path interpolation.
+
+    Stripe resource IDs (``cus_…``, ``ch_…``, ``sub_…``, etc.) are
+    interpolated into request paths. Encoding the segment with an empty
+    ``safe`` set prevents a hostile or malformed ID (e.g. one containing
+    ``/`` or ``..``) from escaping the intended path prefix via httpx URL
+    normalization — the same defense-in-depth applied across the GitHub
+    and Google Workspace connectors.
+    """
+    return _url_quote(str(segment), safe="")
+
+
 class Stripe(BaseConnector):
     """Connect to Stripe to manage customers, charges, payment intents, and invoices.
 
@@ -79,6 +102,7 @@ class Stripe(BaseConnector):
     display_name = "Stripe"
     category = ConnectorCategory.FINANCE
     protocol = ProtocolType.REST
+    verification_status = "live"
     base_url = "https://api.stripe.com/v1"
     description = (
         "Connect to Stripe to manage customers, charges, "
@@ -146,12 +170,36 @@ class Stripe(BaseConnector):
                 5xx -> ServerError; other 4xx -> APIError. See
                 toolsconnector.connectors._helpers.raise_typed_for_status for the full mapping.
         """
-        resp = await self._client.request(
-            method,
-            path,
-            params=params,
-            data=data,
-        )
+        try:
+            resp = await self._client.request(
+                method,
+                path,
+                params=params,
+                data=data,
+            )
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"Stripe API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "method": method,
+                    "path": path,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to Stripe API",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"Stripe API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"method": method, "path": path, "underlying": str(e)},
+            ) from e
 
         remaining = resp.headers.get("RateLimit-Remaining")
         if remaining is not None:
@@ -206,7 +254,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeCustomer object.
         """
-        resp = await self._request("GET", f"/customers/{customer_id}")
+        resp = await self._request("GET", f"/customers/{_p(customer_id)}")
         return parse_customer(resp.json())
 
     @action("Create a new Stripe customer", dangerous=True)
@@ -292,7 +340,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeCharge object.
         """
-        resp = await self._request("GET", f"/charges/{charge_id}")
+        resp = await self._request("GET", f"/charges/{_p(charge_id)}")
         return parse_charge(resp.json())
 
     # ------------------------------------------------------------------
@@ -306,6 +354,9 @@ class Stripe(BaseConnector):
         currency: str,
         customer: Optional[str] = None,
         description: Optional[str] = None,
+        payment_method_types: Optional[list[str]] = None,
+        payment_method: Optional[str] = None,
+        capture_method: Optional[str] = None,
     ) -> PaymentIntent:
         """Create a new PaymentIntent for a payment flow.
 
@@ -314,6 +365,17 @@ class Stripe(BaseConnector):
             currency: Three-letter ISO currency code (e.g. ``usd``).
             customer: Optional customer ID to associate with the intent.
             description: Arbitrary description for the payment.
+            payment_method_types: Restrict the accepted payment method
+                types (e.g. ``["card"]``). Pinning ``["card"]`` keeps the
+                intent confirmable server-side without a ``return_url``;
+                omitting it uses the payment methods enabled in the Stripe
+                Dashboard, which may include redirect-based methods that
+                require a ``return_url`` at confirmation (verified live).
+            payment_method: Payment method ID to attach at creation
+                (e.g. ``pm_...``).
+            capture_method: ``automatic`` (Stripe's default) or
+                ``manual`` — manual authorizes now so
+                ``capture_payment_intent`` can capture later.
 
         Returns:
             The created PaymentIntent object.
@@ -326,6 +388,13 @@ class Stripe(BaseConnector):
             form_data["customer"] = customer
         if description is not None:
             form_data["description"] = description
+        if payment_method_types:
+            for idx, pmt in enumerate(payment_method_types):
+                form_data[f"payment_method_types[{idx}]"] = pmt
+        if payment_method is not None:
+            form_data["payment_method"] = payment_method
+        if capture_method is not None:
+            form_data["capture_method"] = capture_method
 
         resp = await self._request("POST", "/payment_intents", data=form_data)
         return parse_payment_intent(resp.json())
@@ -441,7 +510,7 @@ class Stripe(BaseConnector):
         if metadata:
             form_data.update(flatten_metadata(metadata))
 
-        resp = await self._request("POST", f"/customers/{customer_id}", data=form_data)
+        resp = await self._request("POST", f"/customers/{_p(customer_id)}", data=form_data)
         return parse_customer(resp.json())
 
     @action("Delete a Stripe customer", dangerous=True)
@@ -455,7 +524,7 @@ class Stripe(BaseConnector):
             This permanently deletes the customer and cannot be undone.
             Active subscriptions will be cancelled.
         """
-        await self._request("DELETE", f"/customers/{customer_id}")
+        await self._request("DELETE", f"/customers/{_p(customer_id)}")
 
     # ------------------------------------------------------------------
     # Actions — Charges (create)
@@ -622,13 +691,13 @@ class Stripe(BaseConnector):
             form_data: dict[str, Any] = {"cancel_at_period_end": "true"}
             resp = await self._request(
                 "POST",
-                f"/subscriptions/{subscription_id}",
+                f"/subscriptions/{_p(subscription_id)}",
                 data=form_data,
             )
         else:
             resp = await self._request(
                 "DELETE",
-                f"/subscriptions/{subscription_id}",
+                f"/subscriptions/{_p(subscription_id)}",
             )
         return parse_subscription(resp.json())
 
@@ -685,7 +754,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeSubscription object.
         """
-        resp = await self._request("GET", f"/subscriptions/{subscription_id}")
+        resp = await self._request("GET", f"/subscriptions/{_p(subscription_id)}")
         return parse_subscription(resp.json())
 
     # ------------------------------------------------------------------
@@ -920,7 +989,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeInvoice object.
         """
-        resp = await self._request("GET", f"/invoices/{invoice_id}")
+        resp = await self._request("GET", f"/invoices/{_p(invoice_id)}")
         return parse_invoice(resp.json())
 
     @action("Void a Stripe invoice", dangerous=True)
@@ -937,7 +1006,7 @@ class Stripe(BaseConnector):
             Voiding an invoice is irreversible. The invoice status
             changes to ``void`` and can no longer be paid.
         """
-        resp = await self._request("POST", f"/invoices/{invoice_id}/void")
+        resp = await self._request("POST", f"/invoices/{_p(invoice_id)}/void")
         return parse_invoice(resp.json())
 
     # ------------------------------------------------------------------
@@ -960,7 +1029,7 @@ class Stripe(BaseConnector):
         """
         resp = await self._request(
             "GET",
-            f"/payment_intents/{payment_intent_id}",
+            f"/payment_intents/{_p(payment_intent_id)}",
         )
         return parse_payment_intent(resp.json())
 
@@ -1006,6 +1075,7 @@ class Stripe(BaseConnector):
         self,
         payment_intent_id: str,
         payment_method: Optional[str] = None,
+        return_url: Optional[str] = None,
     ) -> PaymentIntent:
         """Confirm a PaymentIntent to initiate the payment flow.
 
@@ -1013,6 +1083,11 @@ class Stripe(BaseConnector):
             payment_intent_id: The PaymentIntent ID to confirm.
             payment_method: Optional payment method ID to attach before
                 confirming (e.g. ``pm_...``).
+            return_url: URL the customer is redirected back to after any
+                off-page authorization step. Stripe requires this when the
+                intent allows redirect-based payment methods (the Dashboard
+                default when ``payment_method_types`` wasn't pinned at
+                creation — verified live).
 
         Returns:
             The confirmed PaymentIntent object.
@@ -1024,10 +1099,12 @@ class Stripe(BaseConnector):
         form_data: dict[str, Any] = {}
         if payment_method is not None:
             form_data["payment_method"] = payment_method
+        if return_url is not None:
+            form_data["return_url"] = return_url
 
         resp = await self._request(
             "POST",
-            f"/payment_intents/{payment_intent_id}/confirm",
+            f"/payment_intents/{_p(payment_intent_id)}/confirm",
             data=form_data,
         )
         return parse_payment_intent(resp.json())
@@ -1047,7 +1124,7 @@ class Stripe(BaseConnector):
         """
         resp = await self._request(
             "POST",
-            f"/payment_intents/{payment_intent_id}/cancel",
+            f"/payment_intents/{_p(payment_intent_id)}/cancel",
         )
         return parse_payment_intent(resp.json())
 
@@ -1077,7 +1154,7 @@ class Stripe(BaseConnector):
 
         resp = await self._request(
             "POST",
-            f"/payment_intents/{payment_intent_id}/capture",
+            f"/payment_intents/{_p(payment_intent_id)}/capture",
             data=form_data,
         )
         return parse_payment_intent(resp.json())
@@ -1128,7 +1205,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeDispute object.
         """
-        resp = await self._request("GET", f"/disputes/{dispute_id}")
+        resp = await self._request("GET", f"/disputes/{_p(dispute_id)}")
         return parse_dispute(resp.json())
 
     @action("Close a Stripe dispute", dangerous=True)
@@ -1147,7 +1224,7 @@ class Stripe(BaseConnector):
         """
         resp = await self._request(
             "POST",
-            f"/disputes/{dispute_id}/close",
+            f"/disputes/{_p(dispute_id)}/close",
         )
         return parse_dispute(resp.json())
 
@@ -1225,7 +1302,7 @@ class Stripe(BaseConnector):
         Returns:
             StripePayout object.
         """
-        resp = await self._request("GET", f"/payouts/{payout_id}")
+        resp = await self._request("GET", f"/payouts/{_p(payout_id)}")
         return parse_payout(resp.json())
 
     # ------------------------------------------------------------------
@@ -1280,7 +1357,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeEvent object.
         """
-        resp = await self._request("GET", f"/events/{event_id}")
+        resp = await self._request("GET", f"/events/{_p(event_id)}")
         return parse_event(resp.json())
 
     # ------------------------------------------------------------------
@@ -1331,6 +1408,6 @@ class Stripe(BaseConnector):
         """
         resp = await self._request(
             "GET",
-            f"/setup_intents/{setup_intent_id}",
+            f"/setup_intents/{_p(setup_intent_id)}",
         )
         return parse_setup_intent(resp.json())

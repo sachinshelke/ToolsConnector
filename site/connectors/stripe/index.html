@@ -90,7 +90,7 @@
     "name": "ToolsConnector",
     "url": "https://toolsconnector.github.io/"
   },
-  "softwareVersion": "0.3.16"
+  "softwareVersion": "0.3.17"
 }
 </script>
 <script type="application/ld+json">
@@ -152,7 +152,7 @@ nav a.btn:hover { background: #fff; text-decoration: none; }
           font-size:.75rem; font-weight:600; color:#fff; background:#6366F1; }
 .verify-badge { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .65rem;
                  margin-left:.5rem; border-radius:20px; font-size:.75rem; font-weight:600;
-                 border:1.5px solid #94a3b8; color:#94a3b8; background:rgba(255,255,255,.02);
+                 border:1.5px solid #10b981; color:#10b981; background:rgba(255,255,255,.02);
                  cursor:help; user-select:none; }
 .verify-badge .dot { font-size:1rem; line-height:1; }
 h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing:-.02em; margin: .6rem 0 .5rem; }
@@ -221,7 +221,7 @@ footer a { color: #8a8a93; }
     <img src="https://cdn.brandfetch.io/stripe.com?c=1idiVFVAawYfs0vBpzR" alt="Stripe" width="56" height="56" style="border-radius:14px;object-fit:contain;background:rgba(255,255,255,.06);padding:6px;border:1px solid rgba(255,255,255,.08)">
     <div>
       <span class="badge">Finance</span>
-      <span class="verify-badge" title="Pattern correct — code matches documented API patterns from public knowledge; no active verification sweep run yet." aria-label="Verification status: Pattern correct"><span class="dot">○</span>Pattern correct</span>
+      <span class="verify-badge" title="Live verified — exercised end-to-end against the real vendor API with a real token." aria-label="Verification status: Live verified"><span class="dot">●</span>Live verified</span>
       <h1>Stripe Connector</h1>
     </div>
   </div>
@@ -264,11 +264,11 @@ footer a { color: #8a8a93; }
 <tr><td><code>cancel_subscription ⚠</code></td><td class="desc">Cancel a subscription</td><td><span class="req">subscription_id</span> &nbsp;<span class="opt">[at_period_end]</span></td><td><code>StripeSubscription</code></td></tr>
 <tr><td><code>capture_payment_intent ⚠</code></td><td class="desc">Capture a Stripe PaymentIntent</td><td><span class="req">payment_intent_id</span> &nbsp;<span class="opt">[amount_to_capture]</span></td><td><code>PaymentIntent</code></td></tr>
 <tr><td><code>close_dispute ⚠</code></td><td class="desc">Close a Stripe dispute</td><td><span class="req">dispute_id</span></td><td><code>StripeDispute</code></td></tr>
-<tr><td><code>confirm_payment_intent ⚠</code></td><td class="desc">Confirm a Stripe PaymentIntent</td><td><span class="req">payment_intent_id</span> &nbsp;<span class="opt">[payment_method]</span></td><td><code>PaymentIntent</code></td></tr>
+<tr><td><code>confirm_payment_intent ⚠</code></td><td class="desc">Confirm a Stripe PaymentIntent</td><td><span class="req">payment_intent_id</span> &nbsp;<span class="opt">[payment_method, return_url]</span></td><td><code>PaymentIntent</code></td></tr>
 <tr><td><code>create_charge ⚠</code></td><td class="desc">Create a charge</td><td><span class="req">amount, currency</span> &nbsp;<span class="opt">[customer, source, description, metadata]</span></td><td><code>StripeCharge</code></td></tr>
 <tr><td><code>create_checkout_session ⚠</code></td><td class="desc">Create a Stripe Checkout Session</td><td><span class="req">line_items, mode, success_url, cancel_url</span></td><td><code>StripeCheckoutSession</code></td></tr>
 <tr><td><code>create_customer ⚠</code></td><td class="desc">Create a new Stripe customer</td><td><span class="opt">[email, name, description, metadata]</span></td><td><code>StripeCustomer</code></td></tr>
-<tr><td><code>create_payment_intent ⚠</code></td><td class="desc">Create a Stripe PaymentIntent</td><td><span class="req">amount, currency</span> &nbsp;<span class="opt">[customer, description]</span></td><td><code>PaymentIntent</code></td></tr>
+<tr><td><code>create_payment_intent ⚠</code></td><td class="desc">Create a Stripe PaymentIntent</td><td><span class="req">amount, currency</span> &nbsp;<span class="opt">[customer, description, payment_method_types, payment_method, capture_method]</span></td><td><code>PaymentIntent</code></td></tr>
 <tr><td><code>create_payout ⚠</code></td><td class="desc">Create a payout to your bank account</td><td><span class="req">amount, currency</span></td><td><code>StripePayout</code></td></tr>
 <tr><td><code>create_price ⚠</code></td><td class="desc">Create a Stripe price</td><td><span class="req">product, unit_amount, currency</span> &nbsp;<span class="opt">[recurring_interval]</span></td><td><code>StripePrice</code></td></tr>
 <tr><td><code>create_product ⚠</code></td><td class="desc">Create a Stripe product</td><td><span class="req">name</span> &nbsp;<span class="opt">[description, metadata]</span></td><td><code>StripeProduct</code></td></tr>
@@ -316,7 +316,7 @@ footer a { color: #8a8a93; }
   <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
   <a href="https://github.com/sachinshelke/ToolsConnector">GitHub</a> ·
   <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
-  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a> · v0.3.16
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a> · v0.3.17
 </footer>
 
 </body>
