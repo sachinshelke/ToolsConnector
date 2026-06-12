@@ -16,6 +16,7 @@ from .types import (
     GeminiFile,
     GeminiModel,
     GeminiResponse,
+    GeminiStreamResult,
     GeminiUsage,
     TunedModel,
 )
@@ -57,6 +58,8 @@ def parse_usage(data: dict[str, Any] | None) -> GeminiUsage | None:
         candidates_token_count=data.get("candidatesTokenCount", 0),
         total_token_count=data.get("totalTokenCount", 0),
         cached_content_token_count=data.get("cachedContentTokenCount", 0),
+        thoughts_token_count=data.get("thoughtsTokenCount", 0),
+        tool_use_prompt_token_count=data.get("toolUsePromptTokenCount", 0),
     )
 
 
@@ -77,13 +80,69 @@ def parse_generate_response(data: dict[str, Any]) -> GeminiResponse:
     parts = first.get("content", {}).get("parts", [])
     text = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
 
+    prompt_feedback = data.get("promptFeedback")
+    block_reason = prompt_feedback.get("blockReason") if isinstance(prompt_feedback, dict) else None
+
     return GeminiResponse(
         text=text,
         finish_reason=first.get("finishReason"),
         model_version=data.get("modelVersion"),
+        response_id=data.get("responseId"),
         usage=parse_usage(data.get("usageMetadata")),
+        safety_ratings=first.get("safetyRatings", []),
+        citation_metadata=first.get("citationMetadata"),
+        block_reason=block_reason,
         candidates=candidates,
-        prompt_feedback=data.get("promptFeedback"),
+        prompt_feedback=prompt_feedback,
+    )
+
+
+def assemble_stream_result(chunks: list[dict[str, Any]]) -> GeminiStreamResult:
+    """Assemble a list of ``streamGenerateContent`` SSE chunks into one result.
+
+    Each chunk is a partial ``GenerateContentResponse``. Text deltas are
+    concatenated in arrival order; ``finishReason``, ``modelVersion`` and
+    ``usageMetadata`` are taken from the last chunk that carries them (the
+    final chunk on a normal completion). A ``promptFeedback.blockReason`` on
+    any chunk is surfaced as ``block_reason``.
+
+    Args:
+        chunks: The parsed ``GenerateContentResponse`` JSON dicts, in order.
+
+    Returns:
+        The assembled GeminiStreamResult.
+    """
+    deltas: list[str] = []
+    finish_reason: str | None = None
+    model_version: str | None = None
+    usage: GeminiUsage | None = None
+    block_reason: str | None = None
+
+    for chunk in chunks:
+        cands = chunk.get("candidates", [])
+        first = cands[0] if cands else {}
+        parts = first.get("content", {}).get("parts", [])
+        delta = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
+        if delta:
+            deltas.append(delta)
+        if first.get("finishReason"):
+            finish_reason = first["finishReason"]
+        if chunk.get("modelVersion"):
+            model_version = chunk["modelVersion"]
+        if chunk.get("usageMetadata"):
+            usage = parse_usage(chunk["usageMetadata"])
+        pf = chunk.get("promptFeedback")
+        if isinstance(pf, dict) and pf.get("blockReason"):
+            block_reason = pf["blockReason"]
+
+    return GeminiStreamResult(
+        text="".join(deltas),
+        chunks=deltas,
+        chunk_count=len(chunks),
+        finish_reason=finish_reason,
+        model_version=model_version,
+        usage=usage,
+        block_reason=block_reason,
     )
 
 

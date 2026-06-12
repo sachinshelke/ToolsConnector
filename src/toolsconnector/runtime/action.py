@@ -61,6 +61,10 @@ class ActionMeta:
         pagination: Pagination configuration, if any.
         tags: Categorisation tags.
         rate_limit_weight: Rate-limit token cost for this action.
+        deprecated: Whether the action is deprecated (kept callable for
+            compatibility but no longer recommended / supported upstream).
+        deprecation_message: Guidance surfaced with the deprecation —
+            what to use instead, and why it was deprecated.
     """
 
     name: str
@@ -75,6 +79,8 @@ class ActionMeta:
     pagination: Optional[PaginationSpec] = None
     tags: list[str] = field(default_factory=list)
     rate_limit_weight: int = 1
+    deprecated: bool = False
+    deprecation_message: Optional[str] = None
 
 
 def _python_type_to_json_type(annotation: Any) -> str:
@@ -238,6 +244,8 @@ def action(
     pagination: Optional[PaginationSpec] = None,
     tags: Optional[list[str]] = None,
     rate_limit_weight: int = 1,
+    deprecated: bool = False,
+    deprecation_message: Optional[str] = None,
 ) -> Callable[..., Any]:
     """Decorator that marks a method as a connector action.
 
@@ -249,6 +257,11 @@ def action(
         pagination: Pagination configuration for list actions.
         tags: Categorization tags.
         rate_limit_weight: How many rate-limit tokens this action costs.
+        deprecated: Mark the action deprecated — it stays callable for
+            compatibility, but the flag is carried into the spec, docs,
+            and serve layer.
+        deprecation_message: What to use instead (and why), surfaced
+            wherever the spec is rendered.
 
     Returns:
         Decorated method with ``__action_meta__`` attached.
@@ -292,6 +305,8 @@ def action(
             pagination=pagination,
             tags=tags or [],
             rate_limit_weight=rate_limit_weight,
+            deprecated=deprecated,
+            deprecation_message=deprecation_message,
         )
 
         # Try to get output schema from return type
