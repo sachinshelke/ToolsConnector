@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.17](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.16...v0.3.17) (2026-06-12)
+
+
+### ✨ Features
+
+* **gemini:** promote to Tier 1 — function calling, streaming, 20 actions live-verified ([#56](https://github.com/sachinshelke/ToolsConnector/issues/56)) ([474bfe6](https://github.com/sachinshelke/ToolsConnector/commit/474bfe6f4953b1fa0e0aea9e956c484f7084676c))
+
 ## [0.3.16](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.15...v0.3.16) (2026-06-06)
 
 
