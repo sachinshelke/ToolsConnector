@@ -1,6 +1,6 @@
 # AI/ML
 
-Connectors for AI model providers and vector databases. 8 connectors, 171 actions.
+Connectors for AI model providers and vector databases. 8 connectors, 172 actions.
 
 ---
 
@@ -113,11 +113,11 @@ result = kit.execute("huggingface_zero_shot_classification", {"model": "facebook
 ---
 ### Google Gemini
 
-**Category:** AI/ML | **Auth:** API Key | **Actions:** 19
+**Category:** AI/ML | **Auth:** API Key | **Actions:** 20 | **Verification:** ✅ Tier 1 (Live verified — 12/20 happy-path + 8/20 envelope; caching is paid-tier-gated, tuning discontinued upstream)
 
-Connect to Google Gemini for generating content with Gemini models, counting tokens, creating embeddings, managing uploaded files, context caches, and tuned models.
+Connect to Google Gemini for generating content with Gemini models — including function calling, SSE streaming, and structured JSON output — plus counting tokens, creating embeddings, managing uploaded files, context caches, and tuned models.
 
-**Actions (19 total — sample):**
+**Actions (20 total — sample):**
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -127,9 +127,9 @@ Connect to Google Gemini for generating content with Gemini models, counting tok
 | create_tuned_model | Create a tuned model | Yes |
 | delete_cache | Delete a context cache | Yes |
 | delete_file | Delete an uploaded file | Yes |
-| delete_tuned_model | Delete a tuned model | Yes |
 | embed_content | Create an embedding for a single text | No |
-| … | +11 more actions — see the connector README | |
+| stream_generate_content | Stream content generation (server-sent events) | No |
+| … | +12 more actions — see the connector README | |
 
 **Quick start:**
 

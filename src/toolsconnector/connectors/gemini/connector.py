@@ -72,7 +72,7 @@ class Gemini(BaseConnector):
         "counting tokens, creating embeddings, managing uploaded files, context "
         "caches, and tuned models."
     )
-    verification_status = "pattern"
+    verification_status = "live"
     _rate_limit_config = RateLimitSpec(rate=60, period=60, burst=20)
 
     # ------------------------------------------------------------------
