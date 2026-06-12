@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class StripeAddress(BaseModel):
     """A Stripe address object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     city: Optional[str] = None
     country: Optional[str] = None
@@ -35,7 +35,7 @@ class StripeAddress(BaseModel):
 class StripeCustomer(BaseModel):
     """A Stripe customer object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "customer"
@@ -56,7 +56,7 @@ class StripeCustomer(BaseModel):
 class StripeCharge(BaseModel):
     """A Stripe charge object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "charge"
@@ -83,7 +83,7 @@ class StripeCharge(BaseModel):
 class PaymentIntent(BaseModel):
     """A Stripe PaymentIntent object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "payment_intent"
@@ -104,7 +104,7 @@ class PaymentIntent(BaseModel):
 class StripeInvoice(BaseModel):
     """A Stripe invoice object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "invoice"
@@ -135,7 +135,7 @@ class StripeInvoice(BaseModel):
 class StripeBalanceAvailable(BaseModel):
     """Available balance breakdown by currency."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     amount: int = 0
     currency: str = "usd"
@@ -145,7 +145,7 @@ class StripeBalanceAvailable(BaseModel):
 class StripeBalancePending(BaseModel):
     """Pending balance breakdown by currency."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     amount: int = 0
     currency: str = "usd"
@@ -155,7 +155,7 @@ class StripeBalancePending(BaseModel):
 class StripeBalance(BaseModel):
     """A Stripe balance object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     object: str = "balance"
     available: list[StripeBalanceAvailable] = Field(default_factory=list)
@@ -166,7 +166,7 @@ class StripeBalance(BaseModel):
 class StripeRefund(BaseModel):
     """A Stripe refund object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "refund"
@@ -184,7 +184,7 @@ class StripeRefund(BaseModel):
 class StripeSubscription(BaseModel):
     """A Stripe subscription object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "subscription"
@@ -207,7 +207,7 @@ class StripeSubscription(BaseModel):
 class StripeProduct(BaseModel):
     """A Stripe product object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "product"
@@ -226,7 +226,7 @@ class StripeProduct(BaseModel):
 class StripeRecurring(BaseModel):
     """Recurring pricing configuration."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     interval: Optional[str] = None
     interval_count: int = 1
@@ -236,7 +236,7 @@ class StripeRecurring(BaseModel):
 class StripePrice(BaseModel):
     """A Stripe price object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "price"
@@ -254,7 +254,7 @@ class StripePrice(BaseModel):
 class StripeCheckoutSession(BaseModel):
     """A Stripe Checkout Session object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "checkout.session"
@@ -278,7 +278,7 @@ class StripeCheckoutSession(BaseModel):
 class StripePaymentMethod(BaseModel):
     """A Stripe payment method object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "payment_method"
@@ -294,7 +294,7 @@ class StripePaymentMethod(BaseModel):
 class StripeDispute(BaseModel):
     """A Stripe dispute (chargeback) object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "dispute"
@@ -315,7 +315,7 @@ class StripeDispute(BaseModel):
 class StripePayout(BaseModel):
     """A Stripe payout object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "payout"
@@ -337,7 +337,7 @@ class StripePayout(BaseModel):
 class StripeEvent(BaseModel):
     """A Stripe event (webhook event) object."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "event"
@@ -353,7 +353,7 @@ class StripeEvent(BaseModel):
 class StripeSetupIntent(BaseModel):
     """A Stripe SetupIntent object for collecting payment methods."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     id: str
     object: str = "setup_intent"

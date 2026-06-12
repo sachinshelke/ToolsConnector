@@ -124,7 +124,9 @@ _CREDENTIAL_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"xoxb-[0-9]{8,}-[0-9]{8,}-[A-Za-z0-9]{20,}"),  # Slack bot token
     re.compile(r"AKIA[A-Z0-9]{16}"),  # AWS access key
     re.compile(r"sk-ant-api03-[A-Za-z0-9_-]{80,}"),  # Anthropic key
-    re.compile(r"sk_live_[A-Za-z0-9]{20,}"),  # Stripe live key
+    re.compile(r"sk_live_[A-Za-z0-9]{20,}"),  # Stripe live secret key
+    re.compile(r"sk_test_[A-Za-z0-9]{20,}"),  # Stripe test secret key
+    re.compile(r"rk_(?:live|test)_[A-Za-z0-9]{20,}"),  # Stripe restricted key
     # OpenAI keys: sk-..., sk-proj-..., sk-svcacct-... — needs dashes
     # in the body (sk-proj-... wouldn't match a [A-Za-z0-9]-only class).
     re.compile(r"sk-[A-Za-z0-9_-]{20,}"),
