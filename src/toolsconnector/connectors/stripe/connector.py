@@ -102,6 +102,7 @@ class Stripe(BaseConnector):
     display_name = "Stripe"
     category = ConnectorCategory.FINANCE
     protocol = ProtocolType.REST
+    verification_status = "live"
     base_url = "https://api.stripe.com/v1"
     description = (
         "Connect to Stripe to manage customers, charges, "
@@ -353,6 +354,9 @@ class Stripe(BaseConnector):
         currency: str,
         customer: Optional[str] = None,
         description: Optional[str] = None,
+        payment_method_types: Optional[list[str]] = None,
+        payment_method: Optional[str] = None,
+        capture_method: Optional[str] = None,
     ) -> PaymentIntent:
         """Create a new PaymentIntent for a payment flow.
 
@@ -361,6 +365,17 @@ class Stripe(BaseConnector):
             currency: Three-letter ISO currency code (e.g. ``usd``).
             customer: Optional customer ID to associate with the intent.
             description: Arbitrary description for the payment.
+            payment_method_types: Restrict the accepted payment method
+                types (e.g. ``["card"]``). Pinning ``["card"]`` keeps the
+                intent confirmable server-side without a ``return_url``;
+                omitting it uses the payment methods enabled in the Stripe
+                Dashboard, which may include redirect-based methods that
+                require a ``return_url`` at confirmation (verified live).
+            payment_method: Payment method ID to attach at creation
+                (e.g. ``pm_...``).
+            capture_method: ``automatic`` (Stripe's default) or
+                ``manual`` — manual authorizes now so
+                ``capture_payment_intent`` can capture later.
 
         Returns:
             The created PaymentIntent object.
@@ -373,6 +388,13 @@ class Stripe(BaseConnector):
             form_data["customer"] = customer
         if description is not None:
             form_data["description"] = description
+        if payment_method_types:
+            for idx, pmt in enumerate(payment_method_types):
+                form_data[f"payment_method_types[{idx}]"] = pmt
+        if payment_method is not None:
+            form_data["payment_method"] = payment_method
+        if capture_method is not None:
+            form_data["capture_method"] = capture_method
 
         resp = await self._request("POST", "/payment_intents", data=form_data)
         return parse_payment_intent(resp.json())
@@ -1053,6 +1075,7 @@ class Stripe(BaseConnector):
         self,
         payment_intent_id: str,
         payment_method: Optional[str] = None,
+        return_url: Optional[str] = None,
     ) -> PaymentIntent:
         """Confirm a PaymentIntent to initiate the payment flow.
 
@@ -1060,6 +1083,11 @@ class Stripe(BaseConnector):
             payment_intent_id: The PaymentIntent ID to confirm.
             payment_method: Optional payment method ID to attach before
                 confirming (e.g. ``pm_...``).
+            return_url: URL the customer is redirected back to after any
+                off-page authorization step. Stripe requires this when the
+                intent allows redirect-based payment methods (the Dashboard
+                default when ``payment_method_types`` wasn't pinned at
+                creation — verified live).
 
         Returns:
             The confirmed PaymentIntent object.
@@ -1071,6 +1099,8 @@ class Stripe(BaseConnector):
         form_data: dict[str, Any] = {}
         if payment_method is not None:
             form_data["payment_method"] = payment_method
+        if return_url is not None:
+            form_data["return_url"] = return_url
 
         resp = await self._request(
             "POST",

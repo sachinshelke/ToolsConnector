@@ -644,9 +644,9 @@ async def test_sync_wrappers_exposed(stripe: Stripe) -> None:
 
 
 def test_verification_status() -> None:
-    """Currently 'pattern'; flips to 'live' once live-verified against api.stripe.com (test mode)."""
-    assert Stripe.verification_status == "pattern"
-    assert Stripe.get_spec().verification_status == "pattern"
+    """Live-verified against api.stripe.com (test mode) on 2026-06-13."""
+    assert Stripe.verification_status == "live"
+    assert Stripe.get_spec().verification_status == "live"
 
 
 @pytest.mark.asyncio
@@ -676,3 +676,91 @@ async def test_concurrent_requests_safe(stripe: Stripe) -> None:
             stripe.aget_customer(customer_id="cus_b"),
         )
         assert {r.id for r in results} == {"cus_a", "cus_b"}
+
+
+# ===========================================================================
+# Round 4 — live-sweep-driven additions (2026-06-13 verification cycle)
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_create_payment_intent_pinned_types_and_capture(stripe: Stripe) -> None:
+    """payment_method_types/payment_method/capture_method encode as Stripe form fields.
+
+    Live finding: without pinning payment_method_types, dashboard-default
+    intents may require a return_url at confirmation (HTTP 400).
+    """
+    with respx.mock(base_url=BASE) as m:
+        route = m.post("/payment_intents").mock(return_value=httpx.Response(200, json=_PI))
+        await stripe.acreate_payment_intent(
+            amount=700,
+            currency="usd",
+            payment_method_types=["card", "link"],
+            payment_method="pm_card_visa",
+            capture_method="manual",
+        )
+        body = route.calls.last.request.content.decode()
+        assert "payment_method_types%5B0%5D=card" in body
+        assert "payment_method_types%5B1%5D=link" in body
+        assert "payment_method=pm_card_visa" in body
+        assert "capture_method=manual" in body
+
+
+@pytest.mark.asyncio
+async def test_confirm_payment_intent_return_url(stripe: Stripe) -> None:
+    with respx.mock(base_url=BASE) as m:
+        route = m.post("/payment_intents/pi_1/confirm").mock(
+            return_value=httpx.Response(200, json={**_PI, "status": "succeeded"})
+        )
+        await stripe.aconfirm_payment_intent(
+            payment_intent_id="pi_1",
+            payment_method="pm_1",
+            return_url="https://example.com/back",
+        )
+        body = route.calls.last.request.content.decode()
+        assert "return_url=https%3A%2F%2Fexample.com%2Fback" in body
+
+
+@pytest.mark.asyncio
+async def test_payment_intent_latest_charge_string(stripe: Stripe) -> None:
+    with respx.mock(base_url=BASE) as m:
+        m.get("/payment_intents/pi_1").mock(
+            return_value=httpx.Response(200, json={**_PI, "latest_charge": "ch_9"})
+        )
+        pi = await stripe.aget_payment_intent(payment_intent_id="pi_1")
+        assert pi.latest_charge == "ch_9"
+
+
+@pytest.mark.asyncio
+async def test_payment_intent_latest_charge_expanded_object(stripe: Stripe) -> None:
+    """``expand[]=latest_charge`` returns an object; the parser normalizes to the ID."""
+    with respx.mock(base_url=BASE) as m:
+        m.get("/payment_intents/pi_1").mock(
+            return_value=httpx.Response(
+                200, json={**_PI, "latest_charge": {"id": "ch_9", "object": "charge"}}
+            )
+        )
+        pi = await stripe.aget_payment_intent(payment_intent_id="pi_1")
+        assert pi.latest_charge == "ch_9"
+
+
+@pytest.mark.asyncio
+async def test_deleted_customer_tombstone(stripe: Stripe) -> None:
+    """Stripe returns HTTP 200 with deleted=true for a deleted customer (not 404) —
+    verified live; the flag must surface so agents can tell the customer is gone."""
+    with respx.mock(base_url=BASE) as m:
+        m.get("/customers/cus_1").mock(
+            return_value=httpx.Response(
+                200, json={"id": "cus_1", "object": "customer", "deleted": True}
+            )
+        )
+        c = await stripe.aget_customer(customer_id="cus_1")
+        assert c.deleted is True
+
+
+@pytest.mark.asyncio
+async def test_customer_deleted_defaults_false(stripe: Stripe) -> None:
+    with respx.mock(base_url=BASE) as m:
+        m.get("/customers/cus_1").mock(return_value=httpx.Response(200, json=_CUSTOMER))
+        c = await stripe.aget_customer(customer_id="cus_1")
+        assert c.deleted is False

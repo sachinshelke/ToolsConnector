@@ -50,6 +50,7 @@ def parse_customer(data: dict[str, Any]) -> StripeCustomer:
         currency=data.get("currency"),
         default_source=data.get("default_source"),
         delinquent=data.get("delinquent", False),
+        deleted=data.get("deleted", False),
         livemode=data.get("livemode", False),
         metadata=data.get("metadata") or {},
         created=data.get("created"),
@@ -135,6 +136,11 @@ def parse_payment_intent(data: dict[str, Any]) -> PaymentIntent:
     Returns:
         A PaymentIntent instance.
     """
+    # latest_charge is an ID string by default but an expanded object when
+    # the request used `expand[]=latest_charge` — normalize to the ID.
+    latest_charge = data.get("latest_charge")
+    if isinstance(latest_charge, dict):
+        latest_charge = latest_charge.get("id")
     return PaymentIntent(
         id=data["id"],
         object=data.get("object", "payment_intent"),
@@ -145,6 +151,7 @@ def parse_payment_intent(data: dict[str, Any]) -> PaymentIntent:
         status=data.get("status"),
         client_secret=data.get("client_secret"),
         payment_method=data.get("payment_method"),
+        latest_charge=latest_charge,
         capture_method=data.get("capture_method"),
         confirmation_method=data.get("confirmation_method"),
         livemode=data.get("livemode", False),

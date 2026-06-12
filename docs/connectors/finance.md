@@ -6,39 +6,42 @@ Connectors for payment processing and financial data services. 2 connectors, 57 
 
 ### Stripe
 
-**Category:** Finance & Payments | **Auth:** Secret Key (sk_) | **Actions:** 8
+**Category:** Finance & Payments | **Auth:** Secret Key (sk_) | **Actions:** 40 | **Verification:** ✅ Tier 1 (Live verified — 38/40 happy-path + 2/40 envelope, test mode; payouts need a bank account configured)
 
-Connect to Stripe to manage customers, charges, payment intents, invoices, and account balances.
+Connect to Stripe for the full payment lifecycle: customers, PaymentIntents (create / confirm / capture / cancel), charges and refunds, subscriptions, products and prices, invoices, Checkout Sessions, SetupIntents, payment methods, disputes, payouts, events, and account balance.
 
-**Actions:**
+**Actions (40 total — sample):**
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
-| list_customers | List customers with optional filters | No |
-| get_customer | Get a specific customer by ID | No |
-| create_customer | Create a new customer | Yes |
-| list_charges | List charges with optional filters | No |
-| get_charge | Get a specific charge by ID | No |
-| create_payment_intent | Create a new payment intent | Yes |
-| list_invoices | List invoices | No |
-| get_balance | Get the current account balance | No |
+| create_customer | Create a new Stripe customer | Yes |
+| create_payment_intent | Create a Stripe PaymentIntent | Yes |
+| confirm_payment_intent | Confirm a Stripe PaymentIntent | Yes |
+| capture_payment_intent | Capture a Stripe PaymentIntent | Yes |
+| refund_charge | Refund a charge | Yes |
+| create_subscription | Create a subscription | Yes |
+| create_checkout_session | Create a Stripe Checkout Session | Yes |
+| get_balance | Retrieve the current Stripe account balance | No |
+| … | +32 more actions — see the connector README | |
 
 **Quick start:**
 
 ```python
 kit = ToolKit(["stripe"], credentials={"stripe": "sk_test_your-secret-key"})
-result = kit.execute("stripe_list_customers", {"limit": 10})
+result = kit.execute("stripe_create_payment_intent", {
+    "amount": 1100, "currency": "usd", "payment_method_types": ["card"],
+})
 ```
 
 ---
 
 ### Plaid
 
-**Category:** Finance & Payments | **Auth:** Client ID + Secret | **Actions:** 8
+**Category:** Finance & Payments | **Auth:** Client ID + Secret | **Actions:** 17
 
-Connect to Plaid to access bank account data, transactions, balances, and institution information.
+Connect to Plaid to access bank account data, transactions, balances, identity, liabilities, investments, and institution information.
 
-**Actions:**
+**Actions (17 total — sample):**
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -50,6 +53,7 @@ Connect to Plaid to access bank account data, transactions, balances, and instit
 | search_institutions | Search for financial institutions | No |
 | create_link_token | Create a Link token for Plaid Link | No |
 | exchange_public_token | Exchange a public token for an access token | No |
+| … | +9 more actions — see the connector README | |
 
 **Quick start:**
 

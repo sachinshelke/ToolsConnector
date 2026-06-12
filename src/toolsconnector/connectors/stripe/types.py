@@ -48,6 +48,7 @@ class StripeCustomer(BaseModel):
     currency: Optional[str] = None
     default_source: Optional[str] = None
     delinquent: bool = False
+    deleted: bool = False
     livemode: bool = False
     metadata: dict[str, str] = Field(default_factory=dict)
     created: Optional[int] = None
@@ -94,6 +95,7 @@ class PaymentIntent(BaseModel):
     status: Optional[str] = None
     client_secret: Optional[str] = None
     payment_method: Optional[str] = None
+    latest_charge: Optional[str] = None
     capture_method: Optional[str] = None
     confirmation_method: Optional[str] = None
     livemode: bool = False
