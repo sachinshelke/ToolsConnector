@@ -365,16 +365,30 @@ This extends FAQ #7: that entry established that the language-agnostic *contract
 - That ~300-line runtime drives what is **2,264 lines** of imperative connector code (for just those 3) → the leverage, and the "lightweight" requirement, are real. Bindings serialize to 1–2 KB of round-tripping JSON — a true language-agnostic artifact.
 - **Bonus:** the executor was *more correct* than the hand-written code in 2 cases, surfacing latent production bugs (Shopify never substitutes `{store}`; Twilio pagination doubles the `/2010-04-01` path prefix). One audited executor eliminates a whole **class** of per-connector bugs.
 
-**Escape hatch (the honest hard 20%):** the design includes a per-action imperative override for the genuine minority that resist declarative expression (as Smithy and Stainless both do). The spike needed zero for the hardest 3; the full-68 figure is being measured next.
+**Escape hatch (the honest hard 20% — measured at 2.6%):** the design includes a per-action imperative override for the genuine minority that resist declarative expression (as Smithy and Stainless both do). The spike needed zero for the hardest 3, and the full-catalog measurement below puts the real ceiling at **2.6%**, not 20%.
+
+**Measured coverage (2026-06-13 — resolves open question 1):** the AST classifier (`experiments/sdk_spike/coverage.py`) run across the full catalog of **73 connectors / 1,519 actions**:
+
+| Class | Count | Share | Meaning |
+|---|---|---|---|
+| **DECLARATIVE** | 1,386 | **91.2%** | 1:1 `ActionBinding`, no imperative smell |
+| REVIEW | 94 | 6.2% | soft smell only (manual query-string `.join`, composite/local-only helpers, response-header reads) — likely declarable with small vocab additions |
+| **ESCAPE_HATCH** | 39 | **2.6%** | genuinely needs an imperative override |
+
+Declaratively expressible: **91.2% hard floor, 97.4% with vocab additions**. The 39 escape-hatch actions fall into exactly two families:
+- **23 × sequential-request orchestration** (e.g. `gmail.get_attachment`, `outlook.list_calendar_events`, `firestore.run_transaction`) — fetch-then-fetch flows that are irreducibly imperative; these are the permanent escape hatches.
+- **16 × computed request material** (inline base64 / uuid / hashlib / hmac in the body, e.g. `gdrive.upload_file`, `webhook.send_with_hmac`, `route53.create_hosted_zone`) — absorbable later via a bounded `transform` vocab entry if the per-language duplication ever justifies it.
+
+**Verdict: the gate passes.** A per-action override rate of 2.6% is comfortably below what Smithy-style systems carry; proceed to phase 1.
 
 **Open questions (resolve before broad rollout):**
-1. **Full-scale coverage** — what is the real escape-hatch % across all ~1,402 actions? (Being measured via an AST coverage classifier.)
+1. ~~**Full-scale coverage** — what is the real escape-hatch % across all actions?~~ **Resolved 2026-06-13: 2.6%** (measured above).
 2. **Build vs. reuse** — keep our Pydantic IR + write per-language emitters, or transpile to **Smithy IDL** and reuse AWS's mature `smithy-{typescript,go,java}` generators (native SigV4 + paginators)? Smithy's generators are AWS-protocol-oriented and may not cleanly target arbitrary third-party REST/GraphQL.
 3. **Per-language runtime cost** — even Smithy/Stainless hand-maintain a small runtime lib (signer, pagination, retry, errors) beneath generated code. "Build once" still means owning ~N thin runtimes; quantify it.
-4. **MCP at 1,402-action scale** — one-tool-per-action may stop being token-efficient; revisit a consolidated tool surface.
+4. **MCP at 1,500+-action scale** — one-tool-per-action may stop being token-efficient; revisit a consolidated tool surface.
 
 **Phased path:**
-1. Make the binding the source of truth in **Python** (extract bindings from connectors; drive the Python runtime off them) — proves sufficiency at full scale + yields the escape-hatch number.
+1. Make the binding the source of truth in **Python** (extract bindings from connectors; drive the Python runtime off them) — proves sufficiency at full scale, confirming the classifier's 2.6% escape-hatch prediction action-by-action.
 2. **Decision gate** (build vs. reuse), then generate a native, in-process **TypeScript** SDK for the declarative actions.
 3. Add a language = add a thin runtime + templates (Go next); joint CI publishing to npm / PyPI / crates.io / Maven.
 
