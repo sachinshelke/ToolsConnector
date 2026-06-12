@@ -324,9 +324,17 @@ class Gemini(BaseConnector):
                 if not payload:
                     continue
                 try:
-                    chunks.append(json.loads(payload))
+                    parsed = json.loads(payload)
                 except json.JSONDecodeError:
                     continue
+                # Each alt=sse event is a single GenerateContentResponse
+                # OBJECT. Guard against the non-SSE JSON-array form leaking
+                # in (e.g. a proxy stripping ?alt=sse) so the assembler
+                # degrades instead of crashing on list.get.
+                if isinstance(parsed, dict):
+                    chunks.append(parsed)
+                elif isinstance(parsed, list):
+                    chunks.extend(c for c in parsed if isinstance(c, dict))
         return chunks
 
     # ------------------------------------------------------------------

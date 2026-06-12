@@ -1186,3 +1186,38 @@ def test_stream_generate_content_in_spec() -> None:
     spec = Gemini.get_spec()
     assert "stream_generate_content" in spec.actions
     assert spec.actions["stream_generate_content"].dangerous is False
+
+
+@pytest.mark.asyncio
+async def test_stream_generate_content_tolerates_malformed_and_array_lines(
+    gemini: Gemini,
+) -> None:
+    """The SSE reader skips junk and unwraps array payloads instead of crashing.
+
+    Covers: comment lines, non-JSON garbage, an OpenAI-style ``[DONE]``
+    sentinel, empty ``data:`` lines, CRLF endings, and a JSON-ARRAY payload
+    (Gemini's non-SSE response shape, seen if a proxy strips ``?alt=sse``) —
+    the array's dict elements are unwrapped into chunks.
+    """
+    sse_body = (
+        ": comment\r\n\r\n"
+        'data: {"candidates":[{"content":{"parts":[{"text":"A"}]}}]}\r\n\r\n'
+        "data: NOT-JSON\r\n\r\n"
+        "data: [DONE]\r\n\r\n"
+        'data: [{"candidates":[{"content":{"parts":[{"text":"B"}]},'
+        '"finishReason":"STOP"}]}]\r\n\r\n'
+        "data:\r\n\r\n"
+    )
+    with respx.mock(base_url=_BASE_URL) as respx_mock:
+        respx_mock.post("/models/gemini-2.0-flash:streamGenerateContent").mock(
+            return_value=httpx.Response(
+                200,
+                headers={"content-type": "text/event-stream"},
+                content=sse_body.encode(),
+            )
+        )
+
+        result = await gemini.astream_generate_content(model="gemini-2.0-flash", contents="x")
+        assert result.text == "AB"
+        assert result.finish_reason == "STOP"
+        assert result.chunk_count == 2  # junk lines skipped, array unwrapped
