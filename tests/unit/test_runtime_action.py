@@ -83,6 +83,19 @@ class SampleConnector(BaseConnector):
         """
         return TestItem(id="u", value=1)
 
+    @action(
+        "Legacy item lookup",
+        deprecated=True,
+        deprecation_message="Use get_item instead.",
+    )
+    async def legacy_lookup(self, item_id: str) -> TestItem:
+        """Deprecated lookup kept for compatibility.
+
+        Args:
+            item_id: The item to fetch.
+        """
+        return TestItem(id=item_id, value=0)
+
 
 class TestActionDecorator:
     def test_action_meta_attached(self):
@@ -123,6 +136,16 @@ class TestActionDecorator:
     def test_requires_scope(self):
         meta = SampleConnector.delete_item.__action_meta__
         assert meta.requires_scope == "admin"
+
+    def test_deprecated_flag_and_message(self):
+        meta = SampleConnector.legacy_lookup.__action_meta__
+        assert meta.deprecated is True
+        assert meta.deprecation_message == "Use get_item instead."
+
+    def test_deprecated_defaults_false(self):
+        meta = SampleConnector.list_items.__action_meta__
+        assert meta.deprecated is False
+        assert meta.deprecation_message is None
 
     def test_input_schema_generated(self):
         meta = SampleConnector.list_items.__action_meta__

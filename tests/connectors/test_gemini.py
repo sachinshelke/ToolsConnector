@@ -922,6 +922,20 @@ def test_spec_metadata() -> None:
     assert spec.actions["list_tuned_models"].idempotent is True
     assert spec.actions["get_tuned_model"].idempotent is True
 
+    # The tunedModels surface is discontinued on the public Gemini API
+    # (HTTP 501, verified live 2026-06-12) — all four actions are flagged
+    # deprecated with a pointer to Vertex AI. Non-tuning actions are not.
+    for name in (
+        "list_tuned_models",
+        "get_tuned_model",
+        "create_tuned_model",
+        "delete_tuned_model",
+    ):
+        assert spec.actions[name].deprecated is True, name
+        assert "Vertex AI" in (spec.actions[name].deprecation_message or ""), name
+    assert spec.actions["generate_content"].deprecated is False
+    assert spec.actions["generate_content"].deprecation_message is None
+
 
 # ---------------------------------------------------------------------------
 # Tier-1 prep: tools / generation_config / safety / streaming / errors

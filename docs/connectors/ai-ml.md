@@ -124,7 +124,7 @@ Connect to Google Gemini for generating content with Gemini models — including
 | batch_embed_contents | Create embeddings for multiple texts | No |
 | count_tokens | Count tokens for a prompt | No |
 | create_cache | Create a context cache | No |
-| create_tuned_model | Create a tuned model | Yes |
+| create_tuned_model | Create a tuned model *(deprecated — tuning moved to Vertex AI)* | Yes |
 | delete_cache | Delete a context cache | Yes |
 | delete_file | Delete an uploaded file | Yes |
 | embed_content | Create an embedding for a single text | No |

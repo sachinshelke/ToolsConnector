@@ -242,6 +242,8 @@ class BaseConnector(ABC):
                 pagination=meta.pagination,
                 tags=meta.tags,
                 rate_limit_weight=meta.rate_limit_weight,
+                deprecated=meta.deprecated,
+                deprecation_message=meta.deprecation_message,
             )
 
         return ConnectorSpec(

@@ -893,7 +893,12 @@ class Gemini(BaseConnector):
     # Actions -- Tuned models
     # ------------------------------------------------------------------
 
-    @action("List tuned models", idempotent=True)
+    @action(
+        "List tuned models",
+        idempotent=True,
+        deprecated=True,
+        deprecation_message="Google discontinued model tuning on the public Gemini API (the tunedModels endpoints return HTTP 501, verified live 2026-06-12); tune via Vertex AI instead.",
+    )
     async def list_tuned_models(
         self,
         page_size: Optional[int] = None,
@@ -928,7 +933,12 @@ class Gemini(BaseConnector):
             next_page_token=data.get("nextPageToken"),
         )
 
-    @action("Get a tuned model by name", idempotent=True)
+    @action(
+        "Get a tuned model by name",
+        idempotent=True,
+        deprecated=True,
+        deprecation_message="Google discontinued model tuning on the public Gemini API (the tunedModels endpoints return HTTP 501, verified live 2026-06-12); tune via Vertex AI instead.",
+    )
     async def get_tuned_model(self, name: str) -> TunedModel:
         """Retrieve metadata about a tuned model, including its tuning state.
 
@@ -944,7 +954,12 @@ class Gemini(BaseConnector):
         data = await self._request("GET", f"/{self._tuned_model_path(name)}")
         return parse_tuned_model(data)
 
-    @action("Create a tuned model", dangerous=True)
+    @action(
+        "Create a tuned model",
+        dangerous=True,
+        deprecated=True,
+        deprecation_message="Google discontinued model tuning on the public Gemini API (the tunedModels endpoints return HTTP 501, verified live 2026-06-12); tune via Vertex AI instead.",
+    )
     async def create_tuned_model(
         self,
         base_model: str,
@@ -1011,7 +1026,12 @@ class Gemini(BaseConnector):
         resource = data.get("metadata", {}).get("tunedModel") if "metadata" in data else None
         return parse_tuned_model(resource or data)
 
-    @action("Delete a tuned model", dangerous=True)
+    @action(
+        "Delete a tuned model",
+        dangerous=True,
+        deprecated=True,
+        deprecation_message="Google discontinued model tuning on the public Gemini API (the tunedModels endpoints return HTTP 501, verified live 2026-06-12); tune via Vertex AI instead.",
+    )
     async def delete_tuned_model(self, name: str) -> bool:
         """Permanently delete a tuned model.
 
