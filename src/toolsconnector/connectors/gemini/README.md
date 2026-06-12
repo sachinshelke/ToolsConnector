@@ -106,6 +106,7 @@ except AuthError as e:
 
 - Pass `contents` as a plain string for a single prompt, or a list of content dicts for multi-turn conversations.
 - A `model` id works with or without the `models/` prefix — both `gemini-2.0-flash` and `models/gemini-2.0-flash` are accepted.
+- **Model availability moves:** Google retired the **Gemini 1.5 family** (`gemini-1.5-flash`, `gemini-1.5-pro`) and **`text-embedding-004`** (live-confirmed HTTP 404 as of 2026-06-13). Use a current model — e.g. `gemini-2.0-flash` or `gemini-2.5-flash` for generation, `gemini-embedding-001` for embeddings. Call `list_models` to discover what your key can serve.
 - Drive **function calling** by passing `tools` (and optionally `tool_config`) to `generate_content` — the model can return a `functionCall` part.
 - Use `stream_generate_content` for incremental output, or `generation_config={"responseMimeType": "application/json", "responseSchema": {...}}` for structured JSON.
 - Inspect `safety_ratings` / `block_reason` on the response to detect and handle safety blocks.

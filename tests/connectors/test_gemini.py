@@ -69,7 +69,7 @@ async def test_generate_content_happy_path(gemini: Gemini) -> None:
     wrapped into a single content turn, and candidates/usage are parsed.
     """
     with respx.mock(base_url=_BASE_URL, assert_all_called=True) as respx_mock:
-        route = respx_mock.post("/models/gemini-1.5-flash:generateContent").mock(
+        route = respx_mock.post("/models/gemini-2.5-flash:generateContent").mock(
             return_value=httpx.Response(
                 200,
                 json={
@@ -82,7 +82,7 @@ async def test_generate_content_happy_path(gemini: Gemini) -> None:
                             "finishReason": "STOP",
                         }
                     ],
-                    "modelVersion": "gemini-1.5-flash-001",
+                    "modelVersion": "gemini-2.5-flash",
                     "usageMetadata": {
                         "promptTokenCount": 5,
                         "candidatesTokenCount": 3,
@@ -93,14 +93,14 @@ async def test_generate_content_happy_path(gemini: Gemini) -> None:
         )
 
         result = await gemini.agenerate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents="Say hello",
         )
 
         # Parts concatenated into a single text string
         assert result.text == "Hello world!"
         assert result.finish_reason == "STOP"
-        assert result.model_version == "gemini-1.5-flash-001"
+        assert result.model_version == "gemini-2.5-flash"
 
         # Usage parsed from usageMetadata
         assert result.usage is not None
@@ -129,12 +129,12 @@ async def test_generate_content_optional_params_omitted_when_none(gemini: Gemini
     ``generationConfig`` nor ``systemInstruction`` may appear in the body.
     """
     with respx.mock(base_url=_BASE_URL) as respx_mock:
-        route = respx_mock.post("/models/gemini-1.5-flash:generateContent").mock(
+        route = respx_mock.post("/models/gemini-2.5-flash:generateContent").mock(
             return_value=httpx.Response(200, json={"candidates": []})
         )
 
         await gemini.agenerate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents="hi",
         )
 
@@ -150,7 +150,7 @@ async def test_generate_content_with_config_and_system_instruction(gemini: Gemin
     system_instruction is wrapped into systemInstruction.parts[].text.
     """
     with respx.mock(base_url=_BASE_URL) as respx_mock:
-        route = respx_mock.post("/models/gemini-1.5-pro:generateContent").mock(
+        route = respx_mock.post("/models/gemini-2.5-pro:generateContent").mock(
             return_value=httpx.Response(
                 200,
                 json={
@@ -160,7 +160,7 @@ async def test_generate_content_with_config_and_system_instruction(gemini: Gemin
         )
 
         result = await gemini.agenerate_content(
-            model="gemini-1.5-pro",
+            model="gemini-2.5-pro",
             contents="hi",
             system_instruction="You are terse.",
             temperature=0.2,
@@ -181,7 +181,7 @@ async def test_generate_content_with_config_and_system_instruction(gemini: Gemin
 async def test_generate_content_accepts_prebuilt_contents_list(gemini: Gemini) -> None:
     """A pre-built list of content dicts is forwarded verbatim (not re-wrapped)."""
     with respx.mock(base_url=_BASE_URL) as respx_mock:
-        route = respx_mock.post("/models/gemini-1.5-flash:generateContent").mock(
+        route = respx_mock.post("/models/gemini-2.5-flash:generateContent").mock(
             return_value=httpx.Response(
                 200,
                 json={"candidates": [{"content": {"parts": [{"text": "hey"}]}}]},
@@ -189,7 +189,7 @@ async def test_generate_content_accepts_prebuilt_contents_list(gemini: Gemini) -
         )
 
         await gemini.agenerate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=[{"role": "user", "parts": [{"text": "multi-turn"}]}],
         )
 
@@ -207,11 +207,11 @@ async def test_generate_content_accepts_prebuilt_contents_list(gemini: Gemini) -
 async def test_count_tokens_happy_path(gemini: Gemini) -> None:
     """count_tokens: POST /models/{model}:countTokens → TokenCount."""
     with respx.mock(base_url=_BASE_URL) as respx_mock:
-        route = respx_mock.post("/models/gemini-1.5-flash:countTokens").mock(
+        route = respx_mock.post("/models/gemini-2.5-flash:countTokens").mock(
             return_value=httpx.Response(200, json={"totalTokens": 42})
         )
 
-        result = await gemini.acount_tokens(model="gemini-1.5-flash", contents="count me")
+        result = await gemini.acount_tokens(model="gemini-2.5-flash", contents="count me")
 
         assert result.total_tokens == 42
         body = route.calls.last.request.read()
@@ -232,12 +232,12 @@ async def test_embed_content_happy_path(gemini: Gemini) -> None:
     same canonical URL (no double ``models/models/``).
     """
     with respx.mock(base_url=_BASE_URL) as respx_mock:
-        route = respx_mock.post("/models/text-embedding-004:embedContent").mock(
+        route = respx_mock.post("/models/gemini-embedding-001:embedContent").mock(
             return_value=httpx.Response(200, json={"embedding": {"values": [0.1, 0.2, 0.3]}})
         )
 
         result = await gemini.aembed_content(
-            model="models/text-embedding-004",
+            model="models/gemini-embedding-001",
             text="embed me",
             task_type="RETRIEVAL_DOCUMENT",
             title="Doc",
@@ -257,11 +257,11 @@ async def test_embed_content_happy_path(gemini: Gemini) -> None:
 async def test_embed_content_optional_params_omitted_when_none(gemini: Gemini) -> None:
     """taskType/title must be absent when task_type/title are None."""
     with respx.mock(base_url=_BASE_URL) as respx_mock:
-        route = respx_mock.post("/models/text-embedding-004:embedContent").mock(
+        route = respx_mock.post("/models/gemini-embedding-001:embedContent").mock(
             return_value=httpx.Response(200, json={"embedding": {"values": [0.5]}})
         )
 
-        await gemini.aembed_content(model="text-embedding-004", text="x")
+        await gemini.aembed_content(model="gemini-embedding-001", text="x")
 
         body = route.calls.last.request.read()
         assert b'"taskType"' not in body
@@ -277,7 +277,7 @@ async def test_embed_content_optional_params_omitted_when_none(gemini: Gemini) -
 async def test_batch_embed_contents_happy_path(gemini: Gemini) -> None:
     """batch_embed_contents: POST /models/{model}:batchEmbedContents → BatchEmbeddings."""
     with respx.mock(base_url=_BASE_URL) as respx_mock:
-        route = respx_mock.post("/models/text-embedding-004:batchEmbedContents").mock(
+        route = respx_mock.post("/models/gemini-embedding-001:batchEmbedContents").mock(
             return_value=httpx.Response(
                 200,
                 json={"embeddings": [{"values": [0.1, 0.2]}, {"values": [0.3, 0.4]}]},
@@ -285,7 +285,7 @@ async def test_batch_embed_contents_happy_path(gemini: Gemini) -> None:
         )
 
         result = await gemini.abatch_embed_contents(
-            model="text-embedding-004",
+            model="gemini-embedding-001",
             texts=["first", "second"],
         )
 
@@ -296,7 +296,7 @@ async def test_batch_embed_contents_happy_path(gemini: Gemini) -> None:
         body = route.calls.last.request.read()
         # Each request carries the fully-qualified model ref
         assert b'"requests"' in body
-        assert b'"models/text-embedding-004"' in body
+        assert b'"models/gemini-embedding-001"' in body
         assert b'"first"' in body
         assert b'"second"' in body
 
@@ -316,7 +316,7 @@ async def test_list_models_happy_path(gemini: Gemini) -> None:
                 json={
                     "models": [
                         {
-                            "name": "models/gemini-1.5-flash",
+                            "name": "models/gemini-2.5-flash",
                             "version": "001",
                             "displayName": "Gemini 1.5 Flash",
                             "inputTokenLimit": 1000000,
@@ -331,7 +331,7 @@ async def test_list_models_happy_path(gemini: Gemini) -> None:
         models = await gemini.alist_models()
 
         assert len(models) == 1
-        assert models[0].name == "models/gemini-1.5-flash"
+        assert models[0].name == "models/gemini-2.5-flash"
         assert models[0].display_name == "Gemini 1.5 Flash"
         assert models[0].input_token_limit == 1000000
         assert "generateContent" in models[0].supported_generation_methods
@@ -341,11 +341,11 @@ async def test_list_models_happy_path(gemini: Gemini) -> None:
 async def test_get_model_happy_path(gemini: Gemini) -> None:
     """get_model: GET /models/{model} → GeminiModel."""
     with respx.mock(base_url=_BASE_URL) as respx_mock:
-        respx_mock.get("/models/gemini-1.5-flash").mock(
+        respx_mock.get("/models/gemini-2.5-flash").mock(
             return_value=httpx.Response(
                 200,
                 json={
-                    "name": "models/gemini-1.5-flash",
+                    "name": "models/gemini-2.5-flash",
                     "version": "001",
                     "displayName": "Gemini 1.5 Flash",
                     "outputTokenLimit": 8192,
@@ -353,9 +353,9 @@ async def test_get_model_happy_path(gemini: Gemini) -> None:
             )
         )
 
-        model = await gemini.aget_model(model="gemini-1.5-flash")
+        model = await gemini.aget_model(model="gemini-2.5-flash")
 
-        assert model.name == "models/gemini-1.5-flash"
+        assert model.name == "models/gemini-2.5-flash"
         assert model.output_token_limit == 8192
 
 
@@ -370,7 +370,7 @@ async def test_invalid_api_key_raises_invalid_credentials_error(gemini: Gemini) 
     connector name and upstream status.
     """
     with respx.mock(base_url=_BASE_URL) as respx_mock:
-        respx_mock.post("/models/gemini-1.5-flash:generateContent").mock(
+        respx_mock.post("/models/gemini-2.5-flash:generateContent").mock(
             return_value=httpx.Response(
                 401,
                 json={
@@ -384,7 +384,7 @@ async def test_invalid_api_key_raises_invalid_credentials_error(gemini: Gemini) 
         )
 
         with pytest.raises(InvalidCredentialsError) as exc_info:
-            await gemini.agenerate_content(model="gemini-1.5-flash", contents="hi")
+            await gemini.agenerate_content(model="gemini-2.5-flash", contents="hi")
 
         assert exc_info.value.connector == "gemini"
         assert exc_info.value.upstream_status == 401
@@ -420,7 +420,7 @@ async def test_rate_limit_raises_rate_limit_error(gemini: Gemini) -> None:
     parsed from the ``Retry-After`` header.
     """
     with respx.mock(base_url=_BASE_URL) as respx_mock:
-        respx_mock.post("/models/gemini-1.5-flash:generateContent").mock(
+        respx_mock.post("/models/gemini-2.5-flash:generateContent").mock(
             return_value=httpx.Response(
                 429,
                 headers={"Retry-After": "30"},
@@ -429,7 +429,7 @@ async def test_rate_limit_raises_rate_limit_error(gemini: Gemini) -> None:
         )
 
         with pytest.raises(RateLimitError) as exc_info:
-            await gemini.agenerate_content(model="gemini-1.5-flash", contents="hi")
+            await gemini.agenerate_content(model="gemini-2.5-flash", contents="hi")
 
         assert exc_info.value.connector == "gemini"
         assert exc_info.value.upstream_status == 429
@@ -447,7 +447,7 @@ async def test_generate_content_with_cached_content(gemini: Gemini) -> None:
     the ``cachedContent`` body field.
     """
     with respx.mock(base_url=_BASE_URL) as respx_mock:
-        route = respx_mock.post("/models/gemini-1.5-flash:generateContent").mock(
+        route = respx_mock.post("/models/gemini-2.5-flash:generateContent").mock(
             return_value=httpx.Response(
                 200,
                 json={
@@ -462,7 +462,7 @@ async def test_generate_content_with_cached_content(gemini: Gemini) -> None:
         )
 
         result = await gemini.agenerate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents="hi",
             cached_content="abc123",
         )
@@ -632,7 +632,7 @@ async def test_create_cache_happy_path(gemini: Gemini) -> None:
                 200,
                 json={
                     "name": "cachedContents/cache-1",
-                    "model": "models/gemini-1.5-flash-001",
+                    "model": "models/gemini-2.5-flash",
                     "displayName": "my-cache",
                     "expireTime": "2026-01-01T00:00:00Z",
                     "usageMetadata": {"totalTokenCount": 4096},
@@ -641,7 +641,7 @@ async def test_create_cache_happy_path(gemini: Gemini) -> None:
         )
 
         result = await gemini.acreate_cache(
-            model="gemini-1.5-flash-001",
+            model="gemini-2.5-flash",
             contents=[{"role": "user", "parts": [{"text": "big context"}]}],
             system_instruction="Be concise.",
             ttl="600s",
@@ -649,13 +649,13 @@ async def test_create_cache_happy_path(gemini: Gemini) -> None:
         )
 
         assert result.name == "cachedContents/cache-1"
-        assert result.model == "models/gemini-1.5-flash-001"
+        assert result.model == "models/gemini-2.5-flash"
         assert result.expire_time == "2026-01-01T00:00:00Z"
         assert result.usage is not None
         assert result.usage.total_token_count == 4096
 
         body = route.calls.last.request.read()
-        assert b'"model":"models/gemini-1.5-flash-001"' in body
+        assert b'"model":"models/gemini-2.5-flash"' in body
         assert b'"ttl":"600s"' in body
         assert b'"systemInstruction"' in body
         assert b'"Be concise."' in body
@@ -668,7 +668,7 @@ async def test_get_cache_happy_path(gemini: Gemini) -> None:
         respx_mock.get("/cachedContents/cache-1").mock(
             return_value=httpx.Response(
                 200,
-                json={"name": "cachedContents/cache-1", "model": "models/gemini-1.5-flash"},
+                json={"name": "cachedContents/cache-1", "model": "models/gemini-2.5-flash"},
             )
         )
 
@@ -676,7 +676,7 @@ async def test_get_cache_happy_path(gemini: Gemini) -> None:
         result = await gemini.aget_cache(name="cache-1")
 
         assert result.name == "cachedContents/cache-1"
-        assert result.model == "models/gemini-1.5-flash"
+        assert result.model == "models/gemini-2.5-flash"
 
 
 @pytest.mark.asyncio
@@ -758,7 +758,7 @@ async def test_list_tuned_models_happy_path(gemini: Gemini) -> None:
                             "name": "tunedModels/my-model-1",
                             "displayName": "My Model",
                             "state": "ACTIVE",
-                            "baseModel": "models/gemini-1.5-flash",
+                            "baseModel": "models/gemini-2.5-flash",
                         }
                     ],
                     "nextPageToken": "tm-next",
@@ -771,7 +771,7 @@ async def test_list_tuned_models_happy_path(gemini: Gemini) -> None:
         assert len(result.tuned_models) == 1
         assert result.tuned_models[0].name == "tunedModels/my-model-1"
         assert result.tuned_models[0].state == "ACTIVE"
-        assert result.tuned_models[0].base_model == "models/gemini-1.5-flash"
+        assert result.tuned_models[0].base_model == "models/gemini-2.5-flash"
         assert result.next_page_token == "tm-next"
         assert "filter=owner%3Ame" in str(route.calls.last.request.url)
 
@@ -786,7 +786,7 @@ async def test_get_tuned_model_happy_path(gemini: Gemini) -> None:
                 json={
                     "name": "tunedModels/my-model-1",
                     "state": "CREATING",
-                    "baseModel": "models/gemini-1.5-flash",
+                    "baseModel": "models/gemini-2.5-flash",
                     "temperature": 0.7,
                     "topK": 40,
                 },
@@ -817,7 +817,7 @@ async def test_create_tuned_model_builds_tuning_task(gemini: Gemini) -> None:
                         "tunedModel": {
                             "name": "tunedModels/my-new-model",
                             "state": "CREATING",
-                            "baseModel": "models/gemini-1.5-flash",
+                            "baseModel": "models/gemini-2.5-flash",
                         }
                     },
                 },
@@ -825,7 +825,7 @@ async def test_create_tuned_model_builds_tuning_task(gemini: Gemini) -> None:
         )
 
         result = await gemini.acreate_tuned_model(
-            base_model="gemini-1.5-flash",
+            base_model="gemini-2.5-flash",
             training_data=[{"text_input": "in", "output": "out"}],
             display_name="My New Model",
             tuned_model_id="my-new-model",
@@ -838,7 +838,7 @@ async def test_create_tuned_model_builds_tuning_task(gemini: Gemini) -> None:
         request = route.calls.last.request
         assert "tunedModelId=my-new-model" in str(request.url)
         body = request.read()
-        assert b'"baseModel":"models/gemini-1.5-flash"' in body
+        assert b'"baseModel":"models/gemini-2.5-flash"' in body
         assert b'"tuningTask"' in body
         assert b'"textInput":"in"' in body
         assert b'"epochCount":3' in body
@@ -883,7 +883,7 @@ async def test_create_cache_invalid_request_raises_validation_error(gemini: Gemi
         )
 
         with pytest.raises(ValidationError) as exc_info:
-            await gemini.acreate_cache(model="gemini-1.5-flash", contents=[])
+            await gemini.acreate_cache(model="gemini-2.5-flash", contents=[])
 
         assert exc_info.value.connector == "gemini"
         assert exc_info.value.upstream_status == 400
