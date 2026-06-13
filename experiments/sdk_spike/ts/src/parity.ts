@@ -4,8 +4,9 @@ import type { ConnectorB } from "./runtime.ts";
 import { AIRTABLE_BINDING } from "./airtable.ts";
 import { TWILIO_BINDING } from "./twilio.ts";
 import { SHOPIFY_BINDING } from "./shopify.ts";
+import { STRIPE_BINDING } from "./stripe.ts";
 
-const B: Record<string, ConnectorB> = { airtable: AIRTABLE_BINDING, twilio: TWILIO_BINDING, shopify: SHOPIFY_BINDING };
+const B: Record<string, ConnectorB> = { airtable: AIRTABLE_BINDING, twilio: TWILIO_BINDING, shopify: SHOPIFY_BINDING, stripe: STRIPE_BINDING };
 const MATRIX = [
   {
     "connector": "airtable",
@@ -126,6 +127,31 @@ const MATRIX = [
       "title": "Widget",
       "body_html": "<p>x</p>",
       "vendor": "Acme"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_customers",
+    "args": {
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "get_customer",
+    "args": {
+      "customer_id": "cus_123"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "create_customer",
+    "args": {
+      "email": "a@example.com",
+      "name": "Alice"
     }
   }
 ];

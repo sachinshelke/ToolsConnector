@@ -203,7 +203,7 @@ RUNTIME_TS = r'''// runtime.ts — ToolsConnector TS runtime (per-language core,
 
 export type Loc = "path" | "query" | "header" | "body";
 export type Style = "simple" | "indexed" | "indexed_object" | "bracket" | "form_explode";
-export type AuthKind = "bearer" | "header_key" | "basic_split";
+export type AuthKind = "bearer" | "header_key" | "basic_split" | "basic_user";
 export type PgKind = "offset_token" | "link_header" | "follow_url";
 
 export interface ParamB {
@@ -318,6 +318,7 @@ function applyAuth(headers: Record<string, string>, ep: EndpointB, cred: string)
   if (ep.authKind === "bearer") { headers[ep.authHeader] = `Bearer ${cred}`; return headers[ep.authHeader]; }
   if (ep.authKind === "header_key") { headers[ep.authHeader] = cred; return cred; }
   if (ep.authKind === "basic_split") { headers[ep.authHeader] = `Basic ${btoa(cred)}`; return headers[ep.authHeader]; }
+  if (ep.authKind === "basic_user") { headers[ep.authHeader] = `Basic ${btoa(cred + ":")}`; return headers[ep.authHeader]; }
   return null;
 }
 

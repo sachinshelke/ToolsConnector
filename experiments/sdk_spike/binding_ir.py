@@ -114,6 +114,8 @@ class AuthKind(str, Enum):
     BEARER = "bearer"            # Authorization: Bearer <cred>
     HEADER_KEY = "header_key"    # <header>: <cred>
     BASIC_SPLIT = "basic_split"  # cred 'user:pass' -> Authorization: Basic base64(cred)
+    BASIC_USER = "basic_user"    # Authorization: Basic base64(cred + ':')  — key as username,
+    #                              empty password (Stripe, many key-auth REST APIs)
 
 
 class EndpointBinding(BaseModel):

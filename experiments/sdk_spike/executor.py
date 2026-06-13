@@ -66,6 +66,10 @@ def _apply_auth(headers: dict[str, str], ep: EndpointBinding, cred: str) -> None
     elif ep.auth_kind == AuthKind.BASIC_SPLIT:
         token = base64.b64encode(cred.encode()).decode()
         headers[ep.auth_header] = f"Basic {token}"
+    elif ep.auth_kind == AuthKind.BASIC_USER:
+        # API key as username, empty password: base64("<key>:")
+        token = base64.b64encode(f"{cred}:".encode()).decode()
+        headers[ep.auth_header] = f"Basic {token}"
 
 
 # ----------------------------------------------------------------------------

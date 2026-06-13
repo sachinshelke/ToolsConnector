@@ -20,13 +20,14 @@ import httpx
 
 from toolsconnector.connectors.airtable.connector import Airtable
 from toolsconnector.connectors.shopify.connector import Shopify
+from toolsconnector.connectors.stripe.connector import Stripe
 from toolsconnector.connectors.twilio.connector import Twilio
 
 from .binding_ir import Location
 from .executor import build_request, next_request
 from .specs import ALL
 
-CLASSES = {"airtable": Airtable, "twilio": Twilio, "shopify": Shopify}
+CLASSES = {"airtable": Airtable, "twilio": Twilio, "shopify": Shopify, "stripe": Stripe}
 
 # (connector, credential, [(action, kwargs)])
 MATRIX = {
@@ -51,6 +52,11 @@ MATRIX = {
     "shopify": ("shpat_abc123:mystore", [
         ("list_products", dict(limit=50)),
         ("create_product", dict(title="Widget", body_html="<p>x</p>", vendor="Acme")),
+    ]),
+    "stripe": ("sk_test_FAKE", [
+        ("list_customers", dict(limit=10)),
+        ("get_customer", dict(customer_id="cus_123")),
+        ("create_customer", dict(email="a@example.com", name="Alice")),
     ]),
 }
 
@@ -85,6 +91,9 @@ PATTERNS = {
     ("shopify", "list_products"): ["link-header pagination", "base-URL templating ({store})",
                                     "custom auth header"],
     ("shopify", "create_product"): ["single-key body wrap ({product:..})", "PUT create"],
+    ("stripe", "list_customers"): ["size clamp", "cursor query param", "basic auth (key as username)"],
+    ("stripe", "get_customer"): ["path-param id"],
+    ("stripe", "create_customer"): ["form-encoded JSON-less body"],
 }
 
 # Latent connector bugs the spike surfaced. The spec-driven executor produces the

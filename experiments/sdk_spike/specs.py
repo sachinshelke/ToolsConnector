@@ -212,4 +212,44 @@ SHOPIFY = ConnectorBinding(
 )
 
 
-ALL = {"airtable": AIRTABLE, "twilio": TWILIO, "shopify": SHOPIFY}
+# ---------------------------------------------------------------------------
+# STRIPE  (Tier 1 — live-verified 2026-06-13). First Tier-1 connector bound;
+# proves the binding pipeline on a connector we actually ship SDKs for.
+# ---------------------------------------------------------------------------
+STRIPE = ConnectorBinding(
+    name="stripe",
+    default_endpoint="main",
+    endpoints={
+        "main": EndpointBinding(
+            id="main", base_url="https://api.stripe.com/v1", encoding="form",
+            auth_kind=AuthKind.BASIC_USER, auth_header="Authorization",
+        ),
+    },
+    actions={
+        "list_customers": ActionBinding(
+            name="list_customers", method="GET", endpoint="main",
+            path="/customers", unwrap="data",
+            params=[
+                _p("limit", "limit", Location.QUERY, max=100, default=10),
+                _p("starting_after", "starting_after", Location.QUERY),
+            ],
+        ),
+        "get_customer": ActionBinding(
+            name="get_customer", method="GET", endpoint="main",
+            path="/customers/{customer_id}",
+            params=[_p("customer_id", "customer_id", Location.PATH)],
+        ),
+        "create_customer": ActionBinding(
+            name="create_customer", method="POST", endpoint="main",
+            path="/customers",
+            params=[
+                _p("email", "email", Location.BODY),
+                _p("name", "name", Location.BODY),
+                _p("description", "description", Location.BODY),
+            ],
+        ),
+    },
+)
+
+
+ALL = {"airtable": AIRTABLE, "twilio": TWILIO, "shopify": SHOPIFY, "stripe": STRIPE}
