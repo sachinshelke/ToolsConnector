@@ -142,7 +142,7 @@ const MATRIX = [
     "cred": "sk_test_FAKE",
     "action": "get_customer",
     "args": {
-      "customer_id": "cus_123"
+      "customer_id": "cus_1"
     }
   },
   {
@@ -151,7 +151,339 @@ const MATRIX = [
     "action": "create_customer",
     "args": {
       "email": "a@example.com",
-      "name": "Alice"
+      "name": "Alice",
+      "description": "d"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "update_customer",
+    "args": {
+      "customer_id": "cus_1",
+      "name": "New",
+      "email": "b@example.com"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "delete_customer",
+    "args": {
+      "customer_id": "cus_1"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_charges",
+    "args": {
+      "customer": "cus_1",
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "get_charge",
+    "args": {
+      "charge_id": "ch_1"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "create_charge",
+    "args": {
+      "amount": 2000,
+      "currency": "usd",
+      "customer": "cus_1",
+      "source": "tok_visa"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "refund_charge",
+    "args": {
+      "charge_id": "ch_1",
+      "amount": 300,
+      "reason": "requested_by_customer"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_refunds",
+    "args": {
+      "charge": "ch_1",
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "create_payment_intent",
+    "args": {
+      "amount": 1100,
+      "currency": "usd",
+      "customer": "cus_1",
+      "payment_method_types": [
+        "card",
+        "link"
+      ],
+      "capture_method": "manual"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "get_payment_intent",
+    "args": {
+      "payment_intent_id": "pi_1"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_payment_intents",
+    "args": {
+      "customer": "cus_1",
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "confirm_payment_intent",
+    "args": {
+      "payment_intent_id": "pi_1",
+      "payment_method": "pm_card_visa",
+      "return_url": "https://example.com/back"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "cancel_payment_intent",
+    "args": {
+      "payment_intent_id": "pi_1"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "capture_payment_intent",
+    "args": {
+      "payment_intent_id": "pi_1",
+      "amount_to_capture": 500
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_invoices",
+    "args": {
+      "customer": "cus_1",
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "get_invoice",
+    "args": {
+      "invoice_id": "in_1"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "void_invoice",
+    "args": {
+      "invoice_id": "in_1"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "get_balance",
+    "args": {}
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "create_subscription",
+    "args": {
+      "customer": "cus_1",
+      "price": "price_1",
+      "trial_days": 7
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_subscriptions",
+    "args": {
+      "customer": "cus_1",
+      "status": "all",
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "get_subscription",
+    "args": {
+      "subscription_id": "sub_1"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "create_product",
+    "args": {
+      "name": "Widget",
+      "description": "x"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_products",
+    "args": {
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "create_price",
+    "args": {
+      "product": "prod_1",
+      "unit_amount": 999,
+      "currency": "usd",
+      "recurring_interval": "month"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_prices",
+    "args": {
+      "product": "prod_1",
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "create_checkout_session",
+    "args": {
+      "line_items": [
+        {
+          "price": "price_1",
+          "quantity": 2
+        }
+      ],
+      "mode": "payment",
+      "success_url": "https://e.com/s",
+      "cancel_url": "https://e.com/c"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_payment_methods",
+    "args": {
+      "customer": "cus_1",
+      "type": "card",
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_disputes",
+    "args": {
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "get_dispute",
+    "args": {
+      "dispute_id": "dp_1"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "close_dispute",
+    "args": {
+      "dispute_id": "dp_1"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_payouts",
+    "args": {
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "create_payout",
+    "args": {
+      "amount": 100,
+      "currency": "usd"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "get_payout",
+    "args": {
+      "payout_id": "po_1"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_events",
+    "args": {
+      "type": "charge.succeeded",
+      "limit": 10
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "get_event",
+    "args": {
+      "event_id": "evt_1"
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "create_setup_intent",
+    "args": {
+      "customer": "cus_1",
+      "payment_method_types": [
+        "card"
+      ]
+    }
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "get_setup_intent",
+    "args": {
+      "setup_intent_id": "seti_1"
     }
   }
 ];

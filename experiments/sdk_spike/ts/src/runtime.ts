@@ -61,26 +61,39 @@ function fmt(s: string, ctx: Record<string, string>, extra: Record<string, unkno
   return s.replace(/\{(\w+)\}/g, (_m, k) => String(extra[k] ?? ctx[k] ?? `{${k}}`));
 }
 
+// Serialize ONE present param value into wire (key, value) pairs by style.
+// Shared by query strings and form bodies — Stripe puts list/object params
+// (payment_method_types[i], line_items[i][price]) in the BODY, so both paths
+// need the same finite style vocabulary. Mirrors executor.py::_styled_pairs.
+function styledPairs(p: ParamB, v: unknown): [string, string][] {
+  const style = p.style ?? "simple";
+  if (style === "indexed") {
+    const seq = p.maxItems ? (v as unknown[]).slice(0, p.maxItems) : (v as unknown[]);
+    return seq.map((it, i) => [`${p.wire}[${i}]`, String(it)] as [string, string]);
+  }
+  if (style === "indexed_object") {
+    const out: [string, string][] = [];
+    (v as Record<string, unknown>[]).forEach((it, i) => {
+      for (const sk of p.subkeys ?? [])
+        out.push([`${p.wire}[${i}][${sk}]`, String(it[sk] ?? (p.subkeyDefaults ?? {})[sk])]);
+    });
+    return out;
+  }
+  if (style === "bracket") {
+    const seq = p.maxItems ? (v as unknown[]).slice(0, p.maxItems) : (v as unknown[]);
+    return seq.map((it) => [`${p.wire}[]`, String(it)] as [string, string]);
+  }
+  if (style === "form_explode")
+    return (v as unknown[]).map((it) => [p.wire, String(it)] as [string, string]);
+  return [[p.wire, String(clamp(v, p.max))]];  // simple
+}
+
 function queryPairs(action: ActionB, args: Record<string, unknown>): [string, string][] {
   const out: [string, string][] = [];
   for (const p of action.params) {
     if (p.location !== "query") continue;
     const v = args[p.name] ?? p.default;
-    if (!present(v)) continue;
-    const style = p.style ?? "simple";
-    if (style === "simple") out.push([p.wire, String(clamp(v, p.max))]);
-    else if (style === "indexed")
-      (v as unknown[]).forEach((it, i) => out.push([`${p.wire}[${i}]`, String(it)]));
-    else if (style === "indexed_object")
-      (v as Record<string, unknown>[]).forEach((it, i) => {
-        for (const sk of p.subkeys ?? [])
-          out.push([`${p.wire}[${i}][${sk}]`, String(it[sk] ?? (p.subkeyDefaults ?? {})[sk])]);
-      });
-    else if (style === "bracket") {
-      const seq = p.maxItems ? (v as unknown[]).slice(0, p.maxItems) : (v as unknown[]);
-      for (const it of seq) out.push([`${p.wire}[]`, String(it)]);
-    } else if (style === "form_explode")
-      for (const it of v as unknown[]) out.push([p.wire, String(it)]);
+    if (present(v)) out.push(...styledPairs(p, v));
   }
   return out;
 }
@@ -94,7 +107,7 @@ function buildBody(
     const pairs: [string, string][] = [];
     for (const p of bodyParams) {
       const v = args[p.name] ?? p.default;
-      if (present(v)) pairs.push([p.wire, String(v)]);
+      if (present(v)) pairs.push(...styledPairs(p, v));
     }
     return [
       pairs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&"),

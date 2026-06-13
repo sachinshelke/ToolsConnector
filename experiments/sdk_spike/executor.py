@@ -28,6 +28,7 @@ from .binding_ir import (
     EndpointBinding,
     Location,
     PaginationKind,
+    ParamBinding,
     Style,
 )
 
@@ -86,31 +87,41 @@ def _clamp(v: Any, mx: Optional[int]) -> Any:
     return v
 
 
+def _styled_pairs(p: ParamBinding, v: Any) -> list[tuple[str, str]]:
+    """Serialize ONE present param value into wire (key, value) pairs by style.
+
+    Shared by both query strings and form-encoded bodies — Stripe puts
+    list/object params (``payment_method_types[i]``, ``line_items[i][price]``)
+    in the BODY, not just the query, so the same finite style vocabulary has to
+    drive both. (Pure JSON-body shaping stays in ``_build_body``'s JSON branch.)
+    """
+    if p.style == Style.INDEXED:
+        seq = v[: p.max_items] if p.max_items else v
+        return [(f"{p.wire}[{i}]", str(item)) for i, item in enumerate(seq)]
+    if p.style == Style.INDEXED_OBJECT:
+        out: list[tuple[str, str]] = []
+        for i, item in enumerate(v):
+            for sk in p.subkeys:
+                val = item.get(sk, p.subkey_defaults.get(sk))
+                out.append((f"{p.wire}[{i}][{sk}]", str(val)))
+        return out
+    if p.style == Style.BRACKET:
+        seq = v[: p.max_items] if p.max_items else v
+        return [(f"{p.wire}[]", str(item)) for item in seq]
+    if p.style == Style.FORM_EXPLODE:
+        return [(p.wire, str(item)) for item in v]
+    # SIMPLE (default)
+    return [(p.wire, str(_clamp(v, p.max)))]
+
+
 def _query_pairs(action: ActionBinding, args: dict[str, Any]) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     for p in action.params:
         if p.location != Location.QUERY:
             continue
         v = args.get(p.name, p.default)
-        if not _present(v):
-            continue
-        if p.style == Style.SIMPLE:
-            out.append((p.wire, str(_clamp(v, p.max))))
-        elif p.style == Style.INDEXED:
-            for i, item in enumerate(v):
-                out.append((f"{p.wire}[{i}]", str(item)))
-        elif p.style == Style.INDEXED_OBJECT:
-            for i, item in enumerate(v):
-                for sk in p.subkeys:
-                    val = item.get(sk, p.subkey_defaults.get(sk))
-                    out.append((f"{p.wire}[{i}][{sk}]", str(val)))
-        elif p.style == Style.BRACKET:
-            seq = v[: p.max_items] if p.max_items else v
-            for item in seq:
-                out.append((f"{p.wire}[]", str(item)))
-        elif p.style == Style.FORM_EXPLODE:
-            for item in v:
-                out.append((p.wire, str(item)))
+        if _present(v):
+            out.extend(_styled_pairs(p, v))
     return out
 
 
@@ -122,11 +133,11 @@ def _build_body(
         return None, None
 
     if encoding == "form":
-        pairs = [
-            (p.wire, str(args.get(p.name, p.default)))
-            for p in body_params
-            if _present(args.get(p.name, p.default))
-        ]
+        pairs: list[tuple[str, str]] = []
+        for p in body_params:
+            v = args.get(p.name, p.default)
+            if _present(v):
+                pairs.extend(_styled_pairs(p, v))
         return urlencode(pairs).encode(), "application/x-www-form-urlencoded"
 
     # JSON
