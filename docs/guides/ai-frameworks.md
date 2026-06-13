@@ -113,7 +113,7 @@ genai.configure(api_key="your-gemini-api-key")
 kit = ToolKit(["gmail"], credentials={"gmail": "ya29.token"})
 
 model = genai.GenerativeModel(
-    "gemini-1.5-pro",
+    "gemini-2.5-pro",
     tools=kit.to_gemini_tools(),
 )
 
