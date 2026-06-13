@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.19](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.18...v0.3.19) (2026-06-13)
+
+
+### 🐛 Bug Fixes
+
+* **gemini:** replace upstream-retired model ids in examples/docs ([#62](https://github.com/sachinshelke/ToolsConnector/issues/62)) ([72146e1](https://github.com/sachinshelke/ToolsConnector/commit/72146e1a8e7ba259e160516e66c0c6f8fcbe8f6d))
+
 ## [0.3.18](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.17...v0.3.18) (2026-06-12)
 
 
