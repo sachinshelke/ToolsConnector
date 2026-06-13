@@ -28,6 +28,13 @@ on:
 permissions:
   contents: read
 
+# Cancel a superseded CI run on the same ref (PR re-push / release-PR
+# close+reopen) instead of letting both finish. PR-only so a push-to-main run
+# (which includes deploy-site) is never interrupted mid-flight.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # ── 0. Detect what changed in this push/PR ─────────────────────────────
   detect-changes:
@@ -104,7 +111,14 @@ jobs:
       needs.detect-changes.outputs.code == 'true'
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        # Full 4-version matrix on push-to-main (pre-release coverage) and
+        # workflow_dispatch; on PRs drop only 3.10 — the single *interior*
+        # version (bracketed by 3.9 and 3.11, which both still run), so a
+        # 3.10-only break is the least probable single-version failure. The PR
+        # set keeps both boundaries (3.9 oldest, 3.12 newest) + the required
+        # check (3.11). Anything version-specific still surfaces on the
+        # merge-to-main run before any release.
+        python-version: ${{ (github.event_name == 'pull_request') && fromJSON('["3.9", "3.11", "3.12"]') || fromJSON('["3.9", "3.10", "3.11", "3.12"]') }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
