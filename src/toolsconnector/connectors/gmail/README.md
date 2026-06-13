@@ -13,12 +13,15 @@
 | **Auth** | OAuth 2.0, Service Account |
 | **Rate Limit** | 250 requests/second per user |
 | **Pricing** | Free (Google Workspace required for some features) |
+| **Verification** | ✅ Tier 1 — Live (validated in real production use) |
 
 ---
 
 ## Overview
 
 The Gmail API lets you read, compose, send, and organize email messages and threads. Use it to build email automation, customer communication workflows, notification systems, and email analytics pipelines. Supports OAuth 2.0 for user-level access and Service Accounts for domain-wide access in Google Workspace.
+
+> **Verification.** Gmail's core email functionality (sending, reading, searching, and managing messages and threads) is exercised against the **live Gmail API in real production deployments** — that production traffic is the live-verification basis for the Tier 1 status. Per-action coverage across all 66 actions is not individually enumerated: the high-traffic email surface is production-proven, and the full action set is doc-verified and respx-pinned. The long-tail actions (settings, delegates, filters, forwarding) have not each been individually live-exercised.
 
 ## Use Cases
 
