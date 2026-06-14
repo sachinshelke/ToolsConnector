@@ -15,8 +15,8 @@ import sys
 from pathlib import Path
 from urllib.parse import parse_qsl
 
-from .executor import build_request
-from .parity import MATRIX
+from .executor import build_request, next_request
+from .parity import MATRIX, PAGI
 from .specs import ALL
 
 PARITY_TS = Path(__file__).resolve().parent / "ts" / "src" / "parity.ts"
@@ -29,7 +29,7 @@ def run_node() -> dict:
         print("node parity.ts failed:\n" + out.stderr)
         sys.exit(2)
     rows = [json.loads(line) for line in out.stdout.splitlines() if line.strip().startswith("{")]
-    return {(r["connector"], r["action"]): r for r in rows}
+    return {(r["kind"], r["connector"], r["action"]): r for r in rows}
 
 
 def body_eq(py_bytes: bytes, ts_str, encoding: str) -> bool:
@@ -42,10 +42,32 @@ def body_eq(py_bytes: bytes, ts_str, encoding: str) -> bool:
     return json.loads(py_bytes or b"{}") == json.loads(ts_str or "{}")
 
 
+def _cmp(pr, tr, ep, enc) -> list[str]:
+    """Diff a Python httpx.Request against a TS canonical-request row."""
+    d: list[str] = []
+    if pr.method != tr["method"]:
+        d.append(f"method {pr.method!r} != {tr['method']!r}")
+    if pr.url.host != tr["host"]:
+        d.append(f"host {pr.url.host!r} != {tr['host']!r}")
+    if pr.url.path != tr["path"]:
+        d.append(f"path {pr.url.path!r} != {tr['path']!r}")
+    pq = sorted(pr.url.params.multi_items())
+    tq = sorted((k, v) for k, v in tr["query"])
+    if pq != tq:
+        d.append(f"query\n      py={pq}\n      ts={tq}")
+    if not body_eq(pr.content, tr["body"], enc):
+        d.append(f"body\n      py={pr.content!r}\n      ts={tr['body']!r}")
+    pa = pr.headers.get(ep.auth_header)
+    if pa != tr["auth"]:
+        d.append(f"auth[{ep.auth_header}] {pa!r} != {tr['auth']!r}")
+    return d
+
+
 def main() -> int:
     ts = run_node()
     results: list[tuple[str, str, bool, list[str]]] = []
 
+    # First-request parity.
     for cname, (cred, actions) in MATRIX.items():
         conn = ALL[cname]
         for action, kwargs in actions:
@@ -53,27 +75,28 @@ def main() -> int:
             ep = conn.endpoints[a.endpoint]
             enc = a.body_encoding or ep.encoding
             pr = build_request(conn, action, kwargs, cred)
-            tr = ts.get((cname, action))
-            d: list[str] = []
-            if tr is None:
-                d.append("missing in TS output")
-            else:
-                if pr.method != tr["method"]:
-                    d.append(f"method {pr.method!r} != {tr['method']!r}")
-                if pr.url.host != tr["host"]:
-                    d.append(f"host {pr.url.host!r} != {tr['host']!r}")
-                if pr.url.path != tr["path"]:
-                    d.append(f"path {pr.url.path!r} != {tr['path']!r}")
-                pq = sorted(pr.url.params.multi_items())
-                tq = sorted((k, v) for k, v in tr["query"])
-                if pq != tq:
-                    d.append(f"query\n      py={pq}\n      ts={tq}")
-                if not body_eq(pr.content, tr["body"], enc):
-                    d.append(f"body\n      py={pr.content!r}\n      ts={tr['body']!r}")
-                pa = pr.headers.get(ep.auth_header)
-                if pa != tr["auth"]:
-                    d.append(f"auth[{ep.auth_header}] {pa!r} != {tr['auth']!r}")
+            tr = ts.get(("first", cname, action))
+            d = ["missing in TS output"] if tr is None else _cmp(pr, tr, ep, enc)
             results.append((cname, action, not d, d))
+
+    # Next-page parity: the TS nextRequest must match the Python next_request.
+    for cname, cred, action, first_args, body, headers in PAGI:
+        conn = ALL[cname]
+        a = conn.actions[action]
+        ep = conn.endpoints[a.endpoint]
+        enc = a.body_encoding or ep.encoding
+        pr = next_request(conn, action, first_args, cred, body=body, headers=headers)
+        tr = ts.get(("next", cname, action))
+        label = f"{action} →next"
+        if tr is None:
+            d = ["missing in TS output"]
+        elif tr.get("none"):
+            d = [] if pr is None else ["TS returned no next request but Python did"]
+        elif pr is None:
+            d = ["Python returned no next request but TS did"]
+        else:
+            d = _cmp(pr, tr, ep, enc)
+        results.append((cname, label, not d, d))
 
     print("\n" + "=" * 72)
     print("  PYTHON executor  vs  GENERATED TYPESCRIPT runtime  (identical bindings)")

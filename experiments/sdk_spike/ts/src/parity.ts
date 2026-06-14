@@ -1,6 +1,6 @@
 // AUTO-GENERATED parity harness. Builds requests via the TS runtime and prints JSONL.
-import { buildRequest } from "./runtime.ts";
-import type { ConnectorB } from "./runtime.ts";
+import { buildRequest, nextRequest } from "./runtime.ts";
+import type { BuiltRequest, ConnectorB } from "./runtime.ts";
 import { AIRTABLE_BINDING } from "./airtable.ts";
 import { TWILIO_BINDING } from "./twilio.ts";
 import { SHOPIFY_BINDING } from "./shopify.ts";
@@ -494,12 +494,111 @@ const MATRIX = [
     }
   }
 ];
+const PAGI = [
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_customers",
+    "args": {
+      "limit": 10
+    },
+    "body": {
+      "data": [
+        {
+          "id": "cus_A"
+        },
+        {
+          "id": "cus_LAST"
+        }
+      ],
+      "has_more": true
+    },
+    "headers": {}
+  },
+  {
+    "connector": "stripe",
+    "cred": "sk_test_FAKE",
+    "action": "list_charges",
+    "args": {
+      "customer": "cus_1",
+      "limit": 10
+    },
+    "body": {
+      "data": [
+        {
+          "id": "ch_LAST"
+        }
+      ],
+      "has_more": true
+    },
+    "headers": {}
+  },
+  {
+    "connector": "airtable",
+    "cred": "patTESTtoken",
+    "action": "list_records",
+    "args": {
+      "base_id": "appABC",
+      "table_name": "Contacts",
+      "fields": [
+        "Name"
+      ],
+      "limit": 50
+    },
+    "body": {
+      "records": [
+        {
+          "id": "rec1"
+        }
+      ],
+      "offset": "OFFTOK123"
+    },
+    "headers": {}
+  },
+  {
+    "connector": "twilio",
+    "cred": "ACxxxxsid:secrettoken",
+    "action": "list_messages",
+    "args": {
+      "to": "+15551112222",
+      "limit": 25
+    },
+    "body": {
+      "messages": [],
+      "next_page_uri": "/2010-04-01/Accounts/ACxxxxsid/Messages.json?PageSize=25&Page=1&PageToken=PAxyz"
+    },
+    "headers": {}
+  },
+  {
+    "connector": "shopify",
+    "cred": "shpat_abc123:mystore",
+    "action": "list_products",
+    "args": {
+      "limit": 50
+    },
+    "body": {
+      "products": []
+    },
+    "headers": {
+      "link": "<https://mystore.myshopify.com/admin/api/2024-01/products.json?limit=50&page_info=CURSOR456>; rel=\"next\""
+    }
+  }
+];
+
+function emit(kind: string, connector: string, action: string, r: BuiltRequest | null) {
+  if (!r) { console.log(JSON.stringify({ kind, connector, action, none: true })); return; }
+  console.log(JSON.stringify({
+    kind, connector, action, method: r.method, host: r.host, path: r.path,
+    query: r.query, body: r.body, contentType: r.contentType, auth: r.auth,
+  }));
+}
 
 for (const m of MATRIX) {
-  const r = buildRequest(B[m.connector], m.action, m.args as Record<string, unknown>, m.cred);
-  console.log(JSON.stringify({
-    connector: m.connector, action: m.action, method: r.method,
-    host: r.host, path: r.path, query: r.query, body: r.body,
-    contentType: r.contentType, auth: r.auth,
-  }));
+  emit("first", m.connector, m.action,
+       buildRequest(B[m.connector], m.action, m.args as Record<string, unknown>, m.cred));
+}
+for (const m of PAGI) {
+  emit("next", m.connector, m.action, nextRequest(
+    B[m.connector], m.action, m.args as Record<string, unknown>, m.cred,
+    m.body as Record<string, unknown>, m.headers as Record<string, string>));
 }

@@ -189,3 +189,87 @@ export async function execute(
   const a = conn.actions[actionName];
   return a.unwrap ? data[a.unwrap] : data;
 }
+
+// ---- Pagination: compute the next-page request (mirrors executor.py::next_request) ----
+const LINK_RE = /<([^>]+)>;\s*rel="?(\w+)"?/g;
+const PAGE_INFO_RE = /[?&]page_info=([^&>]+)/;
+
+function parseLinkNext(linkHeader: string | undefined, rel: string): string | null {
+  if (!linkHeader) return null;
+  for (const m of linkHeader.matchAll(LINK_RE)) {
+    if (m[2] === rel) { const pm = PAGE_INFO_RE.exec(m[1]); if (pm) return pm[1]; }
+  }
+  return null;
+}
+
+export function nextRequest(
+  conn: ConnectorB, actionName: string, prevArgs: Record<string, unknown>, credential: string,
+  body?: Record<string, unknown>, headers?: Record<string, string>,
+): BuiltRequest | null {
+  const action = conn.actions[actionName];
+  const ep = conn.endpoints[action.endpoint];
+  const pg = action.pagination;
+  if (!pg) return null;
+  const b = body ?? {}; const h = headers ?? {};
+  const carried = (): Record<string, unknown> =>
+    pg.carry == null
+      ? { ...prevArgs }
+      : Object.fromEntries(pg.carry.filter((k) => k in prevArgs).map((k) => [k, prevArgs[k]]));
+
+  if (pg.kind === "follow_url") {
+    const uri = pg.tokenField ? b[pg.tokenField] : null;
+    if (!uri) return null;
+    const ctx = deriveCtx(conn, credential);
+    const url = new URL(String(uri), fmt(ep.baseUrl, ctx)).toString();
+    const hh: Record<string, string> = { ...(ep.extraHeaders ?? {}) };
+    const authCred = ep.authCredCtx ? ctx[ep.authCredCtx] ?? "" : credential;
+    const auth = applyAuth(hh, ep, authCred);
+    const u = new URL(url);
+    return {
+      method: "GET", url, scheme: u.protocol.replace(":", ""), host: u.host, path: u.pathname,
+      query: [...u.searchParams.entries()] as [string, string][], body: null, contentType: null,
+      headers: hh, auth,
+    };
+  }
+  if (pg.kind === "offset_token") {
+    const cursor = pg.tokenField ? b[pg.tokenField] : null;
+    if (cursor == null) return null;
+    const n = carried(); n[pg.tokenParamPy as string] = cursor;
+    return buildRequest(conn, actionName, n, credential);
+  }
+  if (pg.kind === "last_id") {
+    const items = (pg.itemsField ? b[pg.itemsField] : []) as Record<string, unknown>[];
+    if (!b[pg.hasMoreField ?? "has_more"] || !items || items.length === 0) return null;
+    const cursor = items[items.length - 1][pg.idField ?? "id"];
+    if (cursor == null) return null;
+    const n = carried(); n[pg.tokenParamPy as string] = cursor;
+    return buildRequest(conn, actionName, n, credential);
+  }
+  if (pg.kind === "link_header") {
+    const cursor = parseLinkNext(h["link"], pg.linkRel ?? "next");
+    if (!cursor) return null;
+    const n = carried(); n[pg.tokenParamPy as string] = cursor;
+    return buildRequest(conn, actionName, n, credential);
+  }
+  return null;
+}
+
+// Async paginator: walks every page, yielding each item. The usable surface
+// on top of nextRequest — `for await (const it of paginate(...)) {}`.
+export async function* paginate(
+  conn: ConnectorB, actionName: string, args: Record<string, unknown>, credential: string,
+): AsyncGenerator<unknown> {
+  const a = conn.actions[actionName];
+  let req: BuiltRequest | null = buildRequest(conn, actionName, args, credential);
+  while (req) {
+    const qs = req.query.length
+      ? "?" + req.query.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&")
+      : "";
+    const resp = await fetch(req.url + qs, { method: req.method, headers: req.headers, body: req.body ?? undefined });
+    const data = (await resp.json()) as Record<string, unknown>;
+    const items = (a.unwrap ? data[a.unwrap] : data) as unknown[];
+    for (const it of items ?? []) yield it;
+    req = nextRequest(conn, actionName, args, credential, data,
+                      Object.fromEntries(resp.headers.entries()));
+  }
+}
