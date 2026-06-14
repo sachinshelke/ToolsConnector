@@ -97,6 +97,10 @@ def _pg(pg) -> dict:
         d["tokenParamPy"] = pg.token_param_py
     if pg.link_rel != "next":
         d["linkRel"] = pg.link_rel
+    if getattr(pg, "id_field", "id") != "id":
+        d["idField"] = pg.id_field
+    if getattr(pg, "has_more_field", "has_more") != "has_more":
+        d["hasMoreField"] = pg.has_more_field
     if pg.carry is not None:
         d["carry"] = pg.carry
     return d
@@ -123,6 +127,8 @@ def binding_literal(c) -> dict:
          "actions": {k: _action(v) for k, v in c.actions.items()}}
     if c.ctx_vars:
         d["ctxVars"] = [{"name": cv.name, "source": cv.source} for cv in c.ctx_vars]
+    if getattr(c, "escape_hatches", None):
+        d["escapeHatches"] = list(c.escape_hatches)
     return d
 
 
@@ -150,9 +156,14 @@ def emit_connector(c) -> str:
         lines.append("}")
         lines.append("")
     # client class
+    ov_type = "Record<string, (cred: string, args: Record<string, unknown>) => Promise<unknown>>"
     lines.append(f"export class {pascal(c.name)} {{")
     lines.append("  credential: string;")
-    lines.append("  constructor(credential: string) { this.credential = credential; }")
+    lines.append(f"  overrides: {ov_type};")
+    lines.append(
+        f"  constructor(credential: string, opts?: {{ overrides?: {ov_type} }}) {{ "
+        "this.credential = credential; this.overrides = opts?.overrides ?? {}; }"
+    )
     for a in c.actions.values():
         lines.append(f"  /** {a.method} {a.path} */")
         lines.append(
@@ -162,6 +173,18 @@ def emit_connector(c) -> str:
             f'    return execute({const}, "{a.name}", '
             f"args as unknown as Record<string, unknown>, this.credential);"
         )
+        lines.append("  }")
+    # Escape-hatch actions: present in the typed surface, delegated to a
+    # per-language hand-written override (the honest <2.7%).
+    for name in getattr(c, "escape_hatches", []):
+        lines.append(f"  /** ESCAPE HATCH — provide via new {pascal(c.name)}(cred, {{ overrides }}). */")
+        lines.append(f"  async {camel(name)}(args: Record<string, unknown>): Promise<unknown> {{")
+        lines.append(f'    const fn = this.overrides["{name}"];')
+        lines.append(
+            f'    if (!fn) throw new Error("{c.name}.{name} is an escape-hatch action; '
+            f'pass an override");'
+        )
+        lines.append("    return fn(this.credential, args);")
         lines.append("  }")
     lines.append("}")
     lines.append("")
@@ -202,9 +225,9 @@ RUNTIME_TS = r'''// runtime.ts — ToolsConnector TS runtime (per-language core,
 // Mirrors experiments/sdk_spike/executor.py exactly. No Node-only globals (uses fetch/URL/btoa).
 
 export type Loc = "path" | "query" | "header" | "body";
-export type Style = "simple" | "indexed" | "indexed_object" | "bracket" | "form_explode";
+export type Style = "simple" | "indexed" | "indexed_object" | "bracket" | "form_explode" | "map";
 export type AuthKind = "bearer" | "header_key" | "basic_split" | "basic_user";
-export type PgKind = "offset_token" | "link_header" | "follow_url";
+export type PgKind = "offset_token" | "link_header" | "follow_url" | "last_id";
 
 export interface ParamB {
   name: string; wire: string; location: Loc; style?: Style; required?: boolean;
@@ -213,7 +236,8 @@ export interface ParamB {
 }
 export interface PgB {
   kind: PgKind; itemsField?: string; tokenField?: string;
-  tokenParamPy?: string; linkRel?: string; carry?: string[];
+  tokenParamPy?: string; linkRel?: string; idField?: string; hasMoreField?: string;
+  carry?: string[];
 }
 export interface EndpointB {
   id: string; baseUrl: string; encoding: "json" | "form"; authKind: AuthKind;
@@ -226,7 +250,7 @@ export interface ActionB {
 export interface CtxVar { name: string; source: string; }
 export interface ConnectorB {
   name: string; endpoints: Record<string, EndpointB>; defaultEndpoint: string;
-  ctxVars?: CtxVar[]; actions: Record<string, ActionB>;
+  ctxVars?: CtxVar[]; actions: Record<string, ActionB>; escapeHatches?: string[];
 }
 export interface BuiltRequest {
   method: string; url: string; scheme: string; host: string; path: string;
@@ -284,6 +308,9 @@ function styledPairs(p: ParamB, v: unknown): [string, string][] {
   }
   if (style === "form_explode")
     return (v as unknown[]).map((it) => [p.wire, String(it)] as [string, string]);
+  if (style === "map")
+    return Object.entries(v as Record<string, unknown>).map(
+      ([k, val]) => [`${p.wire}[${k}]`, String(val)] as [string, string]);
   return [[p.wire, String(clamp(v, p.max))]];  // simple
 }
 

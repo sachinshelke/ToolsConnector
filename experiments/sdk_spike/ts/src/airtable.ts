@@ -210,7 +210,8 @@ export interface GetBaseSchemaArgs {
 
 export class Airtable {
   credential: string;
-  constructor(credential: string) { this.credential = credential; }
+  overrides: Record<string, (cred: string, args: Record<string, unknown>) => Promise<unknown>>;
+  constructor(credential: string, opts?: { overrides?: Record<string, (cred: string, args: Record<string, unknown>) => Promise<unknown>> }) { this.credential = credential; this.overrides = opts?.overrides ?? {}; }
   /** GET /{base_id}/{table_name} */
   async listRecords(args: ListRecordsArgs): Promise<unknown> {
     return execute(AIRTABLE_BINDING, "list_records", args as unknown as Record<string, unknown>, this.credential);

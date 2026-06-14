@@ -49,6 +49,7 @@ class Style(str, Enum):
     INDEXED_OBJECT = "indexed_object"  # k[0][sub]=v&k[1][sub]=v  (Airtable sort[i][field])
     BRACKET = "bracket"                # k[]=a&k[]=b              (Airtable records[] batch)
     FORM_EXPLODE = "form_explode"      # repeated k=a&k=b (no index)
+    MAP = "map"                        # k[sub]=v per dict entry  (Stripe metadata[key]=value)
 
 
 class ParamBinding(BaseModel):
@@ -90,6 +91,7 @@ class PaginationKind(str, Enum):
     OFFSET_TOKEN = "offset_token"  # cursor in a body field -> re-injected as a query param
     LINK_HEADER = "link_header"    # parse Link rel=next, extract page_info -> query param
     FOLLOW_URL = "follow_url"      # a body field IS the next request URL; GET it directly
+    LAST_ID = "last_id"            # cursor = items[-1][id_field], guarded by has_more (Stripe)
 
 
 class PaginationBinding(BaseModel):
@@ -101,9 +103,13 @@ class PaginationBinding(BaseModel):
     )
     token_param_py: Optional[str] = Field(
         default=None,
-        description="Python arg name the cursor is fed into on the next call (OFFSET_TOKEN/LINK_HEADER).",
+        description="Python arg name the cursor is fed into on the next call (OFFSET_TOKEN/LINK_HEADER/LAST_ID).",
     )
     link_rel: str = "next"
+    # LAST_ID: the cursor is the id of the last element of items_field, sent only
+    # while has_more_field is truthy (Stripe: data[-1].id, has_more).
+    id_field: str = "id"
+    has_more_field: str = "has_more"
     carry: Optional[list[str]] = Field(
         default=None,
         description="Python arg names carried to the next page. None = carry ALL previous args.",
@@ -164,3 +170,9 @@ class ConnectorBinding(BaseModel):
     default_endpoint: str
     ctx_vars: list[ContextVar] = Field(default_factory=list)
     actions: dict[str, ActionBinding] = Field(default_factory=dict)
+    escape_hatches: list[str] = Field(
+        default_factory=list,
+        description="Action names that resist declarative binding (e.g. method varies by "
+        "arg value) — generated as typed methods delegating to a per-language override, so "
+        "the SDK surface stays complete. The honest <2.7% (e.g. stripe.cancel_subscription).",
+    )

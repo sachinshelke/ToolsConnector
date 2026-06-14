@@ -56,7 +56,8 @@ MATRIX = {
     "stripe": ("sk_test_FAKE", [
         ("list_customers", dict(limit=10)),
         ("get_customer", dict(customer_id="cus_1")),
-        ("create_customer", dict(email="a@example.com", name="Alice", description="d")),
+        ("create_customer", dict(email="a@example.com", name="Alice", description="d",
+                                 metadata={"plan": "pro", "ref": "abc"})),  # MAP style
         ("update_customer", dict(customer_id="cus_1", name="New", email="b@example.com")),
         ("delete_customer", dict(customer_id="cus_1")),
         ("list_charges", dict(customer="cus_1", limit=10)),
@@ -80,7 +81,7 @@ MATRIX = {
         ("create_subscription", dict(customer="cus_1", price="price_1", trial_days=7)),
         ("list_subscriptions", dict(customer="cus_1", status="all", limit=10)),
         ("get_subscription", dict(subscription_id="sub_1")),
-        ("create_product", dict(name="Widget", description="x")),
+        ("create_product", dict(name="Widget", description="x", metadata={"sku": "X1"})),
         ("list_products", dict(limit=10)),
         ("create_price", dict(product="prod_1", unit_amount=999, currency="usd",
                               recurring_interval="month")),
@@ -105,6 +106,14 @@ MATRIX = {
 # Pagination "next request" parity:
 # (connector, cred, action, first_args, response_body, response_headers)
 PAGI = [
+    # Stripe LAST_ID cursor: next starting_after = id of the last data item.
+    ("stripe", "sk_test_FAKE", "list_customers",
+     dict(limit=10),
+     {"data": [{"id": "cus_A"}, {"id": "cus_LAST"}], "has_more": True}, {}),
+    ("stripe", "sk_test_FAKE", "list_charges",
+     dict(customer="cus_1", limit=10),
+     {"data": [{"id": "ch_LAST"}], "has_more": True}, {}),
+    # has_more=False -> no next page (stop).
     ("airtable", "patTESTtoken", "list_records",
      dict(base_id="appABC", table_name="Contacts", fields=["Name"], limit=50),
      {"records": [{"id": "rec1"}], "offset": "OFFTOK123"}, {}),

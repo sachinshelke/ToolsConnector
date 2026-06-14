@@ -34,7 +34,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "get_customer": {
       "name": "get_customer",
@@ -69,6 +74,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "name": "description",
           "wire": "description",
           "location": "body"
+        },
+        {
+          "name": "metadata",
+          "wire": "metadata",
+          "location": "body",
+          "style": "map"
         }
       ]
     },
@@ -97,6 +108,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "name": "description",
           "wire": "description",
           "location": "body"
+        },
+        {
+          "name": "metadata",
+          "wire": "metadata",
+          "location": "body",
+          "style": "map"
         }
       ]
     },
@@ -137,7 +154,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "get_charge": {
       "name": "get_charge",
@@ -182,6 +204,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "name": "description",
           "wire": "description",
           "location": "body"
+        },
+        {
+          "name": "metadata",
+          "wire": "metadata",
+          "location": "body",
+          "style": "map"
         }
       ]
     },
@@ -232,7 +260,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "create_payment_intent": {
       "name": "create_payment_intent",
@@ -315,7 +348,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "confirm_payment_intent": {
       "name": "confirm_payment_intent",
@@ -395,7 +433,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "get_invoice": {
       "name": "get_invoice",
@@ -482,7 +525,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "get_subscription": {
       "name": "get_subscription",
@@ -512,6 +560,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "name": "description",
           "wire": "description",
           "location": "body"
+        },
+        {
+          "name": "metadata",
+          "wire": "metadata",
+          "location": "body",
+          "style": "map"
         }
       ]
     },
@@ -534,7 +588,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "create_price": {
       "name": "create_price",
@@ -588,7 +647,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "create_checkout_session": {
       "name": "create_checkout_session",
@@ -655,7 +719,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "list_disputes": {
       "name": "list_disputes",
@@ -676,7 +745,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "get_dispute": {
       "name": "get_dispute",
@@ -723,7 +797,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "create_payout": {
       "name": "create_payout",
@@ -780,7 +859,12 @@ export const STRIPE_BINDING: ConnectorB = {
           "location": "query"
         }
       ],
-      "unwrap": "data"
+      "unwrap": "data",
+      "pagination": {
+        "kind": "last_id",
+        "itemsField": "data",
+        "tokenParamPy": "starting_after"
+      }
     },
     "get_event": {
       "name": "get_event",
@@ -827,7 +911,10 @@ export const STRIPE_BINDING: ConnectorB = {
         }
       ]
     }
-  }
+  },
+  "escapeHatches": [
+    "cancel_subscription"
+  ]
 };
 
 export interface ListCustomersArgs {
@@ -843,6 +930,7 @@ export interface CreateCustomerArgs {
   email?: string;
   name?: string;
   description?: string;
+  metadata?: string;
 }
 
 export interface UpdateCustomerArgs {
@@ -850,6 +938,7 @@ export interface UpdateCustomerArgs {
   email?: string;
   name?: string;
   description?: string;
+  metadata?: string;
 }
 
 export interface DeleteCustomerArgs {
@@ -872,6 +961,7 @@ export interface CreateChargeArgs {
   customer?: string;
   source?: string;
   description?: string;
+  metadata?: string;
 }
 
 export interface RefundChargeArgs {
@@ -958,6 +1048,7 @@ export interface GetSubscriptionArgs {
 export interface CreateProductArgs {
   name?: string;
   description?: string;
+  metadata?: string;
 }
 
 export interface ListProductsArgs {
@@ -1040,7 +1131,8 @@ export interface GetSetupIntentArgs {
 
 export class Stripe {
   credential: string;
-  constructor(credential: string) { this.credential = credential; }
+  overrides: Record<string, (cred: string, args: Record<string, unknown>) => Promise<unknown>>;
+  constructor(credential: string, opts?: { overrides?: Record<string, (cred: string, args: Record<string, unknown>) => Promise<unknown>> }) { this.credential = credential; this.overrides = opts?.overrides ?? {}; }
   /** GET /customers */
   async listCustomers(args: ListCustomersArgs): Promise<unknown> {
     return execute(STRIPE_BINDING, "list_customers", args as unknown as Record<string, unknown>, this.credential);
@@ -1196,5 +1288,11 @@ export class Stripe {
   /** GET /setup_intents/{setup_intent_id} */
   async getSetupIntent(args: GetSetupIntentArgs): Promise<unknown> {
     return execute(STRIPE_BINDING, "get_setup_intent", args as unknown as Record<string, unknown>, this.credential);
+  }
+  /** ESCAPE HATCH — provide via new Stripe(cred, { overrides }). */
+  async cancelSubscription(args: Record<string, unknown>): Promise<unknown> {
+    const fn = this.overrides["cancel_subscription"];
+    if (!fn) throw new Error("stripe.cancel_subscription is an escape-hatch action; pass an override");
+    return fn(this.credential, args);
   }
 }

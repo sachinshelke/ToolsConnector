@@ -152,7 +152,11 @@ const MATRIX = [
     "args": {
       "email": "a@example.com",
       "name": "Alice",
-      "description": "d"
+      "description": "d",
+      "metadata": {
+        "plan": "pro",
+        "ref": "abc"
+      }
     }
   },
   {
@@ -344,7 +348,10 @@ const MATRIX = [
     "action": "create_product",
     "args": {
       "name": "Widget",
-      "description": "x"
+      "description": "x",
+      "metadata": {
+        "sku": "X1"
+      }
     }
   },
   {

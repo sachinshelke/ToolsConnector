@@ -116,7 +116,8 @@ export interface CreateVerifyServiceArgs {
 
 export class Twilio {
   credential: string;
-  constructor(credential: string) { this.credential = credential; }
+  overrides: Record<string, (cred: string, args: Record<string, unknown>) => Promise<unknown>>;
+  constructor(credential: string, opts?: { overrides?: Record<string, (cred: string, args: Record<string, unknown>) => Promise<unknown>> }) { this.credential = credential; this.overrides = opts?.overrides ?? {}; }
   /** POST /Accounts/{account_sid}/Messages.json */
   async sendSms(args: SendSmsArgs): Promise<unknown> {
     return execute(TWILIO_BINDING, "send_sms", args as unknown as Record<string, unknown>, this.credential);

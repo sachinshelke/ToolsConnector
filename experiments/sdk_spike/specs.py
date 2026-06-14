@@ -221,7 +221,8 @@ SHOPIFY = ConnectorBinding(
 # dict) is intentionally omitted — that's a separate vocab item, not bound here.
 # ---------------------------------------------------------------------------
 def _list(name, *extra_filters):
-    """A standard Stripe list action: GET /{name}?limit&starting_after[&filters]."""
+    """A standard Stripe list action: GET /{name}?limit&starting_after[&filters],
+    with cursor pagination (next starting_after = id of the last item, while has_more)."""
     return ActionBinding(
         name=f"list_{name}", method="GET", endpoint="main",
         path=f"/{name}", unwrap="data",
@@ -230,7 +231,13 @@ def _list(name, *extra_filters):
             _p("limit", "limit", Location.QUERY, max=100, default=10),
             _p("starting_after", "starting_after", Location.QUERY),
         ],
+        pagination=PaginationBinding(
+            kind=PaginationKind.LAST_ID, items_field="data", token_param_py="starting_after",
+        ),
     )
+
+
+_META = _p("metadata", "metadata", Location.BODY, style=Style.MAP)  # metadata[k]=v
 
 
 STRIPE = ConnectorBinding(
@@ -256,6 +263,7 @@ STRIPE = ConnectorBinding(
                 _p("email", "email", Location.BODY),
                 _p("name", "name", Location.BODY),
                 _p("description", "description", Location.BODY),
+                _META,
             ],
         ),
         "update_customer": ActionBinding(
@@ -266,6 +274,7 @@ STRIPE = ConnectorBinding(
                 _p("email", "email", Location.BODY),
                 _p("name", "name", Location.BODY),
                 _p("description", "description", Location.BODY),
+                _META,
             ],
         ),
         "delete_customer": ActionBinding(
@@ -288,6 +297,7 @@ STRIPE = ConnectorBinding(
                 _p("customer", "customer", Location.BODY),
                 _p("source", "source", Location.BODY),
                 _p("description", "description", Location.BODY),
+                _META,
             ],
         ),
         # ---- Refunds ----
@@ -385,6 +395,7 @@ STRIPE = ConnectorBinding(
             params=[
                 _p("name", "name", Location.BODY),
                 _p("description", "description", Location.BODY),
+                _META,
             ],
         ),
         "list_products": _list("products"),
@@ -421,6 +432,9 @@ STRIPE = ConnectorBinding(
                 _p("limit", "limit", Location.QUERY, max=100, default=10),
                 _p("starting_after", "starting_after", Location.QUERY),
             ],
+            pagination=PaginationBinding(
+                kind=PaginationKind.LAST_ID, items_field="data", token_param_py="starting_after",
+            ),
         ),
         # ---- Disputes ----
         "list_disputes": _list("disputes"),
@@ -471,6 +485,10 @@ STRIPE = ConnectorBinding(
             params=[_p("setup_intent_id", "setup_intent_id", Location.PATH)],
         ),
     },
+    # cancel_subscription: HTTP method switches POST (cancel_at_period_end) <->
+    # DELETE (immediate) on an arg — generated as a typed method delegating to a
+    # per-language override, so the SDK surface includes all 40 actions.
+    escape_hatches=["cancel_subscription"],
 )
 
 

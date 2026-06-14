@@ -3,9 +3,9 @@
 // Mirrors experiments/sdk_spike/executor.py exactly. No Node-only globals (uses fetch/URL/btoa).
 
 export type Loc = "path" | "query" | "header" | "body";
-export type Style = "simple" | "indexed" | "indexed_object" | "bracket" | "form_explode";
+export type Style = "simple" | "indexed" | "indexed_object" | "bracket" | "form_explode" | "map";
 export type AuthKind = "bearer" | "header_key" | "basic_split" | "basic_user";
-export type PgKind = "offset_token" | "link_header" | "follow_url";
+export type PgKind = "offset_token" | "link_header" | "follow_url" | "last_id";
 
 export interface ParamB {
   name: string; wire: string; location: Loc; style?: Style; required?: boolean;
@@ -14,7 +14,8 @@ export interface ParamB {
 }
 export interface PgB {
   kind: PgKind; itemsField?: string; tokenField?: string;
-  tokenParamPy?: string; linkRel?: string; carry?: string[];
+  tokenParamPy?: string; linkRel?: string; idField?: string; hasMoreField?: string;
+  carry?: string[];
 }
 export interface EndpointB {
   id: string; baseUrl: string; encoding: "json" | "form"; authKind: AuthKind;
@@ -27,7 +28,7 @@ export interface ActionB {
 export interface CtxVar { name: string; source: string; }
 export interface ConnectorB {
   name: string; endpoints: Record<string, EndpointB>; defaultEndpoint: string;
-  ctxVars?: CtxVar[]; actions: Record<string, ActionB>;
+  ctxVars?: CtxVar[]; actions: Record<string, ActionB>; escapeHatches?: string[];
 }
 export interface BuiltRequest {
   method: string; url: string; scheme: string; host: string; path: string;
@@ -85,6 +86,9 @@ function styledPairs(p: ParamB, v: unknown): [string, string][] {
   }
   if (style === "form_explode")
     return (v as unknown[]).map((it) => [p.wire, String(it)] as [string, string]);
+  if (style === "map")
+    return Object.entries(v as Record<string, unknown>).map(
+      ([k, val]) => [`${p.wire}[${k}]`, String(val)] as [string, string]);
   return [[p.wire, String(clamp(v, p.max))]];  // simple
 }
 

@@ -110,6 +110,8 @@ def _styled_pairs(p: ParamBinding, v: Any) -> list[tuple[str, str]]:
         return [(f"{p.wire}[]", str(item)) for item in seq]
     if p.style == Style.FORM_EXPLODE:
         return [(p.wire, str(item)) for item in v]
+    if p.style == Style.MAP:
+        return [(f"{p.wire}[{k}]", str(val)) for k, val in v.items()]
     # SIMPLE (default)
     return [(p.wire, str(_clamp(v, p.max)))]
 
@@ -239,6 +241,19 @@ def next_request(
 
     if pg.kind == PaginationKind.OFFSET_TOKEN:
         cursor = body.get(pg.token_field) if pg.token_field else None
+        if cursor is None:
+            return None
+        nargs = dict(prev_args) if pg.carry is None else {k: prev_args[k] for k in pg.carry if k in prev_args}
+        nargs[pg.token_param_py] = cursor
+        return build_request(conn, action_name, nargs, credential)
+
+    if pg.kind == PaginationKind.LAST_ID:
+        # Stripe: next cursor is the id of the last item, sent as starting_after,
+        # but only while has_more is truthy.
+        items = body.get(pg.items_field, []) if pg.items_field else []
+        if not (body.get(pg.has_more_field, False) and items):
+            return None
+        cursor = items[-1].get(pg.id_field)
         if cursor is None:
             return None
         nargs = dict(prev_args) if pg.carry is None else {k: prev_args[k] for k in pg.carry if k in prev_args}
