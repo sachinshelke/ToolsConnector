@@ -168,13 +168,19 @@ def build_request(
     ep = conn.endpoints[action.endpoint]
     ctx = derive_ctx(conn, credential)
 
-    # 1) path: substitute {ctx} + {path params}
+    # 1) path: pick the conditional variant (first present-arg wins), then
+    #    substitute {ctx} + {path params}
     subst: dict[str, Any] = dict(ctx)
     for p in action.params:
         if p.location == Location.PATH:
             subst[p.wire] = args.get(p.name, p.default)
+    chosen_path = action.path
+    for pv in action.path_variants:
+        if args.get(pv.when_present):  # truthy, matching the connector's `if org:`
+            chosen_path = pv.path
+            break
     base = ep.base_url.format(**ctx)
-    path = action.path.format(**subst)
+    path = chosen_path.format(**subst)
     url_str = base.rstrip("/") + "/" + path.lstrip("/")
 
     # 2) query
@@ -211,6 +217,16 @@ def _parse_link_next(link_header: Optional[str], rel: str) -> Optional[str]:
             m = _PAGE_INFO_RE.search(url)
             if m:
                 return m.group(1)
+    return None
+
+
+def _parse_link_rel(link_header: Optional[str], rel: str) -> Optional[str]:
+    """Return the FULL url for a Link rel (GitHub follows it directly)."""
+    if not link_header:
+        return None
+    for url, r in _LINK_RE.findall(link_header):
+        if r == rel:
+            return url
     return None
 
 
@@ -267,5 +283,15 @@ def next_request(
         nargs = dict(prev_args) if pg.carry is None else {k: prev_args[k] for k in pg.carry if k in prev_args}
         nargs[pg.token_param_py] = cursor
         return build_request(conn, action_name, nargs, credential)
+
+    if pg.kind == PaginationKind.LINK_FOLLOW:
+        # GitHub: the Link rel=next URL is absolute and already carries every
+        # query param; GET it directly with the connector's standard headers.
+        next_url = _parse_link_rel(headers.get("link"), pg.link_rel)
+        if not next_url:
+            return None
+        h = dict(ep.extra_headers)
+        _apply_auth(h, ep, _auth_cred(ep, credential, ctx))
+        return httpx.Request("GET", next_url, headers=h)
 
     return None

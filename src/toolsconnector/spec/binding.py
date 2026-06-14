@@ -94,6 +94,9 @@ class PaginationKind(str, Enum):
     NONE = "none"
     OFFSET_TOKEN = "offset_token"  # cursor in a body field -> re-injected as a query param
     LINK_HEADER = "link_header"  # parse Link rel=next, extract page_info -> query param
+    LINK_FOLLOW = (
+        "link_follow"  # parse Link rel=next; the rel URL IS the next request, GET it (GitHub)
+    )
     FOLLOW_URL = "follow_url"  # a body field IS the next request URL; GET it directly
     LAST_ID = "last_id"  # cursor = items[-1][id_field], guarded by has_more (Stripe)
 
@@ -147,13 +150,30 @@ class EndpointBinding(BaseModel):
     extra_headers: dict[str, str] = Field(default_factory=dict)
 
 
+class PathVariant(BaseModel):
+    """A conditional path chosen when a given arg is present.
+
+    Some endpoints route to different paths depending on which optional arg the
+    caller supplied (GitHub list_repos: /orgs/{org}/repos vs /users/{user}/repos
+    vs /user/repos). The first variant whose ``when_present`` arg is truthy wins;
+    otherwise the action's default ``path`` is used.
+    """
+
+    when_present: str = Field(description="Python arg name; pick this path when it is truthy.")
+    path: str
+
+
 class ActionBinding(BaseModel):
     """The declarative HTTP binding for one action (attached to its ActionSpec)."""
 
     name: str
     method: str
     endpoint: str = Field(description="Endpoint id this action targets.")
-    path: str = Field(description="Path template with {ctx} and {path-param} placeholders.")
+    path: str = Field(description="Default path template with {ctx} and {path-param} placeholders.")
+    path_variants: list[PathVariant] = Field(
+        default_factory=list,
+        description="Conditional paths; first whose `when_present` arg is truthy wins, else `path`.",
+    )
     params: list[ParamBinding] = Field(default_factory=list)
     body_wrap: Optional[str] = Field(
         default=None, description="Wrap the whole JSON body under one key (Shopify 'product')."

@@ -25,6 +25,7 @@ from .binding import (
     PaginationBinding,
     PaginationKind,
     ParamBinding,
+    PathVariant,
     Style,
 )
 from .connector import (
@@ -52,6 +53,7 @@ __all__ = [
     "ConnectorBinding",
     "EndpointBinding",
     "ParamBinding",
+    "PathVariant",
     "PaginationBinding",
     "ContextVar",
     "Location",
