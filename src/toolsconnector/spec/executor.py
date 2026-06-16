@@ -84,9 +84,27 @@ def _present(v: Any) -> bool:
     return v is not None
 
 
-def _clamp(v: Any, mx: Optional[int]) -> Any:
-    if mx is not None and isinstance(v, int):
-        return min(v, mx)
+def _coalesce(args: dict[str, Any], p: ParamBinding) -> Any:
+    """Resolve a param value, treating an explicit ``None`` like an omitted arg.
+
+    The MCP / ToolKit dispatch layer passes ``None`` for optional params the
+    caller omitted, bypassing the action method's own signature default. The
+    imperative connectors coalesce that back to the intended default (e.g.
+    ``_clamp_limit(None, default=50)`` -> 50); the executor must too, or a
+    binding-driven call would drop ``page_size`` entirely where the hand-written
+    one always sent it.
+    """
+    raw = args.get(p.name, p.default)
+    return p.default if raw is None else raw
+
+
+def _clamp(v: Any, mn: Optional[int], mx: Optional[int]) -> Any:
+    # `bool` is a subclass of `int`; never clamp a boolean (e.g. archived=True).
+    if isinstance(v, int) and not isinstance(v, bool):
+        if mx is not None:
+            v = min(v, mx)
+        if mn is not None:
+            v = max(v, mn)
     return v
 
 
@@ -116,7 +134,7 @@ def _styled_pairs(p: ParamBinding, v: Any) -> list[tuple[str, str]]:
     if p.style == Style.MAP:
         return [(f"{p.wire}[{k}]", str(val)) for k, val in v.items()]
     # SIMPLE (default)
-    return [(p.wire, str(_clamp(v, p.max)))]
+    return [(p.wire, str(_clamp(v, p.min, p.max)))]
 
 
 def _query_pairs(action: ActionBinding, args: dict[str, Any]) -> list[tuple[str, str]]:
@@ -124,15 +142,41 @@ def _query_pairs(action: ActionBinding, args: dict[str, Any]) -> list[tuple[str,
     for p in action.params:
         if p.location != Location.QUERY:
             continue
-        v = args.get(p.name, p.default)
+        v = _coalesce(args, p)
         if _present(v):
             out.extend(_styled_pairs(p, v))
     return out
 
 
+def _wrap_scalar(p: ParamBinding, v: Any) -> Any:
+    """Apply a named scalar->envelope transform (JSON bodies only)."""
+    if p.wrap == "rich_text":
+        return [{"text": {"content": v}}]
+    if p.wrap == "object":
+        return {p.wrap_key: v}
+    if p.item_wrap:
+        seq = v[: p.max_items] if p.max_items else v
+        return [{p.item_wrap: elem} for elem in seq]
+    return v
+
+
+def _dumps(obj: Any) -> bytes:
+    # ensure_ascii=False + compact separators match httpx's native json= encoding
+    # byte-for-byte — critical for non-ASCII bodies (page titles, comment text).
+    return _json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode()
+
+
 def _build_body(
     action: ActionBinding, encoding: str, args: dict[str, Any]
 ) -> tuple[Optional[bytes], Optional[str]]:
+    # Pass-through: the whole JSON body IS one caller-supplied param (Notion
+    # update_block content). Verbatim — no key placement, no wrapping.
+    if action.raw_body_param:
+        v = args.get(action.raw_body_param)
+        if v is None:
+            return None, None
+        return _dumps(v), "application/json"
+
     body_params = [p for p in action.params if p.location == Location.BODY]
     if not body_params:
         return None, None
@@ -140,7 +184,7 @@ def _build_body(
     if encoding == "form":
         pairs: list[tuple[str, str]] = []
         for p in body_params:
-            v = args.get(p.name, p.default)
+            v = _coalesce(args, p)
             if _present(v):
                 pairs.extend(_styled_pairs(p, v))
         return urlencode(pairs).encode(), "application/x-www-form-urlencoded"
@@ -148,16 +192,15 @@ def _build_body(
     # JSON
     obj: dict[str, Any] = {}
     for p in body_params:
-        v = args.get(p.name, p.default)
+        v = _coalesce(args, p)
         if not _present(v):
             continue
-        if p.item_wrap:
-            seq = v[: p.max_items] if p.max_items else v
-            v = [{p.item_wrap: elem} for elem in seq]
+        v = _clamp(v, p.min, p.max)
+        v = _wrap_scalar(p, v)
         obj[p.body_key or p.wire] = v
     if action.body_wrap:
         obj = {action.body_wrap: obj}
-    return _json.dumps(obj, separators=(",", ":")).encode(), "application/json"
+    return _dumps(obj), "application/json"
 
 
 # ----------------------------------------------------------------------------
@@ -205,7 +248,7 @@ def build_request(
     headers: dict[str, str] = dict(ep.extra_headers)
     for p in action.params:
         if p.location == Location.HEADER:
-            v = args.get(p.name, p.default)
+            v = _coalesce(args, p)
             if _present(v):
                 headers[p.wire] = str(v)
     _apply_auth(headers, ep, _auth_cred(ep, credential, ctx))

@@ -85,7 +85,22 @@ class ParamBinding(BaseModel):
         description="Wrap each list element under this key, e.g. records -> [{'fields': elem}].",
     )
 
-    # Bounded transforms (clamps today hand-coded as min(x, N) / x[:N]).
+    # Scalar value-wraps (JSON bodies). A finite, named vocabulary for the
+    # "shape a scalar into the API's envelope" transforms that recur across
+    # connectors — today hand-coded inline in each @action body:
+    #   "rich_text" : x  -> [{"text": {"content": x}}]   (Notion rich-text fields)
+    #   "object"    : x  -> {wrap_key: x}                (Notion parent={"page_id": x})
+    wrap: Optional[str] = Field(
+        default=None,
+        description="Named scalar->envelope transform applied before body placement: "
+        "'rich_text' | 'object'. None = place the value as-is.",
+    )
+    wrap_key: Optional[str] = Field(
+        default=None, description="Key used by the 'object' wrap (e.g. 'page_id')."
+    )
+
+    # Bounded transforms (clamps today hand-coded as max(N, min(x, M)) / x[:N]).
+    min: Optional[int] = Field(default=None, description="Clamp an int value to >= min.")
     max: Optional[int] = Field(default=None, description="Clamp an int value to <= max.")
     max_items: Optional[int] = Field(default=None, description="Send only the first N list items.")
 
@@ -177,6 +192,12 @@ class ActionBinding(BaseModel):
     params: list[ParamBinding] = Field(default_factory=list)
     body_wrap: Optional[str] = Field(
         default=None, description="Wrap the whole JSON body under one key (Shopify 'product')."
+    )
+    raw_body_param: Optional[str] = Field(
+        default=None,
+        description="If set, the entire JSON body IS this param's value, verbatim — for "
+        "pass-through actions where the caller supplies the full payload (Notion update_block "
+        "content). Mutually exclusive with body params / body_wrap.",
     )
     body_encoding: Optional[str] = Field(default=None, description="Override endpoint encoding.")
     unwrap: Optional[str] = Field(default=None, description="Dotted path to extract the result.")
