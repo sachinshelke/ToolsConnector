@@ -35,6 +35,7 @@ from .connector import (
     RateLimitSpec,
 )
 from .errors import ErrorCode, ErrorSpec
+from .executor import build_request, next_request
 from .pagination import PaginationSpec, PaginationStrategyType
 from .types import TypeSpec
 from .version import SPEC_VERSION
@@ -78,4 +79,7 @@ __all__ = [
     "TypeSpec",
     # Version
     "SPEC_VERSION",
+    # Executor (binding-driven request builder)
+    "build_request",
+    "next_request",
 ]
