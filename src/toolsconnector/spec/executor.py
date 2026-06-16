@@ -134,7 +134,20 @@ def _styled_pairs(p: ParamBinding, v: Any) -> list[tuple[str, str]]:
     if p.style == Style.MAP:
         return [(f"{p.wire}[{k}]", str(val)) for k, val in v.items()]
     # SIMPLE (default)
-    return [(p.wire, str(_clamp(v, p.min, p.max)))]
+    return [(p.wire, _scalar_str(_clamp(v, p.min, p.max)))]
+
+
+def _scalar_str(v: Any) -> str:
+    """Wire string for a scalar in a query/form field.
+
+    A Python ``bool`` must serialize to the API-conventional lowercase
+    ``"true"``/``"false"`` — ``str(True)`` is ``"True"``, which most REST APIs
+    reject (Slack ``exclude_archived``, ``include_users``, …). JSON bodies don't
+    go through here (they keep native booleans).
+    """
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    return str(v)
 
 
 def _query_pairs(action: ActionBinding, args: dict[str, Any]) -> list[tuple[str, str]]:
@@ -263,6 +276,22 @@ def build_request(
 # ----------------------------------------------------------------------------
 
 
+def _dig(body: dict[str, Any], path: Optional[str]) -> Any:
+    """Read a possibly-dotted field from a response body.
+
+    ``"next_cursor"`` (Stripe/Notion flat) and ``"response_metadata.next_cursor"``
+    (Slack nested) both resolve here; a single segment is the flat case.
+    """
+    if not path:
+        return None
+    cur: Any = body
+    for part in path.split("."):
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(part)
+    return cur
+
+
 def _parse_link_next(link_header: Optional[str], rel: str) -> Optional[str]:
     if not link_header:
         return None
@@ -310,8 +339,9 @@ def next_request(
         return httpx.Request("GET", url, headers=h)
 
     if pg.kind == PaginationKind.OFFSET_TOKEN:
-        cursor = body.get(pg.token_field) if pg.token_field else None
-        if cursor is None:
+        cursor = _dig(body, pg.token_field)
+        # Slack's empty-string sentinel means "no more pages", same as absent.
+        if cursor is None or cursor == "":
             return None
         nargs = (
             dict(prev_args)

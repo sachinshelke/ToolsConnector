@@ -16,8 +16,10 @@ import httpx
 from toolsconnector.errors import APIError, NotFoundError, RateLimitError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
+from toolsconnector.spec.executor import build_request
 from toolsconnector.types import PageState, PaginatedList
 
+from .binding import SLACK_BINDING
 from .types import (
     Bookmark,
     Channel,
@@ -131,8 +133,16 @@ class Slack(BaseConnector):
             }
 
         response = await self._client.request(method, f"/{endpoint}", **kwargs)
-        body = response.json()
+        return self._check_response(response, endpoint)
 
+    def _check_response(self, response: httpx.Response, endpoint: str) -> dict[str, Any]:
+        """Map a Slack HTTP 200 response to its body, or raise a typed error.
+
+        Slack always returns HTTP 200 with ``{"ok": true/false}``. Shared by
+        ``_request`` (the ``upload_file`` escape hatch) and ``_execute_binding``
+        (the 50 binding-driven actions) so both paths raise identically.
+        """
+        body = response.json()
         if not body.get("ok", False):
             error_code = body.get("error", "unknown_error")
             error_msg = f"Slack API error: {error_code}"
@@ -167,6 +177,19 @@ class Slack(BaseConnector):
             )
 
         return body
+
+    async def _execute_binding(self, action_name: str, args: dict[str, Any]) -> dict[str, Any]:
+        """Build + send a request from the declarative binding, return the body.
+
+        ``build_request`` owns every wire detail (method, path, query/body
+        placement, lowercase query booleans, the auth header). ``send()`` (not
+        ``request()``) is used so the client never re-applies headers the binding
+        already set. See ``binding.py`` for what's declarative vs the single
+        imperative escape hatch (``upload_file``).
+        """
+        request = build_request(SLACK_BINDING, action_name, args, self._credentials or "")
+        response = await self._client.send(request)
+        return self._check_response(response, SLACK_BINDING.actions[action_name].path)
 
     def _parse_user(self, member: dict[str, Any]) -> SlackUser:
         """Parse a Slack user dict into a SlackUser model."""
@@ -210,16 +233,16 @@ class Slack(BaseConnector):
         Returns:
             The sent Message object.
         """
-        payload: dict[str, Any] = {
-            "channel": channel,
-            "text": text,
-            "unfurl_links": unfurl_links,
-            "unfurl_media": unfurl_media,
-        }
-        if thread_ts:
-            payload["thread_ts"] = thread_ts
-
-        body = await self._request("POST", "chat.postMessage", json_body=payload)
+        body = await self._execute_binding(
+            "send_message",
+            {
+                "channel": channel,
+                "text": text,
+                "unfurl_links": unfurl_links,
+                "unfurl_media": unfurl_media,
+                "thread_ts": thread_ts,
+            },
+        )
         msg_data = body.get("message", {})
         msg_data["channel"] = body.get("channel", channel)
         return Message(**msg_data)
@@ -241,10 +264,9 @@ class Slack(BaseConnector):
         Returns:
             The updated Message object.
         """
-        body = await self._request(
-            "POST",
-            "chat.update",
-            json_body={"channel": channel, "ts": ts, "text": text},
+        body = await self._execute_binding(
+            "update_message",
+            {"channel": channel, "ts": ts, "text": text},
         )
         msg_data = body.get("message", {})
         msg_data["channel"] = body.get("channel", channel)
@@ -264,10 +286,9 @@ class Slack(BaseConnector):
             channel: Channel ID containing the message.
             ts: Timestamp (``ts``) of the message to delete.
         """
-        await self._request(
-            "POST",
-            "chat.delete",
-            json_body={"channel": channel, "ts": ts},
+        await self._execute_binding(
+            "delete_message",
+            {"channel": channel, "ts": ts},
         )
 
     @action("Schedule a message for future delivery", dangerous=True)
@@ -289,18 +310,14 @@ class Slack(BaseConnector):
         Returns:
             The ScheduledMessage object with its ID and scheduled time.
         """
-        payload: dict[str, Any] = {
-            "channel": channel,
-            "text": text,
-            "post_at": post_at,
-        }
-        if thread_ts:
-            payload["thread_ts"] = thread_ts
-
-        body = await self._request(
-            "POST",
-            "chat.scheduleMessage",
-            json_body=payload,
+        body = await self._execute_binding(
+            "schedule_message",
+            {
+                "channel": channel,
+                "text": text,
+                "post_at": post_at,
+                "thread_ts": thread_ts,
+            },
         )
         return ScheduledMessage(
             id=body.get("scheduled_message_id", ""),
@@ -327,16 +344,9 @@ class Slack(BaseConnector):
         Returns:
             Paginated list of ScheduledMessage objects.
         """
-        payload: dict[str, Any] = {"limit": min(limit, 100)}
-        if channel:
-            payload["channel"] = channel
-        if cursor:
-            payload["cursor"] = cursor
-
-        body = await self._request(
-            "POST",
-            "chat.scheduledMessages.list",
-            json_body=payload,
+        body = await self._execute_binding(
+            "list_scheduled_messages",
+            {"limit": limit, "channel": channel, "cursor": cursor},
         )
         items = [
             ScheduledMessage(
@@ -370,13 +380,9 @@ class Slack(BaseConnector):
             channel: Channel ID the message was scheduled in.
             scheduled_message_id: The ID of the scheduled message.
         """
-        await self._request(
-            "POST",
-            "chat.deleteScheduledMessage",
-            json_body={
-                "channel": channel,
-                "scheduled_message_id": scheduled_message_id,
-            },
+        await self._execute_binding(
+            "delete_scheduled_message",
+            {"channel": channel, "scheduled_message_id": scheduled_message_id},
         )
 
     @action("Get a permalink URL for a specific message")
@@ -394,10 +400,9 @@ class Slack(BaseConnector):
         Returns:
             The permalink URL string.
         """
-        body = await self._request(
-            "GET",
-            "chat.getPermalink",
-            params={"channel": channel, "message_ts": message_ts},
+        body = await self._execute_binding(
+            "get_permalink",
+            {"channel": channel, "message_ts": message_ts},
         )
         return body.get("permalink", "")
 
@@ -422,15 +427,10 @@ class Slack(BaseConnector):
         Returns:
             Paginated list of Channel objects.
         """
-        params: dict[str, Any] = {
-            "types": "public_channel,private_channel",
-            "limit": min(limit, 1000),
-            "exclude_archived": str(exclude_archived).lower(),
-        }
-        if cursor:
-            params["cursor"] = cursor
-
-        body = await self._request("GET", "conversations.list", params=params)
+        body = await self._execute_binding(
+            "list_channels",
+            {"limit": limit, "exclude_archived": exclude_archived, "cursor": cursor},
+        )
 
         channels = [Channel(**ch) for ch in body.get("channels", [])]
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
@@ -454,10 +454,9 @@ class Slack(BaseConnector):
         Returns:
             The requested Channel object.
         """
-        body = await self._request(
-            "GET",
-            "conversations.info",
-            params={"channel": channel_id},
+        body = await self._execute_binding(
+            "get_channel",
+            {"channel_id": channel_id},
         )
         return Channel(**body.get("channel", {}))
 
@@ -477,10 +476,9 @@ class Slack(BaseConnector):
         Returns:
             The newly created Channel object.
         """
-        body = await self._request(
-            "POST",
-            "conversations.create",
-            json_body={"name": name, "is_private": is_private},
+        body = await self._execute_binding(
+            "create_channel",
+            {"name": name, "is_private": is_private},
         )
         return Channel(**body.get("channel", {}))
 
@@ -491,10 +489,9 @@ class Slack(BaseConnector):
         Args:
             channel: Channel ID to archive.
         """
-        await self._request(
-            "POST",
-            "conversations.archive",
-            json_body={"channel": channel},
+        await self._execute_binding(
+            "archive_channel",
+            {"channel": channel},
         )
 
     @action("Unarchive a channel")
@@ -504,10 +501,9 @@ class Slack(BaseConnector):
         Args:
             channel: Channel ID to unarchive.
         """
-        await self._request(
-            "POST",
-            "conversations.unarchive",
-            json_body={"channel": channel},
+        await self._execute_binding(
+            "unarchive_channel",
+            {"channel": channel},
         )
 
     @action("Rename a channel", dangerous=True)
@@ -521,10 +517,9 @@ class Slack(BaseConnector):
         Returns:
             The updated Channel object.
         """
-        body = await self._request(
-            "POST",
-            "conversations.rename",
-            json_body={"channel": channel, "name": name},
+        body = await self._execute_binding(
+            "rename_channel",
+            {"channel": channel, "name": name},
         )
         return Channel(**body.get("channel", {}))
 
@@ -539,10 +534,9 @@ class Slack(BaseConnector):
         Returns:
             The updated Channel object with the new topic.
         """
-        body = await self._request(
-            "POST",
-            "conversations.setTopic",
-            json_body={"channel": channel, "topic": topic},
+        body = await self._execute_binding(
+            "set_channel_topic",
+            {"channel": channel, "topic": topic},
         )
         return Channel(**body.get("channel", {}))
 
@@ -557,10 +551,9 @@ class Slack(BaseConnector):
         Returns:
             The updated Channel object with the new purpose.
         """
-        body = await self._request(
-            "POST",
-            "conversations.setPurpose",
-            json_body={"channel": channel, "purpose": purpose},
+        body = await self._execute_binding(
+            "set_channel_purpose",
+            {"channel": channel, "purpose": purpose},
         )
         return Channel(**body.get("channel", {}))
 
@@ -575,10 +568,9 @@ class Slack(BaseConnector):
         Returns:
             The Channel object after invite.
         """
-        body = await self._request(
-            "POST",
-            "conversations.invite",
-            json_body={"channel": channel, "users": users},
+        body = await self._execute_binding(
+            "invite_to_channel",
+            {"channel": channel, "users": users},
         )
         return Channel(**body.get("channel", {}))
 
@@ -590,10 +582,9 @@ class Slack(BaseConnector):
             channel: Channel ID.
             user: User ID to remove.
         """
-        await self._request(
-            "POST",
-            "conversations.kick",
-            json_body={"channel": channel, "user": user},
+        await self._execute_binding(
+            "kick_from_channel",
+            {"channel": channel, "user": user},
         )
 
     @action("Join a channel")
@@ -606,10 +597,9 @@ class Slack(BaseConnector):
         Returns:
             The Channel object after joining.
         """
-        body = await self._request(
-            "POST",
-            "conversations.join",
-            json_body={"channel": channel},
+        body = await self._execute_binding(
+            "join_channel",
+            {"channel": channel},
         )
         return Channel(**body.get("channel", {}))
 
@@ -620,10 +610,9 @@ class Slack(BaseConnector):
         Args:
             channel: Channel ID to leave.
         """
-        await self._request(
-            "POST",
-            "conversations.leave",
-            json_body={"channel": channel},
+        await self._execute_binding(
+            "leave_channel",
+            {"channel": channel},
         )
 
     @action("List members of a channel")
@@ -643,14 +632,10 @@ class Slack(BaseConnector):
         Returns:
             Paginated list of user ID strings.
         """
-        params: dict[str, Any] = {
-            "channel": channel,
-            "limit": min(limit, 1000),
-        }
-        if cursor:
-            params["cursor"] = cursor
-
-        body = await self._request("GET", "conversations.members", params=params)
+        body = await self._execute_binding(
+            "list_channel_members",
+            {"channel": channel, "limit": limit, "cursor": cursor},
+        )
         members = body.get("members", [])
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
         has_more = bool(next_cursor)
@@ -687,18 +672,16 @@ class Slack(BaseConnector):
         Returns:
             Paginated list of Message objects (newest first).
         """
-        params: dict[str, Any] = {
-            "channel": channel,
-            "limit": min(limit, 1000),
-        }
-        if cursor:
-            params["cursor"] = cursor
-        if oldest:
-            params["oldest"] = oldest
-        if latest:
-            params["latest"] = latest
-
-        body = await self._request("GET", "conversations.history", params=params)
+        body = await self._execute_binding(
+            "list_messages",
+            {
+                "channel": channel,
+                "limit": limit,
+                "cursor": cursor,
+                "oldest": oldest,
+                "latest": latest,
+            },
+        )
 
         messages = [Message(**{**msg, "channel": channel}) for msg in body.get("messages", [])]
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
@@ -731,15 +714,10 @@ class Slack(BaseConnector):
         Returns:
             Paginated list of Message objects in the thread.
         """
-        params: dict[str, Any] = {
-            "channel": channel,
-            "ts": thread_ts,
-            "limit": min(limit, 1000),
-        }
-        if cursor:
-            params["cursor"] = cursor
-
-        body = await self._request("GET", "conversations.replies", params=params)
+        body = await self._execute_binding(
+            "list_thread_replies",
+            {"channel": channel, "thread_ts": thread_ts, "limit": limit, "cursor": cursor},
+        )
         messages = [Message(**{**msg, "channel": channel}) for msg in body.get("messages", [])]
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
         has_more = body.get("has_more", False) or bool(next_cursor)
@@ -769,14 +747,9 @@ class Slack(BaseConnector):
             timestamp: Message timestamp (``ts`` field) to react to.
             emoji: Emoji name without colons (e.g. ``thumbsup``).
         """
-        await self._request(
-            "POST",
-            "reactions.add",
-            json_body={
-                "channel": channel,
-                "timestamp": timestamp,
-                "name": emoji,
-            },
+        await self._execute_binding(
+            "add_reaction",
+            {"channel": channel, "timestamp": timestamp, "emoji": emoji},
         )
 
     @action("Remove a reaction emoji from a message")
@@ -793,14 +766,9 @@ class Slack(BaseConnector):
             timestamp: Message timestamp (``ts`` field).
             emoji: Emoji name without colons (e.g. ``thumbsup``).
         """
-        await self._request(
-            "POST",
-            "reactions.remove",
-            json_body={
-                "channel": channel,
-                "timestamp": timestamp,
-                "name": emoji,
-            },
+        await self._execute_binding(
+            "remove_reaction",
+            {"channel": channel, "timestamp": timestamp, "emoji": emoji},
         )
 
     @action("Get reactions for a message")
@@ -818,10 +786,9 @@ class Slack(BaseConnector):
         Returns:
             List of Reaction objects with emoji names, counts, and users.
         """
-        body = await self._request(
-            "GET",
-            "reactions.get",
-            params={"channel": channel, "timestamp": timestamp, "full": "true"},
+        body = await self._execute_binding(
+            "get_reactions",
+            {"channel": channel, "timestamp": timestamp},
         )
         msg = body.get("message", {})
         return [
@@ -845,10 +812,9 @@ class Slack(BaseConnector):
             channel: Channel ID containing the message.
             timestamp: Message timestamp (``ts`` field) to pin.
         """
-        await self._request(
-            "POST",
-            "pins.add",
-            json_body={"channel": channel, "timestamp": timestamp},
+        await self._execute_binding(
+            "pin_message",
+            {"channel": channel, "timestamp": timestamp},
         )
 
     @action("Unpin a message from a channel")
@@ -859,10 +825,9 @@ class Slack(BaseConnector):
             channel: Channel ID.
             timestamp: Message timestamp (``ts`` field) to unpin.
         """
-        await self._request(
-            "POST",
-            "pins.remove",
-            json_body={"channel": channel, "timestamp": timestamp},
+        await self._execute_binding(
+            "unpin_message",
+            {"channel": channel, "timestamp": timestamp},
         )
 
     @action("List pinned items in a channel")
@@ -875,10 +840,9 @@ class Slack(BaseConnector):
         Returns:
             List of PinnedItem objects.
         """
-        body = await self._request(
-            "GET",
-            "pins.list",
-            params={"channel": channel},
+        body = await self._execute_binding(
+            "list_pins",
+            {"channel": channel},
         )
         return [
             PinnedItem(
@@ -933,10 +897,9 @@ class Slack(BaseConnector):
         Args:
             file_id: The file ID to delete.
         """
-        await self._request(
-            "POST",
-            "files.delete",
-            json_body={"file": file_id},
+        await self._execute_binding(
+            "delete_file",
+            {"file_id": file_id},
         )
 
     @action("Get file info")
@@ -949,10 +912,9 @@ class Slack(BaseConnector):
         Returns:
             The SlackFile object with full metadata.
         """
-        body = await self._request(
-            "GET",
-            "files.info",
-            params={"file": file_id},
+        body = await self._execute_binding(
+            "get_file_info",
+            {"file_id": file_id},
         )
         return SlackFile(**body.get("file", {}))
 
@@ -975,11 +937,10 @@ class Slack(BaseConnector):
         Returns:
             Paginated list of SlackUser objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 1000)}
-        if cursor:
-            params["cursor"] = cursor
-
-        body = await self._request("GET", "users.list", params=params)
+        body = await self._execute_binding(
+            "list_users",
+            {"limit": limit, "cursor": cursor},
+        )
 
         users = [self._parse_user(m) for m in body.get("members", [])]
 
@@ -1004,10 +965,9 @@ class Slack(BaseConnector):
         Returns:
             The requested SlackUser object.
         """
-        body = await self._request(
-            "GET",
-            "users.info",
-            params={"user": user_id},
+        body = await self._execute_binding(
+            "get_user",
+            {"user_id": user_id},
         )
         return self._parse_user(body.get("user", {}))
 
@@ -1021,10 +981,9 @@ class Slack(BaseConnector):
         Returns:
             The matching SlackUser object.
         """
-        body = await self._request(
-            "GET",
-            "users.lookupByEmail",
-            params={"email": email},
+        body = await self._execute_binding(
+            "lookup_user_by_email",
+            {"email": email},
         )
         return self._parse_user(body.get("user", {}))
 
@@ -1038,10 +997,9 @@ class Slack(BaseConnector):
         Returns:
             UserPresence object with activity status.
         """
-        body = await self._request(
-            "GET",
-            "users.getPresence",
-            params={"user": user_id},
+        body = await self._execute_binding(
+            "get_user_presence",
+            {"user_id": user_id},
         )
         return UserPresence(
             presence=body.get("presence", "away"),
@@ -1061,10 +1019,9 @@ class Slack(BaseConnector):
         Returns:
             UserProfile object with extended profile fields.
         """
-        body = await self._request(
-            "GET",
-            "users.profile.get",
-            params={"user": user_id},
+        body = await self._execute_binding(
+            "get_user_profile",
+            {"user_id": user_id},
         )
         p = body.get("profile", {})
         return UserProfile(
@@ -1089,10 +1046,9 @@ class Slack(BaseConnector):
         Args:
             presence: Either ``auto`` or ``away``.
         """
-        await self._request(
-            "POST",
-            "users.setPresence",
-            json_body={"presence": presence},
+        await self._execute_binding(
+            "set_presence",
+            {"presence": presence},
         )
 
     # ======================================================================
@@ -1123,14 +1079,13 @@ class Slack(BaseConnector):
         Returns:
             List of SearchResult objects.
         """
-        body = await self._request(
-            "GET",
-            "search.messages",
-            params={
+        body = await self._execute_binding(
+            "search_messages",
+            {
                 "query": query,
                 "sort": sort,
                 "sort_dir": sort_dir,
-                "count": min(count, 100),
+                "count": count,
                 "page": page,
             },
         )
@@ -1170,19 +1125,9 @@ class Slack(BaseConnector):
         Returns:
             The created Bookmark object.
         """
-        payload: dict[str, Any] = {
-            "channel_id": channel_id,
-            "title": title,
-            "type": "link",
-            "link": link,
-        }
-        if emoji:
-            payload["emoji"] = emoji
-
-        body = await self._request(
-            "POST",
-            "bookmarks.add",
-            json_body=payload,
+        body = await self._execute_binding(
+            "add_bookmark",
+            {"channel_id": channel_id, "title": title, "link": link, "emoji": emoji},
         )
         bk = body.get("bookmark", {})
         return Bookmark(
@@ -1206,10 +1151,9 @@ class Slack(BaseConnector):
         Returns:
             List of Bookmark objects.
         """
-        body = await self._request(
-            "GET",
-            "bookmarks.list",
-            params={"channel_id": channel_id},
+        body = await self._execute_binding(
+            "list_bookmarks",
+            {"channel_id": channel_id},
         )
         return [
             Bookmark(
@@ -1237,10 +1181,9 @@ class Slack(BaseConnector):
             bookmark_id: The bookmark ID.
             channel_id: The channel ID.
         """
-        await self._request(
-            "POST",
-            "bookmarks.remove",
-            json_body={"bookmark_id": bookmark_id, "channel_id": channel_id},
+        await self._execute_binding(
+            "remove_bookmark",
+            {"bookmark_id": bookmark_id, "channel_id": channel_id},
         )
 
     # ======================================================================
@@ -1265,14 +1208,9 @@ class Slack(BaseConnector):
         Returns:
             The created Reminder object.
         """
-        payload: dict[str, Any] = {"text": text, "time": time}
-        if user:
-            payload["user"] = user
-
-        body = await self._request(
-            "POST",
-            "reminders.add",
-            json_body=payload,
+        body = await self._execute_binding(
+            "add_reminder",
+            {"text": text, "time": time, "user": user},
         )
         r = body.get("reminder", {})
         return Reminder(
@@ -1292,7 +1230,7 @@ class Slack(BaseConnector):
         Returns:
             List of Reminder objects.
         """
-        body = await self._request("GET", "reminders.list")
+        body = await self._execute_binding("list_reminders", {})
         return [
             Reminder(
                 id=r.get("id", ""),
@@ -1313,10 +1251,9 @@ class Slack(BaseConnector):
         Args:
             reminder_id: The reminder ID.
         """
-        await self._request(
-            "POST",
-            "reminders.delete",
-            json_body={"reminder": reminder_id},
+        await self._execute_binding(
+            "delete_reminder",
+            {"reminder_id": reminder_id},
         )
 
     # ======================================================================
@@ -1330,7 +1267,7 @@ class Slack(BaseConnector):
         Returns:
             List of CustomEmoji objects with names and URLs.
         """
-        body = await self._request("GET", "emoji.list")
+        body = await self._execute_binding("list_emoji", {})
         emoji_map = body.get("emoji", {})
         result: list[CustomEmoji] = []
         for name, url in emoji_map.items():
@@ -1361,7 +1298,7 @@ class Slack(BaseConnector):
             Dict with keys: ``url``, ``team``, ``user``, ``team_id``,
             ``user_id``, ``bot_id``.
         """
-        body = await self._request("POST", "auth.test")
+        body = await self._execute_binding("auth_test", {})
         return {
             "url": body.get("url", ""),
             "team": body.get("team", ""),
@@ -1381,7 +1318,7 @@ class Slack(BaseConnector):
         Returns:
             SlackTeam object with workspace details.
         """
-        body = await self._request("GET", "team.info")
+        body = await self._execute_binding("get_team_info", {})
         t = body.get("team", {})
         return SlackTeam(
             id=t.get("id", ""),
@@ -1415,16 +1352,9 @@ class Slack(BaseConnector):
             expiration: Optional Unix timestamp for when the status should
                 expire. Pass ``0`` to keep the status indefinitely.
         """
-        profile: dict[str, Any] = {"status_text": status_text}
-        if status_emoji is not None:
-            profile["status_emoji"] = status_emoji
-        if expiration is not None:
-            profile["status_expiration"] = expiration
-
-        await self._request(
-            "POST",
-            "users.profile.set",
-            json_body={"profile": profile},
+        await self._execute_binding(
+            "set_status",
+            {"status_text": status_text, "status_emoji": status_emoji, "expiration": expiration},
         )
 
     # ======================================================================
@@ -1454,16 +1384,14 @@ class Slack(BaseConnector):
         Returns:
             The created SlackUserGroup object.
         """
-        payload: dict[str, Any] = {"name": name, "handle": handle}
-        if description is not None:
-            payload["description"] = description
-        if channels is not None:
-            payload["channels"] = channels
-
-        body = await self._request(
-            "POST",
-            "usergroups.create",
-            json_body=payload,
+        body = await self._execute_binding(
+            "create_usergroup",
+            {
+                "name": name,
+                "handle": handle,
+                "description": description,
+                "channels": channels,
+            },
         )
         ug = body.get("usergroup", {})
         return SlackUserGroup(
@@ -1503,11 +1431,10 @@ class Slack(BaseConnector):
         Returns:
             List of SlackUserGroup objects.
         """
-        params: dict[str, Any] = {
-            "include_users": str(include_users).lower(),
-            "include_disabled": str(include_disabled).lower(),
-        }
-        body = await self._request("GET", "usergroups.list", params=params)
+        body = await self._execute_binding(
+            "list_usergroups",
+            {"include_users": include_users, "include_disabled": include_disabled},
+        )
         return [
             SlackUserGroup(
                 id=ug.get("id", ""),
@@ -1554,20 +1481,15 @@ class Slack(BaseConnector):
         Returns:
             The updated SlackUserGroup object.
         """
-        payload: dict[str, Any] = {"usergroup": usergroup_id}
-        if name is not None:
-            payload["name"] = name
-        if handle is not None:
-            payload["handle"] = handle
-        if description is not None:
-            payload["description"] = description
-        if channels is not None:
-            payload["channels"] = channels
-
-        body = await self._request(
-            "POST",
-            "usergroups.update",
-            json_body=payload,
+        body = await self._execute_binding(
+            "update_usergroup",
+            {
+                "usergroup_id": usergroup_id,
+                "name": name,
+                "handle": handle,
+                "description": description,
+                "channels": channels,
+            },
         )
         ug = body.get("usergroup", {})
         return SlackUserGroup(
