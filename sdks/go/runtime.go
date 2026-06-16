@@ -55,16 +55,22 @@ type Pagination struct {
 	Carry        []string `json:"carry"`
 }
 
+type PathVariant struct {
+	WhenPresent string `json:"when_present"`
+	Path        string `json:"path"`
+}
+
 type Action struct {
-	Name         string     `json:"name"`
-	Method       string     `json:"method"`
-	Endpoint     string     `json:"endpoint"`
-	Path         string     `json:"path"`
-	Params       []Param    `json:"params"`
-	BodyWrap     *string    `json:"body_wrap"`
-	BodyEncoding *string    `json:"body_encoding"`
-	Unwrap       *string    `json:"unwrap"`
-	Pagination   Pagination `json:"pagination"`
+	Name         string        `json:"name"`
+	Method       string        `json:"method"`
+	Endpoint     string        `json:"endpoint"`
+	Path         string        `json:"path"`
+	PathVariants []PathVariant `json:"path_variants"`
+	Params       []Param       `json:"params"`
+	BodyWrap     *string       `json:"body_wrap"`
+	BodyEncoding *string       `json:"body_encoding"`
+	Unwrap       *string       `json:"unwrap"`
+	Pagination   Pagination    `json:"pagination"`
 }
 
 type Endpoint struct {
@@ -172,6 +178,24 @@ func applyAuth(headers map[string]string, ep Endpoint, cred string) *string {
 // ---------------------------------------------------------------------------
 
 func present(v any) bool { return v != nil }
+
+// truthy mirrors Python's `if x:` used for conditional path selection.
+func truthy(v any) bool {
+	switch x := v.(type) {
+	case nil:
+		return false
+	case string:
+		return x != ""
+	case bool:
+		return x
+	case float64:
+		return x != 0
+	case int:
+		return x != 0
+	default:
+		return true
+	}
+}
 
 // str mirrors Python's str() for the value types that reach the wire. JSON
 // numbers arrive as float64; integral ones format without a decimal point so
@@ -461,8 +485,15 @@ func BuildRequest(conn *ConnectorB, actionName string, args map[string]any, cred
 			subst[p.Wire] = argOrDefault(args, p)
 		}
 	}
+	chosenPath := action.Path
+	for _, pv := range action.PathVariants {
+		if truthy(args[pv.WhenPresent]) { // matches the connector's `if org:`
+			chosenPath = pv.Path
+			break
+		}
+	}
 	base := fmtTemplate(ep.BaseURL, ctxAny)
-	path := fmtTemplate(action.Path, subst)
+	path := fmtTemplate(chosenPath, subst)
 	urlStr := strings.TrimRight(base, "/") + "/" + strings.TrimLeft(path, "/")
 
 	// 2) query
@@ -515,6 +546,19 @@ func parseLinkNext(linkHeader, rel string) *string {
 			if pm := pageInfoRe.FindStringSubmatch(m[1]); pm != nil {
 				return &pm[1]
 			}
+		}
+	}
+	return nil
+}
+
+// parseLinkRel returns the full url for a Link rel (GitHub follows it directly).
+func parseLinkRel(linkHeader, rel string) *string {
+	if linkHeader == "" {
+		return nil
+	}
+	for _, m := range linkRe.FindAllStringSubmatch(linkHeader, -1) {
+		if m[2] == rel {
+			return &m[1]
 		}
 	}
 	return nil
@@ -617,6 +661,26 @@ func NextRequest(conn *ConnectorB, actionName string, prevArgs map[string]any, c
 		n[*pg.TokenParamPy] = *cursor
 		req := BuildRequest(conn, actionName, n, credential)
 		return &req
+
+	case "link_follow":
+		// GitHub: the Link rel=next URL is absolute & carries every query param; GET it.
+		nextURL := parseLinkRel(headers["link"], pg.LinkRel)
+		if nextURL == nil {
+			return nil
+		}
+		h := map[string]string{}
+		for k, v := range ep.ExtraHeaders {
+			h[k] = v
+		}
+		auth := applyAuth(h, ep, authCred(ep, credential, ctx))
+		u, _ := url.Parse(*nextURL)
+		// Use base URL (no query) so fullURL doesn't double the params.
+		baseURL := u.Scheme + "://" + u.Host + u.Path
+		req := BuiltRequest{
+			Method: "GET", URL: baseURL, Scheme: u.Scheme, Host: u.Host,
+			Path: u.Path, Query: linkQuery(u), Headers: h, Auth: auth,
+		}
+		return &req
 	}
 	return nil
 }
@@ -657,7 +721,9 @@ func fullURL(br BuiltRequest) string {
 	return br.URL + "?" + strings.Join(parts, "&")
 }
 
-func doRequest(client *http.Client, br BuiltRequest) (map[string]any, http.Header, error) {
+// doRequest issues the request and decodes the JSON body into `any` — which may
+// be a map (most responses) OR a bare array (GitHub list endpoints).
+func doRequest(client *http.Client, br BuiltRequest) (any, http.Header, error) {
 	var body io.Reader
 	if br.Body != nil {
 		body = strings.NewReader(*br.Body)
@@ -681,7 +747,7 @@ func doRequest(client *http.Client, br BuiltRequest) (map[string]any, http.Heade
 	if resp.StatusCode >= 400 {
 		return nil, resp.Header, fmt.Errorf("%s %s: HTTP %d: %s", br.Method, br.URL, resp.StatusCode, string(raw))
 	}
-	var parsed map[string]any
+	var parsed any
 	if len(raw) > 0 {
 		if err := json.Unmarshal(raw, &parsed); err != nil {
 			return nil, resp.Header, err
@@ -689,6 +755,8 @@ func doRequest(client *http.Client, br BuiltRequest) (map[string]any, http.Heade
 	}
 	return parsed, resp.Header, nil
 }
+
+func asMap(v any) map[string]any { m, _ := v.(map[string]any); return m }
 
 func lowerHeaders(h http.Header) map[string]string {
 	m := make(map[string]string, len(h))
@@ -709,7 +777,7 @@ func ExecuteWith(client *http.Client, conn *ConnectorB, action string, args map[
 		return nil, err
 	}
 	if a := conn.Actions[action]; a.Unwrap != nil {
-		return data[*a.Unwrap], nil
+		return asMap(data)[*a.Unwrap], nil
 	}
 	return data, nil
 }
@@ -730,13 +798,18 @@ func PaginateWith(client *http.Client, conn *ConnectorB, action string, args map
 			return all, err
 		}
 		var items []any
-		if a.Unwrap != nil {
-			items, _ = data[*a.Unwrap].([]any)
-		} else if a.Pagination.ItemsField != nil {
-			items, _ = data[*a.Pagination.ItemsField].([]any)
+		switch d := data.(type) {
+		case []any: // root array (GitHub list endpoints)
+			items = d
+		case map[string]any:
+			if a.Unwrap != nil {
+				items, _ = d[*a.Unwrap].([]any)
+			} else if a.Pagination.ItemsField != nil {
+				items, _ = d[*a.Pagination.ItemsField].([]any)
+			}
 		}
 		all = append(all, items...)
-		next = NextRequest(conn, action, args, cred, data, lowerHeaders(headers))
+		next = NextRequest(conn, action, args, cred, asMap(data), lowerHeaders(headers))
 	}
 	return all, nil
 }

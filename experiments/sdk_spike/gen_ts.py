@@ -25,7 +25,7 @@ OUT = Path(__file__).resolve().parent / "ts"
 SRC = OUT / "src"
 
 TY = {
-    "string": "string", "number": "number", "string[]": "string[]",
+    "string": "string", "number": "number", "boolean": "boolean", "string[]": "string[]",
     "object": "Record<string, unknown>", "object[]": "Array<Record<string, unknown>>",
     "smap": "Record<string, string>", "smap[]": "Array<Record<string, string>>",
 }
@@ -49,6 +49,8 @@ def infer_ty(p) -> str:
         return "smap[]"
     if p.style == Style.MAP:
         return "smap"
+    if isinstance(p.default, bool):  # before int — bool is a subclass of int
+        return "boolean"
     if p.max is not None or isinstance(p.default, int):
         return "number"
     return "string"
@@ -151,7 +153,10 @@ def emit_connector(c) -> str:
     for a in c.actions.values():
         fields = []
         for p in a.params:
-            req = p.location.value == "path" or p.required
+            # A path param is required only if it appears in the DEFAULT path;
+            # path_variant-only params (GitHub org/user/workflow_id) are optional.
+            in_default = p.location.value == "path" and ("{" + p.wire + "}") in a.path
+            req = in_default or p.required
             fields.append(f"  {p.name}{'' if req else '?'}: {TY[infer_ty(p)]};")
         body = "\n".join(fields) if fields else ""
         lines.append(f"export interface {pascal(a.name)}Args {{")

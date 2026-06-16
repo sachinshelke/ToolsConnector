@@ -5,7 +5,7 @@
 export type Loc = "path" | "query" | "header" | "body";
 export type Style = "simple" | "indexed" | "indexed_object" | "bracket" | "form_explode" | "map";
 export type AuthKind = "bearer" | "header_key" | "basic_split" | "basic_user";
-export type PgKind = "offset_token" | "link_header" | "follow_url" | "last_id";
+export type PgKind = "offset_token" | "link_header" | "link_follow" | "follow_url" | "last_id";
 
 export interface ParamB {
   name: string; wire: string; location: Loc; style?: Style; required?: boolean;
@@ -21,8 +21,10 @@ export interface EndpointB {
   id: string; baseUrl: string; encoding: "json" | "form"; authKind: AuthKind;
   authHeader: string; authCredCtx?: string; extraHeaders?: Record<string, string>;
 }
+export interface PathVariantB { whenPresent: string; path: string; }
 export interface ActionB {
   name: string; method: string; endpoint: string; path: string; params: ParamB[];
+  pathVariants?: PathVariantB[];
   bodyWrap?: string; bodyEncoding?: "json" | "form"; unwrap?: string; pagination?: PgB;
 }
 export interface CtxVar { name: string; source: string; }
@@ -150,8 +152,12 @@ export function buildRequest(
   const pathExtra: Record<string, unknown> = {};
   for (const p of action.params)
     if (p.location === "path") pathExtra[p.wire] = args[p.name] ?? p.default;
+  // conditional path: first variant whose arg is truthy wins, else default path
+  let chosenPath = action.path;
+  for (const pv of action.pathVariants ?? [])
+    if (args[pv.whenPresent]) { chosenPath = pv.path; break; }
   const base = fmt(ep.baseUrl, ctx);
-  const path = fmt(action.path, ctx, pathExtra);
+  const path = fmt(chosenPath, ctx, pathExtra);
   const urlStr = base.replace(/\/+$/, "") + "/" + path.replace(/^\/+/, "");
 
   const query = queryPairs(action, args);
@@ -199,6 +205,12 @@ function parseLinkNext(linkHeader: string | undefined, rel: string): string | nu
   for (const m of linkHeader.matchAll(LINK_RE)) {
     if (m[2] === rel) { const pm = PAGE_INFO_RE.exec(m[1]); if (pm) return pm[1]; }
   }
+  return null;
+}
+
+function parseLinkRel(linkHeader: string | undefined, rel: string): string | null {
+  if (!linkHeader) return null;
+  for (const m of linkHeader.matchAll(LINK_RE)) if (m[2] === rel) return m[1];
   return null;
 }
 
@@ -250,6 +262,21 @@ export function nextRequest(
     if (!cursor) return null;
     const n = carried(); n[pg.tokenParamPy as string] = cursor;
     return buildRequest(conn, actionName, n, credential);
+  }
+  if (pg.kind === "link_follow") {
+    // GitHub: the Link rel=next URL is absolute & carries every query param; GET it.
+    const nextUrl = parseLinkRel(h["link"], pg.linkRel ?? "next");
+    if (!nextUrl) return null;
+    const ctx = deriveCtx(conn, credential);
+    const hh: Record<string, string> = { ...(ep.extraHeaders ?? {}) };
+    const authCred = ep.authCredCtx ? ctx[ep.authCredCtx] ?? "" : credential;
+    const auth = applyAuth(hh, ep, authCred);
+    const u = new URL(nextUrl);
+    return {
+      method: "GET", url: nextUrl, scheme: u.protocol.replace(":", ""), host: u.host, path: u.pathname,
+      query: [...u.searchParams.entries()] as [string, string][], body: null, contentType: null,
+      headers: hh, auth,
+    };
   }
   return null;
 }

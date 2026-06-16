@@ -674,8 +674,10 @@ func NextRequest(conn *ConnectorB, actionName string, prevArgs map[string]any, c
 		}
 		auth := applyAuth(h, ep, authCred(ep, credential, ctx))
 		u, _ := url.Parse(*nextURL)
+		// Use base URL (no query) so fullURL doesn't double the params.
+		baseURL := u.Scheme + "://" + u.Host + u.Path
 		req := BuiltRequest{
-			Method: "GET", URL: *nextURL, Scheme: u.Scheme, Host: u.Host,
+			Method: "GET", URL: baseURL, Scheme: u.Scheme, Host: u.Host,
 			Path: u.Path, Query: linkQuery(u), Headers: h, Auth: auth,
 		}
 		return &req
@@ -719,7 +721,9 @@ func fullURL(br BuiltRequest) string {
 	return br.URL + "?" + strings.Join(parts, "&")
 }
 
-func doRequest(client *http.Client, br BuiltRequest) (map[string]any, http.Header, error) {
+// doRequest issues the request and decodes the JSON body into `any` — which may
+// be a map (most responses) OR a bare array (GitHub list endpoints).
+func doRequest(client *http.Client, br BuiltRequest) (any, http.Header, error) {
 	var body io.Reader
 	if br.Body != nil {
 		body = strings.NewReader(*br.Body)
@@ -743,7 +747,7 @@ func doRequest(client *http.Client, br BuiltRequest) (map[string]any, http.Heade
 	if resp.StatusCode >= 400 {
 		return nil, resp.Header, fmt.Errorf("%s %s: HTTP %d: %s", br.Method, br.URL, resp.StatusCode, string(raw))
 	}
-	var parsed map[string]any
+	var parsed any
 	if len(raw) > 0 {
 		if err := json.Unmarshal(raw, &parsed); err != nil {
 			return nil, resp.Header, err
@@ -751,6 +755,8 @@ func doRequest(client *http.Client, br BuiltRequest) (map[string]any, http.Heade
 	}
 	return parsed, resp.Header, nil
 }
+
+func asMap(v any) map[string]any { m, _ := v.(map[string]any); return m }
 
 func lowerHeaders(h http.Header) map[string]string {
 	m := make(map[string]string, len(h))
@@ -771,7 +777,7 @@ func ExecuteWith(client *http.Client, conn *ConnectorB, action string, args map[
 		return nil, err
 	}
 	if a := conn.Actions[action]; a.Unwrap != nil {
-		return data[*a.Unwrap], nil
+		return asMap(data)[*a.Unwrap], nil
 	}
 	return data, nil
 }
@@ -792,13 +798,18 @@ func PaginateWith(client *http.Client, conn *ConnectorB, action string, args map
 			return all, err
 		}
 		var items []any
-		if a.Unwrap != nil {
-			items, _ = data[*a.Unwrap].([]any)
-		} else if a.Pagination.ItemsField != nil {
-			items, _ = data[*a.Pagination.ItemsField].([]any)
+		switch d := data.(type) {
+		case []any: // root array (GitHub list endpoints)
+			items = d
+		case map[string]any:
+			if a.Unwrap != nil {
+				items, _ = d[*a.Unwrap].([]any)
+			} else if a.Pagination.ItemsField != nil {
+				items, _ = d[*a.Pagination.ItemsField].([]any)
+			}
 		}
 		all = append(all, items...)
-		next = NextRequest(conn, action, args, cred, data, lowerHeaders(headers))
+		next = NextRequest(conn, action, args, cred, asMap(data), lowerHeaders(headers))
 	}
 	return all, nil
 }

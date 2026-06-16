@@ -27,8 +27,8 @@ from .specs import ALL
 
 GO = Path(__file__).resolve().parent / "go"
 
-# The connector whose typed client ships in the productized module.
-CLIENT = "stripe"
+# The connectors whose typed clients ship in the productized module.
+CLIENTS = ["stripe", "github"]
 
 _INITIALISMS = ("id", "url", "api", "sku", "uri")
 
@@ -49,6 +49,8 @@ def infer_ty(p) -> str:
         return "smap[]"
     if p.style == Style.MAP:
         return "smap"
+    if isinstance(p.default, bool):  # before int — bool is a subclass of int
+        return "boolean"
     if p.max is not None or isinstance(p.default, int):
         return "number"
     return "string"
@@ -58,6 +60,7 @@ def infer_ty(p) -> str:
 _GO_TY = {
     "string": ("string", True),
     "number": ("int", True),
+    "boolean": ("bool", True),
     "string[]": ("[]string", False),
     "smap": ("map[string]string", False),
     "smap[]": ("[]map[string]string", False),
@@ -107,11 +110,11 @@ def emit_matrix() -> str:
     return json.dumps({"matrix": matrix, "pagi": pagi}, indent=1) + "\n"
 
 
-def emit_client(package: str = "tcspike") -> str:
-    """Emit a native, typed Go client for the CLIENT connector — arg structs with
-    a toMap() builder, delegating methods, paginate-all helpers, and escape-hatch
-    delegation. Self-contained (carries its own STRIPE binding)."""
-    conn = ALL[CLIENT]
+def emit_client(name: str, package: str = "tcspike") -> str:
+    """Emit a native, typed Go client for one connector — arg structs with a
+    toMap() builder, delegating methods, paginate-all helpers, and escape-hatch
+    delegation. Self-contained (carries its own binding)."""
+    conn = ALL[name]
     C = go_pascal(conn.name)  # e.g. Stripe
     js = conn.model_dump_json()
     assert "`" not in js
@@ -177,7 +180,10 @@ def emit_client(package: str = "tcspike") -> str:
         set_lines = []
         for p in a.params:
             goty, scalar = _GO_TY[infer_ty(p)]
-            required = p.location == Location.PATH or p.required
+            # A path param is required only if it appears in the DEFAULT path;
+            # path_variant-only params (GitHub org/user/workflow_id) are optional.
+            in_default = p.location == Location.PATH and ("{" + p.wire + "}") in a.path
+            required = in_default or p.required
             field = go_pascal(p.name)
             if required:
                 field_lines.append(f"\t{field} {goty}")
@@ -227,17 +233,21 @@ def emit_client(package: str = "tcspike") -> str:
 
 def main() -> None:
     (GO / "cmd" / "parity").mkdir(parents=True, exist_ok=True)
-    go_files = [GO / "bindings_gen.go", GO / "gen_stripe.go"]
     (GO / "bindings_gen.go").write_text(emit_bindings())
     (GO / "cmd" / "parity" / "matrix.json").write_text(emit_matrix())
-    (GO / "gen_stripe.go").write_text(emit_client())
+    go_files = [GO / "bindings_gen.go"]
+    for name in CLIENTS:
+        f = GO / f"gen_{name}.go"
+        f.write_text(emit_client(name))
+        go_files.append(f)
     # Keep generated Go gofmt-clean so it passes the same bar as hand-written code.
     if gofmt := shutil.which("gofmt"):
         subprocess.run([gofmt, "-w", *map(str, go_files)], check=True)
     print("wrote:")
     print("    go/bindings_gen.go")
     print("    go/cmd/parity/matrix.json")
-    print("    go/gen_stripe.go")
+    for name in CLIENTS:
+        print(f"    go/gen_{name}.go")
 
 
 if __name__ == "__main__":
