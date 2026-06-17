@@ -5,3 +5,4 @@ export { Stripe, STRIPE_BINDING } from "./stripe.ts";
 export { Github, GITHUB_BINDING } from "./github.ts";
 export { buildRequest, execute, nextRequest, paginate } from "./runtime.ts";
 export type { BuiltRequest, ConnectorB } from "./runtime.ts";
+export { Notion, NOTION_BINDING } from "./notion.ts";
