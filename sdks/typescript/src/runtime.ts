@@ -10,7 +10,8 @@ export type PgKind = "offset_token" | "link_header" | "link_follow" | "follow_ur
 export interface ParamB {
   name: string; wire: string; location: Loc; style?: Style; required?: boolean;
   default?: unknown; subkeys?: string[]; subkeyDefaults?: Record<string, unknown>;
-  bodyKey?: string; itemWrap?: string; max?: number; maxItems?: number;
+  bodyKey?: string; itemWrap?: string; wrap?: string; wrapKey?: string;
+  min?: number; max?: number; maxItems?: number;
 }
 export interface PgB {
   kind: PgKind; itemsField?: string; tokenField?: string;
@@ -24,7 +25,7 @@ export interface EndpointB {
 export interface PathVariantB { whenPresent: string; path: string; }
 export interface ActionB {
   name: string; method: string; endpoint: string; path: string; params: ParamB[];
-  pathVariants?: PathVariantB[];
+  pathVariants?: PathVariantB[]; rawBodyParam?: string;
   bodyWrap?: string; bodyEncoding?: "json" | "form"; unwrap?: string; pagination?: PgB;
 }
 export interface CtxVar { name: string; source: string; }
@@ -57,8 +58,23 @@ function deriveCtx(conn: ConnectorB, cred: string): Record<string, string> {
 }
 
 function present(v: unknown): boolean { return v !== undefined && v !== null; }
-function clamp(v: unknown, mx?: number): unknown {
-  return mx !== undefined && typeof v === "number" ? Math.min(v, mx) : v;
+function clamp(v: unknown, mn?: number, mx?: number): unknown {
+  if (typeof v !== "number") return v;  // never clamp booleans/strings
+  let r = v;
+  if (mx !== undefined) r = Math.min(r, mx);
+  if (mn !== undefined) r = Math.max(r, mn);
+  return r;
+}
+// Read a possibly-dotted field from a response body. "next_cursor" (flat) and
+// "response_metadata.next_cursor" (Slack nested) both resolve here.
+function dig(body: Record<string, unknown>, path?: string): unknown {
+  if (!path) return null;
+  let cur: unknown = body;
+  for (const part of path.split(".")) {
+    if (cur == null || typeof cur !== "object") return null;
+    cur = (cur as Record<string, unknown>)[part];
+  }
+  return cur;
 }
 function fmt(s: string, ctx: Record<string, string>, extra: Record<string, unknown> = {}): string {
   return s.replace(/\{(\w+)\}/g, (_m, k) => String(extra[k] ?? ctx[k] ?? `{${k}}`));
@@ -91,7 +107,18 @@ function styledPairs(p: ParamB, v: unknown): [string, string][] {
   if (style === "map")
     return Object.entries(v as Record<string, unknown>).map(
       ([k, val]) => [`${p.wire}[${k}]`, String(val)] as [string, string]);
-  return [[p.wire, String(clamp(v, p.max))]];  // simple
+  return [[p.wire, String(clamp(v, p.min, p.max))]];  // simple — String(false) === "false"
+}
+
+// Named scalar->envelope transform (JSON bodies). Mirrors executor.py::_wrap_scalar.
+function wrapScalar(p: ParamB, v: unknown): unknown {
+  if (p.wrap === "rich_text") return [{ text: { content: v } }];
+  if (p.wrap === "object") return { [p.wrapKey as string]: v };
+  if (p.itemWrap) {
+    const seq = p.maxItems ? (v as unknown[]).slice(0, p.maxItems) : (v as unknown[]);
+    return seq.map((e) => ({ [p.itemWrap as string]: e }));
+  }
+  return v;
 }
 
 function queryPairs(action: ActionB, args: Record<string, unknown>): [string, string][] {
@@ -107,6 +134,12 @@ function queryPairs(action: ActionB, args: Record<string, unknown>): [string, st
 function buildBody(
   action: ActionB, encoding: string, args: Record<string, unknown>,
 ): [string | null, string | null] {
+  // Pass-through: the whole JSON body IS one caller-supplied param, verbatim.
+  if (action.rawBodyParam) {
+    const v = args[action.rawBodyParam];
+    if (v === undefined || v === null) return [null, null];
+    return [JSON.stringify(v), "application/json"];
+  }
   const bodyParams = action.params.filter((p) => p.location === "body");
   if (bodyParams.length === 0) return [null, null];
   if (encoding === "form") {
@@ -124,10 +157,8 @@ function buildBody(
   for (const p of bodyParams) {
     let v = args[p.name] ?? p.default;
     if (!present(v)) continue;
-    if (p.itemWrap) {
-      const seq = p.maxItems ? (v as unknown[]).slice(0, p.maxItems) : (v as unknown[]);
-      v = seq.map((e) => ({ [p.itemWrap as string]: e }));
-    }
+    v = clamp(v, p.min, p.max);
+    v = wrapScalar(p, v);
     obj[p.bodyKey ?? p.wire] = v;
   }
   if (action.bodyWrap) obj = { [action.bodyWrap]: obj };
@@ -244,8 +275,8 @@ export function nextRequest(
     };
   }
   if (pg.kind === "offset_token") {
-    const cursor = pg.tokenField ? b[pg.tokenField] : null;
-    if (cursor == null) return null;
+    const cursor = dig(b, pg.tokenField);
+    if (cursor == null || cursor === "") return null;  // Slack "" = no more pages
     const n = carried(); n[pg.tokenParamPy as string] = cursor;
     return buildRequest(conn, actionName, n, credential);
   }

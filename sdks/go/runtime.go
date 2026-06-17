@@ -40,6 +40,9 @@ type Param struct {
 	SubkeyDefaults map[string]any `json:"subkey_defaults"`
 	BodyKey        *string        `json:"body_key"`
 	ItemWrap       *string        `json:"item_wrap"`
+	Wrap           *string        `json:"wrap"`
+	WrapKey        *string        `json:"wrap_key"`
+	Min            *int           `json:"min"`
 	Max            *int           `json:"max"`
 	MaxItems       *int           `json:"max_items"`
 }
@@ -67,6 +70,7 @@ type Action struct {
 	Path         string        `json:"path"`
 	PathVariants []PathVariant `json:"path_variants"`
 	Params       []Param       `json:"params"`
+	RawBodyParam *string       `json:"raw_body_param"`
 	BodyWrap     *string       `json:"body_wrap"`
 	BodyEncoding *string       `json:"body_encoding"`
 	Unwrap       *string       `json:"unwrap"`
@@ -284,18 +288,80 @@ func toAnyMap(v any) map[string]any {
 	return nil
 }
 
-func clamp(v any, mx *int) any {
-	if mx == nil {
-		return v
-	}
-	if f, ok := v.(float64); ok {
-		return math.Min(f, float64(*mx))
-	}
-	if i, ok := v.(int); ok {
-		if i > *mx {
-			return *mx
+func clamp(v any, mn *int, mx *int) any {
+	switch x := v.(type) {
+	case float64:
+		if mx != nil && x > float64(*mx) {
+			x = float64(*mx)
 		}
-		return i
+		if mn != nil && x < float64(*mn) {
+			x = float64(*mn)
+		}
+		return x
+	case int:
+		if mx != nil && x > *mx {
+			x = *mx
+		}
+		if mn != nil && x < *mn {
+			x = *mn
+		}
+		return x
+	}
+	return v // never clamp booleans/strings
+}
+
+// dig reads a possibly-dotted field from a response body: "next_cursor" (flat,
+// Stripe/Notion) and "response_metadata.next_cursor" (Slack nested) both resolve.
+func dig(body map[string]any, path *string) any {
+	if path == nil {
+		return nil
+	}
+	var cur any = body
+	for _, part := range strings.Split(*path, ".") {
+		m, ok := cur.(map[string]any)
+		if !ok {
+			return nil
+		}
+		cur = m[part]
+	}
+	return cur
+}
+
+// scalarStr is str() but with API-conventional lowercase booleans for query/form
+// fields (Slack exclude_archived, include_users). Mirrors executor.py::_scalar_str
+// — only the SIMPLE style lowercases; JSON bodies keep native booleans.
+func scalarStr(v any) string {
+	if b, ok := v.(bool); ok {
+		if b {
+			return "true"
+		}
+		return "false"
+	}
+	return str(v)
+}
+
+// wrapScalar applies a named scalar->envelope transform for JSON bodies.
+// Mirrors executor.py::_wrap_scalar.
+func wrapScalar(p Param, v any) any {
+	if p.Wrap != nil {
+		switch *p.Wrap {
+		case "rich_text":
+			return []any{map[string]any{"text": map[string]any{"content": v}}}
+		case "object":
+			key := ""
+			if p.WrapKey != nil {
+				key = *p.WrapKey
+			}
+			return map[string]any{key: v}
+		}
+	}
+	if p.ItemWrap != nil {
+		seq := asSeq(v, p.MaxItems)
+		wrapped := make([]any, len(seq))
+		for i, elem := range seq {
+			wrapped[i] = map[string]any{*p.ItemWrap: elem}
+		}
+		return wrapped
 	}
 	return v
 }
@@ -360,7 +426,7 @@ func styledPairs(p Param, v any) [][2]string {
 		}
 		return out
 	default: // simple
-		return [][2]string{{p.Wire, str(clamp(v, p.Max))}}
+		return [][2]string{{p.Wire, scalarStr(clamp(v, p.Min, p.Max))}}
 	}
 }
 
@@ -385,6 +451,17 @@ func queryPairs(action Action, args map[string]any) [][2]string {
 }
 
 func buildBody(action Action, encoding string, args map[string]any) (body *string, contentType *string) {
+	// Pass-through: the whole JSON body IS one caller-supplied param, verbatim.
+	if action.RawBodyParam != nil {
+		v, ok := args[*action.RawBodyParam]
+		if !ok || v == nil {
+			return nil, nil
+		}
+		b, _ := json.Marshal(v)
+		s := string(b)
+		ct := "application/json"
+		return &s, &ct
+	}
 	var bodyParams []Param
 	for _, p := range action.Params {
 		if p.Location == "body" {
@@ -418,14 +495,7 @@ func buildBody(action Action, encoding string, args map[string]any) (body *strin
 		if !present(v) {
 			continue
 		}
-		if p.ItemWrap != nil {
-			seq := asSeq(v, p.MaxItems)
-			wrapped := make([]any, len(seq))
-			for i, elem := range seq {
-				wrapped[i] = map[string]any{*p.ItemWrap: elem}
-			}
-			v = wrapped
-		}
+		v = wrapScalar(p, clamp(v, p.Min, p.Max))
 		key := p.Wire
 		if p.BodyKey != nil {
 			key = *p.BodyKey
@@ -621,11 +691,8 @@ func NextRequest(conn *ConnectorB, actionName string, prevArgs map[string]any, c
 		return &req
 
 	case "offset_token":
-		if pg.TokenField == nil {
-			return nil
-		}
-		cursor, ok := body[*pg.TokenField]
-		if !ok || cursor == nil {
+		cursor := dig(body, pg.TokenField)
+		if cursor == nil || cursor == "" { // Slack "" sentinel = no more pages
 			return nil
 		}
 		n := carryArgs(prevArgs, pg.Carry)
