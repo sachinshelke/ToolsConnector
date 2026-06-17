@@ -49,7 +49,7 @@ func TestGithubE2E(t *testing.T) {
 	gh := NewGithub("ghp_x", GithubWithHTTPClient(&http.Client{Transport: mock}))
 
 	// 1: JSON-body create with an array param.
-	if _, err := gh.CreateIssue(CreateIssueArgs{
+	if _, err := gh.CreateIssue(GithubCreateIssueArgs{
 		Owner: "octocat", Repo: "hello", Title: "Bug", Labels: []string{"bug"},
 	}); err != nil {
 		t.Fatalf("CreateIssue: %v", err)
@@ -67,7 +67,7 @@ func TestGithubE2E(t *testing.T) {
 
 	// 2: conditional path_variant (org branch).
 	mock.reqs, mock.bodies = nil, nil
-	if _, err := gh.ListRepos(ListReposArgs{Org: strp("acme"), Limit: intp(5)}); err != nil {
+	if _, err := gh.ListRepos(GithubListReposArgs{Org: strp("acme"), Limit: intp(5)}); err != nil {
 		t.Fatalf("ListRepos: %v", err)
 	}
 	if mock.reqs[0].URL.Path != "/orgs/acme/repos" {
@@ -78,7 +78,7 @@ func TestGithubE2E(t *testing.T) {
 
 	// 3: LINK_FOLLOW pagination over root-array responses.
 	mock.reqs, mock.bodies = nil, nil
-	items, err := gh.ListIssuesAll(ListIssuesArgs{Owner: "octocat", Repo: "hello", Limit: intp(2)})
+	items, err := gh.ListIssuesAll(GithubListIssuesArgs{Owner: "octocat", Repo: "hello", Limit: intp(2)})
 	if err != nil {
 		t.Fatalf("ListIssuesAll: %v", err)
 	}

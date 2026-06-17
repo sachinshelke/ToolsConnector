@@ -24,11 +24,14 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT / "scripts"))  # notion_binding_parity, slack_binding_parity
+sys.path.insert(0, str(ROOT))  # experiments.sdk_spike.parity (Stripe/GitHub matrices)
 
 from toolsconnector.spec.executor import build_request  # noqa: E402
 
-# connector -> (binding, matrix-module, credential)
+# connector -> (binding-module, const, matrix-source, credential)
+# matrix-source: a scripts module exposing MATRIX (list of (action, args)), or
+# the sentinel "spike" to pull the matrix + cred from experiments/sdk_spike/parity.
 CONNECTORS = {
     "notion": (
         "toolsconnector.connectors.notion.binding",
@@ -42,9 +45,29 @@ CONNECTORS = {
         "slack_binding_parity",
         "xoxb-fake-bot-token",
     ),
+    "stripe": ("toolsconnector.connectors.stripe.binding", "STRIPE_BINDING", "spike", None),
+    "github": ("toolsconnector.connectors.github.binding", "GITHUB_BINDING", "spike", None),
 }
 
 GREEN, RED, RST = "\033[32m", "\033[31m", "\033[0m"
+
+
+def _parse_body(body):
+    """Parse a body for comparison — JSON (Notion/Slack/GitHub) or form (Stripe).
+
+    Accepts bytes (Python httpx.Request.content) or str (TS/Go harness output).
+    Form bodies are returned as a sorted (key, value) list so cross-language
+    ordering never matters.
+    """
+    if not body:
+        return None
+    s = body.decode() if isinstance(body, bytes) else body
+    try:
+        return json.loads(s)
+    except (json.JSONDecodeError, ValueError):
+        from urllib.parse import parse_qsl
+
+        return sorted(parse_qsl(s))
 
 
 def canon(method, host, path, query, body, auth) -> dict:
@@ -54,7 +77,7 @@ def canon(method, host, path, query, body, auth) -> dict:
         "host": host,
         "path": path,
         "query": sorted([list(x) for x in query]),
-        "body": json.loads(body) if body else None,
+        "body": _parse_body(body),
         "auth": auth,
     }
 
@@ -178,8 +201,14 @@ def main() -> int:
     import importlib
 
     binding = getattr(importlib.import_module(mod_name), const)
-    matrix_raw = importlib.import_module(matrix_mod).MATRIX
-    matrix = [[action, dict(args)] for action, args in matrix_raw]
+    if matrix_mod == "spike":
+        # Stripe/GitHub matrices live in the spike harness: MATRIX[conn] = (cred, [(action, args)]).
+        cred, actions = importlib.import_module("experiments.sdk_spike.parity").MATRIX[conn]
+        matrix = [[action, dict(args)] for action, args in actions]
+    else:
+        matrix = [
+            [action, dict(args)] for action, args in importlib.import_module(matrix_mod).MATRIX
+        ]
 
     py = python_rows(binding, matrix, cred)
     ts = ts_rows(conn, const, matrix, cred)

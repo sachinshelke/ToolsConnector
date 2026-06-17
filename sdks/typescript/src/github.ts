@@ -1,4 +1,5 @@
-// AUTO-GENERATED from the connector binding. Do not edit by hand.
+// AUTO-GENERATED from the production connector binding. Do not edit by hand.
+// Regenerate: .venv/bin/python scripts/gen_sdks.py
 import { execute } from "./runtime.ts";
 import type { ConnectorB } from "./runtime.ts";
 

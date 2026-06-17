@@ -56,7 +56,7 @@ func TestStripeE2E(t *testing.T) {
 	s := NewStripe("sk_test_x", StripeWithHTTPClient(client))
 
 	// 1 + 2: typed create + MAP-style metadata flattened into the form body.
-	if _, err := s.CreateCustomer(CreateCustomerArgs{
+	if _, err := s.CreateCustomer(StripeCreateCustomerArgs{
 		Email:    strp("a@b.com"),
 		Metadata: map[string]string{"plan": "pro"},
 	}); err != nil {
@@ -76,7 +76,7 @@ func TestStripeE2E(t *testing.T) {
 
 	// 3 + 4 + 5: paginate walks every page; cursor = last id of the prior page.
 	mock.reqs, mock.bodies = nil, nil
-	items, err := s.ListCustomersAll(ListCustomersArgs{Limit: intp(2)})
+	items, err := s.ListCustomersAll(StripeListCustomersArgs{Limit: intp(2)})
 	if err != nil {
 		t.Fatalf("ListCustomersAll: %v", err)
 	}
