@@ -24,6 +24,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # Docs/site/changelog-only PRs change no scannable code — don't pay for a
+    # 3-language CodeQL run on them. (push-to-main + the weekly schedule still
+    # scan the full tree, so coverage of main is unchanged.)
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'site/**'
+      - 'CHANGELOG.md'
   schedule:
     - cron: '0 3 * * 0'   # Sunday 03:00 UTC
   workflow_dispatch:
@@ -33,11 +41,24 @@ permissions:
   contents: read
   security-events: write   # required to upload SARIF findings
 
+# Cancel a superseded CodeQL run on the same ref (PR re-push / release-PR
+# close+reopen) instead of paying for both. PR-only so a main scan is never
+# interrupted.
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Skip on release-please PRs: they only bump version + CHANGELOG, so the
+    # code is byte-identical to the main commit CodeQL already scanned on the
+    # merge that produced it. CodeQL is not a required check, so skipping it
+    # here never blocks the release merge. (head_ref is empty on push/schedule
+    # /dispatch, so those always run.)
+    if: ${{ github.head_ref == '' || !startsWith(github.head_ref, 'release-please--') }}
     strategy:
       fail-fast: false
       matrix:
