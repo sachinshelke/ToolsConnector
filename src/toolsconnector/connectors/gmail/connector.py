@@ -119,7 +119,7 @@ class Gmail(BaseConnector):
     category = ConnectorCategory.COMMUNICATION
     protocol = ProtocolType.REST
     base_url = "https://gmail.googleapis.com/gmail/v1"
-    verification_status = "doc"  # Tier 2 — doc-verified + respx-pinned
+    verification_status = "live"  # Tier 1 — validated in real production use (core email workflows)
     description = "Connect to Gmail to read, send, and manage emails."
     _rate_limit_config = RateLimitSpec(rate=250, period=60, burst=50)
 
