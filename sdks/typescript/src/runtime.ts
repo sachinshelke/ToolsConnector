@@ -228,20 +228,29 @@ export async function execute(
 }
 
 // ---- Pagination: compute the next-page request (mirrors executor.py::next_request) ----
-const LINK_RE = /<([^>]+)>;\s*rel="?(\w+)"?/g;
+// Link headers are comma-separated. We split on the comma that begins the next
+// "<" link-target, then match each segment with an ANCHORED regex. Per-segment +
+// anchored keeps parsing linear: a malformed segment can't drive super-linear
+// backtracking (ReDoS) the way a global scan over the whole header can.
+const LINK_RE = /^\s*<([^>]+)>;\s*rel="?(\w+)"?/;
 const PAGE_INFO_RE = /[?&]page_info=([^&>]+)/;
+const linkSegments = (h: string): string[] => h.split(/,(?=\s*<)/);
 
 function parseLinkNext(linkHeader: string | undefined, rel: string): string | null {
   if (!linkHeader) return null;
-  for (const m of linkHeader.matchAll(LINK_RE)) {
-    if (m[2] === rel) { const pm = PAGE_INFO_RE.exec(m[1]); if (pm) return pm[1]; }
+  for (const part of linkSegments(linkHeader)) {
+    const m = LINK_RE.exec(part);
+    if (m && m[2] === rel) { const pm = PAGE_INFO_RE.exec(m[1]); if (pm) return pm[1]; }
   }
   return null;
 }
 
 function parseLinkRel(linkHeader: string | undefined, rel: string): string | null {
   if (!linkHeader) return null;
-  for (const m of linkHeader.matchAll(LINK_RE)) if (m[2] === rel) return m[1];
+  for (const part of linkSegments(linkHeader)) {
+    const m = LINK_RE.exec(part);
+    if (m && m[2] === rel) return m[1];
+  }
   return null;
 }
 

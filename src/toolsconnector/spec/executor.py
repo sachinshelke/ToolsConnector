@@ -33,7 +33,12 @@ from .binding import (
     Style,
 )
 
-_LINK_RE = re.compile(r'<([^>]+)>;\s*rel="?(\w+)"?')
+# Link headers are comma-separated. We split on the comma that begins the next
+# "<" link-target, then match each segment with an ANCHORED regex (re.match).
+# Per-segment + anchored keeps parsing linear: a malformed segment can't drive
+# super-linear backtracking (ReDoS) the way a scan over the whole header can.
+_LINK_RE = re.compile(r'\s*<([^>]+)>;\s*rel="?(\w+)"?')
+_LINK_SPLIT_RE = re.compile(r",(?=\s*<)")
 _PAGE_INFO_RE = re.compile(r"[?&]page_info=([^&>]+)")
 
 
@@ -295,11 +300,12 @@ def _dig(body: dict[str, Any], path: Optional[str]) -> Any:
 def _parse_link_next(link_header: Optional[str], rel: str) -> Optional[str]:
     if not link_header:
         return None
-    for url, r in _LINK_RE.findall(link_header):
-        if r == rel:
-            m = _PAGE_INFO_RE.search(url)
-            if m:
-                return m.group(1)
+    for part in _LINK_SPLIT_RE.split(link_header):
+        m = _LINK_RE.match(part)
+        if m and m.group(2) == rel:
+            pi = _PAGE_INFO_RE.search(m.group(1))
+            if pi:
+                return pi.group(1)
     return None
 
 
@@ -307,9 +313,10 @@ def _parse_link_rel(link_header: Optional[str], rel: str) -> Optional[str]:
     """Return the FULL url for a Link rel (GitHub follows it directly)."""
     if not link_header:
         return None
-    for url, r in _LINK_RE.findall(link_header):
-        if r == rel:
-            return str(url)
+    for part in _LINK_SPLIT_RE.split(link_header):
+        m = _LINK_RE.match(part)
+        if m and m.group(2) == rel:
+            return str(m.group(1))
     return None
 
 
