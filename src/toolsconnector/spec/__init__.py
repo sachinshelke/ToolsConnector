@@ -15,6 +15,19 @@ from .auth import (
     ScopeSet,
     ServiceAccountSpec,
 )
+from .binding import (
+    ActionBinding,
+    AuthKind,
+    ConnectorBinding,
+    ContextVar,
+    EndpointBinding,
+    Location,
+    PaginationBinding,
+    PaginationKind,
+    ParamBinding,
+    PathVariant,
+    Style,
+)
 from .connector import (
     ConnectorCategory,
     ConnectorSpec,
@@ -22,6 +35,7 @@ from .connector import (
     RateLimitSpec,
 )
 from .errors import ErrorCode, ErrorSpec
+from .executor import build_request, next_request
 from .pagination import PaginationSpec, PaginationStrategyType
 from .types import TypeSpec
 from .version import SPEC_VERSION
@@ -35,6 +49,18 @@ __all__ = [
     # Action
     "ActionSpec",
     "ParameterSpec",
+    # Binding (HTTP-binding IR — drives the runtime executor + multi-language codegen)
+    "ActionBinding",
+    "ConnectorBinding",
+    "EndpointBinding",
+    "ParamBinding",
+    "PathVariant",
+    "PaginationBinding",
+    "ContextVar",
+    "Location",
+    "Style",
+    "AuthKind",
+    "PaginationKind",
     # Auth
     "AuthSpec",
     "AuthProviderSpec",
@@ -53,4 +79,7 @@ __all__ = [
     "TypeSpec",
     # Version
     "SPEC_VERSION",
+    # Executor (binding-driven request builder)
+    "build_request",
+    "next_request",
 ]

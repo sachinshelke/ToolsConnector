@@ -1,10 +1,10 @@
 # ToolsConnector
 
-The universal tool-connection primitive for Python. Connect any AI agent or traditional application to 53+ external APIs through one standardized interface.
+The universal tool-connection primitive for Python. Connect any AI agent or traditional application to 74 external APIs through one standardized interface.
 
 ## What is ToolsConnector?
 
-ToolsConnector is a foundational library that standardizes how applications connect to external tools -- Gmail, Slack, GitHub, Stripe, and 46 more. Whether you are building a Flask cron job, a Django webhook handler, or a Claude AI agent, ToolsConnector gives you a single, consistent interface to discover, validate, and execute tool calls across every supported service.
+ToolsConnector is a foundational library that standardizes how applications connect to external tools -- Gmail, Slack, GitHub, Stripe, and 70 more. Whether you are building a Flask cron job, a Django webhook handler, or a Claude AI agent, ToolsConnector gives you a single, consistent interface to discover, validate, and execute tool calls across every supported service.
 
 Every connector follows the same pattern: authenticate with BYOK (Bring Your Own Key), discover available actions, and execute them with typed parameters. The library handles retries, rate limiting, pagination, and schema generation so your code does not have to.
 
@@ -31,9 +31,11 @@ kit = ToolKit(["gmail", "slack"], credentials={
 result = kit.execute("gmail_list_emails", {"query": "is:unread", "max_results": 5})
 ```
 
+> **Credentials can be one value or several.** Most connectors take a **single** key/token string (above). Some need **multiple fields** — pass a JSON object instead. **Odoo**, for example, needs four together: `{"url", "db", "username", "api_key"}`. Each connector's page documents its exact shape; see the [quickstart](guides/quickstart.md#2-set-credentials) for the full list.
+
 ## Key Features
 
-- **73 connectors, 1,519 actions** across 20 categories -- communication, CRM, databases, DevOps, AI/ML, finance, productivity, and more.
+- **74 connectors, 1,530 actions** across 20 categories -- communication, CRM, databases, DevOps, AI/ML, finance, productivity, and more.
 - **One interface for everything.** `ToolKit.execute()` works the same whether you are sending a Slack message or querying MongoDB.
 - **AI-native schema generation.** Export tool definitions for OpenAI, Anthropic, Gemini, or MCP with a single method call.
 - **Built-in MCP server.** Serve any combination of connectors to Claude Desktop, Cursor, or any MCP-compatible client.

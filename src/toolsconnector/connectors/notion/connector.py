@@ -113,9 +113,11 @@ from toolsconnector.spec.connector import (
     ProtocolType,
     RateLimitSpec,
 )
+from toolsconnector.spec.executor import build_request
 from toolsconnector.types import PageState, PaginatedList
 
 from ._helpers import parse_block, parse_comment, parse_database, parse_page, parse_user
+from .binding import NOTION_BINDING
 from .types import (
     NotionBlock,
     NotionComment,
@@ -374,6 +376,15 @@ class Notion(BaseConnector):
         # NOTE: We deliberately don't catch httpx.HTTPError broadly —
         # that base class also covers things like InvalidURL which would
         # be a programmer bug, and we want those to surface unchanged.
+        return self._process(response)
+
+    def _process(self, response: httpx.Response) -> dict[str, Any]:
+        """Map a Notion HTTP response to a parsed dict (or raise a typed error).
+
+        Shared by ``_request`` (escape-hatch actions) and ``_execute_binding``
+        (the 21 binding-driven actions) so both paths get identical error
+        augmentation and empty-body handling.
+        """
         try:
             raise_typed_for_status(response, connector=self.name)
         except ToolsConnectorError as exc:
@@ -405,6 +416,46 @@ class Notion(BaseConnector):
         if parsed is None:
             return {}
         return parsed
+
+    async def _execute_binding(self, action_name: str, args: dict[str, Any]) -> dict[str, Any]:
+        """Build + send a request from the declarative binding, return parsed JSON.
+
+        ``build_request`` owns every wire detail (method, path, query/body
+        placement, value envelopes, auth + Notion-Version headers) — this method
+        only adds transport and reuses ``_process`` for error mapping. ``send()``
+        (not ``request()``) is used so the connector never re-applies headers the
+        binding already set. See ``binding.py`` for what's declarative vs the
+        three imperative escape hatches.
+        """
+        request = build_request(NOTION_BINDING, action_name, args, self._credentials or "")
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.send(request)
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"Notion API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "url": str(request.url),
+                    "method": request.method,
+                    "action": action_name,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                f"Could not connect to Notion API at {self._base_url}",
+                connector=self.name,
+                details={"url": str(request.url), "action": action_name, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"Notion API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"url": str(request.url), "action": action_name, "underlying": str(e)},
+            ) from e
+        return self._process(response)
 
     # ------------------------------------------------------------------
     # Actions -- Search & Pages
@@ -471,7 +522,7 @@ class Notion(BaseConnector):
             The requested NotionPage.
         """
         _validate_id(page_id, "page_id")
-        data = await self._request("GET", f"/pages/{page_id}")
+        data = await self._execute_binding("get_page", {"page_id": page_id})
         return parse_page(data)
 
     @action("Create a new page", dangerous=True)
@@ -528,8 +579,9 @@ class Notion(BaseConnector):
             The updated NotionPage.
         """
         _validate_id(page_id, "page_id")
-        body: dict[str, Any] = {"properties": properties}
-        data = await self._request("PATCH", f"/pages/{page_id}", json=body)
+        data = await self._execute_binding(
+            "update_page", {"page_id": page_id, "properties": properties}
+        )
         return parse_page(data)
 
     # ------------------------------------------------------------------
@@ -547,7 +599,7 @@ class Notion(BaseConnector):
             The requested NotionDatabase with its schema.
         """
         _validate_id(database_id, "database_id")
-        data = await self._request("GET", f"/databases/{database_id}")
+        data = await self._execute_binding("get_database", {"database_id": database_id})
         return parse_database(data)
 
     @action("Query a database with optional filters and sorts")
@@ -572,15 +624,16 @@ class Notion(BaseConnector):
             Paginated list of pages (rows) matching the query.
         """
         _validate_id(database_id, "database_id")
-        body: dict[str, Any] = {"page_size": _clamp_limit(limit, default=50)}
-        if filter:
-            body["filter"] = filter
-        if sorts:
-            body["sorts"] = sorts
-        if cursor:
-            body["start_cursor"] = cursor
-
-        data = await self._request("POST", f"/databases/{database_id}/query", json=body)
+        data = await self._execute_binding(
+            "query_database",
+            {
+                "database_id": database_id,
+                "filter": filter,
+                "sorts": sorts,
+                "limit": limit,
+                "cursor": cursor,
+            },
+        )
 
         pages = [parse_page(r) for r in data.get("results", [])]
         has_more = data.get("has_more", False)
@@ -616,12 +669,10 @@ class Notion(BaseConnector):
             The newly created NotionDatabase.
         """
         _validate_id(parent_id, "parent_id")
-        body: dict[str, Any] = {
-            "parent": {"page_id": parent_id},
-            "title": [{"text": {"content": title}}],
-            "properties": properties,
-        }
-        data = await self._request("POST", "/databases", json=body)
+        data = await self._execute_binding(
+            "create_database",
+            {"parent_id": parent_id, "title": title, "properties": properties},
+        )
         return parse_database(data)
 
     # ------------------------------------------------------------------
@@ -646,11 +697,9 @@ class Notion(BaseConnector):
             Paginated list of child NotionBlock objects.
         """
         _validate_id(block_id, "block_id")
-        params: dict[str, Any] = {"page_size": _clamp_limit(limit, default=50)}
-        if cursor:
-            params["start_cursor"] = cursor
-
-        data = await self._request("GET", f"/blocks/{block_id}/children", params=params)
+        data = await self._execute_binding(
+            "get_block_children", {"block_id": block_id, "limit": limit, "cursor": cursor}
+        )
 
         blocks = [parse_block(b) for b in data.get("results", [])]
         has_more = data.get("has_more", False)
@@ -683,8 +732,9 @@ class Notion(BaseConnector):
             List of newly created NotionBlock objects.
         """
         _validate_id(block_id, "block_id")
-        body: dict[str, Any] = {"children": children}
-        data = await self._request("PATCH", f"/blocks/{block_id}/children", json=body)
+        data = await self._execute_binding(
+            "append_block_children", {"block_id": block_id, "children": children}
+        )
 
         return [parse_block(b) for b in data.get("results", [])]
 
@@ -700,7 +750,7 @@ class Notion(BaseConnector):
             block_id: UUID of the block to delete.
         """
         _validate_id(block_id, "block_id")
-        await self._request("DELETE", f"/blocks/{block_id}")
+        await self._execute_binding("delete_block", {"block_id": block_id})
 
     @action("Update a block's content")
     async def update_block(
@@ -723,7 +773,9 @@ class Notion(BaseConnector):
             The updated NotionBlock.
         """
         _validate_id(block_id, "block_id")
-        data = await self._request("PATCH", f"/blocks/{block_id}", json=content)
+        data = await self._execute_binding(
+            "update_block", {"block_id": block_id, "content": content}
+        )
         return parse_block(data)
 
     # ------------------------------------------------------------------
@@ -737,7 +789,7 @@ class Notion(BaseConnector):
         Returns:
             List of NotionUser objects.
         """
-        data = await self._request("GET", "/users")
+        data = await self._execute_binding("list_users", {})
         users: list[NotionUser] = []
         for u in data.get("results", []):
             parsed = parse_user(u)
@@ -756,7 +808,7 @@ class Notion(BaseConnector):
             The requested NotionUser.
         """
         _validate_id(user_id, "user_id")
-        data = await self._request("GET", f"/users/{user_id}")
+        data = await self._execute_binding("get_user", {"user_id": user_id})
         parsed = parse_user(data)
         # /users/{id} returns a single user object — by contract, never
         # null. parse_user only returns None when fed an empty/None dict.
@@ -775,7 +827,7 @@ class Notion(BaseConnector):
         Returns:
             The integration's bot NotionUser.
         """
-        data = await self._request("GET", "/users/me")
+        data = await self._execute_binding("get_me", {})
         parsed = parse_user(data)
         assert parsed is not None, "Notion /users/me returned no user object"
         return parsed
@@ -802,14 +854,9 @@ class Notion(BaseConnector):
             Paginated list of NotionComment objects.
         """
         _validate_id(block_id, "block_id")
-        params: dict[str, Any] = {
-            "block_id": block_id,
-            "page_size": _clamp_limit(limit, default=50),
-        }
-        if cursor:
-            params["start_cursor"] = cursor
-
-        data = await self._request("GET", "/comments", params=params)
+        data = await self._execute_binding(
+            "list_comments", {"block_id": block_id, "limit": limit, "cursor": cursor}
+        )
 
         comments = [parse_comment(c) for c in data.get("results", [])]
         has_more = data.get("has_more", False)
@@ -886,7 +933,7 @@ class Notion(BaseConnector):
             The requested NotionComment.
         """
         _validate_id(comment_id, "comment_id")
-        data = await self._request("GET", f"/comments/{comment_id}")
+        data = await self._execute_binding("get_comment", {"comment_id": comment_id})
         return parse_comment(data)
 
     @action("Update a comment's text")
@@ -904,11 +951,10 @@ class Notion(BaseConnector):
         Returns:
             The updated NotionComment.
         """
-        body: dict[str, Any] = {
-            "rich_text": [{"text": {"content": text}}],
-        }
         _validate_id(comment_id, "comment_id")
-        data = await self._request("PATCH", f"/comments/{comment_id}", json=body)
+        data = await self._execute_binding(
+            "update_comment", {"comment_id": comment_id, "text": text}
+        )
         return parse_comment(data)
 
     @action("Delete a comment", dangerous=True)
@@ -922,7 +968,7 @@ class Notion(BaseConnector):
             comment_id: UUID of the comment to delete.
         """
         _validate_id(comment_id, "comment_id")
-        await self._request("DELETE", f"/comments/{comment_id}")
+        await self._execute_binding("delete_comment", {"comment_id": comment_id})
 
     # ------------------------------------------------------------------
     # Actions -- Database management (extended)
@@ -951,16 +997,16 @@ class Notion(BaseConnector):
         Returns:
             The updated NotionDatabase.
         """
-        body: dict[str, Any] = {}
-        if title is not None:
-            body["title"] = [{"text": {"content": title}}]
-        if description is not None:
-            body["description"] = [{"text": {"content": description}}]
-        if properties is not None:
-            body["properties"] = properties
-
         _validate_id(database_id, "database_id")
-        data = await self._request("PATCH", f"/databases/{database_id}", json=body)
+        data = await self._execute_binding(
+            "update_database",
+            {
+                "database_id": database_id,
+                "title": title,
+                "description": description,
+                "properties": properties,
+            },
+        )
         return parse_database(data)
 
     # ------------------------------------------------------------------
@@ -981,8 +1027,7 @@ class Notion(BaseConnector):
             The archived NotionPage.
         """
         _validate_id(page_id, "page_id")
-        body: dict[str, Any] = {"archived": True}
-        data = await self._request("PATCH", f"/pages/{page_id}", json=body)
+        data = await self._execute_binding("archive_page", {"page_id": page_id})
         return parse_page(data)
 
     @action("Restore an archived page")
@@ -996,8 +1041,7 @@ class Notion(BaseConnector):
             The restored NotionPage with ``archived=False``.
         """
         _validate_id(page_id, "page_id")
-        body: dict[str, Any] = {"archived": False}
-        data = await self._request("PATCH", f"/pages/{page_id}", json=body)
+        data = await self._execute_binding("restore_page", {"page_id": page_id})
         return parse_page(data)
 
     # ------------------------------------------------------------------
@@ -1015,7 +1059,7 @@ class Notion(BaseConnector):
             The requested NotionBlock.
         """
         _validate_id(block_id, "block_id")
-        data = await self._request("GET", f"/blocks/{block_id}")
+        data = await self._execute_binding("get_block", {"block_id": block_id})
         return parse_block(data)
 
     # ------------------------------------------------------------------
@@ -1067,12 +1111,13 @@ class Notion(BaseConnector):
         """
         _validate_id(page_id, "page_id")
         _validate_id(property_id, "property_id")
-        params: dict[str, Any] = {"page_size": _clamp_limit(limit, default=100)}
-        if cursor:
-            params["start_cursor"] = cursor
-        data = await self._request(
-            "GET",
-            f"/pages/{page_id}/properties/{property_id}",
-            params=params,
+        data = await self._execute_binding(
+            "get_page_property",
+            {
+                "page_id": page_id,
+                "property_id": property_id,
+                "cursor": cursor,
+                "limit": limit,
+            },
         )
         return data

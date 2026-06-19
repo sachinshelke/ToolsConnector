@@ -32,6 +32,7 @@ from toolsconnector.spec.connector import (
     ProtocolType,
     RateLimitSpec,
 )
+from toolsconnector.spec.executor import build_request
 from toolsconnector.types import PageState, PaginatedList
 
 from ._parsers import (
@@ -49,6 +50,7 @@ from ._parsers import (
     parse_workflow,
     parse_workflow_run,
 )
+from .binding import GITHUB_BINDING
 from .types import (
     Branch,
     CodeSearchResult,
@@ -317,6 +319,41 @@ class GitHub(BaseConnector):
             return resp
         return await self._request("GET", path, params=params)
 
+    async def _execute_binding(self, action_name: str, args: dict[str, Any]) -> httpx.Response:
+        """Send a binding-driven request. build_request() owns all wire details."""
+        req = build_request(GITHUB_BINDING, action_name, args, self._credentials or "")
+        try:
+            resp = await self._client.send(req)
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"GitHub API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "action": action_name,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to GitHub API at api.github.com",
+                connector=self.name,
+                details={"action": action_name, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"GitHub API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"action": action_name, "underlying": str(e)},
+            ) from e
+        remaining = resp.headers.get("X-RateLimit-Remaining")
+        if remaining is not None:
+            logger.debug("GitHub rate-limit remaining: %s", remaining)
+        if resp.status_code == 403:
+            self._maybe_raise_github_rate_limit(resp)
+        raise_typed_for_status(resp, connector=self.name)
+        return resp
+
     # ======================================================================
     # REPOSITORIES
     # ======================================================================
@@ -341,18 +378,17 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Repository objects.
         """
-        if org:
-            path = f"/orgs/{_p(org)}/repos"
-        elif user:
-            path = f"/users/{_p(user)}/repos"
+        if page:
+            resp = await self._get_page("/", cursor=page)
         else:
-            path = "/user/repos"
-
-        resp = await self._get_page(
-            path,
-            params={"per_page": min(limit, 100)},
-            cursor=page,
-        )
+            resp = await self._execute_binding(
+                "list_repos",
+                {
+                    "org": org,
+                    "user": user,
+                    "limit": limit,
+                },
+            )
         items = [parse_repo(r) for r in resp.json()]
         ps = self._build_page_state(resp)
 
@@ -372,7 +408,7 @@ class GitHub(BaseConnector):
         Returns:
             Repository object.
         """
-        resp = await self._request("GET", f"/repos/{_p(owner)}/{_p(repo)}")
+        resp = await self._execute_binding("get_repo", {"owner": owner, "repo": repo})
         return parse_repo(resp.json())
 
     @action("Create a new repository", dangerous=True)
@@ -396,16 +432,16 @@ class GitHub(BaseConnector):
         Returns:
             The created Repository object.
         """
-        payload: dict[str, Any] = {
-            "name": name,
-            "private": private,
-            "auto_init": auto_init,
-        }
-        if description:
-            payload["description"] = description
-
-        path = f"/orgs/{_p(org)}/repos" if org else "/user/repos"
-        resp = await self._request("POST", path, json=payload)
+        resp = await self._execute_binding(
+            "create_repo",
+            {
+                "org": org,
+                "name": name,
+                "private": private,
+                "auto_init": auto_init,
+                "description": description,
+            },
+        )
         return parse_repo(resp.json())
 
     @action("Fork a repository", dangerous=True)
@@ -425,14 +461,13 @@ class GitHub(BaseConnector):
         Returns:
             The forked Repository object.
         """
-        payload: dict[str, Any] = {}
-        if organization:
-            payload["organization"] = organization
-
-        resp = await self._request(
-            "POST",
-            f"/repos/{_p(owner)}/{_p(repo)}/forks",
-            json=payload,
+        resp = await self._execute_binding(
+            "fork_repo",
+            {
+                "owner": owner,
+                "repo": repo,
+                "organization": organization,
+            },
         )
         return parse_repo(resp.json())
 
@@ -465,16 +500,20 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Issue objects.
         """
-        path = f"/repos/{_p(owner)}/{_p(repo)}/issues"
-        params: dict[str, Any] = {"per_page": min(limit, 100)}
-        if state:
-            params["state"] = state
-        if labels:
-            params["labels"] = labels
-        if assignee:
-            params["assignee"] = assignee
-
-        resp = await self._get_page(path, params=params, cursor=page)
+        if page:
+            resp = await self._get_page("/", cursor=page)
+        else:
+            resp = await self._execute_binding(
+                "list_issues",
+                {
+                    "owner": owner,
+                    "repo": repo,
+                    "state": state,
+                    "labels": labels,
+                    "assignee": assignee,
+                    "limit": limit,
+                },
+            )
         items = [parse_issue(i) for i in resp.json()]
         ps = self._build_page_state(resp)
 
@@ -510,18 +549,16 @@ class GitHub(BaseConnector):
         Returns:
             The created Issue object.
         """
-        payload: dict[str, Any] = {"title": title}
-        if body is not None:
-            payload["body"] = body
-        if labels:
-            payload["labels"] = labels
-        if assignees:
-            payload["assignees"] = assignees
-
-        resp = await self._request(
-            "POST",
-            f"/repos/{_p(owner)}/{_p(repo)}/issues",
-            json=payload,
+        resp = await self._execute_binding(
+            "create_issue",
+            {
+                "owner": owner,
+                "repo": repo,
+                "title": title,
+                "body": body,
+                "labels": labels,
+                "assignees": assignees,
+            },
         )
         return parse_issue(resp.json())
 
@@ -542,9 +579,13 @@ class GitHub(BaseConnector):
         Returns:
             Issue object.
         """
-        resp = await self._request(
-            "GET",
-            f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}",
+        resp = await self._execute_binding(
+            "get_issue",
+            {
+                "owner": owner,
+                "repo": repo,
+                "issue_number": issue_number,
+            },
         )
         return parse_issue(resp.json())
 
@@ -575,22 +616,18 @@ class GitHub(BaseConnector):
         Returns:
             The updated Issue object.
         """
-        payload: dict[str, Any] = {}
-        if title is not None:
-            payload["title"] = title
-        if body is not None:
-            payload["body"] = body
-        if state is not None:
-            payload["state"] = state
-        if labels is not None:
-            payload["labels"] = labels
-        if assignees is not None:
-            payload["assignees"] = assignees
-
-        resp = await self._request(
-            "PATCH",
-            f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}",
-            json=payload,
+        resp = await self._execute_binding(
+            "update_issue",
+            {
+                "owner": owner,
+                "repo": repo,
+                "issue_number": issue_number,
+                "title": title,
+                "body": body,
+                "state": state,
+                "labels": labels,
+                "assignees": assignees,
+            },
         )
         return parse_issue(resp.json())
 
@@ -614,10 +651,14 @@ class GitHub(BaseConnector):
             List of all labels now on the issue (typed ``GitHubLabel``
             objects — was ``list[dict[str, Any]]`` before 0.3.10).
         """
-        resp = await self._request(
-            "POST",
-            f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}/labels",
-            json={"labels": labels},
+        resp = await self._execute_binding(
+            "add_labels",
+            {
+                "owner": owner,
+                "repo": repo,
+                "issue_number": issue_number,
+                "labels": labels,
+            },
         )
         # GitHub returns the full list of labels on the issue, not just
         # the added ones — preserves "after" state for the caller.
@@ -639,9 +680,14 @@ class GitHub(BaseConnector):
             issue_number: The issue number.
             label_name: Name of the label to remove.
         """
-        await self._request(
-            "DELETE",
-            f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}/labels/{_p(label_name)}",
+        await self._execute_binding(
+            "remove_label",
+            {
+                "owner": owner,
+                "repo": repo,
+                "issue_number": issue_number,
+                "label_name": label_name,
+            },
         )
 
     # ======================================================================
@@ -667,10 +713,14 @@ class GitHub(BaseConnector):
         Returns:
             The created Comment object.
         """
-        resp = await self._request(
-            "POST",
-            f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}/comments",
-            json={"body": body},
+        resp = await self._execute_binding(
+            "create_comment",
+            {
+                "owner": owner,
+                "repo": repo,
+                "issue_number": issue_number,
+                "body": body,
+            },
         )
         return parse_comment(resp.json())
 
@@ -695,12 +745,18 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Comment objects.
         """
-        path = f"/repos/{_p(owner)}/{_p(repo)}/issues/{_p(issue_number)}/comments"
-        resp = await self._get_page(
-            path,
-            params={"per_page": min(limit, 100)},
-            cursor=page,
-        )
+        if page:
+            resp = await self._get_page("/", cursor=page)
+        else:
+            resp = await self._execute_binding(
+                "list_comments",
+                {
+                    "owner": owner,
+                    "repo": repo,
+                    "issue_number": issue_number,
+                    "limit": limit,
+                },
+            )
         items = [parse_comment(c) for c in resp.json()]
         ps = self._build_page_state(resp)
         result = PaginatedList(items=items, page_state=ps)
@@ -738,12 +794,18 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of PullRequest objects.
         """
-        path = f"/repos/{_p(owner)}/{_p(repo)}/pulls"
-        params: dict[str, Any] = {"per_page": min(limit, 100)}
-        if state:
-            params["state"] = state
-
-        resp = await self._get_page(path, params=params, cursor=page)
+        if page:
+            resp = await self._get_page("/", cursor=page)
+        else:
+            resp = await self._execute_binding(
+                "list_pull_requests",
+                {
+                    "owner": owner,
+                    "repo": repo,
+                    "state": state,
+                    "limit": limit,
+                },
+            )
         items = [PullRequest.from_api(pr) for pr in resp.json()]
         ps = self._build_page_state(resp)
 
@@ -773,9 +835,13 @@ class GitHub(BaseConnector):
         Returns:
             PullRequest object with merge/diff statistics.
         """
-        resp = await self._request(
-            "GET",
-            f"/repos/{_p(owner)}/{_p(repo)}/pulls/{_p(pr_number)}",
+        resp = await self._execute_binding(
+            "get_pull_request",
+            {
+                "owner": owner,
+                "repo": repo,
+                "pr_number": pr_number,
+            },
         )
         return PullRequest.from_api(resp.json())
 
@@ -804,19 +870,17 @@ class GitHub(BaseConnector):
         Returns:
             The created PullRequest object.
         """
-        payload: dict[str, Any] = {
-            "title": title,
-            "head": head,
-            "base": base,
-            "draft": draft,
-        }
-        if body is not None:
-            payload["body"] = body
-
-        resp = await self._request(
-            "POST",
-            f"/repos/{_p(owner)}/{_p(repo)}/pulls",
-            json=payload,
+        resp = await self._execute_binding(
+            "create_pull_request",
+            {
+                "owner": owner,
+                "repo": repo,
+                "title": title,
+                "head": head,
+                "base": base,
+                "body": body,
+                "draft": draft,
+            },
         )
         return PullRequest.from_api(resp.json())
 
@@ -843,16 +907,16 @@ class GitHub(BaseConnector):
         Returns:
             Dict with ``sha``, ``merged``, and ``message`` keys.
         """
-        payload: dict[str, Any] = {"merge_method": merge_method}
-        if commit_title:
-            payload["commit_title"] = commit_title
-        if commit_message:
-            payload["commit_message"] = commit_message
-
-        resp = await self._request(
-            "PUT",
-            f"/repos/{_p(owner)}/{_p(repo)}/pulls/{_p(pr_number)}/merge",
-            json=payload,
+        resp = await self._execute_binding(
+            "merge_pull_request",
+            {
+                "owner": owner,
+                "repo": repo,
+                "pr_number": pr_number,
+                "merge_method": merge_method,
+                "commit_title": commit_title,
+                "commit_message": commit_message,
+            },
         )
         return resp.json()
 
@@ -885,16 +949,20 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Commit objects.
         """
-        api_path = f"/repos/{_p(owner)}/{_p(repo)}/commits"
-        params: dict[str, Any] = {"per_page": min(limit, 100)}
-        if sha:
-            params["sha"] = sha
-        if path:
-            params["path"] = path
-        if author:
-            params["author"] = author
-
-        resp = await self._get_page(api_path, params=params, cursor=page)
+        if page:
+            resp = await self._get_page("/", cursor=page)
+        else:
+            resp = await self._execute_binding(
+                "list_commits",
+                {
+                    "owner": owner,
+                    "repo": repo,
+                    "sha": sha,
+                    "path": path,
+                    "author": author,
+                    "limit": limit,
+                },
+            )
         items = [parse_commit(c) for c in resp.json()]
         ps = self._build_page_state(resp)
 
@@ -930,11 +998,17 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Branch objects.
         """
-        resp = await self._get_page(
-            f"/repos/{_p(owner)}/{_p(repo)}/branches",
-            params={"per_page": min(limit, 100)},
-            cursor=page,
-        )
+        if page:
+            resp = await self._get_page("/", cursor=page)
+        else:
+            resp = await self._execute_binding(
+                "list_branches",
+                {
+                    "owner": owner,
+                    "repo": repo,
+                    "limit": limit,
+                },
+            )
         items = [parse_branch(b) for b in resp.json()]
         ps = self._build_page_state(resp)
         result = PaginatedList(items=items, page_state=ps)
@@ -963,9 +1037,13 @@ class GitHub(BaseConnector):
         Returns:
             Branch object.
         """
-        resp = await self._request(
-            "GET",
-            f"/repos/{_p(owner)}/{_p(repo)}/branches/{_p(branch)}",
+        resp = await self._execute_binding(
+            "get_branch",
+            {
+                "owner": owner,
+                "repo": repo,
+                "branch": branch,
+            },
         )
         return parse_branch(resp.json())
 
@@ -992,11 +1070,17 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Release objects.
         """
-        resp = await self._get_page(
-            f"/repos/{_p(owner)}/{_p(repo)}/releases",
-            params={"per_page": min(limit, 100)},
-            cursor=page,
-        )
+        if page:
+            resp = await self._get_page("/", cursor=page)
+        else:
+            resp = await self._execute_binding(
+                "list_releases",
+                {
+                    "owner": owner,
+                    "repo": repo,
+                    "limit": limit,
+                },
+            )
         items = [parse_release(r) for r in resp.json()]
         ps = self._build_page_state(resp)
         result = PaginatedList(items=items, page_state=ps)
@@ -1023,9 +1107,12 @@ class GitHub(BaseConnector):
         Returns:
             The latest Release object.
         """
-        resp = await self._request(
-            "GET",
-            f"/repos/{_p(owner)}/{_p(repo)}/releases/latest",
+        resp = await self._execute_binding(
+            "get_latest_release",
+            {
+                "owner": owner,
+                "repo": repo,
+            },
         )
         return parse_release(resp.json())
 
@@ -1057,22 +1144,18 @@ class GitHub(BaseConnector):
         Returns:
             The created Release object.
         """
-        payload: dict[str, Any] = {
-            "tag_name": tag_name,
-            "draft": draft,
-            "prerelease": prerelease,
-        }
-        if name:
-            payload["name"] = name
-        if body:
-            payload["body"] = body
-        if target_commitish:
-            payload["target_commitish"] = target_commitish
-
-        resp = await self._request(
-            "POST",
-            f"/repos/{_p(owner)}/{_p(repo)}/releases",
-            json=payload,
+        resp = await self._execute_binding(
+            "create_release",
+            {
+                "owner": owner,
+                "repo": repo,
+                "tag_name": tag_name,
+                "name": name,
+                "body": body,
+                "draft": draft,
+                "prerelease": prerelease,
+                "target_commitish": target_commitish,
+            },
         )
         return parse_release(resp.json())
 
@@ -1102,14 +1185,14 @@ class GitHub(BaseConnector):
         Returns:
             FileContent object.
         """
-        params: dict[str, Any] = {}
-        if ref:
-            params["ref"] = ref
-
-        resp = await self._request(
-            "GET",
-            f"/repos/{_p(owner)}/{_p(repo)}/contents/{path}",
-            params=params,
+        resp = await self._execute_binding(
+            "get_content",
+            {
+                "owner": owner,
+                "repo": repo,
+                "path": path,
+                "ref": ref,
+            },
         )
         return parse_file_content(resp.json())
 
@@ -1141,19 +1224,17 @@ class GitHub(BaseConnector):
         Returns:
             Dict with ``content`` and ``commit`` keys from the API.
         """
-        payload: dict[str, Any] = {
-            "message": message,
-            "content": content,
-        }
-        if sha:
-            payload["sha"] = sha
-        if branch:
-            payload["branch"] = branch
-
-        resp = await self._request(
-            "PUT",
-            f"/repos/{_p(owner)}/{_p(repo)}/contents/{path}",
-            json=payload,
+        resp = await self._execute_binding(
+            "create_or_update_file",
+            {
+                "owner": owner,
+                "repo": repo,
+                "path": path,
+                "content": content,
+                "message": message,
+                "sha": sha,
+                "branch": branch,
+            },
         )
         return resp.json()
 
@@ -1180,17 +1261,16 @@ class GitHub(BaseConnector):
         Returns:
             Dict with ``commit`` key from the API.
         """
-        payload: dict[str, Any] = {
-            "message": message,
-            "sha": sha,
-        }
-        if branch:
-            payload["branch"] = branch
-
-        resp = await self._request(
-            "DELETE",
-            f"/repos/{_p(owner)}/{_p(repo)}/contents/{path}",
-            json=payload,
+        resp = await self._execute_binding(
+            "delete_file",
+            {
+                "owner": owner,
+                "repo": repo,
+                "path": path,
+                "sha": sha,
+                "message": message,
+                "branch": branch,
+            },
         )
         return resp.json()
 
@@ -1217,18 +1297,27 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Workflow objects.
         """
-        resp = await self._get_page(
-            f"/repos/{_p(owner)}/{_p(repo)}/actions/workflows",
-            params={"per_page": min(limit, 100)},
-            cursor=page,
-        )
+        if page:
+            resp = await self._get_page("/", cursor=page)
+        else:
+            resp = await self._execute_binding(
+                "list_workflows",
+                {
+                    "owner": owner,
+                    "repo": repo,
+                    "limit": limit,
+                },
+            )
         data = resp.json()
-        items = [parse_workflow(w) for w in data.get("workflows", [])]
+        items = [
+            parse_workflow(w)
+            for w in (data.get("workflows", []) if isinstance(data, dict) else data)
+        ]
         ps = self._build_page_state(resp)
         result = PaginatedList(
             items=items,
             page_state=ps,
-            total_count=data.get("total_count", 0),
+            total_count=data.get("total_count", 0) if isinstance(data, dict) else 0,
         )
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.alist_workflows(
@@ -1265,25 +1354,30 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of WorkflowRun objects.
         """
-        if workflow_id:
-            path = f"/repos/{_p(owner)}/{_p(repo)}/actions/workflows/{_p(workflow_id)}/runs"
+        if page:
+            resp = await self._get_page("/", cursor=page)
         else:
-            path = f"/repos/{_p(owner)}/{_p(repo)}/actions/runs"
-
-        params: dict[str, Any] = {"per_page": min(limit, 100)}
-        if branch:
-            params["branch"] = branch
-        if status:
-            params["status"] = status
-
-        resp = await self._get_page(path, params=params, cursor=page)
+            resp = await self._execute_binding(
+                "list_workflow_runs",
+                {
+                    "owner": owner,
+                    "repo": repo,
+                    "workflow_id": workflow_id,
+                    "branch": branch,
+                    "status": status,
+                    "limit": limit,
+                },
+            )
         data = resp.json()
-        items = [parse_workflow_run(r) for r in data.get("workflow_runs", [])]
+        items = [
+            parse_workflow_run(r)
+            for r in (data.get("workflow_runs", []) if isinstance(data, dict) else data)
+        ]
         ps = self._build_page_state(resp)
         result = PaginatedList(
             items=items,
             page_state=ps,
-            total_count=data.get("total_count", 0),
+            total_count=data.get("total_count", 0) if isinstance(data, dict) else 0,
         )
         if ps.has_more:
             result._fetch_next = lambda c=ps.cursor: self.alist_workflow_runs(
@@ -1311,14 +1405,15 @@ class GitHub(BaseConnector):
             ref: Git ref (branch or tag) to run the workflow on.
             inputs: Optional workflow input parameters.
         """
-        payload: dict[str, Any] = {"ref": ref}
-        if inputs:
-            payload["inputs"] = inputs
-
-        await self._request(
-            "POST",
-            f"/repos/{_p(owner)}/{_p(repo)}/actions/workflows/{_p(workflow_id)}/dispatches",
-            json=payload,
+        await self._execute_binding(
+            "trigger_workflow",
+            {
+                "owner": owner,
+                "repo": repo,
+                "workflow_id": workflow_id,
+                "ref": ref,
+                "inputs": inputs,
+            },
         )
 
     # ======================================================================
@@ -1340,11 +1435,10 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of GitHubGist objects.
         """
-        resp = await self._get_page(
-            "/gists",
-            params={"per_page": min(limit, 100)},
-            cursor=page,
-        )
+        if page:
+            resp = await self._get_page("/", cursor=page)
+        else:
+            resp = await self._execute_binding("list_gists", {"limit": limit})
         items = [parse_gist(g) for g in resp.json()]
         ps = self._build_page_state(resp)
         result = PaginatedList(items=items, page_state=ps)
@@ -1402,9 +1496,16 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of CodeSearchResult objects.
         """
-        params: dict[str, Any] = {"q": query, "per_page": min(limit, 100)}
-
-        resp = await self._get_page("/search/code", params=params, cursor=page)
+        if page:
+            resp = await self._get_page("/", cursor=page)
+        else:
+            resp = await self._execute_binding(
+                "search_code",
+                {
+                    "query": query,
+                    "limit": limit,
+                },
+            )
         data = resp.json()
 
         items = [parse_code_search_result(i) for i in data.get("items", [])]
@@ -1444,15 +1545,18 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Repository objects.
         """
-        params: dict[str, Any] = {
-            "q": query,
-            "order": order,
-            "per_page": min(limit, 100),
-        }
-        if sort:
-            params["sort"] = sort
-
-        resp = await self._get_page("/search/repositories", params=params, cursor=page)
+        if page:
+            resp = await self._get_page("/", cursor=page)
+        else:
+            resp = await self._execute_binding(
+                "search_repos",
+                {
+                    "query": query,
+                    "sort": sort,
+                    "order": order,
+                    "limit": limit,
+                },
+            )
         data = resp.json()
         items = [parse_repo(r) for r in data.get("items", [])]
         ps = self._build_page_state(resp)
@@ -1490,19 +1594,18 @@ class GitHub(BaseConnector):
         Returns:
             Paginated list of Issue objects.
         """
-        params: dict[str, Any] = {
-            "q": query,
-            "order": order,
-            "per_page": min(limit, 100),
-        }
-        if sort:
-            params["sort"] = sort
-
-        resp = await self._get_page(
-            "/search/issues",
-            params=params,
-            cursor=page,
-        )
+        if page:
+            resp = await self._get_page("/", cursor=page)
+        else:
+            resp = await self._execute_binding(
+                "search_issues",
+                {
+                    "query": query,
+                    "sort": sort,
+                    "order": order,
+                    "limit": limit,
+                },
+            )
         data = resp.json()
         items = [parse_issue(i) for i in data.get("items", [])]
         ps = self._build_page_state(resp)
@@ -1530,7 +1633,7 @@ class GitHub(BaseConnector):
             Dict with user profile fields (login, name, email, bio,
             public_repos, followers, etc.).
         """
-        resp = await self._request("GET", "/user")
+        resp = await self._execute_binding("get_authenticated_user", {})
         return resp.json()
 
     @action("Get the current rate limit status")
@@ -1541,7 +1644,7 @@ class GitHub(BaseConnector):
             Dict with ``resources`` (core, search, graphql limits)
             and ``rate`` (overall) sections.
         """
-        resp = await self._request("GET", "/rate_limit")
+        resp = await self._execute_binding("get_rate_limit", {})
         return resp.json()
 
     @action("Star a repository", dangerous=True)
@@ -1552,7 +1655,7 @@ class GitHub(BaseConnector):
             owner: Repository owner.
             repo: Repository name.
         """
-        await self._request("PUT", f"/user/starred/{_p(owner)}/{_p(repo)}")
+        await self._execute_binding("star_repo", {"owner": owner, "repo": repo})
 
     @action("Unstar a repository", dangerous=True)
     async def unstar_repo(self, owner: str, repo: str) -> None:
@@ -1562,4 +1665,4 @@ class GitHub(BaseConnector):
             owner: Repository owner.
             repo: Repository name.
         """
-        await self._request("DELETE", f"/user/starred/{_p(owner)}/{_p(repo)}")
+        await self._execute_binding("unstar_repo", {"owner": owner, "repo": repo})

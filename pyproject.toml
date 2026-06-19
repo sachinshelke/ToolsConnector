@@ -77,12 +77,13 @@ trello = []
 notion = []
 confluence = []
 
-# --- Connectors: CRM / Support ---
+# --- Connectors: CRM / Support / ERP ---
 hubspot = []
 salesforce = []
 zendesk = []
 freshdesk = []
 intercom = []
+odoo = []  # Odoo / OpenERP -- JSON-RPC over httpx (core), no extra deps
 
 # --- Connectors: Finance ---
 stripe = []

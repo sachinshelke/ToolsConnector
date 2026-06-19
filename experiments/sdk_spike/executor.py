@@ -28,6 +28,7 @@ from .binding_ir import (
     EndpointBinding,
     Location,
     PaginationKind,
+    ParamBinding,
     Style,
 )
 
@@ -66,6 +67,10 @@ def _apply_auth(headers: dict[str, str], ep: EndpointBinding, cred: str) -> None
     elif ep.auth_kind == AuthKind.BASIC_SPLIT:
         token = base64.b64encode(cred.encode()).decode()
         headers[ep.auth_header] = f"Basic {token}"
+    elif ep.auth_kind == AuthKind.BASIC_USER:
+        # API key as username, empty password: base64("<key>:")
+        token = base64.b64encode(f"{cred}:".encode()).decode()
+        headers[ep.auth_header] = f"Basic {token}"
 
 
 # ----------------------------------------------------------------------------
@@ -82,31 +87,43 @@ def _clamp(v: Any, mx: Optional[int]) -> Any:
     return v
 
 
+def _styled_pairs(p: ParamBinding, v: Any) -> list[tuple[str, str]]:
+    """Serialize ONE present param value into wire (key, value) pairs by style.
+
+    Shared by both query strings and form-encoded bodies — Stripe puts
+    list/object params (``payment_method_types[i]``, ``line_items[i][price]``)
+    in the BODY, not just the query, so the same finite style vocabulary has to
+    drive both. (Pure JSON-body shaping stays in ``_build_body``'s JSON branch.)
+    """
+    if p.style == Style.INDEXED:
+        seq = v[: p.max_items] if p.max_items else v
+        return [(f"{p.wire}[{i}]", str(item)) for i, item in enumerate(seq)]
+    if p.style == Style.INDEXED_OBJECT:
+        out: list[tuple[str, str]] = []
+        for i, item in enumerate(v):
+            for sk in p.subkeys:
+                val = item.get(sk, p.subkey_defaults.get(sk))
+                out.append((f"{p.wire}[{i}][{sk}]", str(val)))
+        return out
+    if p.style == Style.BRACKET:
+        seq = v[: p.max_items] if p.max_items else v
+        return [(f"{p.wire}[]", str(item)) for item in seq]
+    if p.style == Style.FORM_EXPLODE:
+        return [(p.wire, str(item)) for item in v]
+    if p.style == Style.MAP:
+        return [(f"{p.wire}[{k}]", str(val)) for k, val in v.items()]
+    # SIMPLE (default)
+    return [(p.wire, str(_clamp(v, p.max)))]
+
+
 def _query_pairs(action: ActionBinding, args: dict[str, Any]) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     for p in action.params:
         if p.location != Location.QUERY:
             continue
         v = args.get(p.name, p.default)
-        if not _present(v):
-            continue
-        if p.style == Style.SIMPLE:
-            out.append((p.wire, str(_clamp(v, p.max))))
-        elif p.style == Style.INDEXED:
-            for i, item in enumerate(v):
-                out.append((f"{p.wire}[{i}]", str(item)))
-        elif p.style == Style.INDEXED_OBJECT:
-            for i, item in enumerate(v):
-                for sk in p.subkeys:
-                    val = item.get(sk, p.subkey_defaults.get(sk))
-                    out.append((f"{p.wire}[{i}][{sk}]", str(val)))
-        elif p.style == Style.BRACKET:
-            seq = v[: p.max_items] if p.max_items else v
-            for item in seq:
-                out.append((f"{p.wire}[]", str(item)))
-        elif p.style == Style.FORM_EXPLODE:
-            for item in v:
-                out.append((p.wire, str(item)))
+        if _present(v):
+            out.extend(_styled_pairs(p, v))
     return out
 
 
@@ -118,11 +135,11 @@ def _build_body(
         return None, None
 
     if encoding == "form":
-        pairs = [
-            (p.wire, str(args.get(p.name, p.default)))
-            for p in body_params
-            if _present(args.get(p.name, p.default))
-        ]
+        pairs: list[tuple[str, str]] = []
+        for p in body_params:
+            v = args.get(p.name, p.default)
+            if _present(v):
+                pairs.extend(_styled_pairs(p, v))
         return urlencode(pairs).encode(), "application/x-www-form-urlencoded"
 
     # JSON
@@ -151,13 +168,19 @@ def build_request(
     ep = conn.endpoints[action.endpoint]
     ctx = derive_ctx(conn, credential)
 
-    # 1) path: substitute {ctx} + {path params}
+    # 1) path: pick the conditional variant (first present-arg wins), then
+    #    substitute {ctx} + {path params}
     subst: dict[str, Any] = dict(ctx)
     for p in action.params:
         if p.location == Location.PATH:
             subst[p.wire] = args.get(p.name, p.default)
+    chosen_path = action.path
+    for pv in action.path_variants:
+        if args.get(pv.when_present):  # truthy, matching the connector's `if org:`
+            chosen_path = pv.path
+            break
     base = ep.base_url.format(**ctx)
-    path = action.path.format(**subst)
+    path = chosen_path.format(**subst)
     url_str = base.rstrip("/") + "/" + path.lstrip("/")
 
     # 2) query
@@ -197,6 +220,16 @@ def _parse_link_next(link_header: Optional[str], rel: str) -> Optional[str]:
     return None
 
 
+def _parse_link_rel(link_header: Optional[str], rel: str) -> Optional[str]:
+    """Return the FULL url for a Link rel (GitHub follows it directly)."""
+    if not link_header:
+        return None
+    for url, r in _LINK_RE.findall(link_header):
+        if r == rel:
+            return url
+    return None
+
+
 def next_request(
     conn: ConnectorBinding,
     action_name: str,
@@ -230,6 +263,19 @@ def next_request(
         nargs[pg.token_param_py] = cursor
         return build_request(conn, action_name, nargs, credential)
 
+    if pg.kind == PaginationKind.LAST_ID:
+        # Stripe: next cursor is the id of the last item, sent as starting_after,
+        # but only while has_more is truthy.
+        items = body.get(pg.items_field, []) if pg.items_field else []
+        if not (body.get(pg.has_more_field, False) and items):
+            return None
+        cursor = items[-1].get(pg.id_field)
+        if cursor is None:
+            return None
+        nargs = dict(prev_args) if pg.carry is None else {k: prev_args[k] for k in pg.carry if k in prev_args}
+        nargs[pg.token_param_py] = cursor
+        return build_request(conn, action_name, nargs, credential)
+
     if pg.kind == PaginationKind.LINK_HEADER:
         cursor = _parse_link_next(headers.get("link"), pg.link_rel)
         if not cursor:
@@ -237,5 +283,15 @@ def next_request(
         nargs = dict(prev_args) if pg.carry is None else {k: prev_args[k] for k in pg.carry if k in prev_args}
         nargs[pg.token_param_py] = cursor
         return build_request(conn, action_name, nargs, credential)
+
+    if pg.kind == PaginationKind.LINK_FOLLOW:
+        # GitHub: the Link rel=next URL is absolute and already carries every
+        # query param; GET it directly with the connector's standard headers.
+        next_url = _parse_link_rel(headers.get("link"), pg.link_rel)
+        if not next_url:
+            return None
+        h = dict(ep.extra_headers)
+        _apply_auth(h, ep, _auth_cred(ep, credential, ctx))
+        return httpx.Request("GET", next_url, headers=h)
 
     return None

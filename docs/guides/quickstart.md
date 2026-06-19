@@ -25,6 +25,32 @@ export TC_SLACK_CREDENTIALS="xoxb-your-slack-bot-token"
 
 Or pass credentials directly in code (see step 3).
 
+> ### Single key vs. multiple fields
+>
+> Most connectors authenticate with a **single** API key or token *string* (like the two above). A few need **several fields** — for those you pass a **JSON object** (a `dict` in code, or a JSON-encoded string in the environment variable) instead of a bare string:
+>
+> | Connector | Credential shape |
+> |---|---|
+> | Most (Gmail, Slack, GitHub, Stripe, …) | a single string — `"xoxb-…"` |
+> | **Odoo** | **four** fields — `{"url", "db", "username", "api_key"}` |
+> | Salesforce | `{"access_token", "instance_url"}` |
+> | Zendesk | `{"email", "token", "subdomain"}` |
+> | AWS (S3, EC2, …) | `{"access_key_id", "secret_access_key", "region"}` |
+>
+> Each connector's page documents its exact shape. **Odoo**, for example, needs all four values together:
+>
+> ```python
+> kit = ToolKit(["odoo"], credentials={"odoo": {
+>     "url": "https://yourcompany.odoo.com",
+>     "db": "yourcompany",
+>     "username": "you@example.com",
+>     "api_key": "your-api-key",
+> }})
+> ```
+>
+> The same object works in the environment variable as a JSON-encoded string:
+> `export TC_ODOO_CREDENTIALS='{"url":"…","db":"…","username":"…","api_key":"…"}'`
+
 ## 3. Create a ToolKit
 
 The `ToolKit` is the single entry point for all operations. Initialize it with the connectors you want and their credentials.

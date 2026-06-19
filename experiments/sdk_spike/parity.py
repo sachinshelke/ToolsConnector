@@ -19,14 +19,19 @@ from urllib.parse import parse_qsl
 import httpx
 
 from toolsconnector.connectors.airtable.connector import Airtable
+from toolsconnector.connectors.github.connector import GitHub
 from toolsconnector.connectors.shopify.connector import Shopify
+from toolsconnector.connectors.stripe.connector import Stripe
 from toolsconnector.connectors.twilio.connector import Twilio
 
 from .binding_ir import Location
 from .executor import build_request, next_request
 from .specs import ALL
 
-CLASSES = {"airtable": Airtable, "twilio": Twilio, "shopify": Shopify}
+CLASSES = {
+    "airtable": Airtable, "twilio": Twilio, "shopify": Shopify,
+    "stripe": Stripe, "github": GitHub,
+}
 
 # (connector, credential, [(action, kwargs)])
 MATRIX = {
@@ -52,11 +57,118 @@ MATRIX = {
         ("list_products", dict(limit=50)),
         ("create_product", dict(title="Widget", body_html="<p>x</p>", vendor="Acme")),
     ]),
+    "stripe": ("sk_test_FAKE", [
+        ("list_customers", dict(limit=10)),
+        ("get_customer", dict(customer_id="cus_1")),
+        ("create_customer", dict(email="a@example.com", name="Alice", description="d",
+                                 metadata={"plan": "pro", "ref": "abc"})),  # MAP style
+        ("update_customer", dict(customer_id="cus_1", name="New", email="b@example.com")),
+        ("delete_customer", dict(customer_id="cus_1")),
+        ("list_charges", dict(customer="cus_1", limit=10)),
+        ("get_charge", dict(charge_id="ch_1")),
+        ("create_charge", dict(amount=2000, currency="usd", customer="cus_1", source="tok_visa")),
+        ("refund_charge", dict(charge_id="ch_1", amount=300, reason="requested_by_customer")),
+        ("list_refunds", dict(charge="ch_1", limit=10)),
+        ("create_payment_intent", dict(amount=1100, currency="usd", customer="cus_1",
+                                       payment_method_types=["card", "link"],
+                                       capture_method="manual")),
+        ("get_payment_intent", dict(payment_intent_id="pi_1")),
+        ("list_payment_intents", dict(customer="cus_1", limit=10)),
+        ("confirm_payment_intent", dict(payment_intent_id="pi_1", payment_method="pm_card_visa",
+                                        return_url="https://example.com/back")),
+        ("cancel_payment_intent", dict(payment_intent_id="pi_1")),
+        ("capture_payment_intent", dict(payment_intent_id="pi_1", amount_to_capture=500)),
+        ("list_invoices", dict(customer="cus_1", limit=10)),
+        ("get_invoice", dict(invoice_id="in_1")),
+        ("void_invoice", dict(invoice_id="in_1")),
+        ("get_balance", dict()),
+        ("create_subscription", dict(customer="cus_1", price="price_1", trial_days=7)),
+        ("list_subscriptions", dict(customer="cus_1", status="all", limit=10)),
+        ("get_subscription", dict(subscription_id="sub_1")),
+        ("create_product", dict(name="Widget", description="x", metadata={"sku": "X1"})),
+        ("list_products", dict(limit=10)),
+        ("create_price", dict(product="prod_1", unit_amount=999, currency="usd",
+                              recurring_interval="month")),
+        ("list_prices", dict(product="prod_1", limit=10)),
+        ("create_checkout_session", dict(line_items=[{"price": "price_1", "quantity": 2}],
+                                         mode="payment", success_url="https://e.com/s",
+                                         cancel_url="https://e.com/c")),
+        ("list_payment_methods", dict(customer="cus_1", type="card", limit=10)),
+        ("list_disputes", dict(limit=10)),
+        ("get_dispute", dict(dispute_id="dp_1")),
+        ("close_dispute", dict(dispute_id="dp_1")),
+        ("list_payouts", dict(limit=10)),
+        ("create_payout", dict(amount=100, currency="usd")),
+        ("get_payout", dict(payout_id="po_1")),
+        ("list_events", dict(type="charge.succeeded", limit=10)),
+        ("get_event", dict(event_id="evt_1")),
+        ("create_setup_intent", dict(customer="cus_1", payment_method_types=["card"])),
+        ("get_setup_intent", dict(setup_intent_id="seti_1")),
+    ]),
+    "github": ("ghp_TESTtoken", [
+        # path_variants: org branch (list_repos), org branch (create_repo)
+        ("list_repos", dict(org="acme", limit=50)),
+        ("get_repo", dict(owner="octocat", repo="hello")),
+        ("create_repo", dict(name="newrepo", description="d", private=True, org="acme")),
+        ("fork_repo", dict(owner="octocat", repo="hello", organization="myorg")),
+        ("list_issues", dict(owner="octocat", repo="hello", state="open",
+                             labels="bug,p1", assignee="me", limit=25)),
+        ("create_issue", dict(owner="octocat", repo="hello", title="Bug",
+                              body="desc", labels=["bug"], assignees=["me"])),
+        ("get_issue", dict(owner="octocat", repo="hello", issue_number=42)),
+        ("update_issue", dict(owner="octocat", repo="hello", issue_number=42,
+                              title="New", state="closed", labels=["wontfix"])),
+        ("add_labels", dict(owner="octocat", repo="hello", issue_number=42, labels=["bug", "p1"])),
+        ("remove_label", dict(owner="octocat", repo="hello", issue_number=42, label_name="bug")),
+        ("create_comment", dict(owner="octocat", repo="hello", issue_number=42, body="comment")),
+        ("list_comments", dict(owner="octocat", repo="hello", issue_number=42, limit=50)),
+        ("list_pull_requests", dict(owner="octocat", repo="hello", state="open", limit=20)),
+        ("get_pull_request", dict(owner="octocat", repo="hello", pr_number=7)),
+        ("create_pull_request", dict(owner="octocat", repo="hello", title="PR",
+                                     head="feat", base="main", body="b", draft=True)),
+        ("merge_pull_request", dict(owner="octocat", repo="hello", pr_number=7,
+                                    merge_method="squash", commit_title="merge")),
+        ("list_commits", dict(owner="octocat", repo="hello", sha="main",
+                              path="src", author="me", limit=10)),
+        ("list_branches", dict(owner="octocat", repo="hello", limit=10)),
+        ("get_branch", dict(owner="octocat", repo="hello", branch="main")),
+        ("list_releases", dict(owner="octocat", repo="hello", limit=10)),
+        ("get_latest_release", dict(owner="octocat", repo="hello")),
+        ("create_release", dict(owner="octocat", repo="hello", tag_name="v1.0", name="Release",
+                                body="notes", draft=False, prerelease=True, target_commitish="main")),
+        ("get_content", dict(owner="octocat", repo="hello", path="README.md", ref="main")),
+        ("create_or_update_file", dict(owner="octocat", repo="hello", path="README.md",
+                                       content="aGVsbG8=", message="commit", sha="abc", branch="main")),
+        ("delete_file", dict(owner="octocat", repo="hello", path="old.txt",
+                             sha="abc", message="rm", branch="main")),
+        ("list_workflows", dict(owner="octocat", repo="hello", limit=10)),
+        # path_variant: workflow_id branch
+        ("list_workflow_runs", dict(owner="octocat", repo="hello", workflow_id="123",
+                                    branch="main", status="completed", limit=10)),
+        ("trigger_workflow", dict(owner="octocat", repo="hello", workflow_id="123",
+                                  ref="main", inputs={"env": "prod"})),
+        ("list_gists", dict(limit=10)),
+        ("search_code", dict(query="addClass repo:jquery/jquery", limit=10)),
+        ("search_repos", dict(query="tetris language:python", sort="stars", order="desc", limit=10)),
+        ("search_issues", dict(query="windows label:bug", sort="created", order="asc", limit=10)),
+        ("get_authenticated_user", dict()),
+        ("get_rate_limit", dict()),
+        ("star_repo", dict(owner="octocat", repo="hello")),
+        ("unstar_repo", dict(owner="octocat", repo="hello")),
+    ]),
 }
 
 # Pagination "next request" parity:
 # (connector, cred, action, first_args, response_body, response_headers)
 PAGI = [
+    # Stripe LAST_ID cursor: next starting_after = id of the last data item.
+    ("stripe", "sk_test_FAKE", "list_customers",
+     dict(limit=10),
+     {"data": [{"id": "cus_A"}, {"id": "cus_LAST"}], "has_more": True}, {}),
+    ("stripe", "sk_test_FAKE", "list_charges",
+     dict(customer="cus_1", limit=10),
+     {"data": [{"id": "ch_LAST"}], "has_more": True}, {}),
+    # has_more=False -> no next page (stop).
     ("airtable", "patTESTtoken", "list_records",
      dict(base_id="appABC", table_name="Contacts", fields=["Name"], limit=50),
      {"records": [{"id": "rec1"}], "offset": "OFFTOK123"}, {}),
@@ -69,6 +181,12 @@ PAGI = [
      {"products": []},
      {"link": '<https://mystore.myshopify.com/admin/api/2024-01/products.json'
               '?limit=50&page_info=CURSOR456>; rel="next"'}),
+    # GitHub LINK_FOLLOW: the rel=next URL from the Link header IS the next request.
+    ("github", "ghp_TESTtoken", "list_issues",
+     dict(owner="octocat", repo="hello", limit=25),
+     {},
+     {"link": '<https://api.github.com/repositories/123/issues'
+              '?per_page=25&page=2>; rel="next"'}),
 ]
 
 # Which hard patterns each action exercises (for the coverage report).
@@ -85,6 +203,9 @@ PATTERNS = {
     ("shopify", "list_products"): ["link-header pagination", "base-URL templating ({store})",
                                     "custom auth header"],
     ("shopify", "create_product"): ["single-key body wrap ({product:..})", "PUT create"],
+    ("stripe", "list_customers"): ["size clamp", "cursor query param", "basic auth (key as username)"],
+    ("stripe", "get_customer"): ["path-param id"],
+    ("stripe", "create_customer"): ["form-encoded JSON-less body"],
 }
 
 # Latent connector bugs the spike surfaced. The spec-driven executor produces the

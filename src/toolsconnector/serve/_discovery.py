@@ -59,6 +59,7 @@ _KNOWN_CONNECTORS: dict[str, str] = {
     "mixpanel": "toolsconnector.connectors.mixpanel:Mixpanel",
     "mongodb": "toolsconnector.connectors.mongodb:MongoDB",
     "notion": "toolsconnector.connectors.notion:Notion",
+    "odoo": "toolsconnector.connectors.odoo:Odoo",
     "okta": "toolsconnector.connectors.okta:Okta",
     "openai": "toolsconnector.connectors.openai_connector:OpenAI",
     "outlook": "toolsconnector.connectors.outlook:Outlook",

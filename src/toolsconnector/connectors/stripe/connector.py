@@ -34,11 +34,11 @@ from toolsconnector.spec.connector import (
     ProtocolType,
     RateLimitSpec,
 )
+from toolsconnector.spec.executor import build_request
 from toolsconnector.types import PaginatedList
 
 from ._helpers import build_paginated_result
 from ._parsers import (
-    flatten_metadata,
     parse_charge,
     parse_checkout_session,
     parse_customer,
@@ -54,6 +54,7 @@ from ._parsers import (
     parse_setup_intent,
     parse_subscription,
 )
+from .binding import STRIPE_BINDING
 from .types import (
     PaymentIntent,
     StripeBalance,
@@ -208,6 +209,39 @@ class Stripe(BaseConnector):
         raise_typed_for_status(resp, connector=self.name)
         return resp
 
+    async def _execute_binding(self, action_name: str, args: dict[str, Any]) -> httpx.Response:
+        """Send a binding-driven request. build_request() owns all wire details."""
+        req = build_request(STRIPE_BINDING, action_name, args, self._credentials or "")
+        try:
+            resp = await self._client.send(req)
+        except httpx.TimeoutException as e:
+            raise ToolsConnectorTimeoutError(
+                f"Stripe API request timed out after {self._timeout}s",
+                connector=self.name,
+                details={
+                    "timeout_seconds": self._timeout,
+                    "action": action_name,
+                    "underlying": type(e).__name__,
+                },
+            ) from e
+        except httpx.ConnectError as e:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to Stripe API",
+                connector=self.name,
+                details={"action": action_name, "underlying": str(e)},
+            ) from e
+        except httpx.TransportError as e:
+            raise TransportError(
+                f"Stripe API transport error: {type(e).__name__}",
+                connector=self.name,
+                details={"action": action_name, "underlying": str(e)},
+            ) from e
+        remaining = resp.headers.get("RateLimit-Remaining")
+        if remaining is not None:
+            logger.debug("Stripe rate-limit remaining: %s", remaining)
+        raise_typed_for_status(resp, connector=self.name)
+        return resp
+
     # ------------------------------------------------------------------
     # Actions — Customers
     # ------------------------------------------------------------------
@@ -227,11 +261,13 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of StripeCustomer objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 100)}
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/customers", params=params)
+        resp = await self._execute_binding(
+            "list_customers",
+            {
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_customer(c) for c in body.get("data", [])]
@@ -254,7 +290,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeCustomer object.
         """
-        resp = await self._request("GET", f"/customers/{_p(customer_id)}")
+        resp = await self._execute_binding("get_customer", {"customer_id": customer_id})
         return parse_customer(resp.json())
 
     @action("Create a new Stripe customer", dangerous=True)
@@ -276,17 +312,15 @@ class Stripe(BaseConnector):
         Returns:
             The created StripeCustomer object.
         """
-        form_data: dict[str, Any] = {}
-        if email is not None:
-            form_data["email"] = email
-        if name is not None:
-            form_data["name"] = name
-        if description is not None:
-            form_data["description"] = description
-        if metadata:
-            form_data.update(flatten_metadata(metadata))
-
-        resp = await self._request("POST", "/customers", data=form_data)
+        resp = await self._execute_binding(
+            "create_customer",
+            {
+                "email": email,
+                "name": name,
+                "description": description,
+                "metadata": metadata,
+            },
+        )
         return parse_customer(resp.json())
 
     # ------------------------------------------------------------------
@@ -310,13 +344,14 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of StripeCharge objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 100)}
-        if customer:
-            params["customer"] = customer
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/charges", params=params)
+        resp = await self._execute_binding(
+            "list_charges",
+            {
+                "customer": customer,
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_charge(c) for c in body.get("data", [])]
@@ -340,7 +375,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeCharge object.
         """
-        resp = await self._request("GET", f"/charges/{_p(charge_id)}")
+        resp = await self._execute_binding("get_charge", {"charge_id": charge_id})
         return parse_charge(resp.json())
 
     # ------------------------------------------------------------------
@@ -380,23 +415,18 @@ class Stripe(BaseConnector):
         Returns:
             The created PaymentIntent object.
         """
-        form_data: dict[str, Any] = {
-            "amount": str(amount),
-            "currency": currency,
-        }
-        if customer is not None:
-            form_data["customer"] = customer
-        if description is not None:
-            form_data["description"] = description
-        if payment_method_types:
-            for idx, pmt in enumerate(payment_method_types):
-                form_data[f"payment_method_types[{idx}]"] = pmt
-        if payment_method is not None:
-            form_data["payment_method"] = payment_method
-        if capture_method is not None:
-            form_data["capture_method"] = capture_method
-
-        resp = await self._request("POST", "/payment_intents", data=form_data)
+        resp = await self._execute_binding(
+            "create_payment_intent",
+            {
+                "amount": amount,
+                "currency": currency,
+                "customer": customer,
+                "description": description,
+                "payment_method_types": payment_method_types,
+                "payment_method": payment_method,
+                "capture_method": capture_method,
+            },
+        )
         return parse_payment_intent(resp.json())
 
     # ------------------------------------------------------------------
@@ -420,13 +450,14 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of StripeInvoice objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 100)}
-        if customer:
-            params["customer"] = customer
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/invoices", params=params)
+        resp = await self._execute_binding(
+            "list_invoices",
+            {
+                "customer": customer,
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_invoice(inv) for inv in body.get("data", [])]
@@ -451,7 +482,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeBalance with available and pending amounts by currency.
         """
-        resp = await self._request("GET", "/balance")
+        resp = await self._execute_binding("get_balance", {})
         body = resp.json()
 
         return StripeBalance(
@@ -500,17 +531,16 @@ class Stripe(BaseConnector):
         Returns:
             The updated StripeCustomer object.
         """
-        form_data: dict[str, Any] = {}
-        if email is not None:
-            form_data["email"] = email
-        if name is not None:
-            form_data["name"] = name
-        if description is not None:
-            form_data["description"] = description
-        if metadata:
-            form_data.update(flatten_metadata(metadata))
-
-        resp = await self._request("POST", f"/customers/{_p(customer_id)}", data=form_data)
+        resp = await self._execute_binding(
+            "update_customer",
+            {
+                "customer_id": customer_id,
+                "email": email,
+                "name": name,
+                "description": description,
+                "metadata": metadata,
+            },
+        )
         return parse_customer(resp.json())
 
     @action("Delete a Stripe customer", dangerous=True)
@@ -524,7 +554,7 @@ class Stripe(BaseConnector):
             This permanently deletes the customer and cannot be undone.
             Active subscriptions will be cancelled.
         """
-        await self._request("DELETE", f"/customers/{_p(customer_id)}")
+        await self._execute_binding("delete_customer", {"customer_id": customer_id})
 
     # ------------------------------------------------------------------
     # Actions — Charges (create)
@@ -553,20 +583,17 @@ class Stripe(BaseConnector):
         Returns:
             The created StripeCharge object.
         """
-        form_data: dict[str, Any] = {
-            "amount": str(amount),
-            "currency": currency,
-        }
-        if customer is not None:
-            form_data["customer"] = customer
-        if source is not None:
-            form_data["source"] = source
-        if description is not None:
-            form_data["description"] = description
-        if metadata:
-            form_data.update(flatten_metadata(metadata))
-
-        resp = await self._request("POST", "/charges", data=form_data)
+        resp = await self._execute_binding(
+            "create_charge",
+            {
+                "amount": amount,
+                "currency": currency,
+                "customer": customer,
+                "source": source,
+                "description": description,
+                "metadata": metadata,
+            },
+        )
         return parse_charge(resp.json())
 
     # ------------------------------------------------------------------
@@ -591,13 +618,14 @@ class Stripe(BaseConnector):
         Returns:
             The created StripeRefund object.
         """
-        form_data: dict[str, Any] = {"charge": charge_id}
-        if amount is not None:
-            form_data["amount"] = str(amount)
-        if reason is not None:
-            form_data["reason"] = reason
-
-        resp = await self._request("POST", "/refunds", data=form_data)
+        resp = await self._execute_binding(
+            "refund_charge",
+            {
+                "charge_id": charge_id,
+                "amount": amount,
+                "reason": reason,
+            },
+        )
         return parse_refund(resp.json())
 
     @action("List refunds from your Stripe account")
@@ -617,13 +645,14 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of StripeRefund objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 100)}
-        if charge:
-            params["charge"] = charge
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/refunds", params=params)
+        resp = await self._execute_binding(
+            "list_refunds",
+            {
+                "charge": charge,
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_refund(r) for r in body.get("data", [])]
@@ -658,14 +687,14 @@ class Stripe(BaseConnector):
         Returns:
             The created StripeSubscription object.
         """
-        form_data: dict[str, Any] = {
-            "customer": customer,
-            "items[0][price]": price,
-        }
-        if trial_days is not None:
-            form_data["trial_period_days"] = str(trial_days)
-
-        resp = await self._request("POST", "/subscriptions", data=form_data)
+        resp = await self._execute_binding(
+            "create_subscription",
+            {
+                "customer": customer,
+                "price": price,
+                "trial_days": trial_days,
+            },
+        )
         return parse_subscription(resp.json())
 
     @action("Cancel a subscription", dangerous=True)
@@ -721,15 +750,15 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of StripeSubscription objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 100)}
-        if customer:
-            params["customer"] = customer
-        if status:
-            params["status"] = status
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/subscriptions", params=params)
+        resp = await self._execute_binding(
+            "list_subscriptions",
+            {
+                "customer": customer,
+                "status": status,
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_subscription(s) for s in body.get("data", [])]
@@ -754,7 +783,12 @@ class Stripe(BaseConnector):
         Returns:
             StripeSubscription object.
         """
-        resp = await self._request("GET", f"/subscriptions/{_p(subscription_id)}")
+        resp = await self._execute_binding(
+            "get_subscription",
+            {
+                "subscription_id": subscription_id,
+            },
+        )
         return parse_subscription(resp.json())
 
     # ------------------------------------------------------------------
@@ -778,13 +812,14 @@ class Stripe(BaseConnector):
         Returns:
             The created StripeProduct object.
         """
-        form_data: dict[str, Any] = {"name": name}
-        if description is not None:
-            form_data["description"] = description
-        if metadata:
-            form_data.update(flatten_metadata(metadata))
-
-        resp = await self._request("POST", "/products", data=form_data)
+        resp = await self._execute_binding(
+            "create_product",
+            {
+                "name": name,
+                "description": description,
+                "metadata": metadata,
+            },
+        )
         return parse_product(resp.json())
 
     @action("List products from your Stripe account")
@@ -802,11 +837,13 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of StripeProduct objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 100)}
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/products", params=params)
+        resp = await self._execute_binding(
+            "list_products",
+            {
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_product(p) for p in body.get("data", [])]
@@ -843,15 +880,15 @@ class Stripe(BaseConnector):
         Returns:
             The created StripePrice object.
         """
-        form_data: dict[str, Any] = {
-            "product": product,
-            "unit_amount": str(unit_amount),
-            "currency": currency,
-        }
-        if recurring_interval is not None:
-            form_data["recurring[interval]"] = recurring_interval
-
-        resp = await self._request("POST", "/prices", data=form_data)
+        resp = await self._execute_binding(
+            "create_price",
+            {
+                "product": product,
+                "unit_amount": unit_amount,
+                "currency": currency,
+                "recurring_interval": recurring_interval,
+            },
+        )
         return parse_price(resp.json())
 
     @action("List prices from your Stripe account")
@@ -871,13 +908,14 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of StripePrice objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 100)}
-        if product:
-            params["product"] = product
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/prices", params=params)
+        resp = await self._execute_binding(
+            "list_prices",
+            {
+                "product": product,
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_price(p) for p in body.get("data", [])]
@@ -916,16 +954,15 @@ class Stripe(BaseConnector):
         Returns:
             The created StripeCheckoutSession with a ``url`` for redirect.
         """
-        form_data: dict[str, Any] = {
-            "mode": mode,
-            "success_url": success_url,
-            "cancel_url": cancel_url,
-        }
-        for idx, item in enumerate(line_items):
-            form_data[f"line_items[{idx}][price]"] = item["price"]
-            form_data[f"line_items[{idx}][quantity]"] = str(item.get("quantity", 1))
-
-        resp = await self._request("POST", "/checkout/sessions", data=form_data)
+        resp = await self._execute_binding(
+            "create_checkout_session",
+            {
+                "line_items": line_items,
+                "mode": mode,
+                "success_url": success_url,
+                "cancel_url": cancel_url,
+            },
+        )
         return parse_checkout_session(resp.json())
 
     # ------------------------------------------------------------------
@@ -951,16 +988,15 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of StripePaymentMethod objects.
         """
-        params: dict[str, Any] = {
-            "customer": customer,
-            "limit": min(limit, 100),
-        }
-        if type:
-            params["type"] = type
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/payment_methods", params=params)
+        resp = await self._execute_binding(
+            "list_payment_methods",
+            {
+                "customer": customer,
+                "type": type,
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_payment_method(pm) for pm in body.get("data", [])]
@@ -989,7 +1025,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeInvoice object.
         """
-        resp = await self._request("GET", f"/invoices/{_p(invoice_id)}")
+        resp = await self._execute_binding("get_invoice", {"invoice_id": invoice_id})
         return parse_invoice(resp.json())
 
     @action("Void a Stripe invoice", dangerous=True)
@@ -1006,7 +1042,7 @@ class Stripe(BaseConnector):
             Voiding an invoice is irreversible. The invoice status
             changes to ``void`` and can no longer be paid.
         """
-        resp = await self._request("POST", f"/invoices/{_p(invoice_id)}/void")
+        resp = await self._execute_binding("void_invoice", {"invoice_id": invoice_id})
         return parse_invoice(resp.json())
 
     # ------------------------------------------------------------------
@@ -1027,9 +1063,11 @@ class Stripe(BaseConnector):
         Returns:
             PaymentIntent object.
         """
-        resp = await self._request(
-            "GET",
-            f"/payment_intents/{_p(payment_intent_id)}",
+        resp = await self._execute_binding(
+            "get_payment_intent",
+            {
+                "payment_intent_id": payment_intent_id,
+            },
         )
         return parse_payment_intent(resp.json())
 
@@ -1050,13 +1088,14 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of PaymentIntent objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 100)}
-        if customer:
-            params["customer"] = customer
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/payment_intents", params=params)
+        resp = await self._execute_binding(
+            "list_payment_intents",
+            {
+                "customer": customer,
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_payment_intent(pi) for pi in body.get("data", [])]
@@ -1096,16 +1135,13 @@ class Stripe(BaseConnector):
             Confirming a PaymentIntent may immediately charge the
             customer's payment method.
         """
-        form_data: dict[str, Any] = {}
-        if payment_method is not None:
-            form_data["payment_method"] = payment_method
-        if return_url is not None:
-            form_data["return_url"] = return_url
-
-        resp = await self._request(
-            "POST",
-            f"/payment_intents/{_p(payment_intent_id)}/confirm",
-            data=form_data,
+        resp = await self._execute_binding(
+            "confirm_payment_intent",
+            {
+                "payment_intent_id": payment_intent_id,
+                "payment_method": payment_method,
+                "return_url": return_url,
+            },
         )
         return parse_payment_intent(resp.json())
 
@@ -1122,9 +1158,11 @@ class Stripe(BaseConnector):
         Returns:
             The cancelled PaymentIntent object.
         """
-        resp = await self._request(
-            "POST",
-            f"/payment_intents/{_p(payment_intent_id)}/cancel",
+        resp = await self._execute_binding(
+            "cancel_payment_intent",
+            {
+                "payment_intent_id": payment_intent_id,
+            },
         )
         return parse_payment_intent(resp.json())
 
@@ -1148,14 +1186,12 @@ class Stripe(BaseConnector):
             Capturing finalises the charge and moves funds from the
             customer's payment method.
         """
-        form_data: dict[str, Any] = {}
-        if amount_to_capture is not None:
-            form_data["amount_to_capture"] = str(amount_to_capture)
-
-        resp = await self._request(
-            "POST",
-            f"/payment_intents/{_p(payment_intent_id)}/capture",
-            data=form_data,
+        resp = await self._execute_binding(
+            "capture_payment_intent",
+            {
+                "payment_intent_id": payment_intent_id,
+                "amount_to_capture": amount_to_capture,
+            },
         )
         return parse_payment_intent(resp.json())
 
@@ -1178,11 +1214,13 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of StripeDispute objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 100)}
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/disputes", params=params)
+        resp = await self._execute_binding(
+            "list_disputes",
+            {
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_dispute(d) for d in body.get("data", [])]
@@ -1205,7 +1243,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeDispute object.
         """
-        resp = await self._request("GET", f"/disputes/{_p(dispute_id)}")
+        resp = await self._execute_binding("get_dispute", {"dispute_id": dispute_id})
         return parse_dispute(resp.json())
 
     @action("Close a Stripe dispute", dangerous=True)
@@ -1222,10 +1260,7 @@ class Stripe(BaseConnector):
             Closing a dispute accepts the chargeback. The disputed
             amount will not be returned to your account.
         """
-        resp = await self._request(
-            "POST",
-            f"/disputes/{_p(dispute_id)}/close",
-        )
+        resp = await self._execute_binding("close_dispute", {"dispute_id": dispute_id})
         return parse_dispute(resp.json())
 
     # ------------------------------------------------------------------
@@ -1247,11 +1282,13 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of StripePayout objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 100)}
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/payouts", params=params)
+        resp = await self._execute_binding(
+            "list_payouts",
+            {
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_payout(p) for p in body.get("data", [])]
@@ -1284,12 +1321,13 @@ class Stripe(BaseConnector):
             This initiates a real transfer of funds from your Stripe
             balance to your bank account.
         """
-        form_data: dict[str, Any] = {
-            "amount": str(amount),
-            "currency": currency,
-        }
-
-        resp = await self._request("POST", "/payouts", data=form_data)
+        resp = await self._execute_binding(
+            "create_payout",
+            {
+                "amount": amount,
+                "currency": currency,
+            },
+        )
         return parse_payout(resp.json())
 
     @action("Retrieve a single Stripe payout by ID")
@@ -1302,7 +1340,7 @@ class Stripe(BaseConnector):
         Returns:
             StripePayout object.
         """
-        resp = await self._request("GET", f"/payouts/{_p(payout_id)}")
+        resp = await self._execute_binding("get_payout", {"payout_id": payout_id})
         return parse_payout(resp.json())
 
     # ------------------------------------------------------------------
@@ -1327,13 +1365,14 @@ class Stripe(BaseConnector):
         Returns:
             Paginated list of StripeEvent objects.
         """
-        params: dict[str, Any] = {"limit": min(limit, 100)}
-        if type:
-            params["type"] = type
-        if starting_after:
-            params["starting_after"] = starting_after
-
-        resp = await self._request("GET", "/events", params=params)
+        resp = await self._execute_binding(
+            "list_events",
+            {
+                "type": type,
+                "limit": limit,
+                "starting_after": starting_after,
+            },
+        )
         body = resp.json()
 
         items = [parse_event(e) for e in body.get("data", [])]
@@ -1357,7 +1396,7 @@ class Stripe(BaseConnector):
         Returns:
             StripeEvent object.
         """
-        resp = await self._request("GET", f"/events/{_p(event_id)}")
+        resp = await self._execute_binding("get_event", {"event_id": event_id})
         return parse_event(resp.json())
 
     # ------------------------------------------------------------------
@@ -1382,14 +1421,13 @@ class Stripe(BaseConnector):
             The created StripeSetupIntent object with a ``client_secret``
             for client-side confirmation.
         """
-        form_data: dict[str, Any] = {}
-        if customer is not None:
-            form_data["customer"] = customer
-        if payment_method_types:
-            for idx, pmt in enumerate(payment_method_types):
-                form_data[f"payment_method_types[{idx}]"] = pmt
-
-        resp = await self._request("POST", "/setup_intents", data=form_data)
+        resp = await self._execute_binding(
+            "create_setup_intent",
+            {
+                "customer": customer,
+                "payment_method_types": payment_method_types,
+            },
+        )
         return parse_setup_intent(resp.json())
 
     @action("Retrieve a single Stripe SetupIntent by ID")
@@ -1406,8 +1444,10 @@ class Stripe(BaseConnector):
         Returns:
             StripeSetupIntent object.
         """
-        resp = await self._request(
-            "GET",
-            f"/setup_intents/{_p(setup_intent_id)}",
+        resp = await self._execute_binding(
+            "get_setup_intent",
+            {
+                "setup_intent_id": setup_intent_id,
+            },
         )
         return parse_setup_intent(resp.json())

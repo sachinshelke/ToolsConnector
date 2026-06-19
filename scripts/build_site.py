@@ -323,9 +323,9 @@ def _verification_badge(status: str) -> tuple[str, str, str]:
         "pattern": (
             "○",  # empty circle
             "#94a3b8",  # slate-400
-            "Pattern correct — code matches documented API patterns from public knowledge; no active verification sweep run yet.",
+            "Beta — built to the vendor's documented API and unit-tested with respx, but not yet verified against the live API.",
         ),
-    }.get(status, ("○", "#94a3b8", "Unverified"))
+    }.get(status, ("○", "#94a3b8", "Beta"))
 
 
 def generate_connector_page(name: str, data: dict, package_version: str = "") -> str:
@@ -356,8 +356,8 @@ def generate_connector_page(name: str, data: dict, package_version: str = "") ->
     verify_label = {
         "live": "Live verified",
         "doc": "Doc verified",
-        "pattern": "Pattern correct",
-    }.get(verify_status, "Unverified")
+        "pattern": "Beta",
+    }.get(verify_status, "Beta")
 
     page_title = f"{display_name} Python Connector — {n_actions} Actions | ToolsConnector"
     page_desc  = (

@@ -116,7 +116,8 @@ export interface CreateProductArgs {
 
 export class Shopify {
   credential: string;
-  constructor(credential: string) { this.credential = credential; }
+  overrides: Record<string, (cred: string, args: Record<string, unknown>) => Promise<unknown>>;
+  constructor(credential: string, opts?: { overrides?: Record<string, (cred: string, args: Record<string, unknown>) => Promise<unknown>> }) { this.credential = credential; this.overrides = opts?.overrides ?? {}; }
   /** GET /products.json */
   async listProducts(args: ListProductsArgs): Promise<unknown> {
     return execute(SHOPIFY_BINDING, "list_products", args as unknown as Record<string, unknown>, this.credential);
