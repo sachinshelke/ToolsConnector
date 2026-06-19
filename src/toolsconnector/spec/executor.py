@@ -309,7 +309,7 @@ def _parse_link_rel(link_header: Optional[str], rel: str) -> Optional[str]:
         return None
     for url, r in _LINK_RE.findall(link_header):
         if r == rel:
-            return url
+            return str(url)
     return None
 
 
@@ -348,6 +348,7 @@ def next_request(
             if pg.carry is None
             else {k: prev_args[k] for k in pg.carry if k in prev_args}
         )
+        assert pg.token_param_py is not None  # always set for token-param pagination kinds
         nargs[pg.token_param_py] = cursor
         return build_request(conn, action_name, nargs, credential)
 
@@ -365,6 +366,7 @@ def next_request(
             if pg.carry is None
             else {k: prev_args[k] for k in pg.carry if k in prev_args}
         )
+        assert pg.token_param_py is not None  # always set for token-param pagination kinds
         nargs[pg.token_param_py] = cursor
         return build_request(conn, action_name, nargs, credential)
 
@@ -377,6 +379,7 @@ def next_request(
             if pg.carry is None
             else {k: prev_args[k] for k in pg.carry if k in prev_args}
         )
+        assert pg.token_param_py is not None  # always set for token-param pagination kinds
         nargs[pg.token_param_py] = cursor
         return build_request(conn, action_name, nargs, credential)
 
