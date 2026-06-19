@@ -1,6 +1,6 @@
 # CRM & Support
 
-Connectors for customer relationship management and support platforms. 5 connectors, 95 actions.
+Connectors for customer relationship management and support platforms. 6 connectors, 106 actions.
 
 ---
 
@@ -140,4 +140,39 @@ Connect to Intercom to manage contacts, conversations, and customer messaging.
 ```python
 kit = ToolKit(["intercom"], credentials={"intercom": "your-access-token"})
 result = kit.execute("intercom_list_contacts", {"per_page": 20})
+```
+
+---
+
+### Odoo
+
+**Category:** CRM & Support | **Auth:** API Key (url+db+username+api_key) | **Actions:** 11
+
+Odoo (formerly OpenERP) — read & write any Odoo model (contacts, sales orders, invoices, inventory, HR, eCommerce, POS, Helpdesk, …) through its ORM over JSON-RPC. BYOK: instance url + db + username + API key.
+
+Odoo is a full ERP — a single connector spanning CRM, Sales, Inventory, Accounting, HR, eCommerce, POS, Helpdesk, Manufacturing, Projects, and more. It is the first JSON-RPC connector in the catalog and exposes the generic ORM as a standardized primitive, so any model in any installed app is reachable through the same 11 actions.
+
+**Install:** `pip install "toolsconnector[odoo]"`
+
+**Actions:**
+
+| Action | Description | Dangerous |
+|--------|-------------|-----------|
+| get_version | Get the Odoo server version and metadata | No |
+| search_read | Search records and read fields in a single call | No |
+| search_count | Count records matching a domain | No |
+| read | Read fields for records by ID | No |
+| create | Create a new record | Yes |
+| write | Update fields on existing records | Yes |
+| unlink | Delete records by ID | Yes |
+| name_search | Search records by display name | No |
+| fields_get | Get field metadata for a model | No |
+| read_group | Group and aggregate records | No |
+| call_method | Call an arbitrary model method | Yes |
+
+**Quick start:**
+
+```python
+kit = ToolKit(["odoo"], credentials={"odoo": {"url": "https://yourcompany.odoo.com", "db": "yourcompany", "username": "user@company.com", "api_key": "your-api-key"}})
+result = kit.execute("odoo_search_read", {"model": "res.partner", "domain": [["is_company", "=", True]], "fields": ["name", "email"], "limit": 10})
 ```

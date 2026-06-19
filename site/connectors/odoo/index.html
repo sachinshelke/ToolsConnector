@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odoo Python Connector — 11 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Odoo to Python apps and AI agents with 11 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[odoo]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="Odoo Python, Odoo API Python, Odoo connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/odoo/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#000005">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/odoo/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="Odoo Python Connector — 11 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Odoo to Python apps and AI agents with 11 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[odoo]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="Odoo Python Connector — 11 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Odoo to Python apps and AI agents with 11 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[odoo]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 Odoo Connector",
+  "description": "Connect Odoo to Python apps and AI agents with 11 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[odoo]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/odoo/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "call_method",
+    "create",
+    "fields_get",
+    "get_version",
+    "name_search",
+    "read",
+    "read_group",
+    "search_count",
+    "search_read",
+    "unlink",
+    "write"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  },
+  "softwareVersion": "0.3.18"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://toolsconnector.github.io/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Connectors",
+      "item": "https://toolsconnector.github.io/#/connectors"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Odoo",
+      "item": "https://toolsconnector.github.io/connectors/odoo/"
+    }
+  ]
+}
+</script>
+
+<style>
+/* Self-contained dark cinematic theme — fully styled and visible without any
+   external CSS/JS (SEO-safe, robust, standalone; matches the cinematic site
+   via shared design tokens rather than a shared stylesheet dependency). */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --b:#000005; --ink:#f5f5f7; --dim:#86868b; --accent:#7c8cff; --line:rgba(255,255,255,.09); }
+body { font-family:"Inter",-apple-system,system-ui,sans-serif; color:var(--ink); background:var(--b);
+        line-height:1.6; -webkit-font-smoothing:antialiased; letter-spacing:-.01em; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: rgba(255,255,255,.07);
+        padding: .15em .4em; border-radius: 4px; color:#dfe3ff; }
+
+/* ── Nav (sticky, glassy) ── */
+nav { position:sticky; top:0; z-index:50; border-bottom: 1px solid var(--line);
+      padding: .85rem clamp(1rem,4vw,1.6rem); display: flex; align-items: center; gap: .75rem;
+      background:rgba(0,0,5,.72); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+.nav-logo { font-weight: 700; font-size: 1.05rem; color: var(--ink); display:flex; align-items:center; gap:.5rem; }
+.nav-logo img { width:26px; height:26px; }
+nav a.back { color: var(--dim); font-size: .875rem; }
+nav a.back:hover { color: var(--ink); text-decoration:none; }
+nav a.btn { margin-left: auto; background: var(--ink); color: var(--b); padding: .5rem 1.15rem;
+             border-radius: 980px; font-size: .85rem; font-weight: 600; }
+nav a.btn:hover { background: #fff; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 960px; margin: 3.5rem auto 2rem; padding: 0 clamp(1rem,4vw,1.5rem); }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.25rem; }
+.badge { display:inline-flex; align-items:center; padding:.28rem .8rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#F59E0B; }
+.verify-badge { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .65rem;
+                 margin-left:.5rem; border-radius:20px; font-size:.75rem; font-weight:600;
+                 border:1.5px solid #10b981; color:#10b981; background:rgba(255,255,255,.02);
+                 cursor:help; user-select:none; }
+.verify-badge .dot { font-size:1rem; line-height:1; }
+h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing:-.02em; margin: .6rem 0 .5rem; }
+.desc { font-size: 1.08rem; color: var(--dim); max-width: 720px; margin-bottom: 1.6rem; }
+.install-box { background: #0c0c14; color: #e2e8f0; border:1px solid var(--line); border-radius: 12px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .9rem; display:inline-block; margin-bottom:1.75rem; }
+.install-box .dollar { color: #34d399; margin-right:.5rem; }
+.install-box .pkg { color: #ffb37c; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2.4rem; margin-bottom: .5rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.85rem; font-weight: 700; letter-spacing:-.02em;
+             background:linear-gradient(180deg,#fff,#bcb6ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing:.12em; margin-top:.3rem; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 2.5rem auto 3rem; padding: 0 clamp(1rem,4vw,1.5rem); }
+.section h2 { font-size: 1.5rem; font-weight: 700; letter-spacing:-.02em; margin-bottom: 1.1rem; padding-bottom: .6rem;
+               border-bottom: 1px solid var(--line); }
+.tbl-wrap { overflow-x: auto; border:1px solid var(--line); border-radius:14px; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th { text-align: left; padding: .7rem .9rem; background: rgba(255,255,255,.03); color: var(--dim);
+      font-weight: 600; font-size: .72rem; text-transform: uppercase; letter-spacing:.06em;
+      border-bottom: 1px solid var(--line); }
+td { padding: .7rem .9rem; border-bottom: 1px solid rgba(255,255,255,.05); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,.02); }
+td.desc { color: var(--dim); max-width: 420px; }
+td code { background:rgba(124,140,255,.12); color:#cdd2ff; }
+.req { color: #f9a8a8; }
+.opt { color: #6b6b75; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 3rem 1.5rem 2rem; border-top: 1px solid var(--line); margin-top: 1.5rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: var(--ink); color: var(--b);
+          padding: .8rem 1.9rem; border-radius: 980px; font-weight: 600; font-size: 1rem; }
+.cta a:hover { background: #fff; text-decoration: none; }
+.cta p { margin-top: .85rem; color: var(--dim); font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid var(--line); padding: 1.5rem; text-align:center;
+          color: #5a5a63; font-size: .8rem; }
+footer a { color: #8a8a93; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1.4rem; } .stat-num { font-size: 1.45rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" class="back">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/odoo" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/odoo.com?c=1idiVFVAawYfs0vBpzR" alt="Odoo" width="56" height="56" style="border-radius:14px;object-fit:contain;background:rgba(255,255,255,.06);padding:6px;border:1px solid rgba(255,255,255,.08)">
+    <div>
+      <span class="badge">CRM &amp; Support</span>
+      <span class="verify-badge" title="Live verified — exercised end-to-end against the real vendor API with a real token." aria-label="Verification status: Live verified"><span class="dot">●</span>Live verified</span>
+      <h1>Odoo Connector</h1>
+    </div>
+  </div>
+  <p class="desc">Connect to Odoo (OpenERP) to read and write any model -- contacts, sales orders, invoices, leads, inventory, HR -- through its ORM: search_read, create, write, unlink, fields_get, read_group, and arbitrary business methods, over JSON-RPC.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[odoo]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">11</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">CRM & Support</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 11 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>call_method</code></td><td class="desc">Call any method on any Odoo model (advanced escape hatch)</td><td><span class="req">model, method</span> &nbsp;<span class="opt">[args, kwargs]</span></td><td><code>typing.Any</code></td></tr>
+<tr><td><code>create</code></td><td class="desc">Create a new record of any Odoo model</td><td><span class="req">model, values</span></td><td><code>int</code></td></tr>
+<tr><td><code>fields_get</code></td><td class="desc">Discover the fields (schema) of an Odoo model</td><td><span class="req">model</span> &nbsp;<span class="opt">[attributes]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_version</code></td><td class="desc">Get the Odoo server version (connectivity / capability check)</td><td><span class="opt">—</span></td><td><code>OdooVersion</code></td></tr>
+<tr><td><code>name_search</code></td><td class="desc">Find records by display name (typeahead-style lookup)</td><td><span class="req">model</span> &nbsp;<span class="opt">[name, limit, operator]</span></td><td><code>list</code></td></tr>
+<tr><td><code>read</code></td><td class="desc">Read specific records of an Odoo model by their IDs</td><td><span class="req">model, ids</span> &nbsp;<span class="opt">[fields]</span></td><td><code>list</code></td></tr>
+<tr><td><code>read_group</code></td><td class="desc">Aggregate Odoo records grouped by one or more fields (GROUP BY)</td><td><span class="req">model</span> &nbsp;<span class="opt">[domain, fields, groupby, limit, offset, orderby]</span></td><td><code>list</code></td></tr>
+<tr><td><code>search_count</code></td><td class="desc">Count records of an Odoo model matching a domain filter</td><td><span class="req">model</span> &nbsp;<span class="opt">[domain]</span></td><td><code>int</code></td></tr>
+<tr><td><code>search_read</code></td><td class="desc">Search and read records of any Odoo model in one call</td><td><span class="req">model</span> &nbsp;<span class="opt">[domain, fields, limit, offset, order]</span></td><td><code>PaginatedList[dict[str, Any]]</code></td></tr>
+<tr><td><code>unlink</code></td><td class="desc">Delete records of an Odoo model by their IDs</td><td><span class="req">model, ids</span></td><td><code>bool</code></td></tr>
+<tr><td><code>write</code></td><td class="desc">Update existing records of an Odoo model</td><td><span class="req">model, ids, values</span></td><td><code>bool</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/odoo">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/sachinshelke/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a> · v0.3.18
+</footer>
+
+</body>
+</html>

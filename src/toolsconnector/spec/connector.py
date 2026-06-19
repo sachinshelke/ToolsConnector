@@ -45,6 +45,7 @@ class ProtocolType(str, Enum):
 
     REST = "rest"
     GRAPHQL = "graphql"
+    JSON_RPC = "json_rpc"
     SOAP = "soap"
     GRPC = "grpc"
     WEBSOCKET = "websocket"
