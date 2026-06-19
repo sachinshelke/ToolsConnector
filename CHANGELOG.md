@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.20](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.19...v0.3.20) (2026-06-19)
+
+
+### ✨ Features
+
+* multi-language SDK (Python/TS/Go from one binding IR) + Odoo connector ([#64](https://github.com/sachinshelke/ToolsConnector/issues/64)) ([6b13b6f](https://github.com/sachinshelke/ToolsConnector/commit/6b13b6ff9fa881c5dcbde4b3f29a409bd7e49fc7))
+
 ## [0.3.19](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.18...v0.3.19) (2026-06-13)
 
 
