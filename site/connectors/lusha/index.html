@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lusha Python Connector — 10 Actions | ToolsConnector</title>
-<meta name="description" content="Connect Lusha to Python apps and AI agents with 10 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[lusha]&quot;. Apache 2.0. Free.">
+<title>Lusha Python Connector — 20 Actions | ToolsConnector</title>
+<meta name="description" content="Connect Lusha to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[lusha]&quot;. Apache 2.0. Free.">
 <meta name="keywords" content="Lusha Python, Lusha API Python, Lusha connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
 <meta name="author" content="ToolsConnector">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -15,15 +15,15 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://toolsconnector.github.io/connectors/lusha/">
 <meta property="og:site_name" content="ToolsConnector">
-<meta property="og:title" content="Lusha Python Connector — 10 Actions | ToolsConnector">
-<meta property="og:description" content="Connect Lusha to Python apps and AI agents with 10 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[lusha]&quot;. Apache 2.0. Free.">
+<meta property="og:title" content="Lusha Python Connector — 20 Actions | ToolsConnector">
+<meta property="og:description" content="Connect Lusha to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[lusha]&quot;. Apache 2.0. Free.">
 <meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@toolsconnector">
-<meta name="twitter:title" content="Lusha Python Connector — 10 Actions | ToolsConnector">
-<meta name="twitter:description" content="Connect Lusha to Python apps and AI agents with 10 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[lusha]&quot;. Apache 2.0. Free.">
+<meta name="twitter:title" content="Lusha Python Connector — 20 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect Lusha to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[lusha]&quot;. Apache 2.0. Free.">
 <meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
 
 <script type="application/ld+json">
@@ -31,7 +31,7 @@
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "ToolsConnector \u2014 Lusha Connector",
-  "description": "Connect Lusha to Python apps and AI agents with 10 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[lusha]\". Apache 2.0. Free.",
+  "description": "Connect Lusha to Python apps and AI agents with 20 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[lusha]\". Apache 2.0. Free.",
   "url": "https://toolsconnector.github.io/connectors/lusha/",
   "downloadUrl": "https://pypi.org/project/toolsconnector/",
   "applicationCategory": "DeveloperApplication",
@@ -46,7 +46,17 @@
   "featureList": [
     "enrich_companies",
     "enrich_contacts",
+    "find_company_lookalikes",
+    "find_contact_lookalikes",
     "get_account_usage",
+    "get_company_prospecting_filters",
+    "get_company_signal_filter_values",
+    "get_company_signal_filters",
+    "get_company_signal_types",
+    "get_company_signals",
+    "get_contact_prospecting_filters",
+    "get_contact_signal_types",
+    "get_contact_signals",
     "get_decision_makers",
     "prospecting_search_companies",
     "prospecting_search_contacts",
@@ -203,7 +213,7 @@ footer a { color: #8a8a93; }
 
   <div class="stats">
     <div class="stat">
-      <div class="stat-num">10</div>
+      <div class="stat-num">20</div>
       <div class="stat-lbl">Actions</div>
     </div>
     <div class="stat">
@@ -218,7 +228,7 @@ footer a { color: #8a8a93; }
 </div>
 
 <div class="section">
-  <h2>All 10 Actions</h2>
+  <h2>All 20 Actions</h2>
   <div class="tbl-wrap">
     <table>
       <thead>
@@ -232,7 +242,17 @@ footer a { color: #8a8a93; }
       <tbody>
         <tr><td><code>enrich_companies</code></td><td class="desc">Reveal full firmographics for company ids from search_companies</td><td><span class="req">ids</span></td><td><code>LushaCompanyResult</code></td></tr>
 <tr><td><code>enrich_contacts</code></td><td class="desc">Reveal emails + phones for contact ids from search_contacts</td><td><span class="req">ids</span> &nbsp;<span class="opt">[reveal]</span></td><td><code>LushaContactResult</code></td></tr>
+<tr><td><code>find_company_lookalikes</code></td><td class="desc">Find NEW companies similar to seed companies (AI lookalikes)</td><td><span class="req">seeds</span> &nbsp;<span class="opt">[exclude, limit, dedupe_session_id]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>find_contact_lookalikes</code></td><td class="desc">Find NEW contacts similar to seed people (AI lookalikes)</td><td><span class="req">seeds</span> &nbsp;<span class="opt">[exclude, limit, dedupe_session_id]</span></td><td><code>dict</code></td></tr>
 <tr><td><code>get_account_usage</code></td><td class="desc">Get remaining/consumed Lusha credit balances for the account</td><td><span class="opt">—</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_company_prospecting_filters</code></td><td class="desc">List valid values for a company prospecting filter</td><td><span class="req">filter_type</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_company_signal_filter_values</code></td><td class="desc">List valid values for a company signal filter</td><td><span class="req">filter_type</span> &nbsp;<span class="opt">[query]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_company_signal_filters</code></td><td class="desc">List the available company signal filters</td><td><span class="opt">—</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_company_signal_types</code></td><td class="desc">List the valid company signal types</td><td><span class="opt">—</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_company_signals</code></td><td class="desc">Get company signals (hiring, headcount, news, intent) for company ids</td><td><span class="req">ids</span> &nbsp;<span class="opt">[signal_types, start_date, max_results_per_signal]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_contact_prospecting_filters</code></td><td class="desc">List valid values for a contact prospecting filter</td><td><span class="req">filter_type</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_contact_signal_types</code></td><td class="desc">List the valid contact signal types</td><td><span class="opt">—</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_contact_signals</code></td><td class="desc">Get job-change / promotion signals for known contact ids</td><td><span class="req">ids</span> &nbsp;<span class="opt">[signal_types, start_date]</span></td><td><code>dict</code></td></tr>
 <tr><td><code>get_decision_makers</code></td><td class="desc">Find decision-makers at given companies (preview; enrich for PII)</td><td><span class="req">companies</span></td><td><code>LushaContactResult</code></td></tr>
 <tr><td><code>prospecting_search_companies</code></td><td class="desc">Discover NEW companies by firmographic filters (paginated)</td><td><span class="req">filters</span> &nbsp;<span class="opt">[page, size, options]</span></td><td><code>PaginatedList[LushaCompany]</code></td></tr>
 <tr><td><code>prospecting_search_contacts</code></td><td class="desc">Discover NEW contacts by ICP filters (paginated preview; enrich for PII)</td><td><span class="req">filters</span> &nbsp;<span class="opt">[page, size, options]</span></td><td><code>PaginatedList[LushaContact]</code></td></tr>

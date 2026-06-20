@@ -461,9 +461,203 @@ class Lusha(BaseConnector):
     async def get_account_usage(self) -> dict[str, Any]:
         """Report credit usage/quota for the account.
 
-        Endpoint: ``GET /v3/account/usage`` (throttled to 5 req/min). No PII.
+        Endpoint: ``GET /account/usage`` — note this is NOT under ``/v3`` (the
+        Account API path was unchanged from V2; throttled to 5 req/min). No PII.
 
         Returns:
             The raw usage payload (credits remaining/consumed, plan).
         """
-        return await self._request("GET", "/v3/account/usage")
+        return await self._request("GET", "/account/usage")
+
+    # ======================================================================
+    # LOOKALIKES  (find new contacts/companies similar to seeds)
+    # ======================================================================
+
+    @action("Find NEW contacts similar to seed people (AI lookalikes)")
+    async def find_contact_lookalikes(
+        self,
+        seeds: dict[str, Any],
+        exclude: Optional[dict[str, Any]] = None,
+        limit: Optional[int] = None,
+        dedupe_session_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Find new contacts similar to seed people (non-PII previews + ids).
+
+        Endpoint: ``POST /v3/contacts/lookalike``. Feed result ``id``s to
+        ``enrich_contacts`` to reveal emails/phones.
+
+        Args:
+            seeds: Reference people, e.g.
+                ``{"linkedinUrls": [...], "emails": [...], "ids": [...]}``.
+            exclude: Optional ``{"emails": [...]}`` to exclude.
+            limit: Max results to return.
+            dedupe_session_id: Pass the ``dedupeSessionId`` from a prior call to
+                page further without repeats.
+
+        Returns:
+            Raw payload: ``dedupeSessionId``, ``results`` (id/firstName/lastName),
+            ``meta`` (returned/hasMore), ``billing.creditsCharged``.
+        """
+        payload: dict[str, Any] = {"seeds": seeds}
+        if exclude is not None:
+            payload["exclude"] = exclude
+        if limit is not None:
+            payload["limit"] = int(limit)
+        if dedupe_session_id is not None:
+            payload["dedupeSessionId"] = dedupe_session_id
+        return await self._request("POST", "/v3/contacts/lookalike", json_body=payload)
+
+    @action("Find NEW companies similar to seed companies (AI lookalikes)")
+    async def find_company_lookalikes(
+        self,
+        seeds: dict[str, Any],
+        exclude: Optional[dict[str, Any]] = None,
+        limit: Optional[int] = None,
+        dedupe_session_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Find new companies similar to seed companies.
+
+        Endpoint: ``POST /v3/companies/lookalike``.
+
+        Args:
+            seeds: e.g. ``{"domains": [...], "linkedinUrls": [...]}``.
+            exclude: Optional ``{"domains": [...]}``.
+            limit: Max results.
+            dedupe_session_id: From a prior call, to page without repeats.
+
+        Returns:
+            Raw payload: ``dedupeSessionId``, ``results`` (id/name/domain),
+            ``meta``, ``billing.creditsCharged``.
+        """
+        payload: dict[str, Any] = {"seeds": seeds}
+        if exclude is not None:
+            payload["exclude"] = exclude
+        if limit is not None:
+            payload["limit"] = int(limit)
+        if dedupe_session_id is not None:
+            payload["dedupeSessionId"] = dedupe_session_id
+        return await self._request("POST", "/v3/companies/lookalike", json_body=payload)
+
+    # ======================================================================
+    # SIGNALS  (job-change / buying signals)
+    # ======================================================================
+
+    @action("Get job-change / promotion signals for known contact ids")
+    async def get_contact_signals(
+        self,
+        ids: list[str],
+        signal_types: Optional[list[str]] = None,
+        start_date: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Retrieve people signals (promotion, company change) for contact ids.
+
+        Endpoint: ``POST /v3/contacts/signals``.
+
+        Args:
+            ids: Up to 100 contact ids.
+            signal_types: Subset of ``["allSignals", "promotion", "companyChange"]``
+                (see ``get_contact_signal_types``). Omit for all.
+            start_date: ISO date lower bound (optional).
+
+        Returns:
+            Raw payload: ``results`` (per id: ``companyChange`` / ``promotion``
+            arrays), ``startDate`` / ``endDate``, ``billing.creditsCharged``.
+        """
+        self._validate_batch(ids, "ids")
+        payload: dict[str, Any] = {"ids": ids}
+        if signal_types is not None:
+            payload["signalTypes"] = signal_types
+        if start_date is not None:
+            payload["startDate"] = start_date
+        return await self._request("POST", "/v3/contacts/signals", json_body=payload)
+
+    @action("Get company signals (hiring, headcount, news, intent) for company ids")
+    async def get_company_signals(
+        self,
+        ids: list[str],
+        signal_types: Optional[list[str]] = None,
+        start_date: Optional[str] = None,
+        max_results_per_signal: Optional[int] = None,
+    ) -> dict[str, Any]:
+        """Retrieve company signals for company ids.
+
+        Endpoint: ``POST /v3/companies/signals``.
+
+        Args:
+            ids: Up to 100 company ids.
+            signal_types: Subset from ``get_company_signal_types`` (hiring,
+                headcount, IT-spend, traffic, news, …). Omit for all.
+            start_date: ISO date lower bound (optional).
+            max_results_per_signal: Cap results per signal type (optional).
+
+        Returns:
+            Raw signals payload + ``billing.creditsCharged``.
+        """
+        self._validate_batch(ids, "ids")
+        payload: dict[str, Any] = {"ids": ids}
+        if signal_types is not None:
+            payload["signalTypes"] = signal_types
+        if start_date is not None:
+            payload["startDate"] = start_date
+        if max_results_per_signal is not None:
+            payload["maxResultsPerSignal"] = int(max_results_per_signal)
+        return await self._request("POST", "/v3/companies/signals", json_body=payload)
+
+    @action("List the valid contact signal types")
+    async def get_contact_signal_types(self) -> dict[str, Any]:
+        """List valid people signal types. Endpoint: ``GET /v3/contacts/signals/types``."""
+        return await self._request("GET", "/v3/contacts/signals/types")
+
+    @action("List the valid company signal types")
+    async def get_company_signal_types(self) -> dict[str, Any]:
+        """List valid company signal types. Endpoint: ``GET /v3/companies/signals/types``."""
+        return await self._request("GET", "/v3/companies/signals/types")
+
+    @action("List the available company signal filters")
+    async def get_company_signal_filters(self) -> dict[str, Any]:
+        """List available company-signal filters (+ whether each needs a query).
+
+        Endpoint: ``GET /v3/companies/signals/filters``.
+        """
+        return await self._request("GET", "/v3/companies/signals/filters")
+
+    @action("List valid values for a company signal filter")
+    async def get_company_signal_filter_values(
+        self, filter_type: str, query: Optional[str] = None
+    ) -> dict[str, Any]:
+        """List valid values for a company-signal filter.
+
+        Endpoint: ``GET /v3/companies/signals/filters/{filterType}``.
+
+        Args:
+            filter_type: e.g. ``newsEventTypes`` / ``hiringByDepartments`` /
+                ``hiringByLocations`` (see ``get_company_signal_filters``).
+            query: Required for query-backed filters (e.g. ``hiringByLocations``);
+                2–256 chars.
+        """
+        params = {"query": query} if query is not None else None
+        return await self._request(
+            "GET", f"/v3/companies/signals/filters/{filter_type}", params=params
+        )
+
+    # ======================================================================
+    # PROSPECTING FILTER DISCOVERY
+    # ======================================================================
+
+    @action("List valid values for a contact prospecting filter")
+    async def get_contact_prospecting_filters(self, filter_type: str) -> dict[str, Any]:
+        """List valid values for a contact-prospecting filter (departments,
+        seniorities, locations, …) — use to build ``prospecting_search_contacts`` filters.
+
+        Endpoint: ``GET /v3/contacts/prospecting/filters/{filterType}``.
+        """
+        return await self._request("GET", f"/v3/contacts/prospecting/filters/{filter_type}")
+
+    @action("List valid values for a company prospecting filter")
+    async def get_company_prospecting_filters(self, filter_type: str) -> dict[str, Any]:
+        """List valid values for a company-prospecting filter (industries, sizes,
+        technologies, …) — use to build ``prospecting_search_companies`` filters.
+
+        Endpoint: ``GET /v3/companies/prospecting/filters/{filterType}``.
+        """
+        return await self._request("GET", f"/v3/companies/prospecting/filters/{filter_type}")

@@ -210,13 +210,86 @@ async def test_prospecting_size_clamped_to_50(lusha: Lusha) -> None:
 
 
 @pytest.mark.asyncio
-async def test_account_usage(lusha: Lusha) -> None:
+async def test_account_usage_path_is_not_versioned(lusha: Lusha) -> None:
+    """Account usage lives at /account/usage (NOT /v3/account/usage) — unchanged from V2."""
     with respx.mock(base_url=BASE, assert_all_called=True) as mock:
-        mock.get("/v3/account/usage").mock(
+        route = mock.get("/account/usage").mock(
             return_value=httpx.Response(200, json={"credits": {"remaining": 100}})
         )
         usage = await lusha.aget_account_usage()
     assert usage["credits"]["remaining"] == 100
+    assert route.calls.last.request.url.path == "/account/usage"
+
+
+@pytest.mark.asyncio
+async def test_lookalikes(lusha: Lusha) -> None:
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        c = mock.post("/v3/contacts/lookalike").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "dedupeSessionId": "s1",
+                    "results": [{"id": "x", "firstName": "A"}],
+                    "meta": {"returned": 1, "hasMore": True},
+                    "billing": {"creditsCharged": 0},
+                },
+            )
+        )
+        co = mock.post("/v3/companies/lookalike").mock(
+            return_value=httpx.Response(200, json={"results": [{"id": "y", "name": "Z"}]})
+        )
+        res = await lusha.afind_contact_lookalikes(
+            seeds={"linkedinUrls": ["https://x"]}, limit=10, dedupe_session_id="s0"
+        )
+        await lusha.afind_company_lookalikes(seeds={"domains": ["z.com"]})
+    body = json_body(c)
+    assert body["seeds"] == {"linkedinUrls": ["https://x"]}
+    assert body["limit"] == 10 and body["dedupeSessionId"] == "s0"
+    assert res["dedupeSessionId"] == "s1" and res["meta"]["hasMore"] is True
+    assert co.called
+
+
+@pytest.mark.asyncio
+async def test_signals_and_types(lusha: Lusha) -> None:
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        sig = mock.post("/v3/contacts/signals").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "results": [{"id": "c1", "promotion": [], "companyChange": []}],
+                    "billing": {"creditsCharged": 1},
+                },
+            )
+        )
+        mock.get("/v3/companies/signals/types").mock(
+            return_value=httpx.Response(200, json={"signalTypes": ["allSignals", "surgeInHiring"]})
+        )
+        filt = mock.get("/v3/companies/signals/filters/hiringByLocations").mock(
+            return_value=httpx.Response(200, json={"values": ["London"]})
+        )
+        res = await lusha.aget_contact_signals(
+            ["c1"], signal_types=["promotion"], start_date="2026-01-01"
+        )
+        t = await lusha.aget_company_signal_types()
+        f = await lusha.aget_company_signal_filter_values("hiringByLocations", query="Lon")
+    sbody = json_body(sig)
+    assert sbody["ids"] == ["c1"] and sbody["signalTypes"] == ["promotion"]
+    assert sbody["startDate"] == "2026-01-01"
+    assert res["billing"]["creditsCharged"] == 1
+    assert "surgeInHiring" in t["signalTypes"]
+    assert filt.calls.last.request.url.params["query"] == "Lon"
+    assert f["values"] == ["London"]
+
+
+@pytest.mark.asyncio
+async def test_prospecting_filter_discovery(lusha: Lusha) -> None:
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        route = mock.get("/v3/contacts/prospecting/filters/seniority").mock(
+            return_value=httpx.Response(200, json={"values": ["Manager", "Director"]})
+        )
+        res = await lusha.aget_contact_prospecting_filters("seniority")
+    assert res["values"] == ["Manager", "Director"]
+    assert route.calls.last.request.url.path == "/v3/contacts/prospecting/filters/seniority"
 
 
 @pytest.mark.asyncio
@@ -255,7 +328,7 @@ def test_spec_metadata() -> None:
     assert Lusha.protocol is ProtocolType.REST
     assert Lusha.category is ConnectorCategory.MARKETING
     assert Lusha.verification_status == "doc"
-    assert len(Lusha.get_actions()) == 10
+    assert len(Lusha.get_actions()) == 20
 
 
 def json_body(route) -> dict:

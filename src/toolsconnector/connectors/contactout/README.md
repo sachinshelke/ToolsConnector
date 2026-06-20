@@ -42,10 +42,13 @@ This connector returns **third-party personal data** (work + personal emails, ph
 <!-- This section is auto-generated from the connector spec. Do not edit manually. -->
 <!-- ACTIONS_END -->
 
+## Coverage
+
+Full v1 surface **plus** the v2 async bulk flow: sync bulk reveal (`get_linkedin_contact_info_bulk`, ≤100) and async bulk reveal (`enrich_linkedin_bulk_async`, ≤1000 + `get_bulk_reveal_job` to poll), single + bulk email verification (`verify_email`, `verify_emails_bulk`), and the free pre-flight `count_people` / `check_*_status` / `get_usage`.
+
 ## Not supported
 
 | Capability | Why |
 |---|---|
-| Async bulk reveal (v2 job + webhook) | The sync bulk (`get_linkedin_contact_info_bulk`, up to 100) is included; the v2 async job/poll/webhook flow is deferred. |
-| Bulk async email verification | The single `verify_email` is included; the async batch verify is deferred. |
+| Hosting the webhook callback for async jobs | `enrich_linkedin_bulk_async` / `verify_emails_bulk` accept your `callback_url`, but you host and secure that endpoint (BYOK — no callback server in the library). Poll `get_bulk_reveal_job` instead if you prefer. |
 | Arbitrary people-search without a paid key | BYOK — you bring your own ContactOut Team/API entitlement. |

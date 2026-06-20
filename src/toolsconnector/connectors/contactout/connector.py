@@ -152,6 +152,12 @@ class ContactOut(BaseConnector):
         return body if isinstance(body, dict) else {}
 
     @staticmethod
+    def _unwrap(resp: dict[str, Any]) -> dict[str, Any]:
+        """ContactOut nests single-profile responses under a ``profile`` key."""
+        inner = resp.get("profile")
+        return inner if isinstance(inner, dict) else resp
+
+    @staticmethod
     def _profile(raw: dict[str, Any], linkedin_url: str = "") -> ContactOutProfile:
         """Normalize one of ContactOut's varied profile shapes into the canonical one."""
         ci = raw.get("contact_info") if isinstance(raw.get("contact_info"), dict) else {}
@@ -165,6 +171,7 @@ class ContactOut(BaseConnector):
             _as_list(ci.get("personal_emails"))
             or _as_list(raw.get("personal_emails"))
             or _as_list(raw.get("personal_email"))
+            or _as_list(raw.get("personalEmail"))
         )
         emails = (
             _as_list(ci.get("emails")) or _as_list(raw.get("emails")) or _as_list(raw.get("email"))
@@ -337,7 +344,7 @@ class ContactOut(BaseConnector):
             The normalized profile (``work_emails`` / ``personal_emails`` / ``phones``).
         """
         resp = await self._request("GET", "/v1/linkedin/enrich", params={"profile": profile})
-        return self._profile(resp, linkedin_url=profile)
+        return self._profile(self._unwrap(resp), linkedin_url=profile)
 
     @action("Reveal contact info (emails/phone) for one LinkedIn profile URL")
     async def get_linkedin_contact_info(
@@ -361,7 +368,7 @@ class ContactOut(BaseConnector):
             "email_type": email_type,
         }
         resp = await self._request("GET", "/v1/people/linkedin", params=params)
-        return self._profile(resp, linkedin_url=profile)
+        return self._profile(self._unwrap(resp), linkedin_url=profile)
 
     @action("Reveal contact info for up to 100 LinkedIn profile URLs in one call")
     async def get_linkedin_contact_info_bulk(
@@ -395,8 +402,10 @@ class ContactOut(BaseConnector):
             "email_type": email_type,
         }
         resp = await self._request("POST", "/v1/people/linkedin/batch", json_body=body)
+        # The batch payload is keyed by LinkedIn URL, sometimes under a "profiles" wrapper.
+        data = resp.get("profiles") if isinstance(resp.get("profiles"), dict) else resp
         out: list[ContactOutProfile] = []
-        for key, value in resp.items():
+        for key, value in data.items():
             if key in ("status_code", "metadata"):
                 continue
             if isinstance(value, dict):
@@ -412,7 +421,13 @@ class ContactOut(BaseConnector):
         email: Optional[str] = None,
         phone: Optional[str] = None,
         full_name: Optional[str] = None,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
         company: Optional[Any] = None,
+        company_domain: Optional[Any] = None,
+        job_title: Optional[str] = None,
+        location: Optional[str] = None,
+        education: Optional[Any] = None,
         include: Optional[list[str]] = None,
     ) -> ContactOutProfile:
         """Flexible person enrichment by any identifier (or name + company).
@@ -421,7 +436,10 @@ class ContactOut(BaseConnector):
 
         Args:
             linkedin_url / email / phone: A primary identifier (any one).
-            full_name + company: Name-based lookup (company is a name or list).
+            full_name (or first_name + last_name) + company / company_domain:
+                Name-based lookup. ``company`` / ``company_domain`` / ``education``
+                accept a string or a list (max 10 each).
+            job_title / location: Optional disambiguators for a name-based lookup.
             include: Subset of ``["work_email", "personal_email", "phone"]`` to
                 reveal (spends credits accordingly).
 
@@ -429,26 +447,36 @@ class ContactOut(BaseConnector):
             The normalized profile.
         """
         body: dict[str, Any] = {}
-        if linkedin_url:
-            body["linkedin_url"] = linkedin_url
-        if email:
-            body["email"] = email
-        if phone:
-            body["phone"] = phone
-        if full_name:
-            body["full_name"] = full_name
-        if company:
-            body["company"] = company if isinstance(company, list) else [company]
+        for key, val in (
+            ("linkedin_url", linkedin_url),
+            ("email", email),
+            ("phone", phone),
+            ("full_name", full_name),
+            ("first_name", first_name),
+            ("last_name", last_name),
+            ("job_title", job_title),
+            ("location", location),
+        ):
+            if val:
+                body[key] = val
+        for key, val in (
+            ("company", company),
+            ("company_domain", company_domain),
+            ("education", education),
+        ):
+            if val:
+                body[key] = val if isinstance(val, list) else [val]
         if include:
             body["include"] = include
         if not body:
             raise ValidationError(
-                "provide at least one identifier (linkedin_url / email / phone / full_name+company)",
+                "provide at least one identifier (linkedin_url / email / phone / "
+                "full_name / first_name+last_name / company)",
                 connector="contactout",
                 action="/v1/people/enrich",
             )
         resp = await self._request("POST", "/v1/people/enrich", json_body=body)
-        return self._profile(resp, linkedin_url=linkedin_url or "")
+        return self._profile(self._unwrap(resp), linkedin_url=linkedin_url or "")
 
     @action("Reverse-enrich a person from an email address")
     async def enrich_by_email(
@@ -469,7 +497,7 @@ class ContactOut(BaseConnector):
         if include_work_email:
             params["include"] = "work_email"
         resp = await self._request("GET", "/v1/email/enrich", params=params)
-        return self._profile(resp)
+        return self._profile(self._unwrap(resp))
 
     @action("Resolve an email address to its LinkedIn profile URL")
     async def find_linkedin_by_email(self, email: str) -> dict[str, Any]:
@@ -481,7 +509,8 @@ class ContactOut(BaseConnector):
             ``{"email": ..., "linkedin": <url or None>}``.
         """
         resp = await self._request("GET", "/v1/people/person", params={"email": email})
-        return {"email": resp.get("email", email), "linkedin": resp.get("linkedin")}
+        prof = self._unwrap(resp)
+        return {"email": prof.get("email", email), "linkedin": prof.get("linkedin")}
 
     # ======================================================================
     # COMPANIES
@@ -534,7 +563,7 @@ class ContactOut(BaseConnector):
         resp = await self._request(
             "GET", "/v1/people/linkedin/personal_email_status", params={"profile": profile}
         )
-        return bool(resp.get("email", False))
+        return bool(self._unwrap(resp).get("email", False))
 
     @action("FREE check: does a work email exist (+ verification status) for a profile?")
     async def check_work_email_status(self, profile: str) -> dict[str, Any]:
@@ -548,7 +577,8 @@ class ContactOut(BaseConnector):
         resp = await self._request(
             "GET", "/v1/people/linkedin/work_email_status", params={"profile": profile}
         )
-        return {"email": bool(resp.get("email", False)), "email_status": resp.get("email_status")}
+        prof = self._unwrap(resp)
+        return {"email": bool(prof.get("email", False)), "email_status": prof.get("email_status")}
 
     @action("FREE check: does a phone exist for a LinkedIn profile? (no reveal)")
     async def check_phone_status(self, profile: str) -> bool:
@@ -559,7 +589,7 @@ class ContactOut(BaseConnector):
         resp = await self._request(
             "GET", "/v1/people/linkedin/phone_status", params={"profile": profile}
         )
-        return bool(resp.get("phone", False))
+        return bool(self._unwrap(resp).get("phone", False))
 
     @action("Verify deliverability of an email address")
     async def verify_email(self, email: str) -> dict[str, Any]:
@@ -572,6 +602,91 @@ class ContactOut(BaseConnector):
         """
         resp = await self._request("GET", "/v1/email/verify", params={"email": email})
         return {"status": resp.get("status")}
+
+    @action("Async bulk reveal: queue up to 1000 LinkedIn URLs (returns a job id)")
+    async def enrich_linkedin_bulk_async(
+        self,
+        profiles: list[str],
+        callback_url: Optional[str] = None,
+        include_phone: bool = True,
+        email_type: str = "both",
+    ) -> dict[str, Any]:
+        """Queue an asynchronous bulk contact reveal for up to 1000 LinkedIn URLs.
+
+        Endpoint: ``POST /v2/people/linkedin/batch``. Returns immediately with a
+        ``job_id``; poll ``get_bulk_reveal_job`` or supply ``callback_url`` to
+        receive results via webhook. Higher cap than the sync
+        ``get_linkedin_contact_info_bulk`` (100).
+
+        Args:
+            profiles: Up to 1000 LinkedIn profile URLs.
+            callback_url: Optional webhook to POST results to on completion.
+            include_phone: Reveal phones (spends phone credits).
+            email_type: ``"personal"`` | ``"work"`` | ``"both"`` | ``"none"``.
+
+        Returns:
+            ``{"status": "QUEUED", "job_id": <uuid>}``.
+        """
+        if not profiles:
+            raise ValidationError(
+                "profiles must be non-empty", connector="contactout", action="batch_async"
+            )
+        if len(profiles) > 1000:
+            raise ValidationError(
+                f"at most 1000 profiles per async batch, got {len(profiles)}",
+                connector="contactout",
+                action="batch_async",
+            )
+        body: dict[str, Any] = {
+            "profiles": profiles,
+            "include_phone": bool(include_phone),
+            "email_type": email_type,
+        }
+        if callback_url:
+            body["callback_url"] = callback_url
+        return await self._request("POST", "/v2/people/linkedin/batch", json_body=body)
+
+    @action("Poll an async bulk-reveal job by id for status + results")
+    async def get_bulk_reveal_job(self, job_id: str) -> dict[str, Any]:
+        """Fetch the status + results of an async bulk-reveal job.
+
+        Endpoint: ``GET /v2/people/linkedin/batch/{job_id}``.
+
+        Returns:
+            ``{"data": {"uuid", "status", "result": {<url>: {emails,
+            personal_emails, work_emails, phones}}}}``.
+        """
+        return await self._request("GET", f"/v2/people/linkedin/batch/{job_id}")
+
+    @action("Async bulk email verification: queue up to 100 emails (returns a job id)")
+    async def verify_emails_bulk(
+        self, emails: list[str], callback_url: Optional[str] = None
+    ) -> dict[str, Any]:
+        """Queue an asynchronous bulk email verification for up to 100 emails.
+
+        Endpoint: ``POST /v1/email/verify/batch``.
+
+        Args:
+            emails: Up to 100 email addresses.
+            callback_url: Optional webhook to POST results to on completion.
+
+        Returns:
+            ``{"status": "QUEUED", "job_id": <uuid>}``.
+        """
+        if not emails:
+            raise ValidationError(
+                "emails must be non-empty", connector="contactout", action="verify_batch"
+            )
+        if len(emails) > 100:
+            raise ValidationError(
+                f"at most 100 emails per batch, got {len(emails)}",
+                connector="contactout",
+                action="verify_batch",
+            )
+        body: dict[str, Any] = {"emails": emails}
+        if callback_url:
+            body["callback_url"] = callback_url
+        return await self._request("POST", "/v1/email/verify/batch", json_body=body)
 
     @action("Get remaining/consumed ContactOut credit balances (free)")
     async def get_usage(self) -> dict[str, Any]:

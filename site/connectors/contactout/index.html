@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ContactOut Python Connector — 16 Actions | ToolsConnector</title>
-<meta name="description" content="Connect ContactOut to Python apps and AI agents with 16 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[contactout]&quot;. Apache 2.0. Free.">
+<title>ContactOut Python Connector — 19 Actions | ToolsConnector</title>
+<meta name="description" content="Connect ContactOut to Python apps and AI agents with 19 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[contactout]&quot;. Apache 2.0. Free.">
 <meta name="keywords" content="ContactOut Python, ContactOut API Python, ContactOut connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
 <meta name="author" content="ToolsConnector">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -15,15 +15,15 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://toolsconnector.github.io/connectors/contactout/">
 <meta property="og:site_name" content="ToolsConnector">
-<meta property="og:title" content="ContactOut Python Connector — 16 Actions | ToolsConnector">
-<meta property="og:description" content="Connect ContactOut to Python apps and AI agents with 16 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[contactout]&quot;. Apache 2.0. Free.">
+<meta property="og:title" content="ContactOut Python Connector — 19 Actions | ToolsConnector">
+<meta property="og:description" content="Connect ContactOut to Python apps and AI agents with 19 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[contactout]&quot;. Apache 2.0. Free.">
 <meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@toolsconnector">
-<meta name="twitter:title" content="ContactOut Python Connector — 16 Actions | ToolsConnector">
-<meta name="twitter:description" content="Connect ContactOut to Python apps and AI agents with 16 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[contactout]&quot;. Apache 2.0. Free.">
+<meta name="twitter:title" content="ContactOut Python Connector — 19 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect ContactOut to Python apps and AI agents with 19 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[contactout]&quot;. Apache 2.0. Free.">
 <meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
 
 <script type="application/ld+json">
@@ -31,7 +31,7 @@
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "ToolsConnector \u2014 ContactOut Connector",
-  "description": "Connect ContactOut to Python apps and AI agents with 16 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[contactout]\". Apache 2.0. Free.",
+  "description": "Connect ContactOut to Python apps and AI agents with 19 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[contactout]\". Apache 2.0. Free.",
   "url": "https://toolsconnector.github.io/connectors/contactout/",
   "downloadUrl": "https://pypi.org/project/toolsconnector/",
   "applicationCategory": "DeveloperApplication",
@@ -50,16 +50,19 @@
     "count_people",
     "enrich_by_email",
     "enrich_domain",
+    "enrich_linkedin_bulk_async",
     "enrich_linkedin_profile",
     "enrich_people",
     "find_linkedin_by_email",
+    "get_bulk_reveal_job",
     "get_decision_makers",
     "get_linkedin_contact_info",
     "get_linkedin_contact_info_bulk",
     "get_usage",
     "search_companies",
     "search_people",
-    "verify_email"
+    "verify_email",
+    "verify_emails_bulk"
   ],
   "author": {
     "@type": "Organization",
@@ -209,7 +212,7 @@ footer a { color: #8a8a93; }
 
   <div class="stats">
     <div class="stat">
-      <div class="stat-num">16</div>
+      <div class="stat-num">19</div>
       <div class="stat-lbl">Actions</div>
     </div>
     <div class="stat">
@@ -224,7 +227,7 @@ footer a { color: #8a8a93; }
 </div>
 
 <div class="section">
-  <h2>All 16 Actions</h2>
+  <h2>All 19 Actions</h2>
   <div class="tbl-wrap">
     <table>
       <thead>
@@ -242,9 +245,11 @@ footer a { color: #8a8a93; }
 <tr><td><code>count_people</code></td><td class="desc">Free dry-run: count how many people match a search (no credits, no contact data)</td><td><span class="req">filters</span></td><td><code>int</code></td></tr>
 <tr><td><code>enrich_by_email</code></td><td class="desc">Reverse-enrich a person from an email address</td><td><span class="req">email</span> &nbsp;<span class="opt">[include_work_email]</span></td><td><code>ContactOutProfile</code></td></tr>
 <tr><td><code>enrich_domain</code></td><td class="desc">Enrich company firmographics from domains (up to 30)</td><td><span class="req">domains</span></td><td><code>dict</code></td></tr>
+<tr><td><code>enrich_linkedin_bulk_async</code></td><td class="desc">Async bulk reveal: queue up to 1000 LinkedIn URLs (returns a job id)</td><td><span class="req">profiles</span> &nbsp;<span class="opt">[callback_url, include_phone, email_type]</span></td><td><code>dict</code></td></tr>
 <tr><td><code>enrich_linkedin_profile</code></td><td class="desc">Enrich a LinkedIn profile URL into full profile + contact data</td><td><span class="req">profile</span></td><td><code>ContactOutProfile</code></td></tr>
-<tr><td><code>enrich_people</code></td><td class="desc">Enrich a person by LinkedIn URL / email / phone / name+company</td><td><span class="opt">[linkedin_url, email, phone, full_name, company, include]</span></td><td><code>ContactOutProfile</code></td></tr>
+<tr><td><code>enrich_people</code></td><td class="desc">Enrich a person by LinkedIn URL / email / phone / name+company</td><td><span class="opt">[linkedin_url, email, phone, full_name, first_name, last_name, company, company_domain, job_title, location, education, include]</span></td><td><code>ContactOutProfile</code></td></tr>
 <tr><td><code>find_linkedin_by_email</code></td><td class="desc">Resolve an email address to its LinkedIn profile URL</td><td><span class="req">email</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_bulk_reveal_job</code></td><td class="desc">Poll an async bulk-reveal job by id for status + results</td><td><span class="req">job_id</span></td><td><code>dict</code></td></tr>
 <tr><td><code>get_decision_makers</code></td><td class="desc">Find decision-makers for a company (by domain / LinkedIn / name); paginated</td><td><span class="opt">[domain, linkedin_url, name, reveal_info, page]</span></td><td><code>PaginatedList[ContactOutProfile]</code></td></tr>
 <tr><td><code>get_linkedin_contact_info</code></td><td class="desc">Reveal contact info (emails/phone) for one LinkedIn profile URL</td><td><span class="req">profile</span> &nbsp;<span class="opt">[include_phone, email_type]</span></td><td><code>ContactOutProfile</code></td></tr>
 <tr><td><code>get_linkedin_contact_info_bulk</code></td><td class="desc">Reveal contact info for up to 100 LinkedIn profile URLs in one call</td><td><span class="req">profiles</span> &nbsp;<span class="opt">[include_phone, email_type]</span></td><td><code>list</code></td></tr>
@@ -252,6 +257,7 @@ footer a { color: #8a8a93; }
 <tr><td><code>search_companies</code></td><td class="desc">Search companies by firmographic filters</td><td><span class="req">filters</span></td><td><code>dict</code></td></tr>
 <tr><td><code>search_people</code></td><td class="desc">Search people by filters (paginated); set reveal_info to spend credits for emails/phones</td><td><span class="req">filters</span> &nbsp;<span class="opt">[page, reveal_info]</span></td><td><code>PaginatedList[ContactOutProfile]</code></td></tr>
 <tr><td><code>verify_email</code></td><td class="desc">Verify deliverability of an email address</td><td><span class="req">email</span></td><td><code>dict</code></td></tr>
+<tr><td><code>verify_emails_bulk</code></td><td class="desc">Async bulk email verification: queue up to 100 emails (returns a job id)</td><td><span class="req">emails</span> &nbsp;<span class="opt">[callback_url]</span></td><td><code>dict</code></td></tr>
       </tbody>
     </table>
   </div>
