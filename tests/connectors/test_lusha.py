@@ -210,8 +210,8 @@ async def test_prospecting_size_clamped_to_50(lusha: Lusha) -> None:
 
 
 @pytest.mark.asyncio
-async def test_account_usage_path_is_not_versioned(lusha: Lusha) -> None:
-    """Account usage lives at /account/usage (NOT /v3/account/usage) — unchanged from V2."""
+async def test_account_usage_prefers_unversioned_path(lusha: Lusha) -> None:
+    """Account usage hits the documented unversioned /account/usage first."""
     with respx.mock(base_url=BASE, assert_all_called=True) as mock:
         route = mock.get("/account/usage").mock(
             return_value=httpx.Response(200, json={"credits": {"remaining": 100}})
@@ -219,6 +219,19 @@ async def test_account_usage_path_is_not_versioned(lusha: Lusha) -> None:
         usage = await lusha.aget_account_usage()
     assert usage["credits"]["remaining"] == 100
     assert route.calls.last.request.url.path == "/account/usage"
+
+
+@pytest.mark.asyncio
+async def test_account_usage_falls_back_to_versioned_on_404(lusha: Lusha) -> None:
+    """If /account/usage 404s, fall back to /v3/account/usage (doc-conflict resilience)."""
+    with respx.mock(base_url=BASE) as mock:
+        mock.get("/account/usage").mock(return_value=httpx.Response(404, json={"message": "nf"}))
+        v3 = mock.get("/v3/account/usage").mock(
+            return_value=httpx.Response(200, json={"credits": {"remaining": 7}})
+        )
+        usage = await lusha.aget_account_usage()
+    assert usage["credits"]["remaining"] == 7
+    assert v3.called
 
 
 @pytest.mark.asyncio

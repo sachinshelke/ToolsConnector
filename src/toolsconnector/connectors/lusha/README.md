@@ -25,7 +25,7 @@ The V3 **reveal flow is two-step**, which keeps you in control of spend:
 1. **`search_contacts`** → a non-PII preview (profile + `id` + `canReveal`).
 2. **`enrich_contacts`** (or one-shot **`search_and_enrich_contacts`**) → reveals `emails` + `phones`.
 
-`emails[]` carry `type` (`work` / `private`) + confidence; `phones[]` carry `type` and a **`do_not_call`** flag. Read `credits_charged` on every result.
+`emails[]` carry `type` (`work` / `private`) + confidence; `phones[]` carry the `number` (plus `type` / **`do_not_call`** when Lusha returns them). Read `credits_charged` on every result.
 
 Beyond enrich/search/prospecting, the full V3 surface is covered: **lookalikes** (`find_contact_lookalikes` / `find_company_lookalikes`), **signals** (job-change/promotion + company hiring/headcount/intent/news, with `get_*_signal_types` and company signal-filter discovery), and **prospecting filter discovery** (`get_*_prospecting_filters`) to enumerate valid filter values.
 

@@ -35,11 +35,12 @@ from toolsconnector.errors import (
     ConnectionError as ToolsConnectorConnectionError,
 )
 from toolsconnector.errors import (
-    TimeoutError as ToolsConnectorTimeoutError,
-)
-from toolsconnector.errors import (
+    NotFoundError,
     TransportError,
     ValidationError,
+)
+from toolsconnector.errors import (
+    TimeoutError as ToolsConnectorTimeoutError,
 )
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
@@ -459,15 +460,22 @@ class Lusha(BaseConnector):
 
     @action("Get remaining/consumed Lusha credit balances for the account")
     async def get_account_usage(self) -> dict[str, Any]:
-        """Report credit usage/quota for the account.
+        """Report credit usage/quota for the account. Throttled to 5 req/min. No PII.
 
-        Endpoint: ``GET /account/usage`` — note this is NOT under ``/v3`` (the
-        Account API path was unchanged from V2; throttled to 5 req/min). No PII.
+        The Account API sits OUTSIDE the V3 OpenAPI spec (which contains no
+        account path), and Lusha's docs conflict on the prefix: the V3 migration
+        guide says ``GET /account/usage`` (unchanged from V2) while the rendered
+        reference page shows ``GET /v3/account/usage``. To be resilient to either,
+        this tries the documented unversioned path first and falls back to the
+        versioned one on 404. (Confirm at live-verify.)
 
         Returns:
-            The raw usage payload (credits remaining/consumed, plan).
+            The raw usage payload (credits remaining/consumed/total, plan, pricing).
         """
-        return await self._request("GET", "/account/usage")
+        try:
+            return await self._request("GET", "/account/usage")
+        except NotFoundError:
+            return await self._request("GET", "/v3/account/usage")
 
     # ======================================================================
     # LOOKALIKES  (find new contacts/companies similar to seeds)
