@@ -65,6 +65,8 @@ Apply the same `WebFetch → compare → respx-verify` treatment used for Linked
 
 **LinkedIn hardening (2026-06-20):** a 25-agent adversarial quality audit across both LinkedIn connectors drove verified production fixes — media-upload write-timeout + per-part disk streaming (5GB OOM) + SSRF host-allowlist, error-body credential redaction, httpx transport-error wrapping → typed, the `linkedin_leads` `_fetch_next` silent-pagination-truncation (`collect()` was returning only page 1), pagination boundaries, and a `Retry-After` HTTP-date crash. `linkedin` 35 respx tests, `linkedin_leads` 30; full suite 2,476 pass. The architectural rationale (credential-family split + the no-people-search boundary) is now in [docs/ARCHITECTURE_FAQ.md](docs/ARCHITECTURE_FAQ.md) #19.
 
+**ContactOut + Lusha (2026-06-20):** new BYOK contact-enrichment connectors — `contactout` (16 actions) and `lusha` (10 V3 actions), both **Tier 2 (doc)**, 23 respx tests. These wrap the **vendors' own official paid APIs** with the user's own key (not LinkedIn scraping — the distinction is in ARCHITECTURE_FAQ #19): they return third-party contact PII (work/personal email + phone), with the connector a neutral adapter and the user owning lawful basis + DNC/opt-out. ContactOut auth = `token` header; Lusha = `api_key` header, two-step search→enrich reveal with `billing.creditsCharged`. Catalog 75 → 77 connectors, 1,539 → 1,565 actions; Marketing category 3 → 5 connectors.
+
 ---
 
 ## Planned (committed, 3–6 months out)

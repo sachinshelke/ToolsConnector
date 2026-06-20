@@ -17,7 +17,7 @@
 
 Every SaaS API has its own SDK, its own auth dance, its own pagination scheme, and its own error format. If you're building an AI agent, you also need to generate JSON Schema for function calling -- differently for OpenAI, Anthropic, and Gemini. You end up writing glue code instead of product code.
 
-ToolsConnector gives you a single, typed Python interface to **75 connectors and 1,539 actions**. It works identically whether you're building a Django app, an OpenAI agent, or an MCP server for Claude Desktop.
+ToolsConnector gives you a single, typed Python interface to **77 connectors and 1,565 actions**. It works identically whether you're building a Django app, an OpenAI agent, or an MCP server for Claude Desktop.
 
 ## Run the Documentation Site
 
@@ -91,7 +91,7 @@ See [`examples/README.md`](examples/README.md) for the full table with required 
 
 ## Key Features
 
-- **75 connectors, 1,539 actions** across 20 categories -- communication, social, databases, DevOps, CRM, AI/ML, AWS infrastructure, and more
+- **77 connectors, 1,565 actions** across 20 categories -- communication, social, databases, DevOps, CRM, AI/ML, AWS infrastructure, and more
 - **Dual-use design** -- works for traditional Python apps (Django, Flask, FastAPI) and AI agents (function calling, tool use) with zero code changes
 - **One-line MCP server** -- expose any combination of connectors to Claude Desktop, Cursor, or any MCP client
 - **Schema generation** -- produces OpenAI, Anthropic, and Gemini function-calling schemas from the same source of truth
@@ -289,7 +289,7 @@ match more granular cases (e.g. `ConflictError` for 409).
 
 ## Supported Connectors
 
-75 connectors, 1,539 actions across 20 categories.
+77 connectors, 1,565 actions across 20 categories.
 
 ### Communication (7)
 

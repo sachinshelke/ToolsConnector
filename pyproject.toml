@@ -93,6 +93,8 @@ plaid = []
 sendgrid = []
 mailchimp = []
 linkedin_leads = []
+contactout = []
+lusha = []
 
 # --- Connectors: Productivity (Google) ---
 gsheets = []

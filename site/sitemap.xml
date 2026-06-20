@@ -9,7 +9,7 @@
     <priority>1.0</priority>
   </url>
 
-  <!-- 75 static connector pages (individually crawlable) -->
+  <!-- 77 static connector pages (individually crawlable) -->
   <url>
     <loc>https://toolsconnector.github.io/connectors/acm/</loc>
     <lastmod>2026-06-20</lastmod>
@@ -78,6 +78,12 @@
   </url>
   <url>
     <loc>https://toolsconnector.github.io/connectors/confluence/</loc>
+    <lastmod>2026-06-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://toolsconnector.github.io/connectors/contactout/</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -246,6 +252,12 @@
   </url>
   <url>
     <loc>https://toolsconnector.github.io/connectors/linkedin_leads/</loc>
+    <lastmod>2026-06-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://toolsconnector.github.io/connectors/lusha/</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

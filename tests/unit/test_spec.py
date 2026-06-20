@@ -240,10 +240,12 @@ class TestVerificationStatus:
     def test_tier_2_connectors_marked_doc(self):
         """Tier 2 (doc) set: slack (doc-verification sweep) + linkedin_leads
         (Lead Sync — doc-verified + respx-pinned, live pending real leads)."""
+        from toolsconnector.connectors.contactout import ContactOut
         from toolsconnector.connectors.linkedin_leads import LinkedInLeads
+        from toolsconnector.connectors.lusha import Lusha
         from toolsconnector.connectors.slack import Slack
 
-        for cls in (Slack, LinkedInLeads):
+        for cls in (Slack, LinkedInLeads, ContactOut, Lusha):
             assert cls.verification_status == "doc", f"{cls.__name__} should be Tier 2 (doc)"
             assert cls.get_spec().verification_status == "doc"
 
