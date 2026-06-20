@@ -92,6 +92,7 @@ plaid = []
 # --- Connectors: Marketing ---
 sendgrid = []
 mailchimp = []
+linkedin_leads = []
 
 # --- Connectors: Productivity (Google) ---
 gsheets = []
@@ -228,7 +229,7 @@ all = [
     "toolsconnector[hubspot,salesforce,stripe,twilio,sendgrid,mcp,rest]",
     "toolsconnector[cloudfront,ecr,ecs,ec2,alb,route53,acm]",
     "toolsconnector[cloudwatch,iam,secrets_manager,rds,lambda_connector]",
-    "toolsconnector[linkedin,x,medium]",
+    "toolsconnector[linkedin,linkedin_leads,x,medium]",
 ]
 
 [project.scripts]

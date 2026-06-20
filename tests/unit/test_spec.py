@@ -224,21 +224,26 @@ class TestVerificationStatus:
 
     def test_tier_1_connectors_marked_live(self):
         """Representative Tier 1 (live) set. gmail is live on a production-usage basis
-        (core email workflows exercised against the real Gmail API in production)."""
+        (core email workflows exercised against the real Gmail API in production).
+        linkedin is live on a partial basis — 3/8 BYOK actions round-tripped and
+        the 5 partner-gated actions were confirmed to 403, re-verified 2026-06-20."""
         from toolsconnector.connectors.github import GitHub
         from toolsconnector.connectors.gmail import Gmail
         from toolsconnector.connectors.linear import Linear
+        from toolsconnector.connectors.linkedin import LinkedIn
         from toolsconnector.connectors.notion import Notion
 
-        for cls in (Notion, Linear, GitHub, Gmail):
+        for cls in (Notion, Linear, GitHub, Gmail, LinkedIn):
             assert cls.verification_status == "live", f"{cls.__name__} should be Tier 1 (live)"
             assert cls.get_spec().verification_status == "live"
 
     def test_tier_2_connectors_marked_doc(self):
-        """slack remains on the Tier 2 doc-verification sweep (gmail promoted to live)."""
+        """Tier 2 (doc) set: slack (doc-verification sweep) + linkedin_leads
+        (Lead Sync — doc-verified + respx-pinned, live pending real leads)."""
+        from toolsconnector.connectors.linkedin_leads import LinkedInLeads
         from toolsconnector.connectors.slack import Slack
 
-        for cls in (Slack,):
+        for cls in (Slack, LinkedInLeads):
             assert cls.verification_status == "doc", f"{cls.__name__} should be Tier 2 (doc)"
             assert cls.get_spec().verification_status == "doc"
 

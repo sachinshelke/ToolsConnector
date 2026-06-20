@@ -26,13 +26,16 @@ This connector calls three LinkedIn API surfaces, all under
   Standard OIDC userinfo endpoint, no version header needed.
   Docs: https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2
 
-Scope tiers (verified against the live API, 2026-04)
-------------------------------------------------------
+Scope tiers (live-verified against the real API, 2026-06-20)
+------------------------------------------------------------
 LinkedIn's public docs claim ``w_member_social`` covers posts, comments,
 and reactions. **Live testing proves only a subset is actually available
-to standard BYOK developers** — comments, reactions, and all read actions
-are additionally gated behind LinkedIn Partner Program approval and
-return ``403 partnerApi*.CREATE/READ`` regardless of OAuth scope.
+to standard BYOK developers** — comments, reactions, and every read action
+are additionally gated behind the LinkedIn Partner Program and return
+HTTP 403 ``partnerApi*`` regardless of OAuth scope. Re-verified end-to-end
+on 2026-06-20 with a real member token (scope
+``openid profile email w_member_social``): the 3 BYOK actions round-tripped
+(create → delete) and the 5 gated actions each returned the exact 403 below.
 
 WORKS for any developer with "Sign In with LinkedIn using OpenID Connect"
 + "Share on LinkedIn" products enabled (default self-serve):
@@ -40,14 +43,20 @@ WORKS for any developer with "Sign In with LinkedIn using OpenID Connect"
   - ``create_post``    — ``POST /rest/posts``        (``w_member_social``)
   - ``delete_post``    — ``DELETE /rest/posts/{urn}`` (``w_member_social``)
 
-REQUIRES LinkedIn Partner Program approval (returns HTTP 403 with
-``partnerApiReactions.*`` / ``partnerApiSocialActions.*`` / read-scope
-errors on standard tokens):
-  - ``react_to_post``  — ``partnerApiReactions.CREATE``
+REQUIRES LinkedIn Partner Program approval — standard tokens get HTTP 403
+with these exact ``serviceErrorCode`` partner gates (observed 2026-06-20):
+  - ``get_post``       — ``partnerApiPostsExternal.GET``
+  - ``list_my_posts``  — ``partnerApiPostsExternal.FINDER-author``
+  - ``list_comments``  — ``partnerApiSocialActions.GET_ALL``
   - ``create_comment`` — ``partnerApiSocialActions.CREATE``
-  - ``list_comments``  — ``partnerApiSocialActions.READ``
-  - ``get_post``       — ``r_member_social`` (restricted scope)
-  - ``list_my_posts``  — ``r_member_social`` (restricted scope)
+  - ``react_to_post``  — ``partnerApiReactions.CREATE``
+
+Note: the read actions (``get_post``, ``list_my_posts``, ``list_comments``)
+were previously documented as ``r_member_social``-restricted; live testing
+2026-06-20 shows LinkedIn now gates them through the same ``partnerApi*``
+entitlement as the write social actions. The caller-visible behaviour is
+unchanged — all five raise ``PermissionDeniedError`` with a hint pointing
+at the Partner Program.
 
 All partner-gated endpoints are still exposed by this connector — they
 return ``PermissionDeniedError`` with a hint pointing at the LinkedIn
@@ -59,20 +68,26 @@ Out of scope (see README "Not Supported"):
 - DMs / Messaging API — requires LinkedIn Partner Program approval (a
   contract with LinkedIn, not OAuth scopes). Not BYOK-accessible.
 - Mentions / Notifications — partner-only Notifications API.
-- Image / video / document uploads — require a separate multi-step
-  upload flow (Images API / Videos API / Documents API) not implemented
-  here. Use ``content`` parameter on ``create_post`` with a pre-uploaded
-  asset URN if you have one.
+- Image / video / document uploads — implemented via ``upload_image`` /
+  ``upload_document`` / ``upload_video`` (the Images / Documents / Videos
+  multi-step upload flow on the versioned ``/rest/*`` gateway), then attach
+  the returned asset URN with ``create_media_post`` (or
+  ``create_post(content=...)``). Member-owned uploads use the self-serve
+  ``w_member_social`` scope. Doc-verified against LinkedIn's canonical
+  Images/Documents/Videos API docs (2026-06); not yet live-exercised.
 """
 
 from __future__ import annotations
 
 import logging
+import pathlib
 from typing import Any, Optional
 from urllib.parse import quote as url_quote
+from urllib.parse import urlparse
 
 import httpx
 
+from toolsconnector.connectors._helpers import parse_retry_after, redact_credentials
 from toolsconnector.errors import (
     APIError,
     InvalidCredentialsError,
@@ -81,7 +96,14 @@ from toolsconnector.errors import (
     RateLimitError,
     ServerError,
     TokenExpiredError,
+    TransportError,
     ValidationError,
+)
+from toolsconnector.errors import (
+    ConnectionError as ToolsConnectorConnectionError,
+)
+from toolsconnector.errors import (
+    TimeoutError as ToolsConnectorTimeoutError,
 )
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
@@ -97,14 +119,14 @@ logger = logging.getLogger("toolsconnector.linkedin")
 # Source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api
 _LINKEDIN_VERSION = "202604"
 
-# Substrings in a 401 body indicating the token has expired or is missing.
-# Per LinkedIn's documented error codes, EMPTY_ACCESS_TOKEN is the value
-# returned when the token is missing entirely; EXPIRED/REVOKED indicate
-# a stale token that needs regeneration.
+# Substrings in a 401 body indicating the token has EXPIRED/REVOKED (a stale
+# token that needs regeneration) → TokenExpiredError. A *missing* token
+# (EMPTY_ACCESS_TOKEN) is deliberately NOT here: that's a credential-construction
+# problem, so it falls through to InvalidCredentialsError, whose hint ("check the
+# token is valid + has the right scopes") is the correct remediation.
 _EXPIRED_TOKEN_MARKERS = (
     "EXPIRED_ACCESS_TOKEN",
     "REVOKED_ACCESS_TOKEN",
-    "EMPTY_ACCESS_TOKEN",
     "expired access token",
     "revoked access token",
 )
@@ -133,7 +155,9 @@ class LinkedIn(BaseConnector):
     - ``openid profile email`` (Sign In with LinkedIn using OpenID Connect)
       → ``get_profile``.
     - ``w_member_social`` (Share on LinkedIn product)
-      → ``create_post``, ``delete_post``.
+      → ``create_post``, ``delete_post``, and media uploads
+      (``upload_image`` / ``upload_document`` / ``upload_video`` +
+      ``create_media_post``).
 
     Everything else (``create_comment``, ``react_to_post``,
     ``list_comments``, ``get_post``, ``list_my_posts``) requires
@@ -157,12 +181,18 @@ class LinkedIn(BaseConnector):
     category = ConnectorCategory.SOCIAL
     protocol = ProtocolType.REST
     base_url = "https://api.linkedin.com"
+    # Tier 1 — live-verified 2026-06-20 against the real API with a member
+    # token: get_profile / create_post / delete_post round-tripped; the 5
+    # partner-gated actions each returned their documented ``partnerApi*`` 403.
+    verification_status = "live"
     description = (
-        "Post to your LinkedIn personal feed, comment on posts, react. "
-        "BYOK OAuth 2.0 access tokens (60-day expiry). Read endpoints "
-        "(get_post, list_my_posts, list_comments) require the restricted "
-        "r_member_social scope (approved developers only). DMs and "
-        "mentions require LinkedIn Partner Program approval."
+        "Post to your LinkedIn personal feed (incl. image/video/document "
+        "uploads), comment, and react. BYOK "
+        "OAuth 2.0 access tokens (60-day expiry). The 3 self-serve actions "
+        "(get_profile, create_post, delete_post) are live-verified; reads "
+        "(get_post, list_my_posts, list_comments), comments, and reactions "
+        "require LinkedIn Partner Program approval and return 403 on "
+        "standard tokens. DMs and mentions are partner-only too."
     )
     # Standard Share-on-LinkedIn rate limit is ~150 calls/day per member
     # (UTC daily window). This advisory limit is intentionally well under
@@ -236,7 +266,26 @@ class LinkedIn(BaseConnector):
         if extra_headers:
             kwargs["headers"] = extra_headers
 
-        response = await self._client.request(method, path, **kwargs)
+        try:
+            response = await self._client.request(method, path, **kwargs)
+        except httpx.TimeoutException as exc:
+            raise ToolsConnectorTimeoutError(
+                f"LinkedIn API request timed out after {self._timeout}s",
+                connector="linkedin",
+                details={"method": method, "path": path, "underlying": type(exc).__name__},
+            ) from exc
+        except httpx.ConnectError as exc:
+            raise ToolsConnectorConnectionError(
+                "Could not connect to the LinkedIn API at api.linkedin.com",
+                connector="linkedin",
+                details={"method": method, "path": path, "underlying": str(exc)},
+            ) from exc
+        except httpx.TransportError as exc:
+            raise TransportError(
+                f"LinkedIn API transport error: {type(exc).__name__}",
+                connector="linkedin",
+                details={"method": method, "path": path, "underlying": str(exc)},
+            ) from exc
         status = response.status_code
 
         # 201 Created on POST often returns the created entity URN in headers
@@ -266,7 +315,12 @@ class LinkedIn(BaseConnector):
             body.get("message") if isinstance(body, dict) else None
         ) or f"LinkedIn API error (HTTP {status})"
         raw_text = response.text or ""
-        details = {"linkedin_response": body, "http_status": status}
+        # Redact any reflected credential (e.g. a Bearer token echoed in the
+        # error body) and truncate before storing on the exception — the same
+        # defense-in-depth the shared raise_typed_for_status applies fleet-wide,
+        # so a token in an error envelope can't leak into logs via err.details.
+        error_msg = redact_credentials(error_msg)
+        details = {"body_preview": redact_credentials(raw_text[:500]), "http_status": status}
 
         if status == 401:
             haystack = (raw_text + " " + (error_msg or "")).upper()
@@ -326,12 +380,15 @@ class LinkedIn(BaseConnector):
             )
 
         if status == 429:
-            retry_after = float(response.headers.get("Retry-After", "60"))
+            # parse_retry_after tolerates a non-numeric (e.g. HTTP-date) header
+            # by returning None instead of crashing the error path with a
+            # ValueError; fall back to the connector default in that case.
+            retry_after = parse_retry_after(response.headers.get("Retry-After"))
             raise RateLimitError(
                 error_msg,
                 connector="linkedin",
                 action=path,
-                retry_after_seconds=retry_after,
+                retry_after_seconds=retry_after if retry_after is not None else 60.0,
                 details=details,
             )
 
@@ -486,15 +543,16 @@ class LinkedIn(BaseConnector):
         await self._request("DELETE", f"/rest/posts/{encoded}")
         return None
 
-    @action("Get a single LinkedIn post by URN (RESTRICTED scope)")
+    @action("Get a single LinkedIn post by URN (PARTNER APPROVAL REQUIRED)")
     async def get_post(self, urn: str) -> LinkedInPost:
         """Fetch a post via the LinkedIn Posts API.
 
         Endpoint: ``GET /rest/posts/{encoded urn}``.
-        Required scope: ``r_member_social`` — **RESTRICTED**, granted
-        to LinkedIn-approved developers only. Standard "Share on
-        LinkedIn" apps will get a 403 ``ACCESS_DENIED`` here, mapped
-        to ``PermissionDeniedError`` with a clear hint.
+        **Requires LinkedIn Partner Program approval.** Live testing
+        2026-06-20 shows standard "Share on LinkedIn" tokens get HTTP 403
+        ``partnerApiPostsExternal.GET`` here, mapped to
+        ``PermissionDeniedError`` with a hint pointing at the Partner
+        Program. (Previously documented as ``r_member_social``-gated.)
 
         Args:
             urn: The post URN.
@@ -506,7 +564,7 @@ class LinkedIn(BaseConnector):
         body = await self._request("GET", f"/rest/posts/{encoded}")
         return LinkedInPost.model_validate(body)
 
-    @action("List the authenticated user's recent posts (RESTRICTED scope)")
+    @action("List the authenticated user's recent posts (PARTNER APPROVAL REQUIRED)")
     async def list_my_posts(
         self,
         author: str,
@@ -516,9 +574,9 @@ class LinkedIn(BaseConnector):
         """List posts authored by ``author`` via the LinkedIn Posts API.
 
         Endpoint: ``GET /rest/posts?q=author&author={urn}``.
-        Required scope: ``r_member_social`` — **RESTRICTED**, granted to
-        LinkedIn-approved developers only. Standard "Share on LinkedIn"
-        apps will get a 403 ``ACCESS_DENIED`` here, mapped to
+        **Requires LinkedIn Partner Program approval.** Live testing
+        2026-06-20 shows standard "Share on LinkedIn" tokens get HTTP 403
+        ``partnerApiPostsExternal.FINDER-author`` here, mapped to
         ``PermissionDeniedError`` with a clear hint.
 
         LinkedIn paginates with ``start``+``count`` (offset-based).
@@ -548,7 +606,10 @@ class LinkedIn(BaseConnector):
         # also exposes a paging.total when available.
         paging = (body.get("paging") or {}) if isinstance(body, dict) else {}
         total = paging.get("total")
-        has_more = (total is not None and (start + len(items)) < total) or len(items) >= count
+        # `total`, when LinkedIn reports it, is authoritative — fall back to the
+        # page-full heuristic only when it's absent, so a full final page that
+        # exactly exhausts `total` doesn't over-report has_more (wasted fetch).
+        has_more = (start + len(items)) < total if total is not None else len(items) >= count
         return PaginatedList(
             items=items,
             page_state=PageState(
@@ -608,7 +669,7 @@ class LinkedIn(BaseConnector):
         )
         return LinkedInComment.model_validate(body)
 
-    @action("List comments on a LinkedIn post (RESTRICTED scope)")
+    @action("List comments on a LinkedIn post (PARTNER APPROVAL REQUIRED)")
     async def list_comments(
         self,
         post_urn: str,
@@ -618,9 +679,9 @@ class LinkedIn(BaseConnector):
         """List comments on a post via the LinkedIn Comments API.
 
         Endpoint: ``GET /rest/socialActions/{encoded post_urn}/comments``.
-        Required scope: ``r_member_social`` — **RESTRICTED**, granted to
-        LinkedIn-approved developers only. Standard "Share on LinkedIn"
-        apps will get a 403 ``ACCESS_DENIED`` here, mapped to
+        **Requires LinkedIn Partner Program approval.** Live testing
+        2026-06-20 shows standard "Share on LinkedIn" tokens get HTTP 403
+        ``partnerApiSocialActions.GET_ALL`` here, mapped to
         ``PermissionDeniedError`` with a clear hint.
 
         Args:
@@ -643,7 +704,10 @@ class LinkedIn(BaseConnector):
         items = [LinkedInComment.model_validate(c) for c in elements]
         paging = (body.get("paging") or {}) if isinstance(body, dict) else {}
         total = paging.get("total")
-        has_more = (total is not None and (start + len(items)) < total) or len(items) >= count
+        # `total`, when LinkedIn reports it, is authoritative — fall back to the
+        # page-full heuristic only when it's absent, so a full final page that
+        # exactly exhausts `total` doesn't over-report has_more (wasted fetch).
+        has_more = (start + len(items)) < total if total is not None else len(items) >= count
         return PaginatedList(
             items=items,
             page_state=PageState(
@@ -721,3 +785,337 @@ class LinkedIn(BaseConnector):
             json_body=payload,
         )
         return None
+
+    # ======================================================================
+    # MEDIA  (Images / Documents / Videos APIs — multi-step asset upload)
+    #
+    # Member-owned uploads (urn:li:person:) use the self-serve
+    # ``w_member_social`` scope. Each upload registers the asset
+    # (``initializeUpload``), PUTs the bytes to a pre-signed URL on
+    # ``www.linkedin.com``, then (video only) finalizes with the part ETags.
+    # The returned asset URN is attached to a post via ``create_media_post``.
+    # ======================================================================
+
+    # Allowed extensions + size ceilings per LinkedIn's documented media limits.
+    # Min-size / pixel / page / duration bounds are left to server-side
+    # enforcement (a clean 400); only the format + the ceiling (so we don't
+    # upload a multi-GB file just to be rejected) are checked client-side.
+    _IMAGE_EXTS = frozenset({".jpg", ".jpeg", ".png", ".gif"})
+    _DOC_EXTS = frozenset({".ppt", ".pptx", ".doc", ".docx", ".pdf"})
+    _DOC_MAX_BYTES = 100 * 1024 * 1024
+    _VIDEO_MAX_BYTES = 5 * 1024 * 1024 * 1024
+
+    @staticmethod
+    def _resolve_upload_path(file_path: str, allowed_exts: frozenset, *, kind: str) -> pathlib.Path:
+        """Validate a local upload path: must exist and have an allowed extension."""
+        path = pathlib.Path(file_path)
+        if not path.is_file():
+            raise ValidationError(
+                f"file not found: {file_path!r}", connector="linkedin", action="upload"
+            )
+        if path.suffix.lower() not in allowed_exts:
+            raise ValidationError(
+                f"{kind} must be one of {sorted(allowed_exts)}, got {path.suffix or '(none)'!r}",
+                connector="linkedin",
+                action="upload",
+            )
+        return path
+
+    @staticmethod
+    def _unquote_etag(etag: str) -> str:
+        """Strip an optional weak-validator prefix + a single matched quote pair."""
+        etag = etag.strip()
+        if etag.startswith("W/"):
+            etag = etag[2:]
+        if len(etag) >= 2 and etag[0] == '"' and etag[-1] == '"':
+            etag = etag[1:-1]
+        return etag
+
+    async def _put_binary(self, upload_url: str, content: Any) -> Optional[str]:
+        """PUT bytes (or a streaming file object) to a pre-signed URL; return the ETag.
+
+        The upload URL is a pre-signed link on ``www.linkedin.com`` (not the API
+        host). Hardening applied here:
+
+        - **SSRF guard** — the URL must be ``https`` on a ``*.linkedin.com``
+          host, and redirects are disabled, so a tampered ``initializeUpload``
+          response can't redirect our bytes + Bearer token to an attacker host.
+        - **Write phase uncapped** — the 30 s API timeout would abort a 100 MB
+          document / large video part mid-stream; connect/read stay bounded.
+        - **Typed transport errors** + credential redaction on any error body.
+        """
+        parsed = urlparse(upload_url)
+        host = parsed.hostname or ""
+        if parsed.scheme != "https" or not (
+            host == "linkedin.com" or host.endswith(".linkedin.com")
+        ):
+            raise APIError(
+                f"refusing to upload to a non-LinkedIn URL ({parsed.scheme}://{host})",
+                connector="linkedin",
+                action="upload",
+            )
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(self._timeout, write=None, pool=None),
+                follow_redirects=False,
+            ) as up:
+                resp = await up.put(
+                    upload_url,
+                    content=content,
+                    headers={
+                        "Authorization": f"Bearer {self._credentials}",
+                        "Content-Type": "application/octet-stream",
+                    },
+                )
+        except httpx.TimeoutException as exc:
+            raise ToolsConnectorTimeoutError(
+                "LinkedIn media upload timed out",
+                connector="linkedin",
+                details={"underlying": type(exc).__name__},
+            ) from exc
+        except httpx.TransportError as exc:
+            raise TransportError(
+                f"LinkedIn media upload transport error: {type(exc).__name__}",
+                connector="linkedin",
+                details={"underlying": str(exc)},
+            ) from exc
+        if resp.status_code not in (200, 201):
+            raise APIError(
+                f"LinkedIn media upload failed (HTTP {resp.status_code})",
+                connector="linkedin",
+                action="upload",
+                details={
+                    "http_status": resp.status_code,
+                    "body": redact_credentials(resp.text[:300]),
+                },
+                upstream_status=resp.status_code,
+            )
+        etag = resp.headers.get("etag") or resp.headers.get("ETag")
+        return self._unquote_etag(etag) if etag else None
+
+    @action("Upload an image and return its urn:li:image asset URN for posting")
+    async def upload_image(self, owner: str, file_path: str) -> str:
+        """Upload a local image (Images API) and return its asset URN.
+
+        Two-step flow: ``POST /rest/images?action=initializeUpload`` →
+        ``PUT`` the bytes to the returned upload URL. Required scope:
+        ``w_member_social`` (a ``urn:li:person`` owner — yourself) or
+        ``w_organization_social`` (a ``urn:li:organization`` page you admin).
+        Formats: JPG, GIF (≤250 frames), PNG; under 36,152,320 pixels.
+
+        Args:
+            owner: The asset owner URN — ``urn:li:person:{id}`` or
+                ``urn:li:organization:{id}``.
+            file_path: Local path to the image file.
+
+        Returns:
+            The image asset URN (``urn:li:image:...``). Pass it to
+            ``create_media_post`` (or
+            ``create_post(content={"media": {"id": urn}})``).
+        """
+        path = self._resolve_upload_path(file_path, self._IMAGE_EXTS, kind="image")
+        init = await self._request(
+            "POST",
+            "/rest/images?action=initializeUpload",
+            json_body={"initializeUploadRequest": {"owner": owner}},
+        )
+        value = (init or {}).get("value") or {}
+        upload_url = value.get("uploadUrl")
+        image_urn = value.get("image")
+        if not upload_url or not image_urn:
+            raise APIError(
+                "Images API initializeUpload returned no uploadUrl/image URN",
+                connector="linkedin",
+                action="/rest/images",
+                details={"response": init},
+            )
+        await self._put_binary(upload_url, path.read_bytes())
+        return image_urn
+
+    @action("Upload a document (PDF/PPT/DOC) and return its urn:li:document URN")
+    async def upload_document(self, owner: str, file_path: str) -> str:
+        """Upload a local document (Documents API) and return its asset URN.
+
+        ``POST /rest/documents?action=initializeUpload`` → ``PUT`` the bytes.
+        Required scope: ``w_member_social`` / ``w_organization_social``.
+        Formats: PPT, PPTX, DOC, DOCX, PDF; up to 100MB and 300 pages.
+
+        Args:
+            owner: ``urn:li:person:{id}`` or ``urn:li:organization:{id}``.
+            file_path: Local path to the document file.
+
+        Returns:
+            The document asset URN (``urn:li:document:...``). Attach it with
+            ``create_media_post(..., title="MyDeck.pdf")``.
+        """
+        path = self._resolve_upload_path(file_path, self._DOC_EXTS, kind="document")
+        if path.stat().st_size > self._DOC_MAX_BYTES:
+            raise ValidationError(
+                "document exceeds LinkedIn's 100MB limit",
+                connector="linkedin",
+                action="upload",
+            )
+        init = await self._request(
+            "POST",
+            "/rest/documents?action=initializeUpload",
+            json_body={"initializeUploadRequest": {"owner": owner}},
+        )
+        value = (init or {}).get("value") or {}
+        upload_url = value.get("uploadUrl")
+        doc_urn = value.get("document")
+        if not upload_url or not doc_urn:
+            raise APIError(
+                "Documents API initializeUpload returned no uploadUrl/document URN",
+                connector="linkedin",
+                action="/rest/documents",
+                details={"response": init},
+            )
+        await self._put_binary(upload_url, path.read_bytes())
+        return doc_urn
+
+    @action("Upload a video (multi-part) and return its urn:li:video asset URN")
+    async def upload_video(self, owner: str, file_path: str) -> str:
+        """Upload a local MP4 video (Videos API) and return its asset URN.
+
+        Three-step multi-part flow:
+        ``POST /rest/videos?action=initializeUpload`` (declares the byte size,
+        which determines the part count) → ``PUT`` each part to its upload URL
+        (sliced by the server-provided ``firstByte``/``lastByte`` range),
+        collecting the ETag of each → ``POST /rest/videos?action=finalizeUpload``
+        with the ordered ETags + the upload token. Required scope:
+        ``w_member_social`` / ``w_organization_social``. MP4 only;
+        75 KB – 500 MB (hard max 5 GB); 3 s – 30 min.
+
+        Args:
+            owner: ``urn:li:person:{id}`` or ``urn:li:organization:{id}``.
+            file_path: Local path to the MP4 file.
+
+        Returns:
+            The video asset URN (``urn:li:video:...``). LinkedIn processes
+            video asynchronously, so it may be ``PROCESSING`` briefly after
+            upload before it can serve in a post.
+        """
+        path = self._resolve_upload_path(file_path, frozenset({".mp4"}), kind="video")
+        size = path.stat().st_size
+        if size > self._VIDEO_MAX_BYTES:
+            raise ValidationError(
+                "video exceeds LinkedIn's 5GB hard limit",
+                connector="linkedin",
+                action="upload",
+            )
+        init = await self._request(
+            "POST",
+            "/rest/videos?action=initializeUpload",
+            json_body={
+                "initializeUploadRequest": {
+                    "owner": owner,
+                    "fileSizeBytes": size,
+                    "uploadCaptions": False,
+                    "uploadThumbnail": False,
+                }
+            },
+        )
+        value = (init or {}).get("value") or {}
+        video_urn = value.get("video")
+        upload_token = value.get("uploadToken", "")
+        instructions = value.get("uploadInstructions") or []
+        if not video_urn or not instructions:
+            raise APIError(
+                "Videos API initializeUpload returned no video URN / uploadInstructions",
+                connector="linkedin",
+                action="/rest/videos",
+                details={"response": init},
+            )
+        multi_part = len(instructions) > 1
+        part_ids: list[str] = []
+        # Stream each part straight off disk (seek+read) — peak memory is one
+        # ~4MB part, never the whole (up-to-5GB) file.
+        with path.open("rb") as fh:
+            for inst in instructions:
+                upload_url = inst.get("uploadUrl")
+                if not upload_url:
+                    raise APIError(
+                        "Videos API uploadInstructions entry missing uploadUrl",
+                        connector="linkedin",
+                        action="/rest/videos",
+                        details={"instruction": inst},
+                    )
+                if multi_part and ("firstByte" not in inst or "lastByte" not in inst):
+                    raise APIError(
+                        "Videos API multi-part instruction missing firstByte/lastByte",
+                        connector="linkedin",
+                        action="/rest/videos",
+                        details={"instruction": inst},
+                    )
+                first = int(inst.get("firstByte", 0))
+                last = int(inst.get("lastByte", size - 1))
+                fh.seek(first)
+                etag = await self._put_binary(upload_url, fh.read(last - first + 1))
+                if not etag:
+                    raise APIError(
+                        f"LinkedIn returned no ETag for video part {len(part_ids)}; "
+                        "cannot finalize the multipart upload",
+                        connector="linkedin",
+                        action="/rest/videos",
+                        upstream_status=200,
+                    )
+                part_ids.append(etag)
+        await self._request(
+            "POST",
+            "/rest/videos?action=finalizeUpload",
+            json_body={
+                "finalizeUploadRequest": {
+                    "video": video_urn,
+                    "uploadToken": upload_token,
+                    "uploadedPartIds": part_ids,
+                }
+            },
+        )
+        return video_urn
+
+    @action(
+        "Publish a post with an uploaded image/document/video attached",
+        dangerous=True,
+    )
+    async def create_media_post(
+        self,
+        author: str,
+        commentary: str,
+        media_urn: str,
+        title: Optional[str] = None,
+        alt_text: Optional[str] = None,
+        visibility: str = "PUBLIC",
+        lifecycle_state: str = "PUBLISHED",
+    ) -> LinkedInPost:
+        """Publish a post with a single uploaded asset attached.
+
+        Convenience over ``create_post``: builds the ``content.media`` block
+        from an asset URN returned by ``upload_image`` / ``upload_document`` /
+        ``upload_video``.
+
+        Args:
+            author: The author URN (``urn:li:person:{id}`` or
+                ``urn:li:organization:{id}``).
+            commentary: The post text.
+            media_urn: The asset URN (``urn:li:image:`` / ``:document:`` /
+                ``:video:``) to attach.
+            title: Title for the media (used for documents and videos).
+            alt_text: Alt text for accessibility (used for images).
+            visibility: ``"PUBLIC"`` or ``"CONNECTIONS"``.
+            lifecycle_state: ``"PUBLISHED"`` or ``"DRAFT"``.
+
+        Returns:
+            The created post (URN exposed via ``post.id``).
+        """
+        media: dict[str, Any] = {"id": media_urn}
+        if alt_text:
+            media["altText"] = alt_text
+        if title:
+            media["title"] = title
+        return await self.acreate_post(
+            author=author,
+            commentary=commentary,
+            visibility=visibility,
+            lifecycle_state=lifecycle_state,
+            content={"media": media},
+        )

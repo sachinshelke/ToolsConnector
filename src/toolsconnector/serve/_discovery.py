@@ -53,6 +53,7 @@ _KNOWN_CONNECTORS: dict[str, str] = {
     "lambda_connector": "toolsconnector.connectors.lambda_connector:Lambda",
     "linear": "toolsconnector.connectors.linear:Linear",
     "linkedin": "toolsconnector.connectors.linkedin:LinkedIn",
+    "linkedin_leads": "toolsconnector.connectors.linkedin_leads:LinkedInLeads",
     "mailchimp": "toolsconnector.connectors.mailchimp:Mailchimp",
     "medium": "toolsconnector.connectors.medium:Medium",
     "mistral": "toolsconnector.connectors.mistral:Mistral",

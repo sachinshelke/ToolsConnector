@@ -420,3 +420,20 @@ Declaratively expressible: **91.2% hard floor, 97.4% with vocab additions**. The
 **Operational note:** when switching modes, disable Default Setup **before** enabling the advanced workflow (GitHub rejects an advanced run while Default Setup owns scanning). After the switch, `main` is re-scanned by the advanced workflow on its next push to `main`.
 
 **References:** FAQ #8 (primitive, not platform — the scanner is CI-only, never ships), #14 (versioning); `SECURITY.md` (disclosure + design principles); `.github/workflows/codeql.yml`.
+
+## 19. Why is LinkedIn several connectors (`linkedin`, `linkedin_leads`, …) instead of one — and why no "people search"?
+
+LinkedIn is not one API; it's a portfolio of separately-gated products (member Share, Marketing/Lead Sync, Conversions, Community Management, Advertising), each with its **own credential, scope, approval gate, and verification tier**. We split connectors along that **credential/product boundary** — the same way Google is `gmail` / `gdrive` / `gcalendar` rather than one `google`.
+
+**Why not one mega-connector with capability flags?** Two hard constraints make it impossible to do honestly:
+
+1. **One credential per connector.** `ToolKit` takes a single `credentials` value per connector. But LinkedIn's surfaces need *different tokens obtained different ways* — a member OAuth token (`w_member_social`, self-serve), the Conversions **Direct API** token (a non-expiring token minted in Campaign Manager — not even OAuth), and marketing-scoped OAuth tokens behind LinkedIn's review. A single connector handed one token would 403 on most of its actions.
+2. **One verification tier per connector.** `verification_status` is a single field (FAQ #16). `linkedin` is **live** (Tier 1); `linkedin_leads` is **doc** (Tier 2, pending product approval). A mega-connector could carry only one label — forcing it to over-claim "live" for unverified surfaces or under-claim "doc" for the live ones. The honesty rule needs **per-surface** tiers, hence per-surface connectors.
+
+The rule of thumb: **the connector boundary is the credential, not the brand.** Same token → one connector with all those capabilities (so image/video/document *media* uploads live inside `linkedin`, not a separate connector — they ride the same `w_member_social` token as `create_post`). A different token/product/approval → a new connector.
+
+**Why there is no people-search / profile-enrichment connector.** Users often ask for "search people by filters → return their email/phone," or "expand a person URN into their career history." **LinkedIn exposes no such API to BYOK developers, by design** — verified across the Profile API ("restricted to approved developers," plus a hard *storage ban* on non-authenticated members and per-app-opaque person IDs), the Connections API (partner-gated, authenticated user's 1st-degree only), and the Messages API (approved partners + a human-in-the-loop-per-message rule). The only way to fake it is scraping, which violates LinkedIn's User Agreement and data-protection law — and our charter (FAQ #8, #9) refuses to harvest third-party PII. Being authenticated as yourself does not authorize extracting *other people's* private data.
+
+The **legitimate** "get people's contact details" path is `linkedin_leads` (the Lead Sync API): it returns leads — name/email/phone — that members *voluntarily submitted* to **your own** Lead Gen Forms. First-party, consented, opt-in. That is the boundary: we expose the full power the API actually offers, not capabilities the platform deliberately withholds.
+
+**References:** FAQ #8 (primitive, not platform), #9 (BYOK), #16 (verification tiers); connector READMEs under `src/toolsconnector/connectors/linkedin*/`.

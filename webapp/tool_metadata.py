@@ -984,12 +984,12 @@ TOOL_META: dict[str, dict] = {
         "logo": _BF("linkedin.com"),
         "color": "#0A66C2",
         "tagline": "Post, comment, and react on the world's largest professional network",
-        "overview": "Wraps the LinkedIn Posts API (POST /rest/posts), Comments API (POST /rest/socialActions/.../comments), Reactions API (POST /rest/reactions), and OIDC userinfo (/v2/userinfo). Write actions (create_post, delete_post, create_comment, react_to_post) work with the standard 'Share on LinkedIn' product (w_member_social scope, available to every developer). Read actions (get_post, list_my_posts, list_comments) require r_member_social — a RESTRICTED scope granted only to LinkedIn-approved developers. DMs, mentions, and notifications require LinkedIn Partner Program approval and are not available via BYOK.",
+        "overview": "Wraps the LinkedIn Posts API (POST /rest/posts), Comments, Reactions, OIDC userinfo (/v2/userinfo), and the Images/Documents/Videos upload APIs. Live-verified 2026-06-20. The self-serve actions (get_profile, create_post, delete_post) plus image/video/document uploads (upload_image / upload_document / upload_video + create_media_post) work with 'Share on LinkedIn' (w_member_social) + 'Sign In with OpenID Connect' — available to every developer. Comments, reactions, and the read actions (get_post, list_my_posts, list_comments) are gated behind the LinkedIn Partner Program and return 403 on standard tokens. DMs, mentions, arbitrary people-search, and profile enrichment are not BYOK-accessible by LinkedIn's design.",
         "use_cases": [
             "Personal brand automation",
+            "Image / video / document posts",
             "Thought leadership pipelines",
             "PR and announcement workflows",
-            "Cross-posting from blogs",
         ],
         "auth_methods": ["OAuth 2.0 Bearer Token"],
         "pricing": "API access free for approved developers; member tokens expire after 60 days",
@@ -1001,6 +1001,32 @@ TOOL_META: dict[str, dict] = {
         ],
         "get_credentials_url": "https://www.linkedin.com/developers/apps",
         "get_credentials_steps": "LinkedIn Developers > Apps > Create app > Products tab > add 'Sign In with LinkedIn using OpenID Connect' + 'Share on LinkedIn' > Auth tab > generate access token (60-day expiry)",
+    },
+    "linkedin_leads": {
+        "company": "LinkedIn (Microsoft)",
+        "website": "https://www.linkedin.com/campaignmanager",
+        "docs": "https://learn.microsoft.com/en-us/linkedin/marketing/lead-sync/leadsync",
+        "github": "",
+        "logo": _BF("linkedin.com"),
+        "color": "#0A66C2",
+        "tagline": "Retrieve consented leads (name / email / phone) from your LinkedIn Lead Gen Forms",
+        "overview": "Wraps the LinkedIn Marketing Lead Sync API: list_lead_forms / get_lead_form (the question templates) and list_lead_responses / get_lead_response / list_leads (the submitted leads). list_leads resolves each lead's answers into labeled contact fields (EMAIL / PHONE_NUMBER / FIRST_NAME / …) by joining them against the owning form. Returns ONLY first-party, opted-in leads — people who voluntarily filled out your own forms. There is no people-search / arbitrary-PII-lookup capability; LinkedIn exposes no such API, and this connector deliberately offers none.",
+        "use_cases": [
+            "Sync ad / organic leads into a CRM",
+            "Real-time lead-notification pipelines",
+            "Lead-to-sale attribution",
+            "First-party marketing-automation enrichment",
+        ],
+        "auth_methods": ["OAuth 2.0 Bearer Token"],
+        "pricing": "Requires the approved Lead Sync API product; member tokens expire after 60 days",
+        "rate_limit": "App + member quotas, LinkedIn-enforced",
+        "prerequisites": [
+            "LinkedIn Developer App with the 'Lead Sync API' product APPROVED (LinkedIn review required — not self-serve)",
+            "OAuth 2.0 access token with the 'r_marketing_leadgen_automation' scope",
+            "A qualifying role (e.g. ACCOUNT_MANAGER + LEAD_GEN_FORMS_MANAGER) on the owning ad account / Company Page",
+        ],
+        "get_credentials_url": "https://www.linkedin.com/developers/apps",
+        "get_credentials_steps": "LinkedIn Developers > Apps > Products tab > request 'Lead Sync API' (LinkedIn reviews + approves) > Auth tab > generate a token with the r_marketing_leadgen_automation scope",
     },
     "mailchimp": {
         "company": "Intuit (Mailchimp)",
@@ -1551,6 +1577,12 @@ TOOL_REPOS: dict[str, list[dict[str, str]]] = {
     "intercom": [{"url": "https://github.com/intercom/python-intercom", "lang": "Python"}],
     "linear": [{"url": "https://github.com/linear/linear", "lang": "TypeScript (source)"}],
     "linkedin": [
+        {
+            "url": "https://github.com/linkedin-developers/linkedin-api-python-client",
+            "lang": "Python (community)",
+        }
+    ],
+    "linkedin_leads": [
         {
             "url": "https://github.com/linkedin-developers/linkedin-api-python-client",
             "lang": "Python (community)",
