@@ -30,12 +30,19 @@ from typing import Any, Optional
 
 import httpx
 
-from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.connectors._helpers import (
+    coerce_optional_int,
+    raise_typed_for_status,
+    safe_int,
+    scrub_secret,
+    validate_list,
+)
 from toolsconnector.errors import (
     ConnectionError as ToolsConnectorConnectionError,
 )
 from toolsconnector.errors import (
     NotFoundError,
+    ToolsConnectorError,
     TransportError,
     ValidationError,
 )
@@ -118,33 +125,60 @@ class Lusha(BaseConnector):
         params: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         try:
-            response = await self._client.request(method, path, json=json_body, params=params)
-        except httpx.TimeoutException as exc:
-            raise ToolsConnectorTimeoutError(
-                f"Lusha API request timed out after {self._timeout}s",
-                connector=self.name,
-                details={"method": method, "path": path, "underlying": type(exc).__name__},
-            ) from exc
-        except httpx.ConnectError as exc:
-            raise ToolsConnectorConnectionError(
-                "Could not connect to the Lusha API at api.lusha.com",
-                connector=self.name,
-                details={"method": method, "path": path, "underlying": str(exc)},
-            ) from exc
-        except httpx.TransportError as exc:
-            raise TransportError(
-                f"Lusha API transport error: {type(exc).__name__}",
-                connector=self.name,
-                details={"method": method, "path": path, "underlying": str(exc)},
-            ) from exc
-        raise_typed_for_status(response, connector=self.name, action=path)
-        if response.status_code == 204:
-            return {}
-        try:
-            body = response.json()
-        except ValueError:
-            return {}
-        return body if isinstance(body, dict) else {}
+            try:
+                response = await self._client.request(method, path, json=json_body, params=params)
+            except httpx.InvalidURL as exc:
+                raise ValidationError(
+                    f"Invalid request URL for Lusha {path} (bad path/query value): {exc}",
+                    connector=self.name,
+                    action=path,
+                ) from exc
+            except httpx.TimeoutException as exc:
+                raise ToolsConnectorTimeoutError(
+                    f"Lusha API request timed out after {self._timeout}s",
+                    connector=self.name,
+                    details={"method": method, "path": path, "underlying": type(exc).__name__},
+                ) from exc
+            except httpx.ConnectError as exc:
+                raise ToolsConnectorConnectionError(
+                    "Could not connect to the Lusha API at api.lusha.com",
+                    connector=self.name,
+                    details={"method": method, "path": path, "underlying": str(exc)},
+                ) from exc
+            except httpx.TransportError as exc:
+                raise TransportError(
+                    f"Lusha API transport error: {type(exc).__name__}",
+                    connector=self.name,
+                    details={"method": method, "path": path, "underlying": str(exc)},
+                ) from exc
+            except httpx.HTTPError as exc:
+                # Any other httpx error not under TransportError (DecodingError,
+                # TooManyRedirects, …) — keep it inside the typed boundary.
+                raise TransportError(
+                    f"Lusha API request error: {type(exc).__name__}",
+                    connector=self.name,
+                    details={"method": method, "path": path, "underlying": str(exc)},
+                ) from exc
+            except RuntimeError as exc:
+                # e.g. "Cannot send a request, as the client has been closed."
+                raise ToolsConnectorConnectionError(
+                    "Lusha client is not usable (closed or not initialized)",
+                    connector=self.name,
+                    details={"method": method, "path": path, "underlying": str(exc)},
+                ) from exc
+            raise_typed_for_status(response, connector=self.name, action=path)
+            if response.status_code == 204:
+                return {}
+            try:
+                body = response.json()
+            except ValueError:
+                return {}
+            return body if isinstance(body, dict) else {}
+        except ToolsConnectorError as exc:
+            # Scrub the connector's OWN credential if a misbehaving upstream
+            # echoed it back (the pattern-based redactor can't know a custom key).
+            scrub_secret(exc, self._credentials)
+            raise
 
     @staticmethod
     def _validate_batch(items: list[Any], field: str) -> None:
@@ -161,32 +195,26 @@ class Lusha(BaseConnector):
 
     @staticmethod
     def _contact_result(body: dict[str, Any]) -> LushaContactResult:
-        results = body.get("results") or []
-        contacts = [
-            LushaContact.model_validate(r)
-            for r in results
-            if isinstance(r, dict) and not r.get("error")
-        ]
-        billing = body.get("billing") or {}
+        results = body.get("results")
+        results = results if isinstance(results, list) else []
+        valid = [r for r in results if isinstance(r, dict) and not r.get("error")]
+        billing = body.get("billing") if isinstance(body.get("billing"), dict) else {}
         return LushaContactResult(
-            request_id=body.get("requestId", "") or "",
-            contacts=contacts,
-            credits_charged=int(billing.get("creditsCharged", 0) or 0),
+            request_id=str(body.get("requestId") or ""),
+            contacts=validate_list(LushaContact, valid),
+            credits_charged=safe_int(billing.get("creditsCharged"), 0),
         )
 
     @staticmethod
     def _company_result(body: dict[str, Any]) -> LushaCompanyResult:
-        results = body.get("results") or []
-        companies = [
-            LushaCompany.model_validate(r)
-            for r in results
-            if isinstance(r, dict) and not r.get("error")
-        ]
-        billing = body.get("billing") or {}
+        results = body.get("results")
+        results = results if isinstance(results, list) else []
+        valid = [r for r in results if isinstance(r, dict) and not r.get("error")]
+        billing = body.get("billing") if isinstance(body.get("billing"), dict) else {}
         return LushaCompanyResult(
-            request_id=body.get("requestId", "") or "",
-            companies=companies,
-            credits_charged=int(billing.get("creditsCharged", 0) or 0),
+            request_id=str(body.get("requestId") or ""),
+            companies=validate_list(LushaCompany, valid),
+            credits_charged=safe_int(billing.get("creditsCharged"), 0),
         )
 
     # ======================================================================
@@ -280,18 +308,19 @@ class Lusha(BaseConnector):
         body = await self._request(
             "POST", "/v3/contacts/decision-makers", json_body={"companies": companies}
         )
-        contacts: list[LushaContact] = []
-        for group in body.get("results") or []:
+        groups = body.get("results")
+        raw_dms: list[Any] = []
+        for group in groups if isinstance(groups, list) else []:
             if not isinstance(group, dict):
                 continue
-            for dm in group.get("decisionMakers") or []:
-                if isinstance(dm, dict):
-                    contacts.append(LushaContact.model_validate(dm))
-        billing = body.get("billing") or {}
+            dms = group.get("decisionMakers")
+            if isinstance(dms, list):
+                raw_dms.extend(dms)
+        billing = body.get("billing") if isinstance(body.get("billing"), dict) else {}
         return LushaContactResult(
-            request_id=body.get("requestId", "") or "",
-            contacts=contacts,
-            credits_charged=int(billing.get("creditsCharged", 0) or 0),
+            request_id=str(body.get("requestId") or ""),
+            contacts=validate_list(LushaContact, raw_dms),
+            credits_charged=safe_int(billing.get("creditsCharged"), 0),
         )
 
     # ======================================================================
@@ -390,13 +419,11 @@ class Lusha(BaseConnector):
         if options:
             payload["options"] = options
         body = await self._request("POST", "/v3/contacts/prospecting", json_body=payload)
-        items = [
-            LushaContact.model_validate(r)
-            for r in (body.get("results") or [])
-            if isinstance(r, dict)
-        ]
-        total = (body.get("pagination") or {}).get("total")
-        has_more = total is not None and ((page + 1) * size) < total
+        items = validate_list(LushaContact, body.get("results"))
+        paging = body.get("pagination") if isinstance(body.get("pagination"), dict) else {}
+        total = coerce_optional_int(paging.get("total"))
+        # `bool(items)` guards an empty page with total still ahead from spinning collect().
+        has_more = bool(items) and total is not None and ((page + 1) * size) < total
         result: PaginatedList[LushaContact] = PaginatedList(
             items=items,
             page_state=PageState(page_number=page, has_more=has_more, total_count=total),
@@ -436,13 +463,11 @@ class Lusha(BaseConnector):
         if options:
             payload["options"] = options
         body = await self._request("POST", "/v3/companies/prospecting", json_body=payload)
-        items = [
-            LushaCompany.model_validate(r)
-            for r in (body.get("results") or [])
-            if isinstance(r, dict)
-        ]
-        total = (body.get("pagination") or {}).get("total")
-        has_more = total is not None and ((page + 1) * size) < total
+        items = validate_list(LushaCompany, body.get("results"))
+        paging = body.get("pagination") if isinstance(body.get("pagination"), dict) else {}
+        total = coerce_optional_int(paging.get("total"))
+        # `bool(items)` guards an empty page with total still ahead from spinning collect().
+        has_more = bool(items) and total is not None and ((page + 1) * size) < total
         result: PaginatedList[LushaCompany] = PaginatedList(
             items=items,
             page_state=PageState(page_number=page, has_more=has_more, total_count=total),

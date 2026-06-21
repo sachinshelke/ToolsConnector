@@ -30,7 +30,14 @@ from typing import Any, Optional
 
 import httpx
 
-from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.connectors._helpers import (
+    coerce_optional_int,
+    dict_list,
+    raise_typed_for_status,
+    require_dict,
+    safe_int,
+    scrub_secret,
+)
 from toolsconnector.errors import (
     ConnectionError as ToolsConnectorConnectionError,
 )
@@ -38,6 +45,7 @@ from toolsconnector.errors import (
     TimeoutError as ToolsConnectorTimeoutError,
 )
 from toolsconnector.errors import (
+    ToolsConnectorError,
     TransportError,
     ValidationError,
 )
@@ -123,33 +131,60 @@ class ContactOut(BaseConnector):
         params: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         try:
-            response = await self._client.request(method, path, json=json_body, params=params)
-        except httpx.TimeoutException as exc:
-            raise ToolsConnectorTimeoutError(
-                f"ContactOut API request timed out after {self._timeout}s",
-                connector=self.name,
-                details={"method": method, "path": path, "underlying": type(exc).__name__},
-            ) from exc
-        except httpx.ConnectError as exc:
-            raise ToolsConnectorConnectionError(
-                "Could not connect to the ContactOut API at api.contactout.com",
-                connector=self.name,
-                details={"method": method, "path": path, "underlying": str(exc)},
-            ) from exc
-        except httpx.TransportError as exc:
-            raise TransportError(
-                f"ContactOut API transport error: {type(exc).__name__}",
-                connector=self.name,
-                details={"method": method, "path": path, "underlying": str(exc)},
-            ) from exc
-        raise_typed_for_status(response, connector=self.name, action=path)
-        if response.status_code == 204:
-            return {}
-        try:
-            body = response.json()
-        except ValueError:
-            return {}
-        return body if isinstance(body, dict) else {}
+            try:
+                response = await self._client.request(method, path, json=json_body, params=params)
+            except httpx.InvalidURL as exc:
+                raise ValidationError(
+                    f"Invalid request URL for ContactOut {path} (bad path/query value): {exc}",
+                    connector=self.name,
+                    action=path,
+                ) from exc
+            except httpx.TimeoutException as exc:
+                raise ToolsConnectorTimeoutError(
+                    f"ContactOut API request timed out after {self._timeout}s",
+                    connector=self.name,
+                    details={"method": method, "path": path, "underlying": type(exc).__name__},
+                ) from exc
+            except httpx.ConnectError as exc:
+                raise ToolsConnectorConnectionError(
+                    "Could not connect to the ContactOut API at api.contactout.com",
+                    connector=self.name,
+                    details={"method": method, "path": path, "underlying": str(exc)},
+                ) from exc
+            except httpx.TransportError as exc:
+                raise TransportError(
+                    f"ContactOut API transport error: {type(exc).__name__}",
+                    connector=self.name,
+                    details={"method": method, "path": path, "underlying": str(exc)},
+                ) from exc
+            except httpx.HTTPError as exc:
+                # Any other httpx error not under TransportError (DecodingError,
+                # TooManyRedirects, …) — keep it inside the typed boundary.
+                raise TransportError(
+                    f"ContactOut API request error: {type(exc).__name__}",
+                    connector=self.name,
+                    details={"method": method, "path": path, "underlying": str(exc)},
+                ) from exc
+            except RuntimeError as exc:
+                # e.g. "Cannot send a request, as the client has been closed."
+                raise ToolsConnectorConnectionError(
+                    "ContactOut client is not usable (closed or not initialized)",
+                    connector=self.name,
+                    details={"method": method, "path": path, "underlying": str(exc)},
+                ) from exc
+            raise_typed_for_status(response, connector=self.name, action=path)
+            if response.status_code == 204:
+                return {}
+            try:
+                body = response.json()
+            except ValueError:
+                return {}
+            return body if isinstance(body, dict) else {}
+        except ToolsConnectorError as exc:
+            # Scrub the connector's OWN credential if a misbehaving upstream
+            # echoed it back (the pattern-based redactor can't know a custom key).
+            scrub_secret(exc, self._credentials)
+            raise
 
     @staticmethod
     def _unwrap(resp: dict[str, Any]) -> dict[str, Any]:
@@ -198,8 +233,8 @@ class ContactOut(BaseConnector):
             phones=phones,
             work_email_status=status if isinstance(status, dict) else {},
             github=_as_list(raw.get("github")),
-            experience=raw.get("experience") or [],
-            education=raw.get("education") or [],
+            experience=dict_list(raw.get("experience")),
+            education=dict_list(raw.get("education")),
             skills=_as_list(raw.get("skills")),
         )
 
@@ -217,10 +252,11 @@ class ContactOut(BaseConnector):
             ]
         elif isinstance(profiles_map, list):
             items = [self._profile(v) for v in profiles_map if isinstance(v, dict)]
-        meta = body.get("metadata") or {}
-        total = meta.get("total_results")
-        size = meta.get("page_size", _SEARCH_PAGE_SIZE) or _SEARCH_PAGE_SIZE
-        has_more = total is not None and (page * size) < total
+        meta = body.get("metadata") if isinstance(body.get("metadata"), dict) else {}
+        total = coerce_optional_int(meta.get("total_results"))
+        size = safe_int(meta.get("page_size"), _SEARCH_PAGE_SIZE) or _SEARCH_PAGE_SIZE
+        # `bool(items)` guards an empty page with has_more=True from spinning collect() forever.
+        has_more = bool(items) and total is not None and (page * size) < total
         result: PaginatedList[ContactOutProfile] = PaginatedList(
             items=items,
             page_state=PageState(page_number=page, has_more=has_more, total_count=total),
@@ -260,8 +296,11 @@ class ContactOut(BaseConnector):
             if ``reveal_info=True``). Use ``count_people`` first to size a query
             for free.
         """
+        filters = require_dict(
+            filters, "filters", connector="contactout", action="/v1/people/search"
+        )
         page = max(1, int(page))
-        body = {**(filters or {}), "page": page, "reveal_info": bool(reveal_info)}
+        body = {**filters, "page": page, "reveal_info": bool(reveal_info)}
         resp = await self._request("POST", "/v1/people/search", json_body=body)
         return self._profiles_page(
             resp,
@@ -282,8 +321,11 @@ class ContactOut(BaseConnector):
         Returns:
             The total number of matching profiles.
         """
-        resp = await self._request("POST", "/v1/people/count", json_body=dict(filters or {}))
-        return int(resp.get("total_results", 0) or 0)
+        filters = require_dict(
+            filters, "filters", connector="contactout", action="/v1/people/count"
+        )
+        resp = await self._request("POST", "/v1/people/count", json_body=filters)
+        return safe_int(resp.get("total_results"), 0)
 
     @action("Find decision-makers for a company (by domain / LinkedIn / name); paginated")
     async def get_decision_makers(
@@ -548,7 +590,10 @@ class ContactOut(BaseConnector):
         Returns:
             The raw company-search payload. No personal email/phone.
         """
-        return await self._request("POST", "/v1/company/search", json_body=dict(filters or {}))
+        filters = require_dict(
+            filters, "filters", connector="contactout", action="/v1/company/search"
+        )
+        return await self._request("POST", "/v1/company/search", json_body=filters)
 
     # ======================================================================
     # FREE PRE-FLIGHT CHECKS + VERIFICATION
