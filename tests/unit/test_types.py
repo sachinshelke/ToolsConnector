@@ -54,6 +54,59 @@ class TestPaginatedList:
         pl = PaginatedList[Item](items=[], total_count=100)
         assert pl.total_count == 100
 
+    @pytest.mark.asyncio
+    async def test_collect_stall_guard_terminates_on_empty_pages(self):
+        """A page advertising has_more=True but returning NO items must not loop forever.
+
+        Regression guard for the shared pagination hang found by chaos testing
+        (codevira D000009). ``asyncio.wait_for`` makes a regression fail fast
+        instead of hanging the whole suite.
+        """
+
+        async def fetch_empty() -> PaginatedList[Item]:
+            nxt = PaginatedList[Item](items=[], page_state=PageState(has_more=True))
+            nxt._fetch_next = fetch_empty  # always "more", always empty
+            return nxt
+
+        pl = PaginatedList[Item](
+            items=[Item(id="1", name="A")], page_state=PageState(has_more=True)
+        )
+        pl._fetch_next = fetch_empty
+        collected = await asyncio.wait_for(pl.collect(), timeout=5.0)
+        assert [i.id for i in collected] == ["1"]  # initial page only; empty page is terminal
+
+    @pytest.mark.asyncio
+    async def test_collect_max_pages_ceiling(self):
+        """max_pages bounds total fetches even when every page is non-empty + has_more=True."""
+
+        async def fetch_one() -> PaginatedList[Item]:
+            nxt = PaginatedList[Item](
+                items=[Item(id="x", name="x")], page_state=PageState(has_more=True)
+            )
+            nxt._fetch_next = fetch_one
+            return nxt
+
+        pl = PaginatedList[Item](
+            items=[Item(id="0", name="0")], page_state=PageState(has_more=True)
+        )
+        pl._fetch_next = fetch_one
+        collected = await asyncio.wait_for(pl.collect(max_items=10**9, max_pages=5), timeout=5.0)
+        assert len(collected) == 6  # 1 initial + 5 fetched pages * 1 item
+
+    def test_collect_sync_stall_guard(self):
+        """The sync wrapper inherits the stall guard (no hang)."""
+
+        async def fetch_empty() -> PaginatedList[Item]:
+            nxt = PaginatedList[Item](items=[], page_state=PageState(has_more=True))
+            nxt._fetch_next = fetch_empty
+            return nxt
+
+        pl = PaginatedList[Item](
+            items=[Item(id="1", name="A")], page_state=PageState(has_more=True)
+        )
+        pl._fetch_next = fetch_empty
+        assert len(pl.collect_sync()) == 1
+
 
 class TestFileRef:
     def test_create(self):
