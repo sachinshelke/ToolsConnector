@@ -847,7 +847,7 @@ TOOL_META: dict[str, dict] = {
         "logo": _BF("contactout.com"),
         "color": "#1A6DFF",
         "tagline": "B2B contact enrichment — work/personal emails + phone numbers (BYOK)",
-        "overview": "Wraps ContactOut's official API (BYOK `token` header, Team/API plan). Search people by filters and enrich a LinkedIn URL / email / name+company into work + personal emails and phone numbers, find decision-makers, reverse-lookup a LinkedIn profile from an email, plus free pre-flight existence checks (count, *_status) and email verification. Returns third-party PII; reveal spends credits across four pools (email/phone/search/verifier). A neutral wrapper over ContactOut's own API — no scraping. The end user owns lawful basis (GDPR legitimate-interest / CCPA) and opt-out handling.",
+        "overview": "Wraps ContactOut's official API (BYOK `token` header, Team/API plan). Search people by filters and enrich a LinkedIn URL / email / name+company into work + personal emails and phone numbers, find decision-makers, reverse-lookup a LinkedIn profile from an email, sync + async bulk reveal (up to 1000, poll by job id), single + bulk email verification, plus free pre-flight existence checks (count, *_status) and usage. Returns third-party PII; reveal spends credits across four pools (email/phone/search/verifier). A neutral wrapper over ContactOut's own API — no scraping. The end user owns lawful basis (GDPR legitimate-interest / CCPA) and opt-out handling.",
         "use_cases": [
             "Sales prospecting",
             "Recruiting outreach",
@@ -1061,7 +1061,7 @@ TOOL_META: dict[str, dict] = {
         "logo": _BF("lusha.com"),
         "color": "#FF7A59",
         "tagline": "B2B contact + company data — emails, phones, firmographics (BYOK)",
-        "overview": "Wraps Lusha's official V3 API (BYOK `api_key` header, paid plan). Resolve people by name+company / email / LinkedIn URL and reveal work/personal emails + phone numbers via a two-step search→enrich flow (or one-shot search_and_enrich), enrich companies, and run filter-based prospecting. Credit spend is reported per call (billing.creditsCharged); phones carry a doNotCall flag and contacts an isEuContact flag. A neutral wrapper over Lusha's own API — no scraping. The end user owns lawful basis (GDPR legitimate-interest / CCPA), DNC, and opt-out handling.",
+        "overview": "Wraps Lusha's official V3 API (BYOK `api_key` header, paid plan). Resolve people by name+company / email / LinkedIn URL and reveal work/personal emails + phone numbers via a two-step search→enrich flow (or one-shot search_and_enrich), enrich companies, run filter-based prospecting, find lookalikes, pull job-change/company signals, and discover valid filter values. Credit spend is reported per call (billing.creditsCharged); phones carry a doNotCall flag and contacts an isEuContact flag. A neutral wrapper over Lusha's own API — no scraping. The end user owns lawful basis (GDPR legitimate-interest / CCPA), DNC, and opt-out handling.",
         "use_cases": [
             "Sales prospecting (ICP)",
             "CRM contact + company enrichment",
