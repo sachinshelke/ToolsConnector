@@ -39,7 +39,7 @@ result = kit.execute("gmail_list_emails", {"query": "is:unread"})
 | [Code Platforms](code-platforms.md) | GitHub, GitLab | 58 |
 | [Finance & Payments](finance.md) | Plaid, Stripe | 57 |
 | [Knowledge](knowledge.md) | Confluence, Notion | 49 |
-| Marketing | ContactOut, LinkedIn Lead Sync, Lusha, Mailchimp, SendGrid | 87 |
+| [Marketing](marketing.md) | ContactOut, LinkedIn Lead Sync, Lusha, Mailchimp, SendGrid | 87 |
 | Networking | ALB, CloudFront, Route53 | 43 |
 | [Storage](storage.md) | Google Drive, S3 | 42 |
 | Message Queue | RabbitMQ, SQS | 37 |

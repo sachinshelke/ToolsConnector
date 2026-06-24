@@ -207,6 +207,7 @@ DOCS_MAP = {
     "connectors-storage": ("Storage", "connectors/storage.md"),
     "connectors-productivity": ("Productivity", "connectors/productivity.md"),
     "connectors-knowledge": ("Knowledge", "connectors/knowledge.md"),
+    "connectors-marketing": ("Marketing", "connectors/marketing.md"),
     # Tutorials (task-intent, SEO long-tail)
     "tutorial-slack-message": ("Send a Slack Message in Python", "tutorials/send-slack-message-python.md"),
     "tutorial-github-automation": ("GitHub Automation in Python", "tutorials/github-automation-python.md"),
