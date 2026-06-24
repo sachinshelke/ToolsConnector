@@ -81,16 +81,17 @@ class Lusha(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://api.lusha.com"
     # Tier 1 (live) — verified end-to-end against the PRODUCTION API
-    # (api.lusha.com) with a real key on 2026-06-24: 16/20 actions round-tripped
+    # (api.lusha.com) with a real key on 2026-06-24: 18/20 actions round-tripped
     # with REAL data (actual email + phone reveals via enrich, real firmographics,
-    # prospecting, contact signals), spending real credits. Found + fixed 4 live
-    # bugs: get_account_usage returned the thin /account/usage instead of the rich
-    # /v3/account/usage; prospecting clamped size below Lusha's floor of 10 (→400);
-    # get_*_signals omitted the REQUIRED signalTypes (→400); LushaCompany dropped
-    # has/canReveal. The other 4 are envelope-verified (request accepted, upstream
-    # constraint returned): company-signals is plan-gated (HTTP 402 on free),
-    # contact/company lookalikes need >=5 seeds, decision-makers returned empty for
-    # the test domain.
+    # prospecting, contact signals, AND contact + company lookalikes), spending
+    # real credits. Found + fixed 4 live bugs: get_account_usage returned the thin
+    # /account/usage instead of the rich /v3/account/usage; prospecting clamped
+    # size below Lusha's floor of 10 (→400); get_*_signals omitted the REQUIRED
+    # signalTypes (→400); LushaCompany dropped has/canReveal. The remaining 2 are
+    # envelope-verified — both PLAN-GATED on free (not credit- or code-limited):
+    # company-signals returns HTTP 402, and decision-makers (beta) accepts the
+    # request + charges nothing but returns empty for every domain tried (incl.
+    # Microsoft/Google/Salesforce). Both parse cleanly; a paid plan would populate.
     verification_status = "live"
     description = (
         "B2B contact + company data via Lusha's official V3 API (BYOK paid key). "

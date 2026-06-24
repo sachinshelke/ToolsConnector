@@ -403,9 +403,10 @@ async def test_error_matrix_and_transport(lusha: Lusha) -> None:
 def test_spec_metadata() -> None:
     assert Lusha.protocol is ProtocolType.REST
     assert Lusha.category is ConnectorCategory.MARKETING
-    # Tier 1 (live) — 16/20 actions round-tripped against the production API with
-    # real data 2026-06-24 (4 bugs fixed); rest envelope-verified. See test_spec
-    # governance + the connector's verification_status scope comment.
+    # Tier 1 (live) — 18/20 actions round-tripped against the production API with
+    # real data 2026-06-24 (4 bugs fixed); the other 2 (company-signals,
+    # decision-makers) are envelope-verified, both plan-gated on free. See
+    # test_spec governance + the connector's verification_status scope comment.
     assert Lusha.verification_status == "live"
     assert len(Lusha.get_actions()) == 20
 

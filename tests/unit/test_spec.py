@@ -230,10 +230,10 @@ class TestVerificationStatus:
         contactout is live on a contract basis — all 19 actions round-tripped
         against the production API 2026-06-24 (3 wire bugs fixed); scoped because
         the test key returns ContactOut's sample DATA in the real envelope shape.
-        lusha is live on a partial basis — 16/20 actions round-tripped against the
-        production API with REAL data 2026-06-24 (4 bugs fixed); the other 4 are
-        envelope-verified (company-signals plan-gated 402, lookalikes need >=5
-        seeds, decision-makers empty for the test domain)."""
+        lusha is live on a partial basis — 18/20 actions round-tripped against the
+        production API with REAL data 2026-06-24 (4 bugs fixed); the other 2 are
+        envelope-verified, both plan-gated on free (company-signals 402,
+        decision-makers returns empty for every domain + charges nothing)."""
         from toolsconnector.connectors.contactout import ContactOut
         from toolsconnector.connectors.github import GitHub
         from toolsconnector.connectors.gmail import Gmail
