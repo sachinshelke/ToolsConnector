@@ -13,9 +13,20 @@
 | **Auth** | API key in the `api_key` header (BYOK) |
 | **Rate Limit** | 25 req/s general; plan-based daily/hourly quotas (response carries `x-*-requests-left`) |
 | **Pricing** | Paid plan; credit-based (email = 1, phone = 5). Every call reports `billing.creditsCharged`. |
-| **Verification** | 🟡 Tier 2 — Doc verified (built against Lusha's canonical V3 OpenAPI spec + respx-pinned; live-verification pending a real paid key) |
+| **Verification** | 🟢 **Tier 1 — Live verified** (2026-06-24) — 18/20 actions round-tripped against the production API. See [Live verification](#live-verification). |
 
 ---
+
+## Live verification
+
+**Tier 1 — live verified 2026-06-24** against the production API `api.lusha.com` with a real key (spending real credits). **18 of 20 actions** round-tripped with **real data**, including actual **email + phone reveals** through `enrich_contacts` (`LushaEmail` confidence + `LushaPhone` `doNotCall` parsed against live values), `search_and_enrich_*`, company search/enrich, prospecting, contact signals, and contact + company **lookalikes**. Live verification caught **4 real bugs**:
+
+- `get_account_usage` returned the **thin** `/account/usage` — both paths return 200, but `/v3/account/usage` is the rich one (`credits` + `rateLimits` + `plan` + `pricing`); now prefers `/v3`.
+- prospecting clamped `size` to a floor of 1, but Lusha **400s on `size < 10`** — now clamps to `[10, 50]`.
+- `get_contact_signals` / `get_company_signals` omitted the **required** `signalTypes` (→400) — now defaults to `["allSignals"]`.
+- `LushaCompany` dropped the preview's `has` / `canReveal` — now captured.
+
+The remaining **2 actions are envelope-verified** — both **plan-gated on the free plan** (not credit- or code-limited, so more credits can't unlock them): **company-signals** returns HTTP 402, and **decision-makers** (beta) accepts the request and charges nothing but returns empty for every domain tried (Microsoft / Google / Salesforce / lusha.com). Both parse cleanly; a paid plan would populate them.
 
 ## What this is
 

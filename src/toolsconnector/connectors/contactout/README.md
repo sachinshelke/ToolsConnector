@@ -13,9 +13,21 @@
 | **Auth** | API key in the `token` header (BYOK) |
 | **Rate Limit** | People Search 60/min; free checkers 150/min; other 1000/min |
 | **Pricing** | Team/API plan (paid). Credits across 4 pools (email / phone / search / verifier); free: `count_people`, `check_*_status`, `get_usage`. |
-| **Verification** | 🟡 Tier 2 — Doc verified (built against ContactOut's documented v1 API + respx-pinned; live-verification pending a real Team/API-plan key) |
+| **Verification** | 🟢 **Tier 1 — Live verified** (contract-scoped, 2026-06-24) — all 19 actions round-tripped against the production API. See [Live verification](#live-verification). |
 
 ---
+
+## Live verification
+
+**Tier 1 — live verified 2026-06-24** against the production API `api.contactout.com` with a real key. All **19 actions** were round-tripped end-to-end and their request/response **contract** confirmed over the wire. Live verification caught **3 real wire bugs** the respx suite had silently accepted:
+
+- `get_usage` hit `GET /v1/usage` (HTTP 404) — the real endpoint is **`GET /v1/stats`**.
+- `verify_email` read a top-level `status`, but the API nests it under `data` (`{data:{status}}`) — was returning `{status: None}` on every real call.
+- `/email/enrich` dropped camelCase fields (`fullName`/`linkedinUrl`/`profilePictureUrl`/`jobFunction`/…) — so `enrich_by_email` returned an empty name + LinkedIn URL.
+
+The profile field set was also completed (twitter / industry / seniority / job_function / work_status / summary / followers / profile_picture_url / languages / certifications / publications / projects / volunteering).
+
+**Scope (like `linkedin`'s partial-live):** the verifying key is entitled only to ContactOut's **sample data** (the API returns canned bodies in the *real* envelope shape — it says "book a call to unlock full access"), so field **shapes + paths** are live-verified, while real-data **values**, credit-billing, and quota-exhaustion error states await a fully-provisioned key. BYOK: a provisioned key flows real data through these same verified paths.
 
 ## What this is
 
