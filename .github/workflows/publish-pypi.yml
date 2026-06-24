@@ -105,7 +105,7 @@ jobs:
 
       # ── 1. Checkout at the resolved tag ───────────────────────────────
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ steps.target.outputs.tag }}
           fetch-depth: 0   # full history so the release notes have context
