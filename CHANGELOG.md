@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.21](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.20...v0.3.21) (2026-06-24)
+
+
+### ✨ Features
+
+* live-verify ContactOut + Lusha to Tier 1, productize LinkedIn, lockstep SDK version ([#69](https://github.com/sachinshelke/ToolsConnector/issues/69)) ([bc19334](https://github.com/sachinshelke/ToolsConnector/commit/bc193343bcb0b0c898a214f05d5801955217ca04))
+
 ## [0.3.20](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.19...v0.3.20) (2026-06-19)
 
 

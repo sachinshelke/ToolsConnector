@@ -1,6 +1,6 @@
 {
   "name": "@toolsconnector/sdk",
-  "version": "0.3.20",
+  "version": "0.3.21",
   "description": "In-process, bring-your-own-key TypeScript SDK generated from ToolsConnector bindings. Stripe (Tier-1, live-verified): byte-identical requests to the Python connector.",
   "type": "module",
   "exports": {
