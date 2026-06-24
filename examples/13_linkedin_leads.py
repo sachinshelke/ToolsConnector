@@ -33,16 +33,31 @@ kit = ToolKit(connectors=["linkedin_leads"], credentials={"linkedin_leads": TOKE
 # an organization. Pick the lead_type that matches your owner.
 lead_type = "SPONSORED" if ":sponsoredAccount:" in OWNER else "COMPANY"
 
-page = json.loads(kit.execute("linkedin_leads_list_leads", {
-    "owner": OWNER,
-    "lead_type": lead_type,
-    "count": 25,
-}))
+page = json.loads(
+    kit.execute(
+        "linkedin_leads_list_leads",
+        {
+            "owner": OWNER,
+            "lead_type": lead_type,
+            "count": 25,
+        },
+    )
+)
+
+
+def _present(value: object) -> str:
+    """Leads are CONSENTED PII — a demo must show presence, never dump the raw
+    email/phone to stdout. Mask in your own logs too (GDPR/CCPA)."""
+    return "✓" if value else "—"
+
 
 print(f"{len(page['items'])} lead(s):")
 for lead in page["items"]:
     f = lead["fields"]  # resolved {FIELD_NAME: value}
     name = " ".join(filter(None, [f.get("FIRST_NAME"), f.get("LAST_NAME")]))
-    email = f.get("EMAIL") or f.get("WORK_EMAIL")
-    print(f"  {name or '(no name)'} | {email} {f.get('PHONE_NUMBER') or ''} "
-          f"| {f.get('COMPANY_NAME') or ''} {f.get('JOB_TITLE') or ''}")
+    has_email = bool(f.get("EMAIL") or f.get("WORK_EMAIL"))
+    print(
+        f"  {name or '(no name)'} | email {_present(has_email)} "
+        f"phone {_present(f.get('PHONE_NUMBER'))} "
+        f"| {f.get('COMPANY_NAME') or ''} {f.get('JOB_TITLE') or ''}"
+    )
