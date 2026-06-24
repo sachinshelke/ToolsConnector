@@ -59,6 +59,7 @@ logger = logging.getLogger("toolsconnector.lusha")
 
 _MAX_BATCH = 100  # Lusha caps batch identifier lists at 100 per request.
 _MAX_PAGE_SIZE = 50  # prospecting page size hard cap.
+_MIN_PAGE_SIZE = 10  # prospecting floor — Lusha 400s on `pagination.size < 10` (live-verified).
 
 
 class Lusha(BaseConnector):
@@ -79,9 +80,18 @@ class Lusha(BaseConnector):
     category = ConnectorCategory.MARKETING
     protocol = ProtocolType.REST
     base_url = "https://api.lusha.com"
-    # Tier 2 (doc) — built against Lusha's canonical V3 OpenAPI spec + respx-pinned.
-    # Promote to "live" once verified with a real paid Lusha key.
-    verification_status = "doc"
+    # Tier 1 (live) — verified end-to-end against the PRODUCTION API
+    # (api.lusha.com) with a real key on 2026-06-24: 16/20 actions round-tripped
+    # with REAL data (actual email + phone reveals via enrich, real firmographics,
+    # prospecting, contact signals), spending real credits. Found + fixed 4 live
+    # bugs: get_account_usage returned the thin /account/usage instead of the rich
+    # /v3/account/usage; prospecting clamped size below Lusha's floor of 10 (→400);
+    # get_*_signals omitted the REQUIRED signalTypes (→400); LushaCompany dropped
+    # has/canReveal. The other 4 are envelope-verified (request accepted, upstream
+    # constraint returned): company-signals is plan-gated (HTTP 402 on free),
+    # contact/company lookalikes need >=5 seeds, decision-makers returned empty for
+    # the test domain.
+    verification_status = "live"
     description = (
         "B2B contact + company data via Lusha's official V3 API (BYOK paid key). "
         "Resolve people by name+company / email / LinkedIn URL and reveal their "
@@ -413,7 +423,7 @@ class Lusha(BaseConnector):
         Returns:
             A page of preview contacts; ``collect()`` walks all pages.
         """
-        size = max(1, min(int(size), _MAX_PAGE_SIZE))
+        size = max(_MIN_PAGE_SIZE, min(int(size), _MAX_PAGE_SIZE))
         page = max(0, int(page))
         payload: dict[str, Any] = {"pagination": {"page": page, "size": size}, "filters": filters}
         if options:
@@ -457,7 +467,7 @@ class Lusha(BaseConnector):
         Returns:
             A page of company previews; ``collect()`` walks all pages.
         """
-        size = max(1, min(int(size), _MAX_PAGE_SIZE))
+        size = max(_MIN_PAGE_SIZE, min(int(size), _MAX_PAGE_SIZE))
         page = max(0, int(page))
         payload: dict[str, Any] = {"pagination": {"page": page, "size": size}, "filters": filters}
         if options:
@@ -487,20 +497,20 @@ class Lusha(BaseConnector):
     async def get_account_usage(self) -> dict[str, Any]:
         """Report credit usage/quota for the account. Throttled to 5 req/min. No PII.
 
-        The Account API sits OUTSIDE the V3 OpenAPI spec (which contains no
-        account path), and Lusha's docs conflict on the prefix: the V3 migration
-        guide says ``GET /account/usage`` (unchanged from V2) while the rendered
-        reference page shows ``GET /v3/account/usage``. To be resilient to either,
-        this tries the documented unversioned path first and falls back to the
-        versioned one on 404. (Confirm at live-verify.)
+        Live-verified 2026-06-24: BOTH paths return 200, but with DIFFERENT
+        shapes — ``GET /v3/account/usage`` is the RICH one (``{credits,
+        rateLimits, plan, pricing}``) while the unversioned ``GET /account/usage``
+        returns only ``{usage: {credits: {total, used, remaining}}}``. So we
+        prefer the versioned path (and fall back to the unversioned one on 404).
 
         Returns:
-            The raw usage payload (credits remaining/consumed/total, plan, pricing).
+            The raw usage payload — ``credits`` (remaining/used/total), plus
+            ``rateLimits`` / ``plan`` / ``pricing`` from the versioned endpoint.
         """
         try:
-            return await self._request("GET", "/account/usage")
-        except NotFoundError:
             return await self._request("GET", "/v3/account/usage")
+        except NotFoundError:
+            return await self._request("GET", "/account/usage")
 
     # ======================================================================
     # LOOKALIKES  (find new contacts/companies similar to seeds)
@@ -589,7 +599,9 @@ class Lusha(BaseConnector):
         Args:
             ids: Up to 100 contact ids.
             signal_types: Subset of ``["allSignals", "promotion", "companyChange"]``
-                (see ``get_contact_signal_types``). Omit for all.
+                (see ``get_contact_signal_types``). Defaults to ``["allSignals"]``
+                — Lusha REQUIRES ``signalTypes`` and 400s if it's omitted
+                (live-verified 2026-06-24).
             start_date: ISO date lower bound (optional).
 
         Returns:
@@ -597,9 +609,7 @@ class Lusha(BaseConnector):
             arrays), ``startDate`` / ``endDate``, ``billing.creditsCharged``.
         """
         self._validate_batch(ids, "ids")
-        payload: dict[str, Any] = {"ids": ids}
-        if signal_types is not None:
-            payload["signalTypes"] = signal_types
+        payload: dict[str, Any] = {"ids": ids, "signalTypes": signal_types or ["allSignals"]}
         if start_date is not None:
             payload["startDate"] = start_date
         return await self._request("POST", "/v3/contacts/signals", json_body=payload)
@@ -619,7 +629,10 @@ class Lusha(BaseConnector):
         Args:
             ids: Up to 100 company ids.
             signal_types: Subset from ``get_company_signal_types`` (hiring,
-                headcount, IT-spend, traffic, news, …). Omit for all.
+                headcount, IT-spend, traffic, news, …). Defaults to
+                ``["allSignals"]`` — Lusha REQUIRES ``signalTypes`` and 400s if
+                it's omitted (live-verified 2026-06-24). Company signals are
+                plan-gated (free plans get HTTP 402).
             start_date: ISO date lower bound (optional).
             max_results_per_signal: Cap results per signal type (optional).
 
@@ -627,9 +640,7 @@ class Lusha(BaseConnector):
             Raw signals payload + ``billing.creditsCharged``.
         """
         self._validate_batch(ids, "ids")
-        payload: dict[str, Any] = {"ids": ids}
-        if signal_types is not None:
-            payload["signalTypes"] = signal_types
+        payload: dict[str, Any] = {"ids": ids, "signalTypes": signal_types or ["allSignals"]}
         if start_date is not None:
             payload["startDate"] = start_date
         if max_results_per_signal is not None:

@@ -177,24 +177,38 @@ async def test_prospecting_pagination_collects_all(lusha: Lusha) -> None:
         import json as _json
 
         page = _json.loads(request.content)["pagination"]["page"]
+        # total=12 with size=10 → page 0 has_more (10 < 12), page 1 terminal (20 !< 12)
         if page == 0:
             return httpx.Response(
                 200,
                 json={
-                    "pagination": {"page": 0, "size": 2, "total": 3},
+                    "pagination": {"page": 0, "size": 10, "total": 12},
                     "results": [{"id": "a"}, {"id": "b"}],
                 },
             )
         return httpx.Response(
-            200, json={"pagination": {"page": 1, "size": 2, "total": 3}, "results": [{"id": "c"}]}
+            200, json={"pagination": {"page": 1, "size": 10, "total": 12}, "results": [{"id": "c"}]}
         )
 
     with respx.mock(base_url=BASE) as mock:
         mock.post("/v3/contacts/prospecting").mock(side_effect=handler)
-        first = await lusha.aprospecting_search_contacts(filters={"contacts": {}}, page=0, size=2)
+        first = await lusha.aprospecting_search_contacts(filters={"contacts": {}}, page=0, size=10)
         assert first.page_state.has_more is True
         all_items = await first.collect()
     assert [c.id for c in all_items] == ["a", "b", "c"]
+
+
+@pytest.mark.asyncio
+async def test_prospecting_size_clamped_to_min_10(lusha: Lusha) -> None:
+    """Lusha 400s on size < 10 (live-verified) — the connector clamps up to 10."""
+    with respx.mock(base_url=BASE) as mock:
+        route = mock.post("/v3/contacts/prospecting").mock(
+            return_value=httpx.Response(
+                200, json={"pagination": {"page": 0, "size": 10, "total": 0}, "results": []}
+            )
+        )
+        await lusha.aprospecting_search_contacts(filters={"contacts": {}}, size=2)
+    assert json_body(route)["pagination"]["size"] == 10  # clamped up from 2
 
 
 @pytest.mark.asyncio
@@ -210,28 +224,33 @@ async def test_prospecting_size_clamped_to_50(lusha: Lusha) -> None:
 
 
 @pytest.mark.asyncio
-async def test_account_usage_prefers_unversioned_path(lusha: Lusha) -> None:
-    """Account usage hits the documented unversioned /account/usage first."""
+async def test_account_usage_prefers_versioned_path(lusha: Lusha) -> None:
+    """Account usage hits the RICH /v3/account/usage first (live-verified 2026-06-24:
+    both paths 200, but /v3 returns credits+rateLimits+plan+pricing vs the thin
+    unversioned {usage:{credits}})."""
     with respx.mock(base_url=BASE, assert_all_called=True) as mock:
-        route = mock.get("/account/usage").mock(
-            return_value=httpx.Response(200, json={"credits": {"remaining": 100}})
+        route = mock.get("/v3/account/usage").mock(
+            return_value=httpx.Response(
+                200, json={"credits": {"remaining": 100}, "plan": {"category": "free"}}
+            )
         )
         usage = await lusha.aget_account_usage()
     assert usage["credits"]["remaining"] == 100
-    assert route.calls.last.request.url.path == "/account/usage"
+    assert usage["plan"]["category"] == "free"  # rich payload
+    assert route.calls.last.request.url.path == "/v3/account/usage"
 
 
 @pytest.mark.asyncio
-async def test_account_usage_falls_back_to_versioned_on_404(lusha: Lusha) -> None:
-    """If /account/usage 404s, fall back to /v3/account/usage (doc-conflict resilience)."""
+async def test_account_usage_falls_back_to_unversioned_on_404(lusha: Lusha) -> None:
+    """If /v3/account/usage 404s, fall back to the unversioned /account/usage."""
     with respx.mock(base_url=BASE) as mock:
-        mock.get("/account/usage").mock(return_value=httpx.Response(404, json={"message": "nf"}))
-        v3 = mock.get("/v3/account/usage").mock(
-            return_value=httpx.Response(200, json={"credits": {"remaining": 7}})
+        mock.get("/v3/account/usage").mock(return_value=httpx.Response(404, json={"message": "nf"}))
+        legacy = mock.get("/account/usage").mock(
+            return_value=httpx.Response(200, json={"usage": {"credits": {"remaining": 7}}})
         )
         usage = await lusha.aget_account_usage()
-    assert usage["credits"]["remaining"] == 7
-    assert v3.called
+    assert usage["usage"]["credits"]["remaining"] == 7
+    assert legacy.called
 
 
 @pytest.mark.asyncio
@@ -295,6 +314,50 @@ async def test_signals_and_types(lusha: Lusha) -> None:
 
 
 @pytest.mark.asyncio
+async def test_signals_default_to_all_signals(lusha: Lusha) -> None:
+    """signalTypes is REQUIRED by Lusha (omitting it 400s, live-verified) — so the
+    connector defaults to ['allSignals'] when the caller passes none."""
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        c = mock.post("/v3/contacts/signals").mock(
+            return_value=httpx.Response(200, json={"results": [], "billing": {"creditsCharged": 0}})
+        )
+        co = mock.post("/v3/companies/signals").mock(
+            return_value=httpx.Response(200, json={"results": [], "billing": {"creditsCharged": 0}})
+        )
+        await lusha.aget_contact_signals(["c1"])
+        await lusha.aget_company_signals(["co1"])
+    assert json_body(c)["signalTypes"] == ["allSignals"]
+    assert json_body(co)["signalTypes"] == ["allSignals"]
+
+
+@pytest.mark.asyncio
+async def test_company_preview_captures_has_and_can_reveal(lusha: Lusha) -> None:
+    """LushaCompany now captures the preview's `has` + `canReveal` (live shape 2026-06-24)."""
+    with respx.mock(base_url=BASE) as mock:
+        mock.post("/v3/companies/search").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "requestId": "r",
+                    "results": [
+                        {
+                            "id": "co1",
+                            "name": "Adecco",
+                            "has": ["emails", "phones"],
+                            "canReveal": [{"field": "employeesByDepartment", "credits": 1}],
+                        }
+                    ],
+                    "billing": {"creditsCharged": 1},
+                },
+            )
+        )
+        res = await lusha.asearch_companies([{"domain": "adeccogroup.com"}])
+    co = res.companies[0]
+    assert co.has == ["emails", "phones"]
+    assert co.can_reveal == [{"field": "employeesByDepartment", "credits": 1}]
+
+
+@pytest.mark.asyncio
 async def test_prospecting_filter_discovery(lusha: Lusha) -> None:
     with respx.mock(base_url=BASE, assert_all_called=True) as mock:
         route = mock.get("/v3/contacts/prospecting/filters/seniority").mock(
@@ -340,7 +403,10 @@ async def test_error_matrix_and_transport(lusha: Lusha) -> None:
 def test_spec_metadata() -> None:
     assert Lusha.protocol is ProtocolType.REST
     assert Lusha.category is ConnectorCategory.MARKETING
-    assert Lusha.verification_status == "doc"
+    # Tier 1 (live) — 16/20 actions round-tripped against the production API with
+    # real data 2026-06-24 (4 bugs fixed); rest envelope-verified. See test_spec
+    # governance + the connector's verification_status scope comment.
+    assert Lusha.verification_status == "live"
     assert len(Lusha.get_actions()) == 20
 
 

@@ -84,6 +84,8 @@ class LushaCompany(BaseModel):
     location: dict[str, Any] = Field(default_factory=dict)
     social_links: dict[str, Any] = Field(default_factory=dict, alias="socialLinks")
     logo_url: Optional[str] = Field(None, alias="logoUrl")
+    has: list[str] = Field(default_factory=list)  # available data points (preview)
+    can_reveal: list[dict[str, Any]] = Field(default_factory=list, alias="canReveal")
 
 
 class LushaContactResult(BaseModel):
