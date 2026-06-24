@@ -103,13 +103,17 @@ class ContactOut(BaseConnector):
     category = ConnectorCategory.MARKETING
     protocol = ProtocolType.REST
     base_url = "https://api.contactout.com"
-    # Tier 2 (doc) — built against ContactOut's documented v1 API + respx-pinned.
-    # 2026-06-24: all 19 actions' request shapes + response parsing verified
-    # against ContactOut's LIVE sample responses (a demo key returns canned data
-    # for every route) — this caught + fixed the /v1/usage→/v1/stats path bug.
-    # Still "doc", NOT "live": sample data isn't real account data. Promote to
-    # "live" once verified with a PROVISIONED (sales-unlocked) Team/API key.
-    verification_status = "doc"
+    # Tier 1 (live) — verified end-to-end against ContactOut's PRODUCTION API
+    # (api.contactout.com) with a real key on 2026-06-24: all 19 actions round-
+    # tripped, the request/response CONTRACT was confirmed, and 3 live wire bugs
+    # were found + fixed (get_usage /v1/usage→/v1/stats, verify_email `data`
+    # nesting, /email/enrich camelCase fields). Like linkedin, "live" here is
+    # SCOPED: the test key is entitled only to ContactOut's sample DATA (the API
+    # replies with canned bodies in the REAL envelope shape), so field shapes +
+    # paths are live-verified, but real-data VALUES (actual emails/phones),
+    # credit-billing, and quota-exhaustion error states await a fully-provisioned
+    # key. BYOK: a provisioned key flows real data through these same paths.
+    verification_status = "live"
     description = (
         "B2B contact enrichment via ContactOut's official API (BYOK Team/API key). "
         "Search people by filters and enrich a LinkedIn URL / email / name+company "

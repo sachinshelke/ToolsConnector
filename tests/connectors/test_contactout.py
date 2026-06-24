@@ -376,7 +376,10 @@ async def test_error_matrix_and_transport(contactout: ContactOut) -> None:
 def test_spec_metadata() -> None:
     assert ContactOut.protocol is ProtocolType.REST
     assert ContactOut.category is ConnectorCategory.MARKETING
-    assert ContactOut.verification_status == "doc"
+    # Tier 1 (live) — all 19 actions round-tripped against the production API
+    # 2026-06-24 (contract-scoped; the test key returns sample DATA). See the
+    # verification_status scope comment in the connector + test_spec governance.
+    assert ContactOut.verification_status == "live"
     assert len(ContactOut.get_actions()) == 19
 
 

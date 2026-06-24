@@ -226,26 +226,30 @@ class TestVerificationStatus:
         """Representative Tier 1 (live) set. gmail is live on a production-usage basis
         (core email workflows exercised against the real Gmail API in production).
         linkedin is live on a partial basis — 3/8 BYOK actions round-tripped and
-        the 5 partner-gated actions were confirmed to 403, re-verified 2026-06-20."""
+        the 5 partner-gated actions were confirmed to 403, re-verified 2026-06-20.
+        contactout is live on a contract basis — all 19 actions round-tripped
+        against the production API 2026-06-24 (3 wire bugs fixed); scoped because
+        the test key returns ContactOut's sample DATA in the real envelope shape."""
+        from toolsconnector.connectors.contactout import ContactOut
         from toolsconnector.connectors.github import GitHub
         from toolsconnector.connectors.gmail import Gmail
         from toolsconnector.connectors.linear import Linear
         from toolsconnector.connectors.linkedin import LinkedIn
         from toolsconnector.connectors.notion import Notion
 
-        for cls in (Notion, Linear, GitHub, Gmail, LinkedIn):
+        for cls in (Notion, Linear, GitHub, Gmail, LinkedIn, ContactOut):
             assert cls.verification_status == "live", f"{cls.__name__} should be Tier 1 (live)"
             assert cls.get_spec().verification_status == "live"
 
     def test_tier_2_connectors_marked_doc(self):
         """Tier 2 (doc) set: slack (doc-verification sweep) + linkedin_leads
-        (Lead Sync — doc-verified + respx-pinned, live pending real leads)."""
-        from toolsconnector.connectors.contactout import ContactOut
+        (Lead Sync — doc-verified + respx-pinned, live pending real leads) +
+        lusha (doc-verified; live pending a real key)."""
         from toolsconnector.connectors.linkedin_leads import LinkedInLeads
         from toolsconnector.connectors.lusha import Lusha
         from toolsconnector.connectors.slack import Slack
 
-        for cls in (Slack, LinkedInLeads, ContactOut, Lusha):
+        for cls in (Slack, LinkedInLeads, Lusha):
             assert cls.verification_status == "doc", f"{cls.__name__} should be Tier 2 (doc)"
             assert cls.get_spec().verification_status == "doc"
 
