@@ -22,7 +22,9 @@
   "packages": {
     ".": {
       "package-name": "toolsconnector",
-      "extra-files": []
+      "extra-files": [
+        { "type": "json", "path": "sdks/typescript/package.json", "jsonpath": "$.version" }
+      ]
     }
   }
 }
