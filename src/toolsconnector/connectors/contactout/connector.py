@@ -86,7 +86,11 @@ class ContactOut(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://api.contactout.com"
     # Tier 2 (doc) — built against ContactOut's documented v1 API + respx-pinned.
-    # Promote to "live" once verified with a real Team/API-plan key.
+    # 2026-06-24: all 19 actions' request shapes + response parsing verified
+    # against ContactOut's LIVE sample responses (a demo key returns canned data
+    # for every route) — this caught + fixed the /v1/usage→/v1/stats path bug.
+    # Still "doc", NOT "live": sample data isn't real account data. Promote to
+    # "live" once verified with a PROVISIONED (sales-unlocked) Team/API key.
     verification_status = "doc"
     description = (
         "B2B contact enrichment via ContactOut's official API (BYOK Team/API key). "
@@ -735,8 +739,11 @@ class ContactOut(BaseConnector):
 
     @action("Get remaining/consumed ContactOut credit balances (free)")
     async def get_usage(self) -> dict[str, Any]:
-        """Report credit balances per pool (email / phone / search / verifier). FREE.
+        """Report credit balances per pool (email / phone / search). FREE.
 
-        Endpoint: ``GET /v1/usage``.
+        Endpoint: ``GET /v1/stats`` (verified live 2026-06-24 — the previously
+        documented ``/v1/usage`` 404s). Returns ``{period, usage: {count, quota,
+        remaining, over_quota, phone_count, phone_quota, phone_remaining, …,
+        search_count, search_quota, search_remaining}}``.
         """
-        return await self._request("GET", "/v1/usage")
+        return await self._request("GET", "/v1/stats")

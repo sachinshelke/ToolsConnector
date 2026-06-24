@@ -375,3 +375,38 @@ def test_normalizer_handles_all_field_variants() -> None:
 def test_unwrap_helper() -> None:
     assert ContactOut._unwrap({"profile": {"a": 1}}) == {"a": 1}
     assert ContactOut._unwrap({"a": 1}) == {"a": 1}  # no wrapper → passthrough
+
+
+@pytest.mark.asyncio
+async def test_get_usage_hits_stats_endpoint(contactout: ContactOut) -> None:
+    """get_usage must call GET /v1/stats — the documented /v1/usage 404s live.
+
+    Regression for the live-verified path bug (2026-06-24): the ContactOut
+    usage/credit endpoint is /v1/stats, returning {period, usage: {...}}.
+    Mocking ONLY /v1/stats (assert_all_called) proves we hit the right route —
+    a request to /v1/usage would raise instead.
+    """
+    stats_body = {
+        "status_code": 200,
+        "period": {"start": "2026-06-01", "end": "2026-06-30"},
+        "usage": {
+            "count": 12,
+            "quota": 200,
+            "remaining": 188,
+            "over_quota": 0,
+            "phone_count": 3,
+            "phone_quota": 50,
+            "phone_remaining": 47,
+            "search_count": 7,
+            "search_quota": 500,
+            "search_remaining": 493,
+        },
+    }
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        route = mock.get("/v1/stats").mock(return_value=httpx.Response(200, json=stats_body))
+        usage = await contactout.aget_usage()
+
+    assert route.called
+    assert route.calls.last.request.headers["token"] == KEY
+    assert usage["usage"]["remaining"] == 188
+    assert usage["usage"]["phone_remaining"] == 47
