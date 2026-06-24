@@ -93,7 +93,7 @@ except AuthError as e:
 
 ## What actually works for standard BYOK tokens ✅
 
-Three actions are **live-verified** against the real LinkedIn API (2026-04). Any developer can enable these by creating a [LinkedIn Developer App](https://www.linkedin.com/developers/apps) and adding the two self-serve products listed below — no partnership approval needed.
+Three actions are **live-verified** against the real LinkedIn API (first verified 2026-04; **re-verified end-to-end 2026-06-20** with a fresh member token — `get_profile` → `create_post` → `delete_post` round-trip, all five partner-gated actions confirmed 403). Any developer can enable these by creating a [LinkedIn Developer App](https://www.linkedin.com/developers/apps) and adding the two self-serve products listed below — no partnership approval needed.
 
 | Action | Endpoint | Scope | Status |
 |---|---|---|---|
@@ -101,17 +101,36 @@ Three actions are **live-verified** against the real LinkedIn API (2026-04). Any
 | `create_post` | `POST /rest/posts` | `w_member_social` (Share on LinkedIn) | ✅ **Live verified** |
 | `delete_post` | `DELETE /rest/posts/{urn}` | `w_member_social` (Share on LinkedIn) | ✅ **Live verified** |
 
+## Media uploads — also self-serve via `w_member_social` 🖼️
+
+Post **images, PDFs/slides, and video**, not just text. Each is a multi-step upload (initialize → `PUT` the bytes → reference the asset URN in a post), wrapped here as single actions. Member-owned uploads (`urn:li:person:` owner) use the same self-serve `w_member_social` scope as `create_post`.
+
+| Action | What it does | Formats |
+|---|---|---|
+| `upload_image` | Upload an image → `urn:li:image:…` | JPG, GIF (≤250 frames), PNG |
+| `upload_document` | Upload a document → `urn:li:document:…` | PDF, PPT(X), DOC(X); ≤100MB / 300pp |
+| `upload_video` | Multi-part MP4 upload → `urn:li:video:…` | MP4; 75KB–500MB, 3s–30min |
+| `create_media_post` | Publish a post with an uploaded asset attached | — |
+
+```python
+# upload returns the asset URN; attach it to a post in one more call
+image_urn = li.upload_image(owner=author_urn, file_path="chart.png")
+li.create_media_post(author=author_urn, commentary="Q3 results", media_urn=image_urn, alt_text="revenue chart")
+```
+
+Doc-verified against LinkedIn's Images/Documents/Videos API docs (2026-06) + respx-pinned; not yet live-exercised (the binary-upload auth-header behaviour is the one thing a live run will confirm).
+
 ## What requires LinkedIn Partner Program approval ⚠️
 
-LinkedIn's public docs say these need only `w_member_social` or `r_member_social`, but **live testing reveals they are actually gated behind the LinkedIn Partner Program** — requests with standard self-serve tokens return HTTP 403 with error codes like `partnerApiReactions.CREATE.20260401` or `partnerApiSocialActions.CREATE.20260401`. This connector exposes the endpoints regardless so approved partners can use them; standard tokens hit `PermissionDeniedError` with a clear hint pointing at the Partner Program.
+LinkedIn's public docs say these need only `w_member_social` or `r_member_social`, but **live testing (re-confirmed 2026-06-20) reveals they are actually gated behind the LinkedIn Partner Program** — requests with standard self-serve tokens return HTTP 403 with error codes like `partnerApiReactions.CREATE.20260401` or `partnerApiSocialActions.CREATE.20260401`. Note: the three read actions were *previously* documented as `r_member_social`-restricted; the 2026-06-20 sweep shows LinkedIn now gates them through the same `partnerApi*` entitlement as the writes. This connector exposes the endpoints regardless so approved partners can use them; standard tokens hit `PermissionDeniedError` with a clear hint pointing at the Partner Program.
 
 | Action | Endpoint | LinkedIn's 403 error code |
 |---|---|---|
 | `create_comment` | `POST /rest/socialActions/{urn}/comments` | `partnerApiSocialActions.CREATE` |
 | `react_to_post` | `POST /rest/reactions?actor={urn}` | `partnerApiReactions.CREATE` |
-| `list_comments` | `GET /rest/socialActions/{urn}/comments` | `partnerApiSocialActions.READ` (needs restricted `r_member_social`) |
-| `get_post` | `GET /rest/posts/{urn}` | `r_member_social` (restricted) |
-| `list_my_posts` | `GET /rest/posts?q=author&author={urn}` | `r_member_social` (restricted) |
+| `list_comments` | `GET /rest/socialActions/{urn}/comments` | `partnerApiSocialActions.GET_ALL` |
+| `get_post` | `GET /rest/posts/{urn}` | `partnerApiPostsExternal.GET` |
+| `list_my_posts` | `GET /rest/posts?q=author&author={urn}` | `partnerApiPostsExternal.FINDER-author` |
 
 To get LinkedIn Partner Program access: https://www.linkedin.com/business/partner-programs/marketing
 
@@ -123,7 +142,6 @@ These cannot be exposed under standard BYOK access at all — no endpoints are i
 |---|---|
 | **DMs / Messaging API** | Requires LinkedIn Partner Program approval. Standard developer apps cannot send messages on behalf of members. |
 | **Mentions / Notifications** | The Notifications API is partner-only. There is no public BYOK endpoint to read mentions. |
-| **Image / Video / Document uploads** | Require a separate multi-step Vector Asset upload flow. Use the `content` parameter on `create_post` if you already have an asset URN. |
 
 ## Token expiry
 

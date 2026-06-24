@@ -27,6 +27,10 @@ python examples/01_basic_usage.py
 | 09 | `09_health_check.py` | CI/CD health checks, spec extraction, OpenAPI generation | `toolsconnector[gmail,slack,github]` |
 | 10 | `10_linkedin_publish.py` | Publish a post to LinkedIn end-to-end (auth → compose → post) | `toolsconnector[linkedin]` |
 | 11 | `11_notion_workflow.py` | End-to-end Notion smoke test — get_me, create page, append blocks, thread comments, archive (cleans up). Used to perform the Tier 1 (live-verified) verification of the connector against a real Notion workspace. | `toolsconnector[notion]` |
+| 12 | `12_linkedin_media.py` | Upload an image and publish a post with it attached, then delete (Images API → `create_media_post`). Same pattern for documents/video. | `toolsconnector[linkedin]` |
+| 13 | `13_linkedin_leads.py` | Pull consented leads from your Lead Gen Forms with contact fields (email/phone/name) resolved. First-party opt-in data only. | `toolsconnector[linkedin_leads]` |
+| 14 | `14_contactout.py` | ContactOut credit-aware flow: FREE ICP count + work-email pre-flight check, then paid LinkedIn-profile reveal (work/personal email + phone), then remaining balance. BYOK vendor API. | `toolsconnector[contactout]` |
+| 15 | `15_lusha.py` | Lusha two-step reveal: search_contacts preview (id + reveal cost) → enrich_contacts (emails + phones, with the do_not_call flag + creditsCharged). BYOK V3 API. | `toolsconnector[lusha]` |
 
 ## Environment Variables
 

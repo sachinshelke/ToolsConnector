@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LinkedIn Python Connector — 8 Actions | ToolsConnector</title>
-<meta name="description" content="Connect LinkedIn to Python apps and AI agents with 8 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[linkedin]&quot;. Apache 2.0. Free.">
+<title>LinkedIn Python Connector — 12 Actions | ToolsConnector</title>
+<meta name="description" content="Connect LinkedIn to Python apps and AI agents with 12 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[linkedin]&quot;. Apache 2.0. Free.">
 <meta name="keywords" content="LinkedIn Python, LinkedIn API Python, LinkedIn connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
 <meta name="author" content="ToolsConnector">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -15,15 +15,15 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://toolsconnector.github.io/connectors/linkedin/">
 <meta property="og:site_name" content="ToolsConnector">
-<meta property="og:title" content="LinkedIn Python Connector — 8 Actions | ToolsConnector">
-<meta property="og:description" content="Connect LinkedIn to Python apps and AI agents with 8 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[linkedin]&quot;. Apache 2.0. Free.">
+<meta property="og:title" content="LinkedIn Python Connector — 12 Actions | ToolsConnector">
+<meta property="og:description" content="Connect LinkedIn to Python apps and AI agents with 12 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[linkedin]&quot;. Apache 2.0. Free.">
 <meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@toolsconnector">
-<meta name="twitter:title" content="LinkedIn Python Connector — 8 Actions | ToolsConnector">
-<meta name="twitter:description" content="Connect LinkedIn to Python apps and AI agents with 8 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[linkedin]&quot;. Apache 2.0. Free.">
+<meta name="twitter:title" content="LinkedIn Python Connector — 12 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect LinkedIn to Python apps and AI agents with 12 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[linkedin]&quot;. Apache 2.0. Free.">
 <meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
 
 <script type="application/ld+json">
@@ -31,7 +31,7 @@
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "ToolsConnector \u2014 LinkedIn Connector",
-  "description": "Connect LinkedIn to Python apps and AI agents with 8 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[linkedin]\". Apache 2.0. Free.",
+  "description": "Connect LinkedIn to Python apps and AI agents with 12 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[linkedin]\". Apache 2.0. Free.",
   "url": "https://toolsconnector.github.io/connectors/linkedin/",
   "downloadUrl": "https://pypi.org/project/toolsconnector/",
   "applicationCategory": "DeveloperApplication",
@@ -45,20 +45,24 @@
   },
   "featureList": [
     "create_comment",
+    "create_media_post",
     "create_post",
     "delete_post",
     "get_post",
     "get_profile",
     "list_comments",
     "list_my_posts",
-    "react_to_post"
+    "react_to_post",
+    "upload_document",
+    "upload_image",
+    "upload_video"
   ],
   "author": {
     "@type": "Organization",
     "name": "ToolsConnector",
     "url": "https://toolsconnector.github.io/"
   },
-  "softwareVersion": "0.3.19"
+  "softwareVersion": "0.3.20"
 }
 </script>
 <script type="application/ld+json">
@@ -120,7 +124,7 @@ nav a.btn:hover { background: #fff; text-decoration: none; }
           font-size:.75rem; font-weight:600; color:#fff; background:#6366F1; }
 .verify-badge { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .65rem;
                  margin-left:.5rem; border-radius:20px; font-size:.75rem; font-weight:600;
-                 border:1.5px solid #94a3b8; color:#94a3b8; background:rgba(255,255,255,.02);
+                 border:1.5px solid #10b981; color:#10b981; background:rgba(255,255,255,.02);
                  cursor:help; user-select:none; }
 .verify-badge .dot { font-size:1rem; line-height:1; }
 h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing:-.02em; margin: .6rem 0 .5rem; }
@@ -189,11 +193,11 @@ footer a { color: #8a8a93; }
     <img src="https://cdn.brandfetch.io/linkedin.com?c=1idiVFVAawYfs0vBpzR" alt="LinkedIn" width="56" height="56" style="border-radius:14px;object-fit:contain;background:rgba(255,255,255,.06);padding:6px;border:1px solid rgba(255,255,255,.08)">
     <div>
       <span class="badge">Social</span>
-      <span class="verify-badge" title="Beta — built to the vendor&#39;s documented API and unit-tested with respx, but not yet verified against the live API." aria-label="Verification status: Beta"><span class="dot">○</span>Beta</span>
+      <span class="verify-badge" title="Live verified — exercised end-to-end against the real vendor API with a real token." aria-label="Verification status: Live verified"><span class="dot">●</span>Live verified</span>
       <h1>LinkedIn Connector</h1>
     </div>
   </div>
-  <p class="desc">Post to your LinkedIn personal feed, comment on posts, react. BYOK OAuth 2.0 access tokens (60-day expiry). Read endpoints (get_post, list_my_posts, list_comments) require the restricted r_member_social scope (approved developers only). DMs and mentions require LinkedIn Partner Program approval.</p>
+  <p class="desc">Post to your LinkedIn personal feed (incl. image/video/document uploads), comment, and react. BYOK OAuth 2.0 access tokens (60-day expiry). The 3 self-serve actions (get_profile, create_post, delete_post) are live-verified; reads (get_post, list_my_posts, list_comments), comments, and reactions require LinkedIn Partner Program approval and return 403 on standard tokens. DMs and mentions are partner-only too.</p>
 
   <div class="install-box">
     <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[linkedin]"</span>
@@ -201,7 +205,7 @@ footer a { color: #8a8a93; }
 
   <div class="stats">
     <div class="stat">
-      <div class="stat-num">8</div>
+      <div class="stat-num">12</div>
       <div class="stat-lbl">Actions</div>
     </div>
     <div class="stat">
@@ -216,7 +220,7 @@ footer a { color: #8a8a93; }
 </div>
 
 <div class="section">
-  <h2>All 8 Actions</h2>
+  <h2>All 12 Actions</h2>
   <div class="tbl-wrap">
     <table>
       <thead>
@@ -229,13 +233,17 @@ footer a { color: #8a8a93; }
       </thead>
       <tbody>
         <tr><td><code>create_comment ⚠</code></td><td class="desc">Post a comment on a LinkedIn post (PARTNER APPROVAL REQUIRED)</td><td><span class="req">post_urn, actor, text</span></td><td><code>LinkedInComment</code></td></tr>
+<tr><td><code>create_media_post ⚠</code></td><td class="desc">Publish a post with an uploaded image/document/video attached</td><td><span class="req">author, commentary, media_urn</span> &nbsp;<span class="opt">[title, alt_text, visibility, lifecycle_state]</span></td><td><code>LinkedInPost</code></td></tr>
 <tr><td><code>create_post ⚠</code></td><td class="desc">Publish a post to the authenticated user&#39;s LinkedIn feed</td><td><span class="req">author, commentary</span> &nbsp;<span class="opt">[visibility, lifecycle_state, content]</span></td><td><code>LinkedInPost</code></td></tr>
 <tr><td><code>delete_post ⚠</code></td><td class="desc">Delete a LinkedIn post you authored</td><td><span class="req">urn</span></td><td><code>NoneType</code></td></tr>
-<tr><td><code>get_post</code></td><td class="desc">Get a single LinkedIn post by URN (RESTRICTED scope)</td><td><span class="req">urn</span></td><td><code>LinkedInPost</code></td></tr>
+<tr><td><code>get_post</code></td><td class="desc">Get a single LinkedIn post by URN (PARTNER APPROVAL REQUIRED)</td><td><span class="req">urn</span></td><td><code>LinkedInPost</code></td></tr>
 <tr><td><code>get_profile</code></td><td class="desc">Get the authenticated LinkedIn user&#39;s profile (OIDC userinfo)</td><td><span class="opt">—</span></td><td><code>LinkedInProfile</code></td></tr>
-<tr><td><code>list_comments</code></td><td class="desc">List comments on a LinkedIn post (RESTRICTED scope)</td><td><span class="req">post_urn</span> &nbsp;<span class="opt">[count, start]</span></td><td><code>PaginatedList[LinkedInComment]</code></td></tr>
-<tr><td><code>list_my_posts</code></td><td class="desc">List the authenticated user&#39;s recent posts (RESTRICTED scope)</td><td><span class="req">author</span> &nbsp;<span class="opt">[count, start]</span></td><td><code>PaginatedList[LinkedInPost]</code></td></tr>
+<tr><td><code>list_comments</code></td><td class="desc">List comments on a LinkedIn post (PARTNER APPROVAL REQUIRED)</td><td><span class="req">post_urn</span> &nbsp;<span class="opt">[count, start]</span></td><td><code>PaginatedList[LinkedInComment]</code></td></tr>
+<tr><td><code>list_my_posts</code></td><td class="desc">List the authenticated user&#39;s recent posts (PARTNER APPROVAL REQUIRED)</td><td><span class="req">author</span> &nbsp;<span class="opt">[count, start]</span></td><td><code>PaginatedList[LinkedInPost]</code></td></tr>
 <tr><td><code>react_to_post ⚠</code></td><td class="desc">React to a LinkedIn post (PARTNER APPROVAL REQUIRED) — LIKE / PRAISE / EMPATHY / INTEREST / APPRECIATION / ENTERTAINMENT</td><td><span class="req">post_urn, actor</span> &nbsp;<span class="opt">[reaction_type]</span></td><td><code>NoneType</code></td></tr>
+<tr><td><code>upload_document</code></td><td class="desc">Upload a document (PDF/PPT/DOC) and return its urn:li:document URN</td><td><span class="req">owner, file_path</span></td><td><code>str</code></td></tr>
+<tr><td><code>upload_image</code></td><td class="desc">Upload an image and return its urn:li:image asset URN for posting</td><td><span class="req">owner, file_path</span></td><td><code>str</code></td></tr>
+<tr><td><code>upload_video</code></td><td class="desc">Upload a video (multi-part) and return its urn:li:video asset URN</td><td><span class="req">owner, file_path</span></td><td><code>str</code></td></tr>
       </tbody>
     </table>
   </div>
@@ -252,7 +260,7 @@ footer a { color: #8a8a93; }
   <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
   <a href="https://github.com/sachinshelke/ToolsConnector">GitHub</a> ·
   <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
-  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a> · v0.3.19
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a> · v0.3.20
 </footer>
 
 </body>

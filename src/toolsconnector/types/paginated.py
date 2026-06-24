@@ -123,14 +123,27 @@ class PaginatedList(BaseModel, Generic[T]):
         # combo, so cast it back.
         return cast("PaginatedList[Any] | None", await self._fetch_next())
 
-    async def collect(self, max_items: int = 1000) -> list[Any]:
+    async def collect(self, max_items: int = 1000, max_pages: int = 10_000) -> list[Any]:
         """Collect items across all remaining pages asynchronously.
 
-        Fetches successive pages until :attr:`has_more` is ``False`` or
-        ``max_items`` is reached.
+        Fetches successive pages until :attr:`has_more` is ``False``,
+        ``max_items`` is reached, an empty page is returned, or ``max_pages``
+        pages have been fetched.
+
+        Two guards keep a misbehaving upstream from spinning this loop forever
+        (a real hazard surfaced by chaos testing — see codevira D000009):
+
+        * **Stall guard** — a page that advertises ``has_more=True`` but returns
+          **no items** is treated as terminal. Without this, an upstream that
+          keeps returning empty-but-"more" pages (or a ``total`` that's never
+          reached) loops indefinitely because ``len(collected)`` never grows.
+        * **Page ceiling** — ``max_pages`` bounds the number of fetches outright,
+          a backstop against a server that advances forever with tiny non-empty
+          pages.
 
         Args:
             max_items: Maximum total number of items to accumulate.
+            max_pages: Maximum number of additional pages to fetch.
 
         Returns:
             A flat list of items gathered from the current and subsequent
@@ -138,10 +151,16 @@ class PaginatedList(BaseModel, Generic[T]):
         """
         collected: list[Any] = list(self.items[:max_items])
         page: PaginatedList[Any] | None = self
+        pages_fetched = 0
 
-        while len(collected) < max_items:
+        while len(collected) < max_items and pages_fetched < max_pages:
             page = await page.anext_page()  # type: ignore[union-attr]
             if page is None:
+                break
+            pages_fetched += 1
+            if not page.items:
+                # Stall guard: an empty page (even with has_more=True) is treated
+                # as terminal — otherwise the loop never makes progress.
                 break
             remaining = max_items - len(collected)
             collected.extend(page.items[:remaining])
@@ -164,7 +183,7 @@ class PaginatedList(BaseModel, Generic[T]):
         """
         return _run_sync(self.anext_page())
 
-    def collect_sync(self, max_items: int = 1000) -> list[Any]:
+    def collect_sync(self, max_items: int = 1000, max_pages: int = 10_000) -> list[Any]:
         """Collect items across all remaining pages synchronously.
 
         Convenience wrapper around :meth:`collect` for use outside of
@@ -172,9 +191,11 @@ class PaginatedList(BaseModel, Generic[T]):
 
         Args:
             max_items: Maximum total number of items to accumulate.
+            max_pages: Maximum number of additional pages to fetch (stall/loop
+                backstop — see :meth:`collect`).
 
         Returns:
             A flat list of items gathered from the current and subsequent
             pages.
         """
-        return _run_sync(self.collect(max_items=max_items))
+        return _run_sync(self.collect(max_items=max_items, max_pages=max_pages))

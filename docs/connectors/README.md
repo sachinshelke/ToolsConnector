@@ -1,6 +1,6 @@
 # All Connectors
 
-ToolsConnector ships with 74 connectors organized into 20 categories, providing 1,530 total actions across communication, CRM, databases, DevOps, AI/ML, finance, productivity, and more.
+ToolsConnector ships with 77 connectors organized into 20 categories, providing 1,578 total actions across communication, CRM, databases, DevOps, AI/ML, finance, productivity, and more.
 
 ## How Connectors Work
 
@@ -39,13 +39,13 @@ result = kit.execute("gmail_list_emails", {"query": "is:unread"})
 | [Code Platforms](code-platforms.md) | GitHub, GitLab | 58 |
 | [Finance & Payments](finance.md) | Plaid, Stripe | 57 |
 | [Knowledge](knowledge.md) | Confluence, Notion | 49 |
-| Marketing | Mailchimp, SendGrid | 43 |
+| [Marketing](marketing.md) | ContactOut, LinkedIn Lead Sync, Lusha, Mailchimp, SendGrid | 87 |
 | Networking | ALB, CloudFront, Route53 | 43 |
 | [Storage](storage.md) | Google Drive, S3 | 42 |
 | Message Queue | RabbitMQ, SQS | 37 |
 | Analytics | Mixpanel, Segment | 28 |
 | E-Commerce | Shopify | 27 |
-| Social | LinkedIn, Medium, X | 21 |
+| Social | LinkedIn, Medium, X | 25 |
 | Custom | Webhook | 12 |
 
 ## Authentication

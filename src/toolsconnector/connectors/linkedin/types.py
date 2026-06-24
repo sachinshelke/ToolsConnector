@@ -30,7 +30,7 @@ class LinkedInProfile(BaseModel):
     versions.
     """
 
-    model_config = ConfigDict(frozen=True, populate_by_name=True)
+    model_config = ConfigDict(frozen=True, populate_by_name=True, extra="ignore")
 
     sub: str  # OIDC subject (same as person URN suffix)
     name: str = ""
@@ -51,7 +51,7 @@ class LinkedInPost(BaseModel):
     free-form dict.
     """
 
-    model_config = ConfigDict(frozen=True, populate_by_name=True)
+    model_config = ConfigDict(frozen=True, populate_by_name=True, extra="ignore")
 
     id: str  # Post URN
     author: str = ""  # Author URN (urn:li:person:... or urn:li:organization:...)
@@ -70,7 +70,7 @@ class LinkedInComment(BaseModel):
     Returned by the ``/v2/socialActions/{urn}/comments`` endpoint.
     """
 
-    model_config = ConfigDict(frozen=True, populate_by_name=True)
+    model_config = ConfigDict(frozen=True, populate_by_name=True, extra="ignore")
 
     id: str  # Comment URN
     actor: str = ""  # Commenter URN
