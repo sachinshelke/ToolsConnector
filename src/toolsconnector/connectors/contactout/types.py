@@ -27,12 +27,27 @@ class ContactOutProfile(BaseModel):
     title: str = ""
     company: Any = ""  # ContactOut returns this as a name string or an object
     location: str = ""
+    country: str = ""
+    industry: str = ""
+    seniority: str = ""
+    job_function: str = ""
+    work_status: str = ""  # e.g. "open_to_work"
+    summary: str = ""
     emails: list[str] = Field(default_factory=list)  # all known emails
     work_emails: list[str] = Field(default_factory=list)
     personal_emails: list[str] = Field(default_factory=list)
     phones: list[str] = Field(default_factory=list)
     work_email_status: dict[str, Any] = Field(default_factory=dict)  # {email: Verified|Unverified}
     github: list[str] = Field(default_factory=list)
+    twitter: list[str] = Field(default_factory=list)
     experience: list[dict[str, Any]] = Field(default_factory=list)
     education: list[dict[str, Any]] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
+    languages: list[dict[str, Any]] = Field(default_factory=list)
+    certifications: list[dict[str, Any]] = Field(default_factory=list)
+    publications: list[dict[str, Any]] = Field(default_factory=list)
+    projects: list[dict[str, Any]] = Field(default_factory=list)
+    volunteering_experiences: list[dict[str, Any]] = Field(default_factory=list)
+    followers: int | None = None
+    profile_picture_url: str = ""
+    updated_at: str = ""

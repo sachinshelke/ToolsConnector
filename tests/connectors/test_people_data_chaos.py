@@ -169,14 +169,16 @@ async def test_co_malformed_list_fields_graceful(co):
                 200,
                 json={
                     "profile": {
-                        "experience": "notalist",
-                        "education": ["str", "not", "dicts"],
-                        "work_email": 12345,
+                        "experience": "notalist",  # bare string, not a list → dropped
+                        "education": [1, 2, 3],  # non-str/non-dict items → dropped
+                        "work_email": 12345,  # int, not a list → dropped
                     }
                 },
             )
         )
         prof = await co.aenrich_linkedin_profile(PROFILE)
+    # No crash; truly-malformed shapes drop to empty. (A list of STRINGS is NOT
+    # malformed — search returns experience/education that way — so it's kept.)
     assert prof.experience == [] and prof.education == [] and prof.work_emails == []
 
 

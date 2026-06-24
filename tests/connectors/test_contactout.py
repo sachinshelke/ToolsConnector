@@ -160,7 +160,12 @@ async def test_get_linkedin_contact_info_unwraps_profile(contactout: ContactOut)
 
 @pytest.mark.asyncio
 async def test_enrich_by_email_unwraps_and_normalizes_camelcase(contactout: ContactOut) -> None:
-    """/email/enrich nests under "profile" and uses camelCase singulars."""
+    """/email/enrich nests under "profile" and uses camelCase across the board.
+
+    Live shape (2026-06-24): besides workEmail/personalEmail, this endpoint also
+    returns fullName / linkedinUrl / profilePictureUrl / jobFunction / workStatus
+    in camelCase — all previously dropped, leaving full_name + linkedin_url empty.
+    """
     with respx.mock(base_url=BASE) as mock:
         mock.get("/v1/email/enrich").mock(
             return_value=httpx.Response(
@@ -172,6 +177,14 @@ async def test_enrich_by_email_unwraps_and_normalizes_camelcase(contactout: Cont
                         "workEmailStatus": "Verified",
                         "personalEmail": "ada2@gmail.com",
                         "phone": "+1",
+                        "fullName": "Ada Lovelace",
+                        "linkedinUrl": "https://www.linkedin.com/in/ada",
+                        "industry": "Software",
+                        "twitter": "ada_tw",
+                        "jobFunction": "Engineering",
+                        "workStatus": "open_to_work",
+                        "profilePictureUrl": "https://img/ada.png",
+                        "updatedAt": "2024-01-01 00:00:00",
                     }
                 },
             )
@@ -181,6 +194,14 @@ async def test_enrich_by_email_unwraps_and_normalizes_camelcase(contactout: Cont
     assert prof.personal_emails == ["ada2@gmail.com"]  # camelCase personalEmail captured
     assert prof.emails == ["ada@gmail.com"]
     assert prof.phones == ["+1"]
+    # camelCase fields that USED to be dropped:
+    assert prof.full_name == "Ada Lovelace"
+    assert prof.linkedin_url == "https://www.linkedin.com/in/ada"
+    assert prof.twitter == ["ada_tw"]
+    assert prof.industry == "Software"
+    assert prof.job_function == "Engineering"
+    assert prof.work_status == "open_to_work"
+    assert prof.profile_picture_url == "https://img/ada.png"
 
 
 @pytest.mark.asyncio
@@ -243,12 +264,23 @@ async def test_free_status_checks_unwrap_profile(contactout: ContactOut) -> None
 
 
 @pytest.mark.asyncio
-async def test_verify_email(contactout: ContactOut) -> None:
+async def test_verify_email_unwraps_data(contactout: ContactOut) -> None:
+    """Live shape (2026-06-24): /v1/email/verify nests the verdict under `data`."""
     with respx.mock(base_url=BASE) as mock:
         mock.get("/v1/email/verify").mock(
-            return_value=httpx.Response(200, json={"status": "valid"})
+            return_value=httpx.Response(200, json={"status_code": 200, "data": {"status": "valid"}})
         )
         assert await contactout.averify_email("a@b.com") == {"status": "valid"}
+
+
+@pytest.mark.asyncio
+async def test_verify_email_tolerates_flat_shape(contactout: ContactOut) -> None:
+    """Fallback: if a future response flattens the verdict, still read it."""
+    with respx.mock(base_url=BASE) as mock:
+        mock.get("/v1/email/verify").mock(
+            return_value=httpx.Response(200, json={"status": "invalid"})
+        )
+        assert await contactout.averify_email("a@b.com") == {"status": "invalid"}
 
 
 @pytest.mark.asyncio
@@ -410,3 +442,69 @@ async def test_get_usage_hits_stats_endpoint(contactout: ContactOut) -> None:
     assert route.calls.last.request.headers["token"] == KEY
     assert usage["usage"]["remaining"] == 188
     assert usage["usage"]["phone_remaining"] == 47
+
+
+def test_profile_captures_full_enrich_field_set() -> None:
+    """The normalizer captures the FULL profile field set the live /linkedin/enrich
+    envelope returns (verified 2026-06-24) — not just emails/phones."""
+    raw = {
+        "url": "https://www.linkedin.com/in/example-person",
+        "work_email": ["w@co.com"],
+        "personal_email": ["p@gmail.com"],
+        "phone": ["+1"],
+        "github": ["gh"],
+        "twitter": ["tw"],
+        "full_name": "Example Person",
+        "headline": "Manager at OBM",
+        "industry": "Broadcast Media",
+        "company": {"name": "Legros", "domain": "legros.com"},
+        "location": "Bermuda",
+        "country": "United States",
+        "seniority": "Manager",
+        "job_function": "Design",
+        "work_status": "open_to_work",
+        "summary": "experienced pro",
+        "followers": 1000,
+        "profile_picture_url": "https://img/x.png",
+        "updated_at": "2024-01-01 00:00:00",
+        "experience": [{"title": "Manager", "company_name": "OBM", "is_current": False}],
+        "education": [{"degree": "Journalism", "school_name": "George Brown"}],
+        "skills": ["Marketing"],
+        "languages": [{"name": "English", "proficiency": "Full"}],
+        "certifications": [{"name": "PMP", "authority": "PMI"}],
+        "publications": [{"title": "Future of Marketing"}],
+        "projects": [{"title": "Website Redesign"}],
+        "volunteering_experiences": [{"role": "Career Coach"}],
+    }
+    p = ContactOut._profile(raw)
+    assert p.full_name == "Example Person" and p.linkedin_url.endswith("example-person")
+    assert p.twitter == ["tw"] and p.github == ["gh"]
+    assert p.industry == "Broadcast Media" and p.seniority == "Manager"
+    assert p.job_function == "Design" and p.work_status == "open_to_work"
+    assert p.country == "United States" and p.summary == "experienced pro"
+    assert p.followers == 1000 and p.profile_picture_url == "https://img/x.png"
+    assert isinstance(p.company, dict) and p.company["name"] == "Legros"
+    assert p.experience[0]["title"] == "Manager" and p.education[0]["degree"] == "Journalism"
+    assert p.languages[0]["name"] == "English" and p.certifications[0]["name"] == "PMP"
+    assert p.publications and p.projects and p.volunteering_experiences
+
+
+def test_profile_preserves_string_experience_from_search() -> None:
+    """Search / decision-makers return experience+education as STRINGS — keep them
+    (wrapped as {"summary": ...}) instead of silently dropping via dict_list."""
+    p = ContactOut._profile(
+        {
+            "full_name": "Rob",
+            "experience": ["CEO / Founder at ContactOut in 2015 - Present"],
+            "education": ["UNSW in 2008 - 2011"],
+        }
+    )
+    assert p.experience == [{"summary": "CEO / Founder at ContactOut in 2015 - Present"}]
+    assert p.education == [{"summary": "UNSW in 2008 - 2011"}]
+
+
+def test_followers_rejects_non_int() -> None:
+    """followers stays None on a bad type (and bool is not an int here)."""
+    assert ContactOut._profile({"followers": "lots"}).followers is None
+    assert ContactOut._profile({"followers": True}).followers is None
+    assert ContactOut._profile({"followers": 5}).followers == 5

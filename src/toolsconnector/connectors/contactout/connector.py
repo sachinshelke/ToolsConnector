@@ -71,6 +71,24 @@ def _as_list(value: Any) -> list[str]:
     return []
 
 
+def _struct_list(value: Any) -> list[dict[str, Any]]:
+    """Normalize experience/education across endpoints into a list of dicts.
+
+    The enrich endpoints return structured objects; search / decision-makers
+    return the SAME fields as human-readable strings (e.g. "Research Assistant
+    at Acme in 2014 - Present"). Wrap those strings as ``{"summary": ...}`` so
+    no data is dropped (the model field is typed ``list[dict]``).
+    """
+    out: list[dict[str, Any]] = []
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, dict):
+                out.append(item)
+            elif isinstance(item, str) and item.strip():
+                out.append({"summary": item})
+    return out
+
+
 class ContactOut(BaseConnector):
     """Enrich B2B contacts via ContactOut's official API (BYOK).
 
@@ -224,22 +242,51 @@ class ContactOut(BaseConnector):
             or raw.get("workEmailStatus")
             or {}
         )
+        followers = raw.get("followers")
         return ContactOutProfile(
-            linkedin_url=linkedin_url or raw.get("url") or raw.get("li_vanity") or "",
-            full_name=raw.get("full_name") or raw.get("name") or "",
+            # /email/enrich uses camelCase (linkedinUrl/fullName/…); enrich+search use snake_case.
+            linkedin_url=(
+                linkedin_url
+                or raw.get("url")
+                or raw.get("linkedinUrl")
+                or raw.get("li_vanity")
+                or ""
+            ),
+            full_name=raw.get("full_name") or raw.get("name") or raw.get("fullName") or "",
             headline=raw.get("headline") or "",
             title=raw.get("title") or "",
             company=raw.get("company") or "",
             location=raw.get("location") or "",
+            country=raw.get("country") or "",
+            industry=raw.get("industry") or "",
+            seniority=raw.get("seniority") or "",
+            job_function=raw.get("job_function") or raw.get("jobFunction") or "",
+            work_status=raw.get("work_status") or raw.get("workStatus") or "",
+            summary=raw.get("summary") or "",
             emails=emails,
             work_emails=work,
             personal_emails=personal,
             phones=phones,
             work_email_status=status if isinstance(status, dict) else {},
             github=_as_list(raw.get("github")),
-            experience=dict_list(raw.get("experience")),
-            education=dict_list(raw.get("education")),
+            twitter=_as_list(raw.get("twitter")),
+            experience=_struct_list(raw.get("experience")),
+            education=_struct_list(raw.get("education")),
             skills=_as_list(raw.get("skills")),
+            languages=dict_list(raw.get("languages")),
+            certifications=dict_list(raw.get("certifications")),
+            publications=dict_list(raw.get("publications")),
+            projects=dict_list(raw.get("projects")),
+            volunteering_experiences=dict_list(
+                raw.get("volunteering_experiences") or raw.get("volunteeringExperiences")
+            ),
+            followers=followers
+            if isinstance(followers, int) and not isinstance(followers, bool)
+            else None,
+            profile_picture_url=raw.get("profile_picture_url")
+            or raw.get("profilePictureUrl")
+            or "",
+            updated_at=raw.get("updated_at") or raw.get("updatedAt") or "",
         )
 
     def _profiles_page(
@@ -644,13 +691,16 @@ class ContactOut(BaseConnector):
     async def verify_email(self, email: str) -> dict[str, Any]:
         """Verify an email's deliverability (spends a verifier credit on a result).
 
-        Endpoint: ``GET /v1/email/verify``.
+        Endpoint: ``GET /v1/email/verify``. Live-verified 2026-06-24: the result
+        nests under a ``data`` key (``{"data": {"status": "valid"}}``), not at the
+        top level — falls back to top-level if a future shape flattens it.
 
         Returns:
             ``{"status": valid|invalid|accept_all|disposable|unknown}``.
         """
         resp = await self._request("GET", "/v1/email/verify", params={"email": email})
-        return {"status": resp.get("status")}
+        data = resp.get("data") if isinstance(resp.get("data"), dict) else resp
+        return {"status": data.get("status")}
 
     @action("Async bulk reveal: queue up to 1000 LinkedIn URLs (returns a job id)")
     async def enrich_linkedin_bulk_async(
