@@ -1,6 +1,6 @@
 # Communication
 
-Connectors for email, messaging, and SMS services. 7 connectors, 200 actions.
+Connectors for email, messaging, and SMS services. 9 connectors, 287 actions.
 
 ---
 
@@ -199,3 +199,51 @@ Connect to Telegram to send messages, photos, and documents through the Bot API.
 kit = ToolKit(["telegram"], credentials={"telegram": "your-bot-token"})
 kit.execute("telegram_send_message", {"chat_id": "123456", "text": "Hello from ToolsConnector"})
 ```
+
+---
+
+### WhatsApp Business
+
+**Category:** Communication | **Auth:** System User Token (BYOK) | **Actions:** 52 | **Verification:** 🟢 Tier 1 — live-verified 2026-07-23 (41/52 round-tripped on a real test WABA incl. webhook receive end-to-end)
+
+Meta's official WhatsApp Business Platform (Cloud API, Graph v25.0): free-form sends inside the 24h customer-service window, template sends outside it, media up/download, interactive buttons/lists, business profile, and pure webhook receive primitives (`verify_signature` / `handle_verification` / `parse_events`) — the HTTPS listener stays yours. Personal WhatsApp accounts have no API; see the WhatsApp link connector below.
+
+**Sample actions:**
+
+| Action | Description | Dangerous |
+|--------|-------------|-----------|
+| send_text | Send a WhatsApp text message (24h window) | No |
+| send_template | Send an approved template (works outside the 24h window) | No |
+| send_interactive_buttons | Send up to 3 tappable reply buttons (24h window) | No |
+| upload_media / download_media | Media round-trip (handles the 5-minute URL dance) | No |
+| get_phone_number | Get this number's quality, limits, and name status | No |
+| update_business_profile | Update the business profile | Yes |
+
+Full list: [connector README](../../src/toolsconnector/connectors/whatsapp_business/README.md).
+
+```python
+from toolsconnector import ToolKit
+
+kit = ToolKit(["whatsapp_business"])  # TC_WHATSAPP_BUSINESS_CREDENTIALS (JSON)
+kit.execute("whatsapp_business_send_template",
+            {"to": "14155552671", "template_name": "hello_world"})
+```
+
+---
+
+### WhatsApp
+
+**Category:** Communication | **Auth:** None (offline) | **Actions:** 7 | **Verification:** 🟡 Tier 2 — every scheme rule cross-checked against official WhatsApp docs 2026-07-22 and test-pinned (no vendor API exists for a live tier)
+
+Offline click-to-chat primitives for personal WhatsApp — build/parse wa.me and `whatsapp://` links, normalize numbers to international format, render QR codes (`toolsconnector[whatsapp]` for the QR extra). Zero network calls, zero credentials. Exists because personal WhatsApp has **no official API** and unofficial clients violate WhatsApp's ToS (actively enforced) — the agent composes, a human taps send. For programmatic messaging use WhatsApp Business above.
+
+**Sample actions:**
+
+| Action | Description | Dangerous |
+|--------|-------------|-----------|
+| build_chat_link | Build a wa.me click-to-chat link | No |
+| normalize_phone | Normalize a phone number to wa.me international digits | No |
+| parse_link | Parse and validate any WhatsApp link | No |
+| render_qr_svg | Render a click-to-chat QR code as SVG (offline) | No |
+
+Full list: [connector README](../../src/toolsconnector/connectors/whatsapp/README.md).

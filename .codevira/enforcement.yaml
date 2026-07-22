@@ -1,0 +1,8 @@
+# enforcement.yaml — per-project decision-enforcement policy.
+# v2.2.0 default: do_not_revert decisions hard-block matching edits.
+schema_version: 1
+defaults:
+  do_not_revert: hard-block
+  protected_age_days: 7
+  override_requires_reason: true
+overrides: {}

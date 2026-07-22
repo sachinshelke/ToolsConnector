@@ -1,0 +1,40 @@
+{"id":"D000001","summary":"LinkedIn connector promoted to Tier 1 (verification_status=\"live\") — live…","tags":["connector","linkedin","live-verified","oauth","tier-1","verification"],"file":"src/toolsconnector/connectors/linkedin/connector.py","do_not_revert":true,"weight":0.5}
+{"id":"D000002","summary":"Added linkedin_leads connector (LinkedIn Lead Sync API) for consented lead…","tags":["connector","lead-sync","linkedin","marketing","privacy","scope-boundary"],"file":"src/toolsconnector/connectors/linkedin_leads/connector.py","do_not_revert":true,"weight":0.5}
+{"id":"D000002","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000002","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D000003","summary":"Hardened linkedin_leads after a 6-agent adversarial audit vs LinkedIn's live…","tags":["audit","connector","correctness","hardening","lead-sync","linkedin"],"file":"src/toolsconnector/connectors/linkedin_leads/connector.py","do_not_revert":true,"weight":0.5}
+{"id":"D000004","summary":"LinkedIn connector roadmap (surveyed 2026-06-20): buildable next =…","tags":["connector","linkedin","roadmap","scope-boundary","survey"],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000005","summary":"LinkedIn is organized Google-style: separate connectors split by…","tags":["architecture","connector","linkedin","roadmap"],"file":"src/toolsconnector/connectors/linkedin/connector.py","do_not_revert":true,"weight":0.5}
+{"id":"D000001","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000005","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000001","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D000005","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D000001","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000003","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000005","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000002","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000001","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D000002","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D000003","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D000005","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D000006","summary":"Hardened both LinkedIn connectors after a 25-agent adversarial quality audit —…","tags":["audit","connector","hardening","linkedin","robustness","security"],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D000007","summary":"Built contactout + lusha connectors (BYOK contact-enrichment vendors). Distinct…","tags":["byok","connector","contactout","enrichment","lusha","people-data"],"file":"src/toolsconnector/connectors/contactout/connector.py","do_not_revert":false,"weight":0.5}
+{"id":"D000008","summary":"Doc-audited contactout + lusha against their LIVE API docs and fixed confirmed…","tags":["bugfix","connector","contactout","doc-audit","lusha","people-data"],"file":"src/toolsconnector/connectors/contactout/connector.py","do_not_revert":false,"weight":0.5}
+{"id":"D000008","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D000008","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000009","summary":"Chaos/resilience-hardened contactout + lusha: found 13 real defects via an…","tags":["chaos-testing","contactout","credential-leak","lusha","people-data","resilience","security"],"file":"src/toolsconnector/connectors/_helpers/sanitize.py","do_not_revert":true,"weight":0.5}
+{"id":"D000008","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D00000A","summary":"Added a universal stall guard + max_pages ceiling to the SHARED…","tags":["chaos-testing","hang-guard","pagination","resilience","types"],"file":"src/toolsconnector/types/paginated.py","do_not_revert":true,"weight":0.5}
+{"id":"D000008","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000008","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D00000B","summary":"ContactOut connector live-verified with a real key (2026-06-24): the key is a…","tags":["byok","contactout","live-verification","people-data"],"file":"src/toolsconnector/connectors/contactout/connector.py","do_not_revert":false,"weight":0.5}
+{"id":"D000008","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000008","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D00000C","summary":"ContactOut deeper live field-audit (2026-06-24, commit 910ee9c): captured the…","tags":["contactout","false-green","live-verification","people-data"],"file":"src/toolsconnector/connectors/contactout/connector.py","do_not_revert":false,"weight":0.5}
+{"id":"D000008","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D000008","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D00000D","summary":"ContactOut promoted Tier 2 (doc) → Tier 1 (live) on a CONTRACT-SCOPED basis…","tags":["contactout","live","people-data","verification-tier"],"file":"src/toolsconnector/connectors/contactout/connector.py","do_not_revert":false,"weight":0.5}
+{"id":"D00000E","summary":"Lusha live-verified against the production API + promoted Tier 2 (doc) → Tier 1…","tags":["live-verification","lusha","people-data","verification-tier"],"file":"src/toolsconnector/connectors/lusha/connector.py","do_not_revert":true,"weight":0.5}
+{"id":"D00000E","summary":"","tags":[],"file":null,"do_not_revert":false,"weight":0.5}
+{"id":"D00000E","summary":"","tags":[],"file":null,"do_not_revert":true,"weight":0.5}
+{"id":"D00000F","summary":"Add `toolsconnector.auth` module in two layers: (1) request-signing providers…","tags":["architecture","auth","backlog","byok"],"file":"src/toolsconnector/auth/","do_not_revert":false,"weight":0.5}

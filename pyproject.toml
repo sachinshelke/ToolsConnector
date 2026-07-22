@@ -62,6 +62,8 @@ outlook = []
 teams = []
 twilio = []
 telegram = []
+whatsapp = ["segno>=1.6"]
+whatsapp_business = []
 
 # --- Connectors: Code Platforms ---
 github = []
