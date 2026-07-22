@@ -1979,6 +1979,16 @@ class WhatsAppBusiness(BaseConnector):
         ``whatsapp_business_management`` / ``whatsapp_business_messaging``
         granular scopes, most recently onboarded first.
 
+        ``waba_ids`` is populated for **Embedded Signup** tokens, where
+        Meta scopes the grant to specific assets. A System User token with
+        assets assigned directly reports the same scopes with **empty**
+        ``target_ids`` (live-verified 2026-07-23) — that means "not
+        asset-scoped", not "no access"; use your configured ``waba_id``.
+
+        Also the cheapest way to answer "is this stored customer token
+        still alive?" — check ``is_valid`` and ``expires_at`` (``0`` means
+        never expires) instead of discovering it mid-send.
+
         Args:
             input_token: Token to inspect (defaults to the connector's own
                 ``access_token``).

@@ -99,7 +99,13 @@ await customer.asubscribe_app()                          # webhooks start flowin
 ```
 
 `debug_token` also answers "is this stored customer token still alive?"
-(`is_valid`, `expires_at`) — cheaper and clearer than discovering it mid-send.
+(`is_valid`, `expires_at`, where `0` means never expires) — cheaper and
+clearer than discovering it mid-send.
+
+> **Note on `waba_ids`:** populated for Embedded Signup tokens, which Meta
+> scopes to specific assets. A System User token with assets assigned
+> directly reports the same scopes with *empty* `target_ids` — that means
+> "not asset-scoped", not "no access"; use your configured `waba_id`.
 
 Prerequisite: your platform must be a Meta **Tech Provider** (business
 verification + App Review for Advanced access to
