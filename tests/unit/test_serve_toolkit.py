@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from toolsconnector.errors import ConnectorNotConfiguredError
-from toolsconnector.serve.toolkit import ToolKit
+from toolsconnector.serve.toolkit import ToolKit, ToolKitFactory
 
 
 class TestToolKitCreation:
@@ -138,3 +138,94 @@ class TestToolKitExecution:
         kit = ToolKit(["gmail"])
         with pytest.raises(ConnectorNotConfiguredError, match="Unknown tool"):
             await kit.aexecute("nonexistent_tool_xyz", {})
+
+
+class _FakeInstance:
+    """Stand-in connector instance that records teardown calls."""
+
+    def __init__(self) -> None:
+        self.torn_down = False
+
+    async def _teardown(self) -> None:
+        self.torn_down = True
+
+
+class TestToolKitFactory:
+    """Tests for per-tenant caching, credential rotation, and eviction."""
+
+    def test_same_credentials_returns_cached_kit(self) -> None:
+        """A second call with identical credentials reuses the cached kit."""
+        factory = ToolKitFactory(["gmail"])
+        kit1 = factory.for_tenant("t1", {"gmail": "tok-A"})
+        kit2 = factory.for_tenant("t1", {"gmail": "tok-A"})
+        assert kit2 is kit1
+
+    def test_changed_credentials_rebuilds_kit(self) -> None:
+        """A rotated token must reach the kit: stale kit is retired, new one built."""
+        factory = ToolKitFactory(["gmail"])
+        kit1 = factory.for_tenant("t1", {"gmail": "tok-A"})
+        stale_instance = _FakeInstance()
+        kit1._instances["gmail"] = stale_instance
+
+        kit2 = factory.for_tenant("t1", {"gmail": "tok-B"})
+
+        assert kit2 is not kit1
+        assert kit2._credentials["gmail"] == "tok-B"
+        assert stale_instance.torn_down, "stale kit's connectors must be torn down"
+        assert factory.active_tenants == ["t1"]
+
+    def test_stored_credentials_are_copied(self) -> None:
+        """Mutating the caller's dict after the call must not mask a rotation."""
+        factory = ToolKitFactory(["gmail"])
+        creds = {"gmail": "tok-A"}
+        kit1 = factory.for_tenant("t1", creds)
+        creds["gmail"] = "tok-B"
+        kit2 = factory.for_tenant("t1", creds)
+        assert kit2 is not kit1
+        assert kit2._credentials["gmail"] == "tok-B"
+
+    def test_max_tenants_evicts_least_recently_used(self) -> None:
+        """With max_tenants set, the LRU tenant's kit is retired on overflow."""
+        factory = ToolKitFactory(["gmail"], max_tenants=2)
+        kit1 = factory.for_tenant("t1", {"gmail": "tok-1"})
+        kit2 = factory.for_tenant("t2", {"gmail": "tok-2"})
+        evicted_instance = _FakeInstance()
+        kit2._instances["gmail"] = evicted_instance
+
+        # Touch t1 so t2 becomes least-recently-used.
+        assert factory.for_tenant("t1", {"gmail": "tok-1"}) is kit1
+
+        factory.for_tenant("t3", {"gmail": "tok-3"})
+
+        assert factory.active_tenants == ["t1", "t3"]
+        assert evicted_instance.torn_down
+
+    def test_max_tenants_rejects_non_positive(self) -> None:
+        """max_tenants below 1 is a configuration error."""
+        with pytest.raises(ValueError, match="max_tenants"):
+            ToolKitFactory(["gmail"], max_tenants=0)
+
+    @pytest.mark.asyncio
+    async def test_close_tenant_clears_cached_credentials(self) -> None:
+        """After close_tenant, the same credentials build a fresh kit."""
+        factory = ToolKitFactory(["gmail"])
+        kit1 = factory.for_tenant("t1", {"gmail": "tok-A"})
+        await factory.close_tenant("t1")
+        assert factory.active_tenants == []
+        kit2 = factory.for_tenant("t1", {"gmail": "tok-A"})
+        assert kit2 is not kit1
+
+    @pytest.mark.asyncio
+    async def test_retire_inside_event_loop_completes_on_close_all(self) -> None:
+        """Retirement scheduled on a running loop finishes by close_all."""
+        factory = ToolKitFactory(["gmail"])
+        kit1 = factory.for_tenant("t1", {"gmail": "tok-A"})
+        stale_instance = _FakeInstance()
+        kit1._instances["gmail"] = stale_instance
+
+        kit2 = factory.for_tenant("t1", {"gmail": "tok-B"})
+        assert kit2 is not kit1
+
+        await factory.close_all()
+        assert stale_instance.torn_down
+        assert factory.active_tenants == []

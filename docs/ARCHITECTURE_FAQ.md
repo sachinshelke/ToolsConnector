@@ -437,3 +437,18 @@ The rule of thumb: **the connector boundary is the credential, not the brand.** 
 The **legitimate** "get people's contact details" path is `linkedin_leads` (the Lead Sync API): it returns leads — name/email/phone — that members *voluntarily submitted* to **your own** Lead Gen Forms. First-party, consented, opt-in. That is the boundary: we expose the full power the API actually offers, not capabilities the platform deliberately withholds.
 
 **References:** FAQ #8 (primitive, not platform), #9 (BYOK), #16 (verification tiers); connector READMEs under `src/toolsconnector/connectors/linkedin*/`.
+
+## 20. How does multi-tenant credential rotation work (`ToolKitFactory` + OAuth2 keystore keys)?
+
+**The bug class this answers (gap analysis G3/G4, 2026-07-22):** a platform embedding ToolsConnector for *its* users (the B2B2C persona) refreshes a tenant's OAuth token, calls `for_tenant(tenant_id, new_credentials)` — and silently gets back a cached kit still holding the **old** token. Separately, `OAuth2Provider` persisted refreshed tokens under `{connector}:default:{field}` regardless of tenant, so two tenants refreshing the same connector overwrote each other in the keystore.
+
+**Decisions:**
+
+1. **Credentials are part of the cache identity.** `ToolKitFactory.for_tenant` compares the passed credentials against the ones the cached kit was built with (a defensive copy, so caller-side mutation can't mask a rotation). Same credentials → cached kit; different → the stale kit is *retired* (connector instances torn down) and a fresh kit is built. No `refresh=` flag to remember — rotation is detected, not declared, so the failure mode "platform forgot to pass the flag" cannot exist.
+2. **Retirement never blocks the caller's event loop.** Inside a running loop, teardown is scheduled as a task (awaited at `close_all`); in sync contexts it completes via the `run_sync` bridge. `ToolKit.aclose` already swallows per-connector teardown errors, so retirement can't fail a request.
+3. **Bounded cache is opt-in (`max_tenants=None` default), LRU on overflow.** Default stays unbounded because evicting a kit *closes* it, which would break callers that hold long-lived kit references — a silent behavior change for existing single-tenant users. Platforms with many tenants opt in and follow the documented discipline: re-fetch via `for_tenant` per request, `close_tenant` on disconnect, `close_all` on shutdown.
+4. **`OAuth2Provider` takes `tenant_id` (default `"default"`)** and persists under the documented `{connector}:{tenant}:{type}` convention from `keystore/base.py`. Single-tenant callers keep their existing key namespace; multi-tenant refresh no longer collides.
+
+**Deliberately not done here:** factory↔KeyStore integration (auto-loading per-tenant credentials from a keystore) — that belongs to the `toolsconnector.auth` wiring work (G1/G2, decision D00000F), where credential *sourcing* is designed as a whole rather than bolted onto the cache.
+
+**References:** `serve/toolkit.py` (`ToolKitFactory`), `runtime/auth/oauth2.py`, `keystore/base.py` (key convention), `.agent/artifacts/whatsapp-connector-plan.md` §9a (G3/G4).

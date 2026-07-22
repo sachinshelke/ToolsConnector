@@ -46,6 +46,9 @@ class OAuth2Provider:
             tokens.
         connector_name: Connector identifier used as the keystore
             namespace.
+        tenant_id: Tenant identifier used in keystore keys, following
+            the ``{connector}:{tenant}:{type}`` convention.  Defaults
+            to ``"default"`` for single-tenant use.
         refresh_buffer_seconds: Number of seconds before token expiry
             to proactively refresh.  Defaults to ``60``.
 
@@ -81,6 +84,7 @@ class OAuth2Provider:
         credentials: CredentialSet,
         keystore: KeyStore,
         connector_name: str = "default",
+        tenant_id: str = "default",
         refresh_buffer_seconds: int = _REFRESH_BUFFER_SECONDS,
     ) -> None:
         if not credentials.access_token:
@@ -92,6 +96,7 @@ class OAuth2Provider:
         self._credentials = credentials
         self._keystore = keystore
         self._connector_name = connector_name
+        self._tenant_id = tenant_id
         self._refresh_buffer = refresh_buffer_seconds
 
         self._state = AuthState(
@@ -243,9 +248,9 @@ class OAuth2Provider:
         """Write the current tokens to the keystore.
 
         Keys follow the naming convention
-        ``{connector}:default:{field}``.
+        ``{connector}:{tenant}:{field}``.
         """
-        prefix = f"{self._connector_name}:default"
+        prefix = f"{self._connector_name}:{self._tenant_id}"
 
         if self._state.access_token:
             ttl: Optional[int] = None
