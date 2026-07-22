@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from toolsconnector.runtime._sync import run_sync
 from toolsconnector.runtime.action import ActionMeta, get_actions
 from toolsconnector.spec.action import ActionSpec
+from toolsconnector.spec.auth import AuthSpec
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ConnectorSpec,
@@ -78,8 +79,12 @@ class BaseConnector(ABC):
     # The website + agents key off this field to surface a badge.
     verification_status: ClassVar[str] = "pattern"
 
-    # Overridden by subclasses to declare auth, rate limits
+    # Overridden by subclasses to declare auth, rate limits.
+    # ``_auth_providers_config`` holds AuthProviderSpec entries and surfaces
+    # on ``get_spec().auth`` so platforms can discover what credentials a
+    # connector needs without reading its docs.
     _auth_providers_config: ClassVar[list[Any]] = []
+    _default_auth_type: ClassVar[Any] = None
     _rate_limit_config: ClassVar[Optional[RateLimitSpec]] = None
 
     def __init__(
@@ -255,6 +260,10 @@ class BaseConnector(ABC):
             base_url=cls.base_url,
             actions=action_specs,
             rate_limits=cls._rate_limit_config or RateLimitSpec(),
+            auth=AuthSpec(
+                supported=list(cls._auth_providers_config or []),
+                default=cls._default_auth_type,
+            ),
             verification_status=cls.verification_status,
         )
 

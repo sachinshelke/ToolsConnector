@@ -27,6 +27,7 @@ from urllib.parse import parse_qs, quote, urlsplit
 
 from toolsconnector.errors import MissingConfigError, ValidationError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthProviderSpec, AuthType
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 
 from .types import WhatsAppLinkResult, WhatsAppParsedLink, WhatsAppQRResult
@@ -97,6 +98,19 @@ class WhatsApp(BaseConnector):
         " 'whatsapp_business' connector."
     )
     _rate_limit_config = RateLimitSpec(rate=1000, period=1, burst=1000)
+    # No credentials at all — declared explicitly so a platform's connect
+    # UI can skip the credential step instead of guessing.
+    _default_auth_type = AuthType.CUSTOM
+    _auth_providers_config = [
+        AuthProviderSpec(
+            type=AuthType.CUSTOM,
+            extra={
+                "credential_format": "none",
+                "fields": [],
+                "help": ("Offline connector — no credentials, no network calls."),
+            },
+        ),
+    ]
 
     async def _setup(self) -> None:
         # Offline connector: no HTTP client, nothing to initialize.

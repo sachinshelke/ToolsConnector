@@ -291,17 +291,19 @@ match more granular cases (e.g. `ConflictError` for 409).
 
 79 connectors, 1,649 actions across 20 categories.
 
-### Communication (7)
+### Communication (9)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Gmail | `gmail` | 38 |
+| Gmail | `gmail` | 66 |
 | Slack | `slack` | 51 |
 | Discord | `discord` | 25 |
 | Microsoft Outlook | `outlook` | 23 |
 | Microsoft Teams | `teams` | 17 |
 | Twilio | `twilio` | 20 |
 | Telegram | `telegram` | 26 |
+| WhatsApp Business | `whatsapp_business` | 64 |
+| WhatsApp (links/QR) | `whatsapp` | 7 |
 
 ### Project Management (4)
 

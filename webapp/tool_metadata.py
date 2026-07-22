@@ -1429,8 +1429,32 @@ TOOL_META: dict[str, dict] = {
         "logo": _BF("whatsapp.com"),
         "color": "#25D366",
         "tagline": "Offline wa.me click-to-chat links, number normalization, and QR codes",
+        "overview": (
+            "Offline click-to-chat primitives for personal WhatsApp: build and parse "
+            "wa.me / whatsapp:// links, normalize numbers to international format, "
+            "and render QR codes — zero network calls, zero credentials, zero ban "
+            "risk. It exists because personal WhatsApp has NO official API: every "
+            "'personal WhatsApp API' is a reverse-engineered client that violates "
+            "WhatsApp's Terms of Service and gets numbers banned, so this library "
+            "deliberately ships none. What WhatsApp does officially document is the "
+            "click-to-chat URL scheme — an agent composes the message, a human taps "
+            "send. For programmatic send/receive use the whatsapp_business "
+            "connector (Meta's official Cloud API). Tier 2 — every scheme rule "
+            "cross-checked against official WhatsApp documentation and test-pinned."
+        ),
+        "use_cases": [
+            "Human-in-the-loop outreach (agent drafts, person sends)",
+            "'Chat with us' links and QR codes for print/storefront",
+            "Phone-number normalization and link validation",
+            "Deep links from your app into WhatsApp",
+        ],
         "auth_methods": ["None (offline)"],
         "pricing": "Free",
+        "rate_limit": "None — pure computation, no network calls",
+        "prerequisites": [
+            "No account, credentials or setup required",
+            "QR rendering needs the optional extra: pip install 'toolsconnector[whatsapp]'",
+        ],
     },
     "whatsapp_business": {
         "company": "Meta (WhatsApp Business Platform)",
@@ -1440,9 +1464,58 @@ TOOL_META: dict[str, dict] = {
         "logo": _BF("business.whatsapp.com"),
         "color": "#25D366",
         "tagline": "Official Cloud API: messaging, templates, media, and webhook receive",
-        "auth_methods": ["System User Token (BYOK)"],
-        "pricing": "Service messages free; templates billed per delivered message",
+        "overview": (
+            "Meta's WhatsApp Business Platform (Cloud API, Graph v25.0) — the only "
+            "official WhatsApp API. Send every message type (text, media, location, "
+            "contacts, reactions, interactive buttons/lists/CTA-URL, templates and "
+            "Flows), receive inbound messages through pure webhook primitives "
+            "(signature verification, the hub.challenge handshake, and typed event "
+            "parsing with WABA/phone routing keys for multi-tenant platforms), "
+            "manage templates, QR short-links, media, business profile, block lists, "
+            "phone registration and analytics, and onboard customers via Embedded "
+            "Signup (exchange_code + debug_token). The platform's grammar is the "
+            "24-hour customer-service window: free-form messages only inside it, "
+            "approved templates outside. Receiving is push-only — there is no "
+            "polling endpoint, so you host an HTTPS webhook (the library ships the "
+            "primitives, not the server). Tier 1 — live-verified against a real "
+            "test WABA: 50/64 actions round-tripped, all 11 message types "
+            "device-confirmed, and the webhook loop proven end-to-end."
+        ),
+        "use_cases": [
+            "Customer support inbox and AI agents that read and reply",
+            "Order, delivery and appointment notifications (utility templates)",
+            "OTP / authentication codes",
+            "Marketing campaigns with opt-out handling",
+            "In-chat forms: CSAT surveys, bookings, lead capture (Flows)",
+        ],
+        "auth_methods": ["System User Token (BYOK)", "Embedded Signup (OAuth)"],
+        "pricing": (
+            "Service messages free; templates billed per delivered message "
+            "(category x recipient country). Free test number for development."
+        ),
+        "rate_limit": "80 messages/sec per number (default); ~1 msg/6s per user pair",
+        "prerequisites": [
+            "A Meta developer app with the WhatsApp product added",
+            "A WhatsApp Business Account (a free test WABA is auto-created)",
+            "A phone number not already registered on the consumer WhatsApp app",
+            "For receiving: a public HTTPS endpoint to host your webhook",
+        ],
         "get_credentials_url": "https://developers.facebook.com/apps/",
+        "get_credentials_steps": [
+            "Create an app at developers.facebook.com and add the WhatsApp product — "
+            "a free test WABA and test number are created automatically.",
+            "Open WhatsApp > API Setup and copy the Phone number ID and the WhatsApp "
+            "Business Account ID (both are numeric IDs, not the phone number itself).",
+            "Add your own phone number as a verified test recipient on the same page.",
+            "For a permanent token: business.facebook.com > Settings > System users > "
+            "Add (Admin), assign the app and the WABA, then Generate token with the "
+            "whatsapp_business_messaging and whatsapp_business_management permissions "
+            "and expiry 'Never'.",
+            "Optional, for webhook signature verification and Embedded Signup: copy "
+            "the App secret from App settings > Basic.",
+            'Pass them as TC_WHATSAPP_BUSINESS_CREDENTIALS=\'{"access_token": "...", '
+            '"phone_number_id": "...", "waba_id": "...", "app_secret": "..."}\'',
+        ],
     },
     "x": {
         "company": "X Corp",

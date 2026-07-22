@@ -1688,3 +1688,49 @@ async def test_gate_codes_typed_from_live_probes(
         mock.post(f"/{PHONE_ID}/messages").mock(return_value=_graph_error(400, code, "gated"))
         with pytest.raises(expected):
             await wa.asend_text("15550001111", "hi")
+
+
+# ---------------------------------------------------------------------------
+# Machine-readable auth declaration (platforms build connect UIs from this)
+# ---------------------------------------------------------------------------
+
+
+def test_auth_spec_declares_credential_contract() -> None:
+    from toolsconnector.spec.auth import AuthType
+
+    auth = WhatsAppBusiness.get_spec().auth
+    assert auth.default is AuthType.BEARER_TOKEN
+    provider = auth.supported[0]
+    assert provider.type is AuthType.BEARER_TOKEN
+    assert provider.api_key is not None
+    assert provider.api_key.param_name == "Authorization"
+    assert provider.api_key.prefix == "Bearer"
+    extra = provider.extra
+    assert extra["env_var"] == "TC_WHATSAPP_BUSINESS_CREDENTIALS"
+    assert set(extra["scopes"]) == {
+        "whatsapp_business_messaging",
+        "whatsapp_business_management",
+    }
+    fields = {f["name"]: f for f in extra["fields"]}
+    # Every credential key the connector actually parses is declared.
+    assert set(fields) == {"access_token", "phone_number_id", "waba_id", "app_secret", "app_id"}
+    assert [n for n, f in fields.items() if f["required"]] == ["access_token", "phone_number_id"]
+    # Secrets are flagged so a UI can mask them.
+    assert fields["access_token"]["secret"] is True
+    assert fields["app_secret"]["secret"] is True
+    assert fields["phone_number_id"]["secret"] is False
+
+
+def test_declared_fields_match_credential_parser() -> None:
+    # The declaration must not drift from what _parse_credentials accepts.
+    from toolsconnector.connectors.whatsapp_business import connector as mod
+
+    declared = {f["name"] for f in WhatsAppBusiness.get_spec().auth.supported[0].extra["fields"]}
+    parsed = {
+        mod._TOKEN_KEYS[0],
+        mod._PHONE_ID_KEYS[0],
+        mod._WABA_KEYS[0],
+        mod._SECRET_KEYS[0],
+        mod._APP_ID_KEYS[0],
+    }
+    assert declared == parsed

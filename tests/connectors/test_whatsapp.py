@@ -238,3 +238,15 @@ def test_descriptions_cross_reference_each_other() -> None:
     # Agents searching either name must be routed to the right surface.
     assert "whatsapp_business" in WhatsApp.description
     assert "whatsapp" in WhatsAppBusiness.description
+
+
+def test_auth_spec_declares_no_credentials() -> None:
+    from toolsconnector.spec.auth import AuthType
+
+    auth = WhatsApp.get_spec().auth
+    assert auth.default is AuthType.CUSTOM
+    provider = auth.supported[0]
+    # An offline connector says so explicitly, so a connect UI can skip
+    # the credential step instead of guessing.
+    assert provider.extra["credential_format"] == "none"
+    assert provider.extra["fields"] == []

@@ -63,6 +63,7 @@ from toolsconnector.errors import (
     TimeoutError as ToolsConnectorTimeoutError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import APIKeySpec, AuthProviderSpec, AuthType
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -222,6 +223,81 @@ class WhatsAppBusiness(BaseConnector):
     )
     # Cloud API default throughput is 80 msgs/sec per number.
     _rate_limit_config = RateLimitSpec(rate=80, period=1, burst=20)
+    # Machine-readable credential contract: platforms render their
+    # "connect" form from this instead of parsing the README.
+    _default_auth_type = AuthType.BEARER_TOKEN
+    _auth_providers_config = [
+        AuthProviderSpec(
+            type=AuthType.BEARER_TOKEN,
+            api_key=APIKeySpec(location="header", param_name="Authorization", prefix="Bearer"),
+            extra={
+                "credential_format": "json",
+                "env_var": "TC_WHATSAPP_BUSINESS_CREDENTIALS",
+                "obtain_url": "https://developers.facebook.com/apps/",
+                "docs_url": (
+                    "https://developers.facebook.com/documentation/"
+                    "business-messaging/whatsapp/access-tokens"
+                ),
+                "scopes": [
+                    "whatsapp_business_messaging",
+                    "whatsapp_business_management",
+                ],
+                "fields": [
+                    {
+                        "name": "access_token",
+                        "label": "System User access token",
+                        "required": True,
+                        "secret": True,
+                        "help": (
+                            "Business Settings > System users > Generate token"
+                            " with both whatsapp_business_* permissions."
+                            " Never-expiring is supported."
+                        ),
+                    },
+                    {
+                        "name": "phone_number_id",
+                        "label": "Phone number ID",
+                        "required": True,
+                        "secret": False,
+                        "help": (
+                            "WhatsApp > API Setup. Required by every"
+                            " messaging and phone-scoped action."
+                        ),
+                    },
+                    {
+                        "name": "waba_id",
+                        "label": "WhatsApp Business Account ID",
+                        "required": False,
+                        "secret": False,
+                        "help": (
+                            "Needed for templates, flows, analytics and"
+                            " webhook subscription actions."
+                        ),
+                    },
+                    {
+                        "name": "app_secret",
+                        "label": "Meta app secret",
+                        "required": False,
+                        "secret": True,
+                        "help": (
+                            "Only for webhook signature verification and the"
+                            " Embedded Signup actions."
+                        ),
+                    },
+                    {
+                        "name": "app_id",
+                        "label": "Meta app ID",
+                        "required": False,
+                        "secret": False,
+                        "help": (
+                            "Only for Embedded Signup (exchange_code /"
+                            " debug_token / set_app_webhook)."
+                        ),
+                    },
+                ],
+            },
+        ),
+    ]
 
     def __init__(self, credentials: Any = None, **kwargs: Any) -> None:
         super().__init__(credentials=credentials, **kwargs)

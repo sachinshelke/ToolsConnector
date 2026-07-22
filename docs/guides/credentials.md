@@ -172,6 +172,90 @@ The `tenant_id` parameter is a label for telemetry / debugging — it does NOT e
 
 Each `for_tenant()` call yields an isolated ToolKit with its own credential set, circuit-breaker state, and rate-limit windows — exactly equivalent to constructing the ToolKit directly. The factory just removes the boilerplate of repeating the shared config.
 
+## Structured credentials (multi-field connectors)
+
+Most connectors take a single token string. Some need several values at once —
+`whatsapp_business` is the reference case. Pass a dict (or a JSON string) and
+the connector parses it, tolerating common key aliases:
+
+```python
+from toolsconnector.connectors.whatsapp_business import WhatsAppBusiness
+
+wa = WhatsAppBusiness(credentials={
+    "access_token": "...",      # required — System User token
+    "phone_number_id": "...",   # required for messaging actions
+    "waba_id": "...",           # templates, flows, analytics
+    "app_secret": "...",        # webhook signature verification
+    "app_id": "...",            # Embedded Signup actions
+})
+```
+
+The same JSON works through the environment variable, so nothing changes for
+`ToolKit`:
+
+```bash
+export TC_WHATSAPP_BUSINESS_CREDENTIALS='{"access_token":"...","phone_number_id":"..."}'
+```
+
+### Discovering what a connector needs, programmatically
+
+Platforms that build a "connect your tools" UI should not hard-code credential
+forms or scrape READMEs. Ask the connector:
+
+```python
+from toolsconnector.connectors.whatsapp_business import WhatsAppBusiness
+
+auth = WhatsAppBusiness.get_spec().auth
+auth.default                      # AuthType.BEARER_TOKEN
+provider = auth.supported[0]
+provider.api_key.param_name       # 'Authorization'
+provider.api_key.prefix           # 'Bearer'
+provider.extra["env_var"]         # 'TC_WHATSAPP_BUSINESS_CREDENTIALS'
+provider.extra["obtain_url"]      # where the user gets credentials
+provider.extra["scopes"]          # permissions the token needs
+
+for field in provider.extra["fields"]:
+    field["name"], field["label"], field["required"], field["secret"], field["help"]
+```
+
+Render one input per field, mask the ones flagged `secret`, and link
+`obtain_url` from the form. A connector that needs no credentials at all says
+so explicitly (`credential_format: "none"`, empty `fields`) — for example the
+offline `whatsapp` link connector — so the UI can skip the step instead of
+guessing.
+
+> **Status:** `whatsapp_business` and `whatsapp` are the first connectors to
+> declare this contract. Others still report an empty `auth` spec and are being
+> backfilled; check `get_spec().auth.supported` and fall back to the connector
+> README when it is empty.
+
+## Connecting on behalf of your users (OAuth-style onboarding)
+
+BYOK assumes the person running the code owns the credentials. A platform
+connecting *its users'* accounts should not ask them to paste tokens — use the
+vendor's own consent flow and let the library finish the server side.
+
+`whatsapp_business` supports this via Meta's Embedded Signup (Facebook Login
+for Business): your frontend opens Meta's popup, the user picks their account
+there, and your backend exchanges the returned code:
+
+```python
+platform = WhatsAppBusiness(credentials={"app_id": APP_ID, "app_secret": APP_SECRET})
+
+token = await platform.aexchange_code(code)         # code TTL is ~30 seconds
+info = await platform.adebug_token(token.access_token)
+waba_id = info.waba_ids[0]                          # never ask the user for ids
+```
+
+Then store the per-user token and serve it through `ToolKitFactory.for_tenant`
+(see [Isolated configuration](#isolated-configuration-toolkitfactory)).
+`debug_token` is also the cheapest health check for a stored credential —
+`is_valid` and `expires_at` (`0` means never expires) — instead of discovering
+a dead token mid-request.
+
+The library never stores tokens: it performs the protocol exchange and hands
+the result back to you (FAQ #9).
+
 ## Security Best Practices
 
 - Never commit credentials to version control. Use environment variables or a secrets manager.
