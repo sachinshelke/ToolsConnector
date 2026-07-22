@@ -245,3 +245,77 @@ class WhatsAppTokenInfo(BaseModel):
     granular_scopes: list[WhatsAppGranularScope] = Field(default_factory=list)
     waba_ids: list[str] = Field(default_factory=list)
     error: dict[str, Any] = Field(default_factory=dict)
+
+
+class WhatsAppFlowValidationError(BaseModel):
+    """One Flow JSON validation problem, with source coordinates."""
+
+    model_config = _CFG
+
+    error: str = ""
+    error_type: str = ""
+    message: str = ""
+    line_start: int = 0
+    line_end: int = 0
+    column_start: int = 0
+    column_end: int = 0
+    pointers: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class WhatsAppFlowPreview(BaseModel):
+    """Shareable web preview of a flow (not returned unless requested)."""
+
+    model_config = _CFG
+
+    preview_url: str = ""
+    expires_at: str = ""
+
+
+class WhatsAppFlow(BaseModel):
+    """A Flow asset. ``status``: DRAFT|PUBLISHED|DEPRECATED|BLOCKED|THROTTLED."""
+
+    model_config = _CFG
+
+    id: str = ""
+    name: str = ""
+    status: str = ""
+    categories: list[str] = Field(default_factory=list)
+    json_version: str = ""
+    data_api_version: str = ""
+    endpoint_uri: str = ""
+    preview: Optional[WhatsAppFlowPreview] = None
+    validation_errors: list[WhatsAppFlowValidationError] = Field(default_factory=list)
+
+
+class WhatsAppFlowMutationResult(BaseModel):
+    """Create/upload result — always check ``validation_errors``."""
+
+    model_config = _CFG
+
+    id: str = ""
+    success: bool = False
+    validation_errors: list[WhatsAppFlowValidationError] = Field(default_factory=list)
+
+
+class WhatsAppFlowAsset(BaseModel):
+    """An asset attached to a flow (the Flow JSON itself)."""
+
+    model_config = _CFG
+
+    name: str = ""
+    asset_type: str = ""
+    download_url: str = ""
+
+
+class WhatsAppMarketingEligibility(BaseModel):
+    """Marketing Messages API (MM Lite) onboarding status for the WABA."""
+
+    model_config = _CFG
+
+    id: str = ""
+    marketing_messages_onboarding_status: str = ""
+
+    @property
+    def eligible(self) -> bool:
+        """True when the WABA may use the Marketing Messages API."""
+        return self.marketing_messages_onboarding_status.upper() == "ELIGIBLE"

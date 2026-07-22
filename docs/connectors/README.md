@@ -27,7 +27,7 @@ result = kit.execute("gmail_list_emails", {"query": "is:unread"})
 
 | Category | Connectors | Actions |
 |---|---|---|
-| [Communication](communication.md) | Gmail, Slack, Discord, Outlook, Teams, Twilio, Telegram, WhatsApp Business, WhatsApp | 287 |
+| [Communication](communication.md) | Gmail, Slack, Discord, Outlook, Teams, Twilio, Telegram, WhatsApp Business, WhatsApp | 299 |
 | [AI/ML](ai-ml.md) | Anthropic, OpenAI, Pinecone, Hugging Face, Gemini, Cohere, Mistral, Groq | 172 |
 | [DevOps & Cloud](devops.md) | Cloudflare, CloudWatch, Datadog, Docker Hub, ECR, PagerDuty, Vercel | 123 |
 | [Database](database.md) | Airtable, Firestore, MongoDB, RDS, Redis, Supabase | 118 |

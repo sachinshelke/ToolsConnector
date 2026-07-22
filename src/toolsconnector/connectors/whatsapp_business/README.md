@@ -13,7 +13,7 @@
 | **Auth** | Bearer System User token + `phone_number_id` (+ optional `waba_id`, `app_secret`) |
 | **Rate Limit** | 80 msgs/sec per number (default); ~1 msg/6s per user pair |
 | **Pricing** | Service messages free; templates billed per delivered message (category × country) |
-| **Verification** | 🟢 **Tier 1 — Live verified** (2026-07-23) — 41/52 actions round-tripped against a real test WABA — messaging + webhook receive end-to-end + the W2 management surface (template CRUD, QR lifecycle, analytics with real data). See [Live verification](#live-verification). |
+| **Verification** | 🟢 **Tier 1 — Live verified** (2026-07-23) — 50/64 actions round-tripped against a real test WABA — messaging + webhook receive end-to-end + the W2 management surface (template CRUD, QR lifecycle, analytics with real data). See [Live verification](#live-verification). |
 
 ## Live verification
 
@@ -28,8 +28,10 @@ Swept 2026-07-22/23 against a real Meta test WABA (free sandbox, Graph v25.0):
 - **Webhook receive verified end-to-end** (Meta → public tunnel → localhost receiver): real inbound messages parsed (unicode + emoji survived signature verification over Meta's escaped-form payloads), Meta's duplicate redelivery observed and deduped, outbound `sent` statuses received, and `mark_as_read` / `send_typing_indicator` / `send_reaction` round-tripped against a real inbound wamid (blue ticks, typing, and the reaction all device-confirmed). The **entire webhook setup was API-automated** — `POST /{APP_ID}/subscriptions` (app token) + `POST /{WABA_ID}/subscribed_apps` — no dashboard interaction; platforms can onboard programmatically.
 
 - **Audio, video and sticker** delivered and device-confirmed (Opus/OGG, H.264+AAC MP4, 512×512 WebP).
+- **Flows CRUD end-to-end**: created a Flow, uploaded a real v7.0 Flow JSON (zero validation errors), fetched it with its preview URL, listed assets, renamed it, and deleted it — all live. Two doc-vs-wire corrections came out of it: `interactive.body` is documented optional but is **required** (omitting it returns the opaque `131008 Required parameter is missing`), and `flow_action="navigate"` requires an entry `screen` — both are now client-side guards with actionable messages.
+- **Gate probe** across every deferred surface, with the exact blocking error recorded: Flows ✅ open · Catalog endpoints ✅ reachable · Marketing Messages ✅ `ELIGIBLE` · Groups ⛔ `131215` (needs an Official Business Account) · Calling ⛔ `138000` · Payments ⛔ `10` (needs App Review). All four gate codes are now mapped to typed errors.
 
-### Not live-verified (11 of 52) — and why
+### Not live-verified (14 of 64) — and why
 
 | Action(s) | Why not |
 |---|---|
@@ -39,6 +41,9 @@ Swept 2026-07-22/23 against a real Meta test WABA (free sandbox, Graph v25.0):
 | `get_template_analytics` | Insights opt-in enabled live ✅, but Meta's per-template data lags ~24h and needs real send volume. |
 | `send_interactive` | Raw escape hatch — each subtype (Flows, catalog, address) needs its own gated setup. |
 | `exchange_code` | Needs a real Embedded Signup popup code (30-second TTL). The endpoint, app-only auth path and error mapping ARE live-verified — only the success path awaits a real ES run. |
+| `publish_flow`, `send_flow` | Gated on **business verification + high message quality** — both return `139000 Blocked by Integrity` on an unverified WABA (live-confirmed, typed as `PermissionDeniedError`). Flow *creation* and JSON upload are fully live-verified. |
+| `deprecate_flow` | Only applies to a published Flow, which the gate above prevents. |
+| `send_marketing_message` | Envelope live-verified: the request reached `/marketing_messages` and was rejected only for template category (`134100 Only marketing messages supported`). Full verification needs an APPROVED **MARKETING** template — one is pending review. |
 
 ## What this is
 

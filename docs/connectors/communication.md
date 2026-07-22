@@ -1,6 +1,6 @@
 # Communication
 
-Connectors for email, messaging, and SMS services. 9 connectors, 287 actions.
+Connectors for email, messaging, and SMS services. 9 connectors, 299 actions.
 
 ---
 
@@ -204,7 +204,7 @@ kit.execute("telegram_send_message", {"chat_id": "123456", "text": "Hello from T
 
 ### WhatsApp Business
 
-**Category:** Communication | **Auth:** System User Token (BYOK) | **Actions:** 52 | **Verification:** 🟢 Tier 1 — live-verified 2026-07-23 (41/52 round-tripped on a real test WABA incl. webhook receive end-to-end)
+**Category:** Communication | **Auth:** System User Token (BYOK) | **Actions:** 64 | **Verification:** 🟢 Tier 1 — live-verified 2026-07-23 (50/64 round-tripped on a real test WABA incl. webhook receive end-to-end)
 
 Meta's official WhatsApp Business Platform (Cloud API, Graph v25.0): free-form sends inside the 24h customer-service window, template sends outside it, media up/download, interactive buttons/lists, business profile, and pure webhook receive primitives (`verify_signature` / `handle_verification` / `parse_events`) — the HTTPS listener stays yours. Personal WhatsApp accounts have no API; see the WhatsApp link connector below.
 

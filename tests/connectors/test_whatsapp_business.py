@@ -30,6 +30,7 @@ from toolsconnector.errors import (
     APIError,
     InvalidCredentialsError,
     MissingConfigError,
+    PermissionDeniedError,
     RateLimitError,
     ServerError,
     ValidationError,
@@ -797,7 +798,7 @@ def test_spec_metadata() -> None:
     assert WhatsAppBusiness.protocol is ProtocolType.REST
     assert WhatsAppBusiness.category is ConnectorCategory.COMMUNICATION
     assert WhatsAppBusiness.verification_status == "live"
-    assert len(WhatsAppBusiness.get_actions()) == 52
+    assert len(WhatsAppBusiness.get_actions()) == 64
 
 
 def test_registered_in_discovery() -> None:
@@ -1412,3 +1413,278 @@ async def test_app_secret_scrubbed_from_errors(wa: WhatsAppBusiness) -> None:
         with pytest.raises(ValidationError) as excinfo:
             await wa.aexchange_code("ES_CODE", app_id="123")
     assert APP_SECRET not in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# Flows (in-chat forms) + Marketing Messages API
+# ---------------------------------------------------------------------------
+
+FLOW_ID = "27584511694536595"
+
+
+@pytest.mark.asyncio
+async def test_create_flow_and_validation_errors(wa: WhatsAppBusiness) -> None:
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        route = mock.post(f"/{WABA_ID}/flows").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": FLOW_ID,
+                    "success": True,
+                    "validation_errors": [
+                        {
+                            "error": "INVALID_PROPERTY",
+                            "error_type": "JSON_SCHEMA_ERROR",
+                            "message": "bad screen",
+                            "line_start": 3,
+                            "line_end": 3,
+                        }
+                    ],
+                },
+            )
+        )
+        result = await wa.acreate_flow("tc_csat", ["SURVEY"], endpoint_uri="https://x.test/flow")
+    assert json_body(route) == {
+        "name": "tc_csat",
+        "categories": ["SURVEY"],
+        "endpoint_uri": "https://x.test/flow",
+    }
+    assert result.id == FLOW_ID
+    # A 200 does NOT mean the Flow JSON is valid.
+    assert result.validation_errors[0].error == "INVALID_PROPERTY"
+    assert result.validation_errors[0].line_start == 3
+
+    with pytest.raises(ValidationError):
+        await wa.acreate_flow("", ["SURVEY"])
+
+
+@pytest.mark.asyncio
+async def test_upload_flow_json_multipart_literals(wa: WhatsAppBusiness) -> None:
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        route = mock.post(f"/{FLOW_ID}/assets").mock(
+            return_value=httpx.Response(200, json={"success": True, "validation_errors": []})
+        )
+        result = await wa.aupload_flow_json(FLOW_ID, '{"version": "7.0"}')
+    content = route.calls.last.request.content
+    # Part name and asset_type are fixed literals per Meta's reference.
+    assert b'name="flow.json"' in content or b"flow.json" in content
+    assert b"FLOW_JSON" in content
+    assert result.success is True
+
+
+@pytest.mark.asyncio
+async def test_get_flow_preview_is_opt_in(wa: WhatsAppBusiness) -> None:
+    payload = {
+        "id": FLOW_ID,
+        "name": "tc_csat",
+        "status": "DRAFT",
+        "categories": ["SURVEY"],
+        "json_version": "7.0",
+        "preview": {
+            "preview_url": "https://business.facebook.com/wa/x",
+            "expires_at": "2026-07-24T00:00:00+0000",
+        },
+    }
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        route = mock.get(f"/{FLOW_ID}").mock(return_value=httpx.Response(200, json=payload))
+        plain = await wa.aget_flow(FLOW_ID)
+        assert "preview" not in httpx.QueryParams(route.calls.last.request.url.query).get(
+            "fields", ""
+        )
+        with_preview = await wa.aget_flow(FLOW_ID, include_preview=True)
+    fields = httpx.QueryParams(route.calls.last.request.url.query).get("fields")
+    assert "preview.invalidate(false)" in fields
+    assert plain.status == "DRAFT"
+    assert with_preview.preview is not None
+    assert with_preview.preview.preview_url.startswith("https://")
+
+
+@pytest.mark.asyncio
+async def test_flow_lifecycle_endpoints(wa: WhatsAppBusiness) -> None:
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        publish = mock.post(f"/{FLOW_ID}/publish").mock(
+            return_value=httpx.Response(200, json={"success": True})
+        )
+        deprecate = mock.post(f"/{FLOW_ID}/deprecate").mock(
+            return_value=httpx.Response(200, json={"success": True})
+        )
+        delete = mock.delete(f"/{FLOW_ID}").mock(
+            return_value=httpx.Response(200, json={"success": True})
+        )
+        assets = mock.get(f"/{FLOW_ID}/assets").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {
+                            "name": "flow.json",
+                            "asset_type": "FLOW_JSON",
+                            "download_url": "https://scontent.test/flow.json",
+                        }
+                    ]
+                },
+            )
+        )
+        assert (await wa.apublish_flow(FLOW_ID)).success is True
+        assert (await wa.adeprecate_flow(FLOW_ID)).success is True
+        listed = await wa.alist_flow_assets(FLOW_ID)
+        assert (await wa.adelete_flow(FLOW_ID)).success is True
+    assert listed[0].asset_type == "FLOW_JSON"
+    assert publish.called and deprecate.called and delete.called and assets.called
+
+
+@pytest.mark.asyncio
+async def test_send_flow_payload(wa: WhatsAppBusiness) -> None:
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        route = mock.post(f"/{PHONE_ID}/messages").mock(
+            return_value=httpx.Response(200, json=SEND_ENVELOPE)
+        )
+        await wa.asend_flow(
+            "15550001111",
+            "Give feedback",
+            "How did we do?",
+            flow_id=FLOW_ID,
+            screen="FEEDBACK",
+            data={"name": "Ada"},
+            flow_token="corr-1",
+            mode="draft",
+            footer_text="TC",
+        )
+    interactive = json_body(route)["interactive"]
+    assert interactive["type"] == "flow"
+    # body is documented optional but live-verified REQUIRED.
+    assert interactive["body"] == {"text": "How did we do?"}
+    assert interactive["action"] == {
+        "name": "flow",
+        "parameters": {
+            "flow_message_version": "3",
+            "flow_cta": "Give feedback",
+            "flow_action": "navigate",
+            "flow_id": FLOW_ID,
+            "flow_token": "corr-1",
+            "mode": "draft",
+            "flow_action_payload": {"screen": "FEEDBACK", "data": {"name": "Ada"}},
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_send_flow_guards(wa: WhatsAppBusiness) -> None:
+    with respx.mock(base_url=BASE, assert_all_called=False) as mock:
+        route = mock.post(f"/{PHONE_ID}/messages")
+        # exactly one of flow_id / flow_name
+        with pytest.raises(ValidationError):
+            await wa.asend_flow("15550001111", "cta", "body")
+        with pytest.raises(ValidationError):
+            await wa.asend_flow(
+                "15550001111", "cta", "body", flow_id="1", flow_name="n", screen="S"
+            )
+        # navigate needs an entry screen (upstream gives an opaque 131008)
+        with pytest.raises(ValidationError):
+            await wa.asend_flow("15550001111", "cta", "body", flow_id="1")
+        # body is required
+        with pytest.raises(ValidationError):
+            await wa.asend_flow("15550001111", "cta", "", flow_id="1", screen="S")
+    assert not route.called
+
+
+@pytest.mark.asyncio
+async def test_send_flow_data_exchange_needs_no_screen(wa: WhatsAppBusiness) -> None:
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        route = mock.post(f"/{PHONE_ID}/messages").mock(
+            return_value=httpx.Response(200, json=SEND_ENVELOPE)
+        )
+        await wa.asend_flow(
+            "15550001111",
+            "Start",
+            "Tap to begin",
+            flow_id=FLOW_ID,
+            flow_action="data_exchange",
+        )
+    params = json_body(route)["interactive"]["action"]["parameters"]
+    assert params["flow_action"] == "data_exchange"
+    assert "flow_action_payload" not in params
+
+
+def test_nfm_reply_parses_from_webhook() -> None:
+    # A completed Flow arrives as interactive.nfm_reply; response_json is a
+    # JSON-ENCODED STRING that echoes flow_token.
+    value = {
+        "messaging_product": "whatsapp",
+        "metadata": _METADATA,
+        "messages": [
+            {
+                "from": "15550002222",
+                "id": "wamid.FLOW1",
+                "timestamp": "1",
+                "type": "interactive",
+                "interactive": {
+                    "type": "nfm_reply",
+                    "nfm_reply": {
+                        "name": "flow",
+                        "body": "Sent",
+                        "response_json": '{"flow_token":"corr-1","rating":"5"}',
+                    },
+                },
+            }
+        ],
+    }
+    [event] = parse_events(_envelope("messages", value))
+    reply = event.messages_value.messages[0].interactive.nfm_reply
+    assert reply["name"] == "flow"
+    inner = json.loads(reply["response_json"])
+    assert inner["flow_token"] == "corr-1"
+    assert inner["rating"] == "5"
+
+
+@pytest.mark.asyncio
+async def test_marketing_eligibility_and_send(wa: WhatsAppBusiness) -> None:
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        mock.get(f"/{WABA_ID}").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": WABA_ID,
+                    "marketing_messages_onboarding_status": "ELIGIBLE",
+                },
+            )
+        )
+        eligibility = await wa.aget_marketing_eligibility()
+        route = mock.post(f"/{PHONE_ID}/marketing_messages").mock(
+            return_value=httpx.Response(200, json=SEND_ENVELOPE)
+        )
+        await wa.asend_marketing_message(
+            "15550001111",
+            "flash_sale",
+            "en_US",
+            message_activity_sharing=True,
+            tracking_data="camp-7",
+        )
+    assert eligibility.eligible is True
+    assert json_body(route) == {
+        "messaging_product": "whatsapp",
+        "to": "15550001111",
+        "type": "template",
+        "template": {"name": "flash_sale", "language": {"code": "en_US"}},
+        "message_activity_sharing": True,
+        "biz_opaque_callback_data": "camp-7",
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        (139000, PermissionDeniedError),  # Blocked by Integrity (verification gate)
+        (131215, PermissionDeniedError),  # Groups not eligible (OBA gate)
+        (138000, PermissionDeniedError),  # Calling API not enabled
+        (134100, ValidationError),  # non-marketing template on MM API
+    ],
+)
+async def test_gate_codes_typed_from_live_probes(
+    wa: WhatsAppBusiness, code: int, expected: type[Exception]
+) -> None:
+    with respx.mock(base_url=BASE) as mock:
+        mock.post(f"/{PHONE_ID}/messages").mock(return_value=_graph_error(400, code, "gated"))
+        with pytest.raises(expected):
+            await wa.asend_text("15550001111", "hi")

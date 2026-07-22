@@ -69,6 +69,10 @@ from toolsconnector.types import PageState, PaginatedList
 from .types import (
     WhatsAppBlockResult,
     WhatsAppBusinessProfile,
+    WhatsAppFlow,
+    WhatsAppFlowAsset,
+    WhatsAppFlowMutationResult,
+    WhatsAppMarketingEligibility,
     WhatsAppMediaContent,
     WhatsAppMediaInfo,
     WhatsAppPhoneNumber,
@@ -95,8 +99,12 @@ _APP_ID_KEYS = ("app_id", "client_id")
 # Cloud API returns 400 for most failures with the real code in the body).
 _RATE_LIMIT_CODES = {4, 17, 80007, 130429, 131048, 131056, 133016}
 _AUTH_CODES = {190, 0}
-_PERMISSION_CODES = {10, 200, 299, 131031}
-_VALIDATION_CODES = {100, 131008, 131009, 131051, 130501}
+# 139000 Blocked by Integrity (business-verification / quality gate),
+# 131215 Groups not eligible, 138000 Calling not enabled — all "your account
+# may not do this", not server faults (live-verified 2026-07-23).
+_PERMISSION_CODES = {10, 200, 299, 131031, 131215, 138000, 139000}
+# 134100 = Marketing Messages API given a non-marketing template.
+_VALIDATION_CODES = {100, 131008, 131009, 131051, 130501, 134100}
 
 _MAX_BUTTONS = 3
 _MAX_LIST_ROWS = 10
@@ -174,7 +182,7 @@ class WhatsAppBusiness(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://graph.facebook.com/v25.0"
     # Tier 1 — LIVE-verified 2026-07-22/23 against a real Meta test WABA
-    # (Graph v25.0), contract-scoped like contactout: 41/52 actions
+    # (Graph v25.0), contract-scoped like contactout: 50/64 actions
     # round-tripped with device-confirmed delivery of all 11 message types
     # (text, threaded reply, image, document, location, contacts, buttons,
     # list, cta_url, location_request, hello_world template) + media
@@ -1892,6 +1900,397 @@ class WhatsAppBusiness(BaseConnector):
         Endpoint: ``GET /<WABA_ID>/subscribed_apps``.
         """
         return await self._request("GET", self._waba_path("subscribed_apps"))
+
+    # ------------------------------------------------------------------
+    # Flows — in-chat forms (CSAT, booking, lead capture, KYC)
+    # ------------------------------------------------------------------
+
+    @action("Create a Flow (in-chat form); returns it in DRAFT")
+    async def create_flow(
+        self,
+        name: str,
+        categories: list[str],
+        flow_json: Optional[str] = None,
+        endpoint_uri: Optional[str] = None,
+        clone_flow_id: Optional[str] = None,
+        publish: bool = False,
+    ) -> WhatsAppFlowMutationResult:
+        """Create a Flow on the WABA.
+
+        Endpoint: ``POST /<WABA_ID>/flows``.
+
+        Anyone can create and build Flows; **publishing and sending** need
+        business verification and high message quality. Always inspect
+        ``validation_errors`` — a create can return 200 with a broken
+        Flow JSON.
+
+        Args:
+            name: Flow name.
+            categories: One or more of ``SIGN_UP``, ``SIGN_IN``,
+                ``APPOINTMENT_BOOKING``, ``LEAD_GENERATION``,
+                ``CONTACT_US``, ``CUSTOMER_SUPPORT``, ``SURVEY``,
+                ``OTHER``.
+            flow_json: Optional Flow JSON (string) to attach immediately;
+                otherwise upload it later with ``upload_flow_json``.
+            endpoint_uri: Optional data-channel endpoint for
+                ``data_exchange`` flows.
+            clone_flow_id: Optional id of a flow to clone.
+            publish: Publish immediately (requires business verification).
+
+        Returns:
+            The new flow id plus any Flow JSON validation errors.
+        """
+        if not name or not categories:
+            raise ValidationError("name and categories are required.", connector=self.name)
+        body: dict[str, Any] = {"name": name, "categories": categories}
+        for key, value in (
+            ("flow_json", flow_json),
+            ("endpoint_uri", endpoint_uri),
+            ("clone_flow_id", clone_flow_id),
+        ):
+            if value is not None:
+                body[key] = value
+        if publish:
+            body["publish"] = True
+        raw = await self._request("POST", self._waba_path("flows"), json_body=body)
+        return safe_validate(WhatsAppFlowMutationResult, raw) or WhatsAppFlowMutationResult()
+
+    @action("List Flows on the WhatsApp Business Account")
+    async def list_flows(
+        self,
+        limit: int = 25,
+        after: Optional[str] = None,
+    ) -> PaginatedList[WhatsAppFlow]:
+        """List the WABA's Flows (cursor-paginated).
+
+        Endpoint: ``GET /<WABA_ID>/flows``.
+
+        Args:
+            limit: Page size (1..100).
+            after: Cursor from the previous page.
+        """
+        size = max(1, min(safe_int(limit, 25), 100))
+        params: dict[str, Any] = {"limit": size}
+        if after:
+            params["after"] = after
+        raw = await self._request("GET", self._waba_path("flows"), params=params)
+        items = validate_list(WhatsAppFlow, raw.get("data"))
+        paging_raw = raw.get("paging")
+        paging: dict[str, Any] = paging_raw if isinstance(paging_raw, dict) else {}
+        cursors_raw = paging.get("cursors")
+        cursors: dict[str, Any] = cursors_raw if isinstance(cursors_raw, dict) else {}
+        next_cursor = str(cursors.get("after") or "")
+        has_more = bool(items) and bool(paging.get("next")) and bool(next_cursor)
+        result: PaginatedList[WhatsAppFlow] = PaginatedList(
+            items=items,
+            page_state=PageState(cursor=next_cursor or None, has_more=has_more),
+        )
+        if has_more:
+            # `a`-prefixed sibling is bound at runtime by BaseConnector.
+            result._fetch_next = lambda c=next_cursor: self.alist_flows(  # type: ignore[attr-defined]
+                limit=size, after=c
+            )
+        return result
+
+    @action("Get a Flow's status, categories, and validation errors")
+    async def get_flow(self, flow_id: str, include_preview: bool = False) -> WhatsAppFlow:
+        """Fetch one Flow.
+
+        Endpoint: ``GET /<FLOW_ID>``.
+
+        Args:
+            flow_id: The Flow id.
+            include_preview: Also request the shareable web preview URL
+                (not returned by default).
+        """
+        if not flow_id:
+            raise ValidationError("flow_id is required.", connector=self.name)
+        fields = (
+            "id,name,status,categories,validation_errors,json_version,data_api_version,endpoint_uri"
+        )
+        if include_preview:
+            fields += ",preview.invalidate(false)"
+        raw = await self._request("GET", f"/{flow_id}", params={"fields": fields})
+        return safe_validate(WhatsAppFlow, raw) or WhatsAppFlow()
+
+    @action("Update a Flow's metadata", dangerous=True)
+    async def update_flow(
+        self,
+        flow_id: str,
+        name: Optional[str] = None,
+        categories: Optional[list[str]] = None,
+        endpoint_uri: Optional[str] = None,
+    ) -> WhatsAppSuccessResult:
+        """Rename a Flow or change its categories / data endpoint.
+
+        Endpoint: ``POST /<FLOW_ID>``.
+
+        Args:
+            flow_id: The Flow id.
+            name: New name.
+            categories: Replacement category list.
+            endpoint_uri: Data-channel endpoint for ``data_exchange``.
+        """
+        if not flow_id:
+            raise ValidationError("flow_id is required.", connector=self.name)
+        body: dict[str, Any] = {}
+        for key, value in (
+            ("name", name),
+            ("categories", categories),
+            ("endpoint_uri", endpoint_uri),
+        ):
+            if value is not None:
+                body[key] = value
+        if not body:
+            raise ValidationError("Provide at least one field to update.", connector=self.name)
+        raw = await self._request("POST", f"/{flow_id}", json_body=body)
+        return safe_validate(WhatsAppSuccessResult, raw) or WhatsAppSuccessResult()
+
+    @action("Upload the Flow JSON that defines the form's screens")
+    async def upload_flow_json(self, flow_id: str, flow_json: str) -> WhatsAppFlowMutationResult:
+        """Attach/replace a Flow's JSON definition (max 10 MB).
+
+        Endpoint: ``POST /<FLOW_ID>/assets`` (multipart; the part name and
+        asset type are fixed literals).
+
+        Args:
+            flow_id: The Flow id.
+            flow_json: The Flow JSON document as a string.
+
+        Returns:
+            Result with ``validation_errors`` — a 200 does NOT mean the
+            Flow JSON is valid.
+        """
+        if not flow_id or not flow_json:
+            raise ValidationError("flow_id and flow_json are required.", connector=self.name)
+        raw = await self._request(
+            "POST",
+            f"/{flow_id}/assets",
+            files={"file": ("flow.json", flow_json.encode("utf-8"), "application/json")},
+            data={"name": "flow.json", "asset_type": "FLOW_JSON"},
+        )
+        return safe_validate(WhatsAppFlowMutationResult, raw) or WhatsAppFlowMutationResult()
+
+    @action("List a Flow's assets (its Flow JSON download URL)")
+    async def list_flow_assets(self, flow_id: str) -> list[WhatsAppFlowAsset]:
+        """List assets attached to a Flow.
+
+        Endpoint: ``GET /<FLOW_ID>/assets``.
+
+        Args:
+            flow_id: The Flow id.
+        """
+        if not flow_id:
+            raise ValidationError("flow_id is required.", connector=self.name)
+        raw = await self._request("GET", f"/{flow_id}/assets")
+        return validate_list(WhatsAppFlowAsset, raw.get("data"))
+
+    @action("Publish a Flow so it can be sent", dangerous=True)
+    async def publish_flow(self, flow_id: str) -> WhatsAppSuccessResult:
+        """Move a Flow from DRAFT to PUBLISHED.
+
+        Endpoint: ``POST /<FLOW_ID>/publish``.
+
+        Requires business verification and high message quality. Published
+        Flows can no longer be edited — clone to iterate.
+
+        Args:
+            flow_id: The Flow id.
+        """
+        if not flow_id:
+            raise ValidationError("flow_id is required.", connector=self.name)
+        raw = await self._request("POST", f"/{flow_id}/publish")
+        return safe_validate(WhatsAppSuccessResult, raw) or WhatsAppSuccessResult()
+
+    @action("Deprecate a published Flow", dangerous=True)
+    async def deprecate_flow(self, flow_id: str) -> WhatsAppSuccessResult:
+        """Retire a published Flow (existing sends stop working).
+
+        Endpoint: ``POST /<FLOW_ID>/deprecate``.
+
+        Args:
+            flow_id: The Flow id.
+        """
+        if not flow_id:
+            raise ValidationError("flow_id is required.", connector=self.name)
+        raw = await self._request("POST", f"/{flow_id}/deprecate")
+        return safe_validate(WhatsAppSuccessResult, raw) or WhatsAppSuccessResult()
+
+    @action("Delete a draft Flow", dangerous=True)
+    async def delete_flow(self, flow_id: str) -> WhatsAppSuccessResult:
+        """Delete a Flow (drafts only — published Flows must be deprecated).
+
+        Endpoint: ``DELETE /<FLOW_ID>``.
+
+        Args:
+            flow_id: The Flow id.
+        """
+        if not flow_id:
+            raise ValidationError("flow_id is required.", connector=self.name)
+        raw = await self._request("DELETE", f"/{flow_id}")
+        return safe_validate(WhatsAppSuccessResult, raw) or WhatsAppSuccessResult()
+
+    @action("Send a Flow (in-chat form) to a user")
+    async def send_flow(
+        self,
+        to: str,
+        flow_cta: str,
+        body: str,
+        flow_id: Optional[str] = None,
+        flow_name: Optional[str] = None,
+        screen: Optional[str] = None,
+        data: Optional[dict[str, Any]] = None,
+        flow_token: Optional[str] = None,
+        flow_action: str = "navigate",
+        mode: str = "published",
+        header_text: Optional[str] = None,
+        footer_text: Optional[str] = None,
+        tracking_data: Optional[str] = None,
+    ) -> WhatsAppSendResult:
+        """Send an interactive Flow message (24h window).
+
+        Endpoint: ``POST /<PHONE_NUMBER_ID>/messages``
+        (``interactive.type = "flow"``).
+
+        The user's completed form arrives on the ``messages`` webhook as
+        ``interactive.nfm_reply`` — its ``response_json`` is a
+        JSON-**encoded string** you must parse, and it echoes back
+        ``flow_token`` so you can correlate the reply to the send.
+
+        Args:
+            to: Recipient number (E.164 digits).
+            flow_cta: Button label (Meta advises <= 30 characters).
+            body: Body text shown above the button. Documented as
+                optional, but live-verified as **required** — omitting it
+                fails with "(#131008) Required parameter is missing".
+            flow_id: The Flow to send — provide exactly one of
+                ``flow_id`` / ``flow_name``.
+            flow_name: Alternative to ``flow_id``.
+            screen: Entry screen id (used with ``navigate``).
+            data: Initial data passed to that screen.
+            flow_token: Your own correlation token, echoed back in the
+                reply (optional but recommended).
+            flow_action: ``navigate`` (default) or ``data_exchange``.
+            mode: ``published`` (default) or ``draft`` for testing an
+                unpublished Flow.
+            header_text: Optional text header.
+            footer_text: Optional footer.
+            tracking_data: Echoed back on status webhooks.
+        """
+        if bool(flow_id) == bool(flow_name):
+            raise ValidationError(
+                "Provide exactly one of flow_id or flow_name.",
+                connector=self.name,
+            )
+        if not flow_cta or not body:
+            raise ValidationError("flow_cta and body are required.", connector=self.name)
+        # Live-verified 2026-07-23: navigate without an entry screen is
+        # rejected upstream with the opaque "(#131008) Required parameter
+        # is missing" — fail here with something actionable instead.
+        if flow_action == "navigate" and not screen:
+            raise ValidationError(
+                "flow_action='navigate' requires the entry 'screen' id.",
+                connector=self.name,
+            )
+        parameters: dict[str, Any] = {
+            "flow_message_version": "3",
+            "flow_cta": flow_cta,
+            "flow_action": flow_action,
+        }
+        parameters["flow_id" if flow_id else "flow_name"] = flow_id or flow_name
+        if flow_token:
+            parameters["flow_token"] = flow_token
+        if mode and mode != "published":
+            parameters["mode"] = mode
+        if screen is not None or data is not None:
+            payload: dict[str, Any] = {}
+            if screen is not None:
+                payload["screen"] = screen
+            if data is not None:
+                payload["data"] = data
+            parameters["flow_action_payload"] = payload
+        interactive: dict[str, Any] = {
+            "type": "flow",
+            "action": {"name": "flow", "parameters": parameters},
+        }
+        interactive["body"] = {"text": body}
+        if header_text:
+            interactive["header"] = {"type": "text", "text": header_text}
+        if footer_text:
+            interactive["footer"] = {"text": footer_text}
+        return await self._send(to, "interactive", interactive, tracking_data=tracking_data)
+
+    # ------------------------------------------------------------------
+    # Marketing Messages API (formerly "MM Lite")
+    # ------------------------------------------------------------------
+
+    @action("Check whether the WABA can use the Marketing Messages API")
+    async def get_marketing_eligibility(self) -> WhatsAppMarketingEligibility:
+        """Read the WABA's Marketing Messages API onboarding status.
+
+        Endpoint:
+        ``GET /<WABA_ID>?fields=marketing_messages_onboarding_status``.
+
+        Returns:
+            Status (``ELIGIBLE`` when the API may be used).
+        """
+        raw = await self._request(
+            "GET",
+            self._waba_path("").rstrip("/"),
+            params={"fields": "marketing_messages_onboarding_status"},
+        )
+        return safe_validate(WhatsAppMarketingEligibility, raw) or WhatsAppMarketingEligibility()
+
+    @action("Send a marketing template via the Marketing Messages API")
+    async def send_marketing_message(
+        self,
+        to: str,
+        template_name: str,
+        language_code: str = "en_US",
+        components: Optional[list[dict[str, Any]]] = None,
+        message_activity_sharing: Optional[bool] = None,
+        tracking_data: Optional[str] = None,
+    ) -> WhatsAppSendResult:
+        """Send a MARKETING template through Meta's optimized delivery path.
+
+        Endpoint: ``POST /<PHONE_NUMBER_ID>/marketing_messages``.
+
+        Send-only and **marketing-category templates only** — other
+        categories belong on ``send_template``. Status webhooks arrive as
+        usual but carry ``pricing.category = "marketing_lite"``. Requires
+        the business to have accepted the Marketing Messages API terms
+        (check with ``get_marketing_eligibility``).
+
+        Args:
+            to: Recipient number (E.164 digits).
+            template_name: An approved MARKETING template.
+            language_code: Template locale, e.g. ``en_US``.
+            components: Parameter components, same shape as
+                ``send_template``.
+            message_activity_sharing: Opt in to extra **click** webhook
+                events when the user taps a CTA URL.
+            tracking_data: Echoed back on status webhooks.
+        """
+        if not template_name:
+            raise ValidationError("template_name is required.", connector=self.name)
+        template: dict[str, Any] = {
+            "name": template_name,
+            "language": {"code": language_code},
+        }
+        if components is not None:
+            template["components"] = components
+        payload: dict[str, Any] = {
+            "messaging_product": "whatsapp",
+            "to": self._require_to(to),
+            "type": "template",
+            "template": template,
+        }
+        if message_activity_sharing is not None:
+            payload["message_activity_sharing"] = bool(message_activity_sharing)
+        if tracking_data:
+            payload["biz_opaque_callback_data"] = tracking_data
+        raw = await self._request("POST", self._phone_path("marketing_messages"), json_body=payload)
+        return safe_validate(WhatsAppSendResult, raw) or WhatsAppSendResult()
 
     # ------------------------------------------------------------------
     # Embedded Signup — platform onboarding ("Connect WhatsApp" button)
