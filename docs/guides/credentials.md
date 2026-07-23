@@ -61,19 +61,29 @@ If none resolve, `MissingConfigError` is raised with an actionable suggestion li
 
 Use a `KeyStore` implementation for programmatic credential management with features like TTL-based expiry.
 
+> **Note:** `ToolKit` does **not** take a `keystore=` argument today. A
+> KeyStore is used by the auth providers (for persisting refreshed OAuth2
+> tokens, see below) and by your own code as the place you read credentials
+> *from* before handing them to `ToolKit`. Wiring a KeyStore directly into
+> `ToolKit`/`ToolKitFactory` as a credential *source* is tracked as part of
+> the `toolsconnector.auth` work (ARCHITECTURE_FAQ #20).
+
 ```python
+import asyncio
+
 from toolsconnector.serve import ToolKit
 from toolsconnector.keystore import InMemoryKeyStore
 
 store = InMemoryKeyStore()
-
-# Pre-populate the store
-import asyncio
 asyncio.run(store.set("gmail:default:access_token", "ya29.token", ttl=3600))
-asyncio.run(store.set("slack:default:bot_token", "xoxb-token"))
 
-kit = ToolKit(["gmail", "slack"], keystore=store)
+# Read from the store, then pass credentials in the normal way.
+token = asyncio.run(store.get("gmail:default:access_token"))
+kit = ToolKit(["gmail"], credentials={"gmail": token})
 ```
+
+Keys follow the `{connector}:{tenant}:{credential_type}` convention, which is
+also what `OAuth2Provider` uses when it persists refreshed tokens.
 
 Built-in KeyStore implementations:
 
@@ -228,6 +238,20 @@ guessing.
 > declare this contract. Others still report an empty `auth` spec and are being
 > backfilled; check `get_spec().auth.supported` and fall back to the connector
 > README when it is empty.
+
+### Verifying every connector at startup
+
+`ToolKit(..., verify_on_init=True)` health-checks each connector as it starts
+and records the outcome:
+
+```python
+kit = ToolKit(["whatsapp_business"], credentials=..., verify_on_init=True)
+kit.get_connector_status()      # {'whatsapp_business': 'degraded'} on bad credentials
+```
+
+This is only as good as the connector's `_health_check` implementation — one
+that has not overridden the hook always reports healthy, so a `healthy`
+result there means "not checked", not "verified".
 
 ### Validating credentials before you trust them
 
