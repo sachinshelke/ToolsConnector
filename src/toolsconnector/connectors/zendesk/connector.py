@@ -14,6 +14,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -51,6 +52,16 @@ class Zendesk(BaseConnector):
         "Connect to Zendesk to manage support tickets, users, and search across your help desk."
     )
     _rate_limit_config = RateLimitSpec(rate=400, period=60, burst=50)
+    _default_auth_type = AuthType.BASIC
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("email", "Account email", secret=False),
+            auth_field("api_token", "API token"),
+            auth_field("subdomain", "Zendesk subdomain", secret=False),
+        ],
+        prefix="Basic",
+        obtain_url="https://developer.zendesk.com/documentation/ticketing/getting-started/getting-a-token/",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

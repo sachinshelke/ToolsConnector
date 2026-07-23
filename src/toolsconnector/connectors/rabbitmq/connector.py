@@ -15,6 +15,7 @@ import httpx
 
 from toolsconnector.errors import APIError, NotFoundError, RateLimitError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -52,6 +53,15 @@ class RabbitMQ(BaseConnector):
         "messages, and monitor broker health."
     )
     _rate_limit_config = RateLimitSpec(rate=60, period=1, burst=30)
+    _default_auth_type = AuthType.BASIC
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("username", "Username", secret=False),
+            auth_field("password", "Password"),
+        ],
+        prefix="Basic",
+        obtain_url="https://rabbitmq.com/docs/management",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

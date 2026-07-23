@@ -15,6 +15,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -62,6 +63,16 @@ class Pinecone(BaseConnector):
         "upsert, query, fetch, delete, and index management."
     )
     _rate_limit_config = RateLimitSpec(rate=100, period=60, burst=30)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("api_key", "API key"),
+            auth_field("index_host", "Index host", required=False, secret=False),
+        ],
+        auth_type=AuthType.API_KEY,
+        header="Api-Key",
+        obtain_url="https://app.pinecone.io/",
+    )
 
     # ------------------------------------------------------------------
     # Credential parsing

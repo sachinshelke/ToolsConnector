@@ -22,6 +22,7 @@ import httpx
 from toolsconnector.connectors._aws.signing import sign_v4
 from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, aws_sigv4_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -62,6 +63,11 @@ class SQS(BaseConnector):
         "and manage messages in distributed queues."
     )
     _rate_limit_config = RateLimitSpec(rate=100, period=1, burst=300)
+    _default_auth_type = AuthType.AWS_SIGV4
+    _auth_providers_config = aws_sigv4_auth(
+        service="sqs",
+        docs_url="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

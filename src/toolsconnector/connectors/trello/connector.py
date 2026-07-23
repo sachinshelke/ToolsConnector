@@ -14,6 +14,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -59,6 +60,16 @@ class Trello(BaseConnector):
     base_url = "https://api.trello.com/1"
     description = "Connect to Trello to manage boards, lists, cards, and comments."
     _rate_limit_config = RateLimitSpec(rate=100, period=10, burst=30)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("api_key", "API key", secret=False),
+            auth_field("token", "API token"),
+        ],
+        auth_type=AuthType.API_KEY,
+        header="",
+        obtain_url="https://trello.com/power-ups/admin",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

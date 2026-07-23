@@ -13,6 +13,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, header_key_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -153,6 +154,13 @@ class PagerDuty(BaseConnector):
         "view on-call schedules, and acknowledge incidents."
     )
     _rate_limit_config = RateLimitSpec(rate=960, period=60, burst=50)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = header_key_auth(
+        "Authorization",
+        label="API token",
+        prefix="Token token=",
+        obtain_url="https://support.pagerduty.com/main/docs/api-access-keys",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

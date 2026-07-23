@@ -29,6 +29,7 @@ from toolsconnector.errors import (
     TransportError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -110,6 +111,14 @@ class Stripe(BaseConnector):
         "payment intents, invoices, and account balance."
     )
     _rate_limit_config = RateLimitSpec(rate=100, period=1, burst=25)
+    _default_auth_type = AuthType.BASIC
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("api_key", "Secret API key"),
+        ],
+        prefix="Basic",
+        obtain_url="https://dashboard.stripe.com/apikeys",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

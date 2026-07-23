@@ -23,6 +23,7 @@ from toolsconnector.errors import (
     TransportError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, service_account_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -141,6 +142,10 @@ class GoogleDrive(BaseConnector):
     verification_status = "live"  # Tier 1 — live-verified 2026-05-28
     description = "Connect to Google Drive to manage files and folders."
     _rate_limit_config = RateLimitSpec(rate=600, period=60, burst=100)
+    _default_auth_type = AuthType.OAUTH2
+    _auth_providers_config = service_account_auth(
+        docs_url="https://developers.google.com/drive/api/reference/rest/v3"
+    )
 
     # ------------------------------------------------------------------
     # Internal helpers

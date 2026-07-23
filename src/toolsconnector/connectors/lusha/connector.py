@@ -50,6 +50,7 @@ from toolsconnector.errors import (
     TimeoutError as ToolsConnectorTimeoutError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, header_key_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -102,6 +103,13 @@ class Lusha(BaseConnector):
         "reported per call. Wraps Lusha's own API — no scraping."
     )
     _rate_limit_config = RateLimitSpec(rate=20, period=1, burst=10)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = header_key_auth(
+        "api_key",
+        label="API key",
+        hint="Lusha sends the key in a custom `api_key` header, not Authorization.",
+        obtain_url="https://dashboard.lusha.com",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

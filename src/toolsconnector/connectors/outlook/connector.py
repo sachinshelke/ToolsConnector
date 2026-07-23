@@ -13,6 +13,7 @@ import httpx
 
 from toolsconnector.errors import APIError, NotFoundError, RateLimitError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -70,6 +71,11 @@ class Outlook(BaseConnector):
     base_url = "https://graph.microsoft.com/v1.0"
     description = "Connect to Microsoft Outlook to read, send, and manage emails via MS Graph."
     _rate_limit_config = RateLimitSpec(rate=10000, period=600, burst=100)
+    _default_auth_type = AuthType.BEARER_TOKEN
+    _auth_providers_config = bearer_auth(
+        label="API token",
+        obtain_url="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

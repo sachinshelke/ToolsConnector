@@ -22,6 +22,7 @@ from toolsconnector.errors import (
     TransportError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, service_account_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -169,6 +170,10 @@ class GoogleCalendar(BaseConnector):
     verification_status = "live"  # Tier 1 — 20/20 actions live-verified 2026-05-28
     description = "Connect to Google Calendar to manage events and calendars."
     _rate_limit_config = RateLimitSpec(rate=600, period=60, burst=100)
+    _default_auth_type = AuthType.OAUTH2
+    _auth_providers_config = service_account_auth(
+        docs_url="https://developers.google.com/calendar/api/v3/reference"
+    )
 
     # ------------------------------------------------------------------
     # Internal helpers

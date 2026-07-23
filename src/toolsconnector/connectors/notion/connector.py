@@ -108,6 +108,7 @@ from toolsconnector.errors import (
     ValidationError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -288,6 +289,11 @@ class Notion(BaseConnector):
         "Connect to Notion to search, create, and manage pages, databases, and content blocks."
     )
     _rate_limit_config = RateLimitSpec(rate=3, period=1, burst=3)
+    _default_auth_type = AuthType.BEARER_TOKEN
+    _auth_providers_config = bearer_auth(
+        label="API token",
+        obtain_url="https://www.notion.so/my-integrations",
+    )
 
     # ------------------------------------------------------------------
     # Internal helpers

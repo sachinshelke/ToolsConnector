@@ -15,6 +15,7 @@ import httpx
 
 from toolsconnector.errors import APIError, NotFoundError, RateLimitError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -119,6 +120,15 @@ class Confluence(BaseConnector):
     base_url = "https://your-domain.atlassian.net/wiki/api/v2"
     description = "Connect to Confluence to manage pages and spaces via the Atlassian v2 API."
     _rate_limit_config = RateLimitSpec(rate=100, period=60, burst=20)
+    _default_auth_type = AuthType.BASIC
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("email", "Account email", secret=False),
+            auth_field("api_token", "API token"),
+        ],
+        prefix="Basic",
+        obtain_url="https://id.atlassian.com/manage-profile/security/api-tokens",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

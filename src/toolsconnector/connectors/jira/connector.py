@@ -9,6 +9,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -61,6 +62,15 @@ class Jira(BaseConnector):
         "Connect to Jira to search, create, and manage issues, projects, and workflow transitions."
     )
     _rate_limit_config = RateLimitSpec(rate=100, period=60, burst=20)
+    _default_auth_type = AuthType.BASIC
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("email", "Account email", secret=False),
+            auth_field("api_token", "API token"),
+        ],
+        prefix="Basic",
+        obtain_url="https://id.atlassian.com/manage-profile/security/api-tokens",
+    )
 
     # ------------------------------------------------------------------
     # Internal helpers

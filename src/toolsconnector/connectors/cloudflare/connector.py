@@ -13,6 +13,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -96,6 +97,11 @@ class Cloudflare(BaseConnector):
         "Connect to Cloudflare to manage zones, DNS records, purge cache, and view analytics."
     )
     _rate_limit_config = RateLimitSpec(rate=1200, period=300, burst=50)
+    _default_auth_type = AuthType.BEARER_TOKEN
+    _auth_providers_config = bearer_auth(
+        label="API token",
+        obtain_url="https://dash.cloudflare.com/profile/api-tokens",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

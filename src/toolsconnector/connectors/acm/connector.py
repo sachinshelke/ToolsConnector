@@ -24,6 +24,7 @@ from toolsconnector.connectors._aws.auth import parse_credentials
 from toolsconnector.connectors._aws.signing import sign_v4
 from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, aws_sigv4_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -59,6 +60,10 @@ class ACM(BaseConnector):
     base_url = "https://acm.us-east-1.amazonaws.com"
     description = "Request, manage, and deploy SSL/TLS certificates."
     _rate_limit_config = RateLimitSpec(rate=20, period=1, burst=40)
+    _default_auth_type = AuthType.AWS_SIGV4
+    _auth_providers_config = aws_sigv4_auth(
+        service="acm", docs_url="https://docs.aws.amazon.com/acm/latest/APIReference/"
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

@@ -9,6 +9,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -47,6 +48,15 @@ class Freshdesk(BaseConnector):
         "Connect to Freshdesk helpdesk to manage support tickets, contacts, and conversations."
     )
     _rate_limit_config = RateLimitSpec(rate=50, period=60, burst=10)
+    _default_auth_type = AuthType.BASIC
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("api_key", "API key"),
+            auth_field("domain", "Freshdesk domain", secret=False),
+        ],
+        prefix="Basic",
+        obtain_url="https://support.freshdesk.com/en/support/solutions/articles/215517",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

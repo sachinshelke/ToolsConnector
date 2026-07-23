@@ -14,6 +14,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, header_key_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -85,6 +86,12 @@ class GitLab(BaseConnector):
     base_url = "https://gitlab.com/api/v4"
     description = "Connect to GitLab to manage projects, issues, MRs, and pipelines."
     _rate_limit_config = RateLimitSpec(rate=2000, period=60, burst=200)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = header_key_auth(
+        "PRIVATE-TOKEN",
+        label="Personal access token",
+        obtain_url="https://gitlab.com/-/user_settings/personal_access_tokens",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

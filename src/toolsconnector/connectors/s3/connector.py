@@ -27,6 +27,7 @@ import httpx
 from toolsconnector.connectors._aws.signing import sign_v4
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, aws_sigv4_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -91,6 +92,10 @@ class S3(BaseConnector):
         "upload/download files, and copy objects between buckets."
     )
     _rate_limit_config = RateLimitSpec(rate=5500, period=1, burst=1000)
+    _default_auth_type = AuthType.AWS_SIGV4
+    _auth_providers_config = aws_sigv4_auth(
+        service="s3", docs_url="https://docs.aws.amazon.com/AmazonS3/latest/API/"
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

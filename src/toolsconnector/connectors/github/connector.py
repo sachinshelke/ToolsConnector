@@ -27,6 +27,7 @@ from toolsconnector.errors import (
     TimeoutError as ToolsConnectorTimeoutError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -113,6 +114,11 @@ class GitHub(BaseConnector):
         "releases, workflows, files, gists, and more."
     )
     _rate_limit_config = RateLimitSpec(rate=5000, period=3600, burst=100)
+    _default_auth_type = AuthType.BEARER_TOKEN
+    _auth_providers_config = bearer_auth(
+        label="API token",
+        obtain_url="https://github.com/settings/tokens",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

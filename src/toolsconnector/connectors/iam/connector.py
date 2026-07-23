@@ -31,6 +31,7 @@ import httpx
 from toolsconnector.connectors._aws.signing import sign_v4
 from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, aws_sigv4_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -138,6 +139,10 @@ class IAM(BaseConnector):
     base_url = "https://iam.amazonaws.com"
     description = "Manage IAM roles, policies, instance profiles, and access keys."
     _rate_limit_config = RateLimitSpec(rate=15, period=1, burst=30)
+    _default_auth_type = AuthType.AWS_SIGV4
+    _auth_providers_config = aws_sigv4_auth(
+        service="iam", docs_url="https://docs.aws.amazon.com/IAM/latest/APIReference/"
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

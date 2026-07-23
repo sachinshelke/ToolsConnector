@@ -106,6 +106,7 @@ from toolsconnector.errors import (
     TimeoutError as ToolsConnectorTimeoutError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -198,6 +199,11 @@ class LinkedIn(BaseConnector):
     # (UTC daily window). This advisory limit is intentionally well under
     # that — server-side enforcement is the source of truth.
     _rate_limit_config = RateLimitSpec(rate=1, period=2, burst=3)
+    _default_auth_type = AuthType.BEARER_TOKEN
+    _auth_providers_config = bearer_auth(
+        label="API token",
+        obtain_url="https://www.linkedin.com/developers/apps",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

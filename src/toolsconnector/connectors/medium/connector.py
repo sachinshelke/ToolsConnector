@@ -32,6 +32,7 @@ from toolsconnector.errors import (
     ValidationError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 
 from .types import MediumPost, MediumPublication, MediumUser
@@ -60,6 +61,11 @@ class Medium(BaseConnector):
         "integration tokens still work."
     )
     _rate_limit_config = RateLimitSpec(rate=1, period=2, burst=3)
+    _default_auth_type = AuthType.BEARER_TOKEN
+    _auth_providers_config = bearer_auth(
+        label="API token",
+        obtain_url="https://medium.com/me/settings",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

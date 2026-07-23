@@ -16,6 +16,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -58,6 +59,15 @@ class Twilio(BaseConnector):
         "and query phone numbers and account information."
     )
     _rate_limit_config = RateLimitSpec(rate=100, period=1, burst=50)
+    _default_auth_type = AuthType.BASIC
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("account_sid", "Account SID", secret=False),
+            auth_field("auth_token", "Auth token"),
+        ],
+        prefix="Basic",
+        obtain_url="https://console.twilio.com/",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

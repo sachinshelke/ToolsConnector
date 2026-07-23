@@ -22,6 +22,7 @@ from toolsconnector.errors import (
     TransportError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, service_account_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -91,6 +92,10 @@ class GoogleTasks(BaseConnector):
     verification_status = "live"
     description = "Connect to Google Tasks to manage task lists and tasks."
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=60)
+    _default_auth_type = AuthType.OAUTH2
+    _auth_providers_config = service_account_auth(
+        docs_url="https://developers.google.com/tasks/reference/rest"
+    )
 
     # ------------------------------------------------------------------
     # Internal helpers

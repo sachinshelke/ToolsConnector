@@ -9,6 +9,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -79,6 +80,11 @@ class Salesforce(BaseConnector):
         "sObject records, and describe object schemas."
     )
     _rate_limit_config = RateLimitSpec(rate=100, period=86400, burst=25)
+    _default_auth_type = AuthType.BEARER_TOKEN
+    _auth_providers_config = bearer_auth(
+        label="API token",
+        obtain_url="https://login.salesforce.com",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

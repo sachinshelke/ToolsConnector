@@ -65,6 +65,7 @@ from toolsconnector.errors import (
     ValidationError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -120,6 +121,11 @@ class X(BaseConnector):
         "tier-gated 403s are mapped to PermissionDeniedError."
     )
     _rate_limit_config = RateLimitSpec(rate=1, period=2, burst=5)
+    _default_auth_type = AuthType.BEARER_TOKEN
+    _auth_providers_config = bearer_auth(
+        label="API token",
+        obtain_url="https://developer.x.com/en/portal/dashboard",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

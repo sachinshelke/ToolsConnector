@@ -13,6 +13,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -61,6 +62,16 @@ class Shopify(BaseConnector):
         "Connect to Shopify to manage products, orders, and customers via the REST Admin API."
     )
     _rate_limit_config = RateLimitSpec(rate=40, period=1, burst=10)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("access_token", "Admin API access token"),
+            auth_field("store", "Store domain (myshop.myshopify.com)", secret=False),
+        ],
+        auth_type=AuthType.API_KEY,
+        header="X-Shopify-Access-Token",
+        obtain_url="https://shopify.dev/docs/apps/build/authentication/access-tokens",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

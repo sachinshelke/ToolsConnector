@@ -19,6 +19,7 @@ from toolsconnector.errors import (
     ValidationError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -70,6 +71,17 @@ class Okta(BaseConnector):
         "users, groups, and application integrations."
     )
     _rate_limit_config = RateLimitSpec(rate=100, period=60, burst=50)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("api_token", "API token"),
+            auth_field("domain", "Okta domain", secret=False),
+        ],
+        auth_type=AuthType.API_KEY,
+        header="Authorization",
+        prefix="SSWS",
+        obtain_url="https://developer.okta.com/docs/guides/create-an-api-token/main/",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

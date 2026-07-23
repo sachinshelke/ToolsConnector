@@ -26,6 +26,7 @@ from toolsconnector.connectors._aws.errors import AWSError
 from toolsconnector.connectors._aws.signing import sign_v4
 from toolsconnector.connectors._aws.xml_helpers import find_text, iter_elements
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, aws_sigv4_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -66,6 +67,10 @@ class Route53(BaseConnector):
     base_url = "https://route53.amazonaws.com"
     description = "Manage DNS hosted zones, record sets, and health checks."
     _rate_limit_config = RateLimitSpec(rate=5, period=1, burst=10)
+    _default_auth_type = AuthType.AWS_SIGV4
+    _auth_providers_config = aws_sigv4_auth(
+        service="route53", docs_url="https://docs.aws.amazon.com/Route53/latest/APIReference/"
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

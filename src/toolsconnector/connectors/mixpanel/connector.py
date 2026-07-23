@@ -16,6 +16,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -61,6 +62,15 @@ class Mixpanel(BaseConnector):
         "funnel analysis, retention metrics, and user profiles."
     )
     _rate_limit_config = RateLimitSpec(rate=60, period=60, burst=20)
+    _default_auth_type = AuthType.BASIC
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("username", "Service account username", secret=False),
+            auth_field("secret", "Service account secret"),
+        ],
+        prefix="Basic",
+        obtain_url="https://mixpanel.com/settings/project#serviceaccounts",
+    )
 
     # ------------------------------------------------------------------
     # Internal helpers

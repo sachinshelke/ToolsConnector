@@ -26,6 +26,7 @@ from toolsconnector.connectors._aws.errors import AWSError
 from toolsconnector.connectors._aws.signing import sign_v4
 from toolsconnector.connectors._aws.xml_helpers import find_text, iter_elements
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, aws_sigv4_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -65,6 +66,10 @@ class CloudFront(BaseConnector):
     base_url = "https://cloudfront.amazonaws.com"
     description = "Manage CloudFront CDN distributions, cache invalidations, and origin configs."
     _rate_limit_config = RateLimitSpec(rate=100, period=1, burst=200)
+    _default_auth_type = AuthType.AWS_SIGV4
+    _auth_providers_config = aws_sigv4_auth(
+        service="cloudfront", docs_url="https://docs.aws.amazon.com/cloudfront/latest/APIReference/"
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle
