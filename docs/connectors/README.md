@@ -33,7 +33,7 @@ result = kit.execute("gmail_list_emails", {"query": "is:unread"})
 | [Database](database.md) | Airtable, Firestore, MongoDB, RDS, Redis, Supabase | 118 |
 | [Project Management](project-management.md) | Asana, Jira, Linear, Trello | 110 |
 | [Productivity](productivity.md) | Google Calendar, Docs, Sheets, Tasks, Calendly, Figma | 96 |
-| [CRM & Support](crm.md) | Freshdesk, HubSpot, Intercom, Salesforce, Zendesk | 95 |
+| [CRM & Support](crm.md) | Freshdesk, HubSpot, Intercom, Odoo, Salesforce, Zendesk | 106 |
 | Security & Identity | ACM, Auth0, IAM, Okta, Secrets Manager | 90 |
 | Compute | EC2, ECS, Lambda | 70 |
 | [Code Platforms](code-platforms.md) | GitHub, GitLab | 58 |
