@@ -56,6 +56,8 @@ gates them behind an approval this account does not have.
 | `deprecate_flow` | Only applies to a published Flow, which the gate above prevents. |
 | `send_marketing_message` | Envelope live-verified: the request reached `/marketing_messages` and was rejected only for template category (`134100 Only marketing messages supported`). Full verification needs an APPROVED **MARKETING** template — one is pending review. |
 
+> **Operational note (2026-07-24):** heavy automated activity on a *test* app can trip Meta's integrity systems, which access-restrict the whole app with `code 200 "API access blocked"` on every call (verified live). The connector surfaces this as a typed `PermissionDeniedError`; the fix is on the Meta side (check the app dashboard / appeal), not in the credentials.
+
 ## What this is
 
 The WhatsApp Business Platform (Cloud API) is **the only official WhatsApp API**. Personal WhatsApp accounts have no API, and reverse-engineered clients (Baileys, whatsmeow, whatsapp-web.js and their commercial resellers) violate WhatsApp's Terms of Service and get numbers banned — this library deliberately does not ship one. For the personal-side use case (compose a link a human taps to send) use the [`whatsapp`](../whatsapp/README.md) connector.

@@ -105,6 +105,9 @@ _AUTH_CODES = {190, 0}
 # 139000 Blocked by Integrity (business-verification / quality gate),
 # 131215 Groups not eligible, 138000 Calling not enabled — all "your account
 # may not do this", not server faults (live-verified 2026-07-23).
+# 200 = "API access blocked" (token/app restricted — live-observed on every
+# call, incl. app-token, when Meta flags a test app); 131215/138000/139000 =
+# capability gates (Groups/Calling/Integrity).
 _PERMISSION_CODES = {10, 200, 299, 131031, 131215, 138000, 139000}
 # 134100 = Marketing Messages API given a non-marketing template.
 _VALIDATION_CODES = {100, 131008, 131009, 131051, 130501, 134100}

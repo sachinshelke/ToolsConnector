@@ -1678,6 +1678,8 @@ async def test_marketing_eligibility_and_send(wa: WhatsAppBusiness) -> None:
         (139000, PermissionDeniedError),  # Blocked by Integrity (verification gate)
         (131215, PermissionDeniedError),  # Groups not eligible (OBA gate)
         (138000, PermissionDeniedError),  # Calling API not enabled
+        (200, PermissionDeniedError),  # "API access blocked" (token/app restricted)
+        (10, PermissionDeniedError),  # application does not have permission
         (134100, ValidationError),  # non-marketing template on MM API
     ],
 )
@@ -1688,6 +1690,21 @@ async def test_gate_codes_typed_from_live_probes(
         mock.post(f"/{PHONE_ID}/messages").mock(return_value=_graph_error(400, code, "gated"))
         with pytest.raises(expected):
             await wa.asend_text("15550001111", "hi")
+
+
+@pytest.mark.asyncio
+async def test_api_access_blocked_is_permission_not_server_error(
+    wa: WhatsAppBusiness,
+) -> None:
+    # Live-observed 2026-07-24: an entire WABA/app can be access-restricted,
+    # returning code 200 "API access blocked" on EVERY call (even reads).
+    # It must read as a permission problem the platform can surface to the
+    # user, not a transient ServerError they would pointlessly retry.
+    with respx.mock(base_url=BASE) as mock:
+        mock.get(f"/{PHONE_ID}").mock(return_value=_graph_error(403, 200, "API access blocked."))
+        health = await wa._health_check()
+    assert health.healthy is False
+    assert "permission" in health.message.lower()
 
 
 # ---------------------------------------------------------------------------
