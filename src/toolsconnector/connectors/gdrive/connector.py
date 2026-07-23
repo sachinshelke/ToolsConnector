@@ -144,7 +144,11 @@ class GoogleDrive(BaseConnector):
     _rate_limit_config = RateLimitSpec(rate=600, period=60, burst=100)
     _default_auth_type = AuthType.OAUTH2
     _auth_providers_config = service_account_auth(
-        docs_url="https://developers.google.com/drive/api/reference/rest/v3"
+        scopes=[
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/drive.file",
+        ],
+        docs_url="https://developers.google.com/drive/api/reference/rest/v3",
     )
 
     # ------------------------------------------------------------------

@@ -94,7 +94,11 @@ class GoogleTasks(BaseConnector):
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=60)
     _default_auth_type = AuthType.OAUTH2
     _auth_providers_config = service_account_auth(
-        docs_url="https://developers.google.com/tasks/reference/rest"
+        scopes=[
+            "https://www.googleapis.com/auth/tasks",
+            "https://www.googleapis.com/auth/tasks.readonly",
+        ],
+        docs_url="https://developers.google.com/tasks/reference/rest",
     )
 
     # ------------------------------------------------------------------

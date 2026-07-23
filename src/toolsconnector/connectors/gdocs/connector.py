@@ -117,7 +117,11 @@ class GoogleDocs(BaseConnector):
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=60)
     _default_auth_type = AuthType.OAUTH2
     _auth_providers_config = service_account_auth(
-        docs_url="https://developers.google.com/docs/api/reference/rest"
+        scopes=[
+            "https://www.googleapis.com/auth/documents",
+            "https://www.googleapis.com/auth/documents.readonly",
+        ],
+        docs_url="https://developers.google.com/docs/api/reference/rest",
     )
 
     # ------------------------------------------------------------------

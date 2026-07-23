@@ -125,7 +125,13 @@ class Gmail(BaseConnector):
     _rate_limit_config = RateLimitSpec(rate=250, period=60, burst=50)
     _default_auth_type = AuthType.OAUTH2
     _auth_providers_config = service_account_auth(
-        docs_url="https://developers.google.com/workspace/gmail/api/reference/rest"
+        scopes=[
+            "https://www.googleapis.com/auth/gmail.readonly",
+            "https://www.googleapis.com/auth/gmail.send",
+            "https://www.googleapis.com/auth/gmail.modify",
+            "https://www.googleapis.com/auth/gmail.labels",
+        ],
+        docs_url="https://developers.google.com/workspace/gmail/api/reference/rest",
     )
 
     # ------------------------------------------------------------------

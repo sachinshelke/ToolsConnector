@@ -172,7 +172,11 @@ class GoogleCalendar(BaseConnector):
     _rate_limit_config = RateLimitSpec(rate=600, period=60, burst=100)
     _default_auth_type = AuthType.OAUTH2
     _auth_providers_config = service_account_auth(
-        docs_url="https://developers.google.com/calendar/api/v3/reference"
+        scopes=[
+            "https://www.googleapis.com/auth/calendar",
+            "https://www.googleapis.com/auth/calendar.readonly",
+        ],
+        docs_url="https://developers.google.com/calendar/api/v3/reference",
     )
 
     # ------------------------------------------------------------------
