@@ -1478,7 +1478,7 @@ TOOL_META: dict[str, dict] = {
             "approved templates outside. Receiving is push-only — there is no "
             "polling endpoint, so you host an HTTPS webhook (the library ships the "
             "primitives, not the server). Tier 1 — live-verified against a real "
-            "test WABA: 50/64 actions round-tripped, all 11 message types "
+            "test WABA: 49/64 actions round-tripped, all 11 message types "
             "device-confirmed, and the webhook loop proven end-to-end."
         ),
         "use_cases": [
