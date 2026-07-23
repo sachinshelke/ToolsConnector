@@ -185,7 +185,7 @@ class WhatsAppBusiness(BaseConnector):
     protocol = ProtocolType.REST
     base_url = "https://graph.facebook.com/v25.0"
     # Tier 1 — LIVE-verified 2026-07-22/23 against a real Meta test WABA
-    # (Graph v25.0), contract-scoped like contactout: 50/64 actions
+    # (Graph v25.0), contract-scoped like contactout: 49/64 actions
     # round-tripped with device-confirmed delivery of all 11 message types
     # (text, threaded reply, image, document, location, contacts, buttons,
     # list, cta_url, location_request, hello_world template) + media

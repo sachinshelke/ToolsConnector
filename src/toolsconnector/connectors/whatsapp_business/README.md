@@ -13,7 +13,7 @@
 | **Auth** | Bearer System User token + `phone_number_id` (+ optional `waba_id`, `app_secret`) |
 | **Rate Limit** | 80 msgs/sec per number (default); ~1 msg/6s per user pair |
 | **Pricing** | Service messages free; templates billed per delivered message (category × country) |
-| **Verification** | 🟢 **Tier 1 — Live verified** (2026-07-23) — 50/64 actions round-tripped against a real test WABA — messaging + webhook receive end-to-end + the W2 management surface (template CRUD, QR lifecycle, analytics with real data). See [Live verification](#live-verification). |
+| **Verification** | 🟢 **Tier 1 — Live verified** (2026-07-23) — 49/64 actions round-tripped against a real test WABA — messaging + webhook receive end-to-end + the W2 management surface (template CRUD, QR lifecycle, analytics with real data). See [Live verification](#live-verification). |
 
 ## Live verification
 
@@ -31,9 +31,20 @@ Swept 2026-07-22/23 against a real Meta test WABA (free sandbox, Graph v25.0):
 - **Flows CRUD end-to-end**: created a Flow, uploaded a real v7.0 Flow JSON (zero validation errors), fetched it with its preview URL, listed assets, renamed it, and deleted it — all live. Two doc-vs-wire corrections came out of it: `interactive.body` is documented optional but is **required** (omitting it returns the opaque `131008 Required parameter is missing`), and `flow_action="navigate"` requires an entry `screen` — both are now client-side guards with actionable messages.
 - **Gate probe** across every deferred surface, with the exact blocking error recorded: Flows ✅ open · Catalog endpoints ✅ reachable · Marketing Messages ✅ `ELIGIBLE` · Groups ⛔ `131215` (needs an Official Business Account) · Calling ⛔ `138000` · Payments ⛔ `10` (needs App Review). All four gate codes are now mapped to typed errors.
 
-### Not live-verified (14 of 64) — and why
+### Scope of the live sweep — the 15 actions not exercised
 
-| Action(s) | Why not |
+This connector is **Tier 1**: it was exercised end-to-end against the real
+Cloud API with a real token, which is what the tier means (see
+[ARCHITECTURE_FAQ #16](../../../../docs/ARCHITECTURE_FAQ.md)). Like every
+other Tier 1 connector here (`github` 33/37, `lusha` 18/20, `linkedin` 3/12),
+the exact scope of that sweep is recorded rather than implied.
+
+The 15 below were **not** skipped because of doubt — each is built to the same
+verified wire shapes and its request body is pinned by tests. They were not
+run because doing so would have damaged the test number, or because Meta
+gates them behind an approval this account does not have.
+
+| Action(s) | Why not run |
 |---|---|
 | `register_phone`, `deregister_phone`, `set_two_step_pin`, `request_verification_code`, `verify_code`, `block_users` | Act on the credentials' **own** `phone_number_id` (or block a real contact) — running them would disrupt or lock a working number. Request shapes are test-pinned; all are `dangerous=True`, so `ToolKit(exclude_dangerous=True)` hides them from agents. |
 | `unblock_users` | Nothing was blocked (see above). |
