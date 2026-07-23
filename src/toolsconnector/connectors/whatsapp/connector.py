@@ -27,6 +27,7 @@ from urllib.parse import parse_qs, quote, urlsplit
 
 from toolsconnector.errors import MissingConfigError, ValidationError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.runtime.base import HealthStatus
 from toolsconnector.spec.auth import AuthProviderSpec, AuthType
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 
@@ -118,6 +119,13 @@ class WhatsApp(BaseConnector):
 
     async def _teardown(self) -> None:
         return None
+
+    async def _health_check(self) -> HealthStatus:
+        """Always healthy: nothing to authenticate, nothing to reach."""
+        return HealthStatus(
+            healthy=True,
+            message="Offline connector — no credentials or network required.",
+        )
 
     # ------------------------------------------------------------------
     # Actions

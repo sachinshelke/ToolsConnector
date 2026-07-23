@@ -1734,3 +1734,47 @@ def test_declared_fields_match_credential_parser() -> None:
         mod._APP_ID_KEYS[0],
     }
     assert declared == parsed
+
+
+@pytest.mark.asyncio
+async def test_health_check_reports_credential_validity(wa: WhatsAppBusiness) -> None:
+    # Platforms call this right after "Connect" to validate what the user gave.
+    with respx.mock(base_url=BASE, assert_all_called=True) as mock:
+        mock.get(f"/{PHONE_ID}").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": PHONE_ID,
+                    "verified_name": "Acme Support",
+                    "quality_rating": "GREEN",
+                    "whatsapp_business_manager_messaging_limit": "TIER_1K",
+                },
+            )
+        )
+        health = await wa._health_check()
+    assert health.healthy is True
+    assert "Acme Support" in health.message
+    assert "GREEN" in health.message
+    assert health.latency_ms is not None
+
+
+@pytest.mark.asyncio
+async def test_health_check_reports_bad_credentials(wa: WhatsAppBusiness) -> None:
+    with respx.mock(base_url=BASE) as mock:
+        mock.get(f"/{PHONE_ID}").mock(return_value=_graph_error(401, 190, "bad token"))
+        health = await wa._health_check()
+    assert health.healthy is False
+    assert "rejected" in health.message.lower()
+    assert TOKEN not in health.message
+
+
+@pytest.mark.asyncio
+async def test_health_check_reports_incomplete_credentials() -> None:
+    connector = WhatsAppBusiness(credentials={"access_token": TOKEN})
+    await connector._setup()
+    try:
+        health = await connector._health_check()
+    finally:
+        await connector._teardown()
+    assert health.healthy is False
+    assert "Incomplete credentials" in health.message

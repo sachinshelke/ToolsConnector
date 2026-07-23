@@ -229,6 +229,31 @@ guessing.
 > backfilled; check `get_spec().auth.supported` and fall back to the connector
 > README when it is empty.
 
+### Validating credentials before you trust them
+
+After a user submits the form, preflight the connection instead of waiting
+for the first real call to fail:
+
+```python
+connector = WhatsAppBusiness(credentials=submitted)
+async with connector:
+    health = await connector._health_check()
+
+health.healthy   # True / False
+health.message   # "Connected as Acme Support (quality GREEN, limit TIER_1K)"
+                 # or "Credentials rejected: ..." / "Incomplete credentials: ..."
+```
+
+`_health_check()` is a `BaseConnector` hook: it performs one cheap read (for
+`whatsapp_business`, the phone-number node — no messages sent, nothing billed)
+and never leaks the credential into the message. The offline `whatsapp`
+connector reports healthy without touching the network.
+
+> **Status:** like the auth declaration above, this is implemented per
+> connector. Connectors that have not overridden it return
+> `healthy=True, message="No health check implemented"` — treat that as
+> "unknown", not "verified".
+
 ## Connecting on behalf of your users (OAuth-style onboarding)
 
 BYOK assumes the person running the code owns the credentials. A platform

@@ -53,6 +53,7 @@ from toolsconnector.errors import (
     RateLimitError,
     ServerError,
     TokenExpiredError,
+    ToolsConnectorError,
     TransportError,
     ValidationError,
 )
@@ -63,6 +64,7 @@ from toolsconnector.errors import (
     TimeoutError as ToolsConnectorTimeoutError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.runtime.base import HealthStatus
 from toolsconnector.spec.auth import APIKeySpec, AuthProviderSpec, AuthType
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
@@ -336,6 +338,40 @@ class WhatsAppBusiness(BaseConnector):
     async def _teardown(self) -> None:
         if hasattr(self, "_client"):
             await self._client.aclose()
+
+    async def _health_check(self) -> HealthStatus:
+        """Preflight the credentials so a platform can validate a connection.
+
+        Reads the phone-number node (a cheap GET that costs nothing and
+        sends no messages) and reports quality/limit alongside the verdict,
+        so a "connected" badge can show why sending might be constrained.
+        """
+        import time
+
+        started = time.monotonic()
+        try:
+            number = await self.aget_phone_number()  # type: ignore[attr-defined]
+        except MissingConfigError as exc:
+            return HealthStatus(healthy=False, message=f"Incomplete credentials: {exc}")
+        except (InvalidCredentialsError, TokenExpiredError) as exc:
+            return HealthStatus(healthy=False, message=f"Credentials rejected: {exc}")
+        except PermissionDeniedError as exc:
+            return HealthStatus(
+                healthy=False,
+                message=f"Token lacks the required WhatsApp permissions: {exc}",
+            )
+        except ToolsConnectorError as exc:
+            return HealthStatus(healthy=False, message=f"{type(exc).__name__}: {exc}")
+        latency = (time.monotonic() - started) * 1000
+        return HealthStatus(
+            healthy=True,
+            message=(
+                f"Connected as {number.verified_name or 'unnamed number'}"
+                f" (quality {number.quality_rating or 'UNKNOWN'},"
+                f" limit {number.messaging_limit or 'unknown'})"
+            ),
+            latency_ms=round(latency, 1),
+        )
 
     # ------------------------------------------------------------------
     # HTTP + error boundary

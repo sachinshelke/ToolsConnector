@@ -250,3 +250,10 @@ def test_auth_spec_declares_no_credentials() -> None:
     # the credential step instead of guessing.
     assert provider.extra["credential_format"] == "none"
     assert provider.extra["fields"] == []
+
+
+@pytest.mark.asyncio
+async def test_health_check_always_healthy(wa: WhatsApp) -> None:
+    health = await wa._health_check()
+    assert health.healthy is True
+    assert "no credentials" in health.message.lower()
