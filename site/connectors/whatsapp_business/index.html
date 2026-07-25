@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Business Python Connector — 64 Actions | ToolsConnector</title>
+<meta name="description" content="Connect WhatsApp Business to Python apps and AI agents with 64 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[whatsapp_business]&quot;. Apache 2.0. Free.">
+<meta name="keywords" content="WhatsApp Business Python, WhatsApp Business API Python, WhatsApp Business connector Python, OpenAI function calling, Anthropic tool use, MCP server Python, AI agent tools Python, ToolsConnector">
+<meta name="author" content="ToolsConnector">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://toolsconnector.github.io/connectors/whatsapp_business/">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<meta name="theme-color" content="#000005">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://toolsconnector.github.io/connectors/whatsapp_business/">
+<meta property="og:site_name" content="ToolsConnector">
+<meta property="og:title" content="WhatsApp Business Python Connector — 64 Actions | ToolsConnector">
+<meta property="og:description" content="Connect WhatsApp Business to Python apps and AI agents with 64 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[whatsapp_business]&quot;. Apache 2.0. Free.">
+<meta property="og:image" content="https://toolsconnector.github.io/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@toolsconnector">
+<meta name="twitter:title" content="WhatsApp Business Python Connector — 64 Actions | ToolsConnector">
+<meta name="twitter:description" content="Connect WhatsApp Business to Python apps and AI agents with 64 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install &quot;toolsconnector[whatsapp_business]&quot;. Apache 2.0. Free.">
+<meta name="twitter:image" content="https://toolsconnector.github.io/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ToolsConnector \u2014 WhatsApp Business Connector",
+  "description": "Connect WhatsApp Business to Python apps and AI agents with 64 typed actions. Supports OpenAI function calling, Anthropic tool use, MCP server, and Google Gemini. Install: pip install \"toolsconnector[whatsapp_business]\". Apache 2.0. Free.",
+  "url": "https://toolsconnector.github.io/connectors/whatsapp_business/",
+  "downloadUrl": "https://pypi.org/project/toolsconnector/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "programmingLanguage": "Python",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "block_users",
+    "create_flow",
+    "create_qr_code",
+    "create_template",
+    "debug_token",
+    "delete_flow",
+    "delete_media",
+    "delete_qr_code",
+    "delete_template",
+    "deprecate_flow",
+    "deregister_phone",
+    "download_media",
+    "edit_template",
+    "enable_template_analytics",
+    "exchange_code",
+    "get_business_profile",
+    "get_flow",
+    "get_marketing_eligibility",
+    "get_media_info",
+    "get_messaging_analytics",
+    "get_phone_number",
+    "get_pricing_analytics",
+    "get_template",
+    "get_template_analytics",
+    "get_waba",
+    "list_blocked_users",
+    "list_flow_assets",
+    "list_flows",
+    "list_phone_numbers",
+    "list_qr_codes",
+    "list_subscribed_apps",
+    "list_templates",
+    "mark_as_read",
+    "publish_flow",
+    "register_phone",
+    "request_verification_code",
+    "send_audio",
+    "send_contacts",
+    "send_cta_url",
+    "send_document",
+    "send_flow",
+    "send_image",
+    "send_interactive",
+    "send_interactive_buttons",
+    "send_interactive_list",
+    "send_location",
+    "send_location_request",
+    "send_marketing_message",
+    "send_reaction",
+    "send_sticker",
+    "send_template",
+    "send_text",
+    "send_typing_indicator",
+    "send_video",
+    "set_app_webhook",
+    "set_two_step_pin",
+    "subscribe_app",
+    "unblock_users",
+    "update_business_profile",
+    "update_flow",
+    "update_qr_code",
+    "upload_flow_json",
+    "upload_media",
+    "verify_code"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "ToolsConnector",
+    "url": "https://toolsconnector.github.io/"
+  },
+  "softwareVersion": "0.3.21"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://toolsconnector.github.io/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Connectors",
+      "item": "https://toolsconnector.github.io/#/connectors"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "WhatsApp Business",
+      "item": "https://toolsconnector.github.io/connectors/whatsapp_business/"
+    }
+  ]
+}
+</script>
+
+<style>
+/* Self-contained dark cinematic theme — fully styled and visible without any
+   external CSS/JS (SEO-safe, robust, standalone; matches the cinematic site
+   via shared design tokens rather than a shared stylesheet dependency). */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --b:#000005; --ink:#f5f5f7; --dim:#86868b; --accent:#7c8cff; --line:rgba(255,255,255,.09); }
+body { font-family:"Inter",-apple-system,system-ui,sans-serif; color:var(--ink); background:var(--b);
+        line-height:1.6; -webkit-font-smoothing:antialiased; letter-spacing:-.01em; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, monospace; font-size: .875em; background: rgba(255,255,255,.07);
+        padding: .15em .4em; border-radius: 4px; color:#dfe3ff; }
+
+/* ── Nav (sticky, glassy) ── */
+nav { position:sticky; top:0; z-index:50; border-bottom: 1px solid var(--line);
+      padding: .85rem clamp(1rem,4vw,1.6rem); display: flex; align-items: center; gap: .75rem;
+      background:rgba(0,0,5,.72); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+.nav-logo { font-weight: 700; font-size: 1.05rem; color: var(--ink); display:flex; align-items:center; gap:.5rem; }
+.nav-logo img { width:26px; height:26px; }
+nav a.back { color: var(--dim); font-size: .875rem; }
+nav a.back:hover { color: var(--ink); text-decoration:none; }
+nav a.btn { margin-left: auto; background: var(--ink); color: var(--b); padding: .5rem 1.15rem;
+             border-radius: 980px; font-size: .85rem; font-weight: 600; }
+nav a.btn:hover { background: #fff; text-decoration: none; }
+
+/* ── Hero ── */
+.hero { max-width: 960px; margin: 3.5rem auto 2rem; padding: 0 clamp(1rem,4vw,1.5rem); }
+.hero-top { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.25rem; }
+.badge { display:inline-flex; align-items:center; padding:.28rem .8rem; border-radius:20px;
+          font-size:.75rem; font-weight:600; color:#fff; background:#3B82F6; }
+.verify-badge { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .65rem;
+                 margin-left:.5rem; border-radius:20px; font-size:.75rem; font-weight:600;
+                 border:1.5px solid #10b981; color:#10b981; background:rgba(255,255,255,.02);
+                 cursor:help; user-select:none; }
+.verify-badge .dot { font-size:1rem; line-height:1; }
+h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing:-.02em; margin: .6rem 0 .5rem; }
+.desc { font-size: 1.08rem; color: var(--dim); max-width: 720px; margin-bottom: 1.6rem; }
+.install-box { background: #0c0c14; color: #e2e8f0; border:1px solid var(--line); border-radius: 12px;
+               padding: .9rem 1.25rem; font-family: ui-monospace, monospace;
+               font-size: .9rem; display:inline-block; margin-bottom:1.75rem; }
+.install-box .dollar { color: #34d399; margin-right:.5rem; }
+.install-box .pkg { color: #ffb37c; }
+
+/* ── Stats strip ── */
+.stats { display: flex; gap: 2.4rem; margin-bottom: .5rem; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-size: 1.85rem; font-weight: 700; letter-spacing:-.02em;
+             background:linear-gradient(180deg,#fff,#bcb6ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.stat-lbl { font-size: .7rem; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing:.12em; margin-top:.3rem; }
+
+/* ── Actions table ── */
+.section { max-width: 1100px; margin: 2.5rem auto 3rem; padding: 0 clamp(1rem,4vw,1.5rem); }
+.section h2 { font-size: 1.5rem; font-weight: 700; letter-spacing:-.02em; margin-bottom: 1.1rem; padding-bottom: .6rem;
+               border-bottom: 1px solid var(--line); }
+.tbl-wrap { overflow-x: auto; border:1px solid var(--line); border-radius:14px; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th { text-align: left; padding: .7rem .9rem; background: rgba(255,255,255,.03); color: var(--dim);
+      font-weight: 600; font-size: .72rem; text-transform: uppercase; letter-spacing:.06em;
+      border-bottom: 1px solid var(--line); }
+td { padding: .7rem .9rem; border-bottom: 1px solid rgba(255,255,255,.05); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,.02); }
+td.desc { color: var(--dim); max-width: 420px; }
+td code { background:rgba(124,140,255,.12); color:#cdd2ff; }
+.req { color: #f9a8a8; }
+.opt { color: #6b6b75; }
+
+/* ── CTA ── */
+.cta { text-align: center; padding: 3rem 1.5rem 2rem; border-top: 1px solid var(--line); margin-top: 1.5rem; }
+.cta a { display: inline-flex; align-items: center; gap: .5rem; background: var(--ink); color: var(--b);
+          padding: .8rem 1.9rem; border-radius: 980px; font-weight: 600; font-size: 1rem; }
+.cta a:hover { background: #fff; text-decoration: none; }
+.cta p { margin-top: .85rem; color: var(--dim); font-size: .875rem; }
+
+/* ── Footer ── */
+footer { border-top: 1px solid var(--line); padding: 1.5rem; text-align:center;
+          color: #5a5a63; font-size: .8rem; }
+footer a { color: #8a8a93; }
+
+@media (max-width: 600px) {
+  .stats { gap: 1.4rem; } .stat-num { font-size: 1.45rem; }
+  th:nth-child(3), td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://toolsconnector.github.io/" class="nav-logo">
+    <img src="/logo.svg" alt="" width="28" height="28">
+    ToolsConnector
+  </a>
+  <a href="https://toolsconnector.github.io/#/connectors" class="back">← All Connectors</a>
+  <a href="https://toolsconnector.github.io/#/connector/whatsapp_business" class="btn">Open Interactive Docs →</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-top">
+    <img src="https://cdn.brandfetch.io/business.whatsapp.com?c=1idiVFVAawYfs0vBpzR" alt="WhatsApp Business" width="56" height="56" style="border-radius:14px;object-fit:contain;background:rgba(255,255,255,.06);padding:6px;border:1px solid rgba(255,255,255,.08)">
+    <div>
+      <span class="badge">Communication</span>
+      <span class="verify-badge" title="Live verified — exercised end-to-end against the real vendor API with a real token." aria-label="Verification status: Live verified"><span class="dot">●</span>Live verified</span>
+      <h1>WhatsApp Business Connector</h1>
+    </div>
+  </div>
+  <p class="desc">WhatsApp Business Platform (Cloud API) — Meta&#39;s official WhatsApp API (BYOK: your Meta app + System User token). Free-form sends within the 24h customer-service window, template sends outside it, media up/download, business profile, and webhook receive primitives. Personal WhatsApp accounts have no API — for human-in-the-loop links use the &#39;whatsapp&#39; connector.</p>
+
+  <div class="install-box">
+    <span class="dollar">$</span>pip install <span class="pkg">"toolsconnector[whatsapp_business]"</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num">64</div>
+      <div class="stat-lbl">Actions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">Communication</div>
+      <div class="stat-lbl">Category</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">Free</div>
+      <div class="stat-lbl">Apache 2.0</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All 64 Actions</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Parameters</th>
+          <th>Returns</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>block_users ⚠</code></td><td class="desc">Block users from messaging this number</td><td><span class="req">numbers</span></td><td><code>WhatsAppBlockResult</code></td></tr>
+<tr><td><code>create_flow</code></td><td class="desc">Create a Flow (in-chat form); returns it in DRAFT</td><td><span class="req">name, categories</span> &nbsp;<span class="opt">[flow_json, endpoint_uri, clone_flow_id, publish]</span></td><td><code>WhatsAppFlowMutationResult</code></td></tr>
+<tr><td><code>create_qr_code</code></td><td class="desc">Create a managed QR code / short link</td><td><span class="req">prefilled_message</span> &nbsp;<span class="opt">[image_format]</span></td><td><code>WhatsAppQRCode</code></td></tr>
+<tr><td><code>create_template</code></td><td class="desc">Create a message template (goes to Meta review)</td><td><span class="req">name, language, category, components</span> &nbsp;<span class="opt">[parameter_format]</span></td><td><code>WhatsAppTemplateCreateResult</code></td></tr>
+<tr><td><code>debug_token</code></td><td class="desc">Inspect a token: validity, scopes, and the WABA ids it can reach</td><td><span class="opt">[input_token, app_id]</span></td><td><code>WhatsAppTokenInfo</code></td></tr>
+<tr><td><code>delete_flow ⚠</code></td><td class="desc">Delete a draft Flow</td><td><span class="req">flow_id</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>delete_media ⚠</code></td><td class="desc">Delete an uploaded media item</td><td><span class="req">media_id</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>delete_qr_code ⚠</code></td><td class="desc">Delete a managed QR code</td><td><span class="req">code</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>delete_template ⚠</code></td><td class="desc">Delete a template by name (all languages)</td><td><span class="req">name</span> &nbsp;<span class="opt">[template_id]</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>deprecate_flow ⚠</code></td><td class="desc">Deprecate a published Flow</td><td><span class="req">flow_id</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>deregister_phone ⚠</code></td><td class="desc">Deregister the number from Cloud API</td><td><span class="opt">—</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>download_media</code></td><td class="desc">Download media content (handles the 5-minute URL dance)</td><td><span class="req">media_id</span></td><td><code>WhatsAppMediaContent</code></td></tr>
+<tr><td><code>edit_template ⚠</code></td><td class="desc">Edit a template&#39;s components or category</td><td><span class="req">template_id</span> &nbsp;<span class="opt">[components, category]</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>enable_template_analytics ⚠</code></td><td class="desc">Enable template analytics on the WABA</td><td><span class="opt">—</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>exchange_code</code></td><td class="desc">Exchange an Embedded Signup code for a customer access token</td><td><span class="req">code</span> &nbsp;<span class="opt">[app_id]</span></td><td><code>WhatsAppTokenExchange</code></td></tr>
+<tr><td><code>get_business_profile</code></td><td class="desc">Get the business profile shown in the chat header</td><td><span class="opt">—</span></td><td><code>WhatsAppBusinessProfile</code></td></tr>
+<tr><td><code>get_flow</code></td><td class="desc">Get a Flow&#39;s status, categories, and validation errors</td><td><span class="req">flow_id</span> &nbsp;<span class="opt">[include_preview]</span></td><td><code>WhatsAppFlow</code></td></tr>
+<tr><td><code>get_marketing_eligibility</code></td><td class="desc">Check whether the WABA can use the Marketing Messages API</td><td><span class="opt">—</span></td><td><code>WhatsAppMarketingEligibility</code></td></tr>
+<tr><td><code>get_media_info</code></td><td class="desc">Get a media item&#39;s short-lived download URL</td><td><span class="req">media_id</span></td><td><code>WhatsAppMediaInfo</code></td></tr>
+<tr><td><code>get_messaging_analytics</code></td><td class="desc">Get message-volume analytics</td><td><span class="req">start, end</span> &nbsp;<span class="opt">[granularity, phone_numbers]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_phone_number</code></td><td class="desc">Get this number&#39;s quality, limits, and name status</td><td><span class="opt">—</span></td><td><code>WhatsAppPhoneNumber</code></td></tr>
+<tr><td><code>get_pricing_analytics</code></td><td class="desc">Get per-message pricing/cost analytics</td><td><span class="req">start, end</span> &nbsp;<span class="opt">[granularity, metric_types, dimensions]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_template</code></td><td class="desc">Get one template by id</td><td><span class="req">template_id</span></td><td><code>WhatsAppTemplate</code></td></tr>
+<tr><td><code>get_template_analytics</code></td><td class="desc">Get per-template analytics (opt-in required)</td><td><span class="req">template_ids, start, end</span> &nbsp;<span class="opt">[metric_types]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>get_waba</code></td><td class="desc">Get the WhatsApp Business Account node</td><td><span class="opt">—</span></td><td><code>WhatsAppWABA</code></td></tr>
+<tr><td><code>list_blocked_users</code></td><td class="desc">List blocked users</td><td><span class="opt">[limit, after]</span></td><td><code>dict</code></td></tr>
+<tr><td><code>list_flow_assets</code></td><td class="desc">List a Flow&#39;s assets (its Flow JSON download URL)</td><td><span class="req">flow_id</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_flows</code></td><td class="desc">List Flows on the WhatsApp Business Account</td><td><span class="opt">[limit, after]</span></td><td><code>PaginatedList[WhatsAppFlow]</code></td></tr>
+<tr><td><code>list_phone_numbers</code></td><td class="desc">List all phone numbers on the WhatsApp Business Account</td><td><span class="opt">[limit, after]</span></td><td><code>PaginatedList[WhatsAppPhoneNumber]</code></td></tr>
+<tr><td><code>list_qr_codes</code></td><td class="desc">List managed QR codes</td><td><span class="opt">[code]</span></td><td><code>list</code></td></tr>
+<tr><td><code>list_subscribed_apps</code></td><td class="desc">List apps subscribed to the WABA&#39;s webhooks</td><td><span class="opt">—</span></td><td><code>dict</code></td></tr>
+<tr><td><code>list_templates</code></td><td class="desc">List message templates with status and quality</td><td><span class="opt">[status, category, language, limit, after]</span></td><td><code>PaginatedList[WhatsAppTemplate]</code></td></tr>
+<tr><td><code>mark_as_read</code></td><td class="desc">Mark a received message as read (blue ticks)</td><td><span class="req">message_id</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>publish_flow ⚠</code></td><td class="desc">Publish a Flow so it can be sent</td><td><span class="req">flow_id</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>register_phone ⚠</code></td><td class="desc">Register the number for Cloud API messaging</td><td><span class="req">pin</span> &nbsp;<span class="opt">[data_localization_region]</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>request_verification_code ⚠</code></td><td class="desc">Request a phone verification code (SMS or voice)</td><td><span class="opt">[code_method, language]</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>send_audio</code></td><td class="desc">Send an audio clip or voice note (24h window)</td><td><span class="req">to</span> &nbsp;<span class="opt">[audio_id, audio_url, reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_contacts</code></td><td class="desc">Send contact cards (24h window)</td><td><span class="req">to, contacts</span> &nbsp;<span class="opt">[reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_cta_url</code></td><td class="desc">Send a call-to-action URL button (24h window)</td><td><span class="req">to, body, display_text, url</span> &nbsp;<span class="opt">[header_text, footer_text, reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_document</code></td><td class="desc">Send a document (24h window)</td><td><span class="req">to</span> &nbsp;<span class="opt">[document_id, document_url, caption, filename, reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_flow</code></td><td class="desc">Send a Flow (in-chat form) to a user</td><td><span class="req">to, flow_cta, body</span> &nbsp;<span class="opt">[flow_id, flow_name, screen, data, flow_token, flow_action, mode, header_text, footer_text, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_image</code></td><td class="desc">Send an image (24h window)</td><td><span class="req">to</span> &nbsp;<span class="opt">[image_id, image_url, caption, reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_interactive</code></td><td class="desc">Send a raw interactive payload (flows, products, address)</td><td><span class="req">to, interactive</span> &nbsp;<span class="opt">[reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_interactive_buttons</code></td><td class="desc">Send up to 3 tappable reply buttons (24h window)</td><td><span class="req">to, body, buttons</span> &nbsp;<span class="opt">[header_text, footer_text, reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_interactive_list</code></td><td class="desc">Send a selectable list menu (24h window)</td><td><span class="req">to, body, button_text, sections</span> &nbsp;<span class="opt">[header_text, footer_text, reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_location</code></td><td class="desc">Send a location pin (24h window)</td><td><span class="req">to, latitude, longitude</span> &nbsp;<span class="opt">[name, address, reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_location_request</code></td><td class="desc">Ask the user to share their location (24h window)</td><td><span class="req">to, body</span> &nbsp;<span class="opt">[reply_to]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_marketing_message</code></td><td class="desc">Send a marketing template via the Marketing Messages API</td><td><span class="req">to, template_name</span> &nbsp;<span class="opt">[language_code, components, message_activity_sharing, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_reaction</code></td><td class="desc">React to a message with an emoji</td><td><span class="req">to, message_id</span> &nbsp;<span class="opt">[emoji]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_sticker</code></td><td class="desc">Send a sticker (24h window)</td><td><span class="req">to</span> &nbsp;<span class="opt">[sticker_id, sticker_url, reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_template</code></td><td class="desc">Send an approved template (works outside the 24h window)</td><td><span class="req">to, template_name</span> &nbsp;<span class="opt">[language_code, components, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_text</code></td><td class="desc">Send a WhatsApp text message (24h window)</td><td><span class="req">to, body</span> &nbsp;<span class="opt">[preview_url, reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>send_typing_indicator</code></td><td class="desc">Show a typing indicator in the chat</td><td><span class="req">message_id</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>send_video</code></td><td class="desc">Send a video (24h window)</td><td><span class="req">to</span> &nbsp;<span class="opt">[video_id, video_url, caption, reply_to, tracking_data]</span></td><td><code>WhatsAppSendResult</code></td></tr>
+<tr><td><code>set_app_webhook ⚠</code></td><td class="desc">Configure the app-level webhook callback via API</td><td><span class="req">app_id, callback_url, verify_token</span> &nbsp;<span class="opt">[fields]</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>set_two_step_pin ⚠</code></td><td class="desc">Set the two-step verification PIN</td><td><span class="req">pin</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>subscribe_app</code></td><td class="desc">Subscribe this app to the WABA&#39;s webhooks</td><td><span class="opt">[override_callback_uri, verify_token]</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>unblock_users ⚠</code></td><td class="desc">Unblock previously blocked users</td><td><span class="req">numbers</span></td><td><code>WhatsAppBlockResult</code></td></tr>
+<tr><td><code>update_business_profile ⚠</code></td><td class="desc">Update the business profile</td><td><span class="opt">[about, address, description, email, websites, vertical]</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>update_flow ⚠</code></td><td class="desc">Update a Flow&#39;s metadata</td><td><span class="req">flow_id</span> &nbsp;<span class="opt">[name, categories, endpoint_uri]</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+<tr><td><code>update_qr_code ⚠</code></td><td class="desc">Update a managed QR code&#39;s prefilled message</td><td><span class="req">code, prefilled_message</span></td><td><code>WhatsAppQRCode</code></td></tr>
+<tr><td><code>upload_flow_json</code></td><td class="desc">Upload the Flow JSON that defines the form&#39;s screens</td><td><span class="req">flow_id, flow_json</span></td><td><code>WhatsAppFlowMutationResult</code></td></tr>
+<tr><td><code>upload_media</code></td><td class="desc">Upload media, returns a reusable media id (30 days)</td><td><span class="req">content_base64, mime_type</span> &nbsp;<span class="opt">[filename]</span></td><td><code>WhatsAppUploadResult</code></td></tr>
+<tr><td><code>verify_code ⚠</code></td><td class="desc">Submit the phone verification code</td><td><span class="req">code</span></td><td><code>WhatsAppSuccessResult</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cta">
+  <a href="https://toolsconnector.github.io/#/connector/whatsapp_business">
+    Open Interactive Docs &amp; Playground →
+  </a>
+  <p>Full schema explorer, code generation, and live API testing</p>
+</div>
+
+<footer>
+  <a href="https://toolsconnector.github.io/">ToolsConnector</a> ·
+  <a href="https://github.com/sachinshelke/ToolsConnector">GitHub</a> ·
+  <a href="https://pypi.org/project/toolsconnector/">PyPI</a> ·
+  <a href="https://opensource.org/licenses/Apache-2.0">Apache 2.0</a> · v0.3.21
+</footer>
+
+</body>
+</html>

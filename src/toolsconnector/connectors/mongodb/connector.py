@@ -17,6 +17,7 @@ import httpx
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.errors import NotFoundError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, header_key_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -58,6 +59,12 @@ class MongoDB(BaseConnector):
         "update, delete, aggregate, and count documents."
     )
     _rate_limit_config = RateLimitSpec(rate=300, period=1, burst=50)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = header_key_auth(
+        "api-key",
+        label="Data API key",
+        obtain_url="https://cloud.mongodb.com/",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

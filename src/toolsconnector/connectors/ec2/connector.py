@@ -29,6 +29,7 @@ import httpx
 from toolsconnector.connectors._aws.signing import sign_v4
 from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, aws_sigv4_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -203,6 +204,10 @@ class EC2(BaseConnector):
     base_url = "https://ec2.us-east-1.amazonaws.com"
     description = "Launch and manage EC2 instances, security groups, key pairs, and Elastic IPs."
     _rate_limit_config = RateLimitSpec(rate=100, period=1, burst=200)
+    _default_auth_type = AuthType.AWS_SIGV4
+    _auth_providers_config = aws_sigv4_auth(
+        service="ec2", docs_url="https://docs.aws.amazon.com/AWSEC2/latest/APIReference/"
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

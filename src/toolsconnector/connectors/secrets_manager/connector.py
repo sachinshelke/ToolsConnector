@@ -23,6 +23,7 @@ import httpx
 from toolsconnector.connectors._aws.signing import sign_v4
 from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, aws_sigv4_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -58,6 +59,11 @@ class SecretsManager(BaseConnector):
     base_url = "https://secretsmanager.us-east-1.amazonaws.com"
     description = "Store, rotate, and retrieve database credentials, API keys, and other secrets."
     _rate_limit_config = RateLimitSpec(rate=50, period=1, burst=100)
+    _default_auth_type = AuthType.AWS_SIGV4
+    _auth_providers_config = aws_sigv4_auth(
+        service="secrets_manager",
+        docs_url="https://docs.aws.amazon.com/secretsmanager/latest/apireference/",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

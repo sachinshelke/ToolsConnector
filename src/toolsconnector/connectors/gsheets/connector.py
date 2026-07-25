@@ -22,6 +22,7 @@ from toolsconnector.errors import (
     TransportError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, service_account_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 
 from .types import (
@@ -120,6 +121,14 @@ class GoogleSheets(BaseConnector):
     verification_status = "live"  # Tier 1 — 16/16 actions live-verified 2026-05-28
     description = "Connect to Google Sheets to manage spreadsheets and cell data."
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=60)
+    _default_auth_type = AuthType.OAUTH2
+    _auth_providers_config = service_account_auth(
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/spreadsheets.readonly",
+        ],
+        docs_url="https://developers.google.com/sheets/api/reference/rest",
+    )
 
     # ------------------------------------------------------------------
     # Internal helpers

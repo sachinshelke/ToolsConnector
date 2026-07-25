@@ -50,6 +50,7 @@ from toolsconnector.errors import (
     ValidationError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, header_key_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -123,6 +124,13 @@ class ContactOut(BaseConnector):
         "Wraps ContactOut's own API — no scraping."
     )
     _rate_limit_config = RateLimitSpec(rate=1, period=1, burst=3)  # search is 60/min; advisory
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = header_key_auth(
+        "token",
+        label="API key",
+        hint="ContactOut sends the key in a custom `token` header, not Authorization.",
+        obtain_url="https://contactout.com/api",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

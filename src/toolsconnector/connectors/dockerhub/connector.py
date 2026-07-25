@@ -15,6 +15,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -144,6 +145,11 @@ class DockerHub(BaseConnector):
         "Connect to Docker Hub to search repositories, list tags, view users and organisations."
     )
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=30)
+    _default_auth_type = AuthType.BEARER_TOKEN
+    _auth_providers_config = bearer_auth(
+        label="API token",
+        obtain_url="https://hub.docker.com/settings/security",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

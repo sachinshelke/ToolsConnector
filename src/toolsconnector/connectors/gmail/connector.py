@@ -20,6 +20,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, service_account_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -122,6 +123,16 @@ class Gmail(BaseConnector):
     verification_status = "live"  # Tier 1 — validated in real production use (core email workflows)
     description = "Connect to Gmail to read, send, and manage emails."
     _rate_limit_config = RateLimitSpec(rate=250, period=60, burst=50)
+    _default_auth_type = AuthType.OAUTH2
+    _auth_providers_config = service_account_auth(
+        scopes=[
+            "https://www.googleapis.com/auth/gmail.readonly",
+            "https://www.googleapis.com/auth/gmail.send",
+            "https://www.googleapis.com/auth/gmail.modify",
+            "https://www.googleapis.com/auth/gmail.labels",
+        ],
+        docs_url="https://developers.google.com/workspace/gmail/api/reference/rest",
+    )
 
     # ------------------------------------------------------------------
     # Internal helpers

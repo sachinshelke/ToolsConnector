@@ -1,0 +1,150 @@
+schema_version: 1
+generated_at: '2026-07-20T09:41:46.164218+00:00'
+total_decisions: 40
+active_decisions: 40
+tags:
+  architecture:
+  - D000005
+  - D00000F
+  audit:
+  - D000003
+  - D000006
+  auth:
+  - D00000F
+  backlog:
+  - D00000F
+  bugfix:
+  - D000008
+  byok:
+  - D000007
+  - D00000B
+  - D00000F
+  chaos-testing:
+  - D000009
+  - D00000A
+  connector:
+  - D000001
+  - D000002
+  - D000003
+  - D000004
+  - D000005
+  - D000006
+  - D000007
+  - D000008
+  contactout:
+  - D000007
+  - D000008
+  - D000009
+  - D00000B
+  - D00000C
+  - D00000D
+  correctness:
+  - D000003
+  credential-leak:
+  - D000009
+  doc-audit:
+  - D000008
+  enrichment:
+  - D000007
+  false-green:
+  - D00000C
+  hang-guard:
+  - D00000A
+  hardening:
+  - D000003
+  - D000006
+  lead-sync:
+  - D000002
+  - D000003
+  linkedin:
+  - D000001
+  - D000002
+  - D000003
+  - D000004
+  - D000005
+  - D000006
+  live:
+  - D00000D
+  live-verification:
+  - D00000B
+  - D00000C
+  - D00000E
+  live-verified:
+  - D000001
+  lusha:
+  - D000007
+  - D000008
+  - D000009
+  - D00000E
+  marketing:
+  - D000002
+  oauth:
+  - D000001
+  pagination:
+  - D00000A
+  people-data:
+  - D000007
+  - D000008
+  - D000009
+  - D00000B
+  - D00000C
+  - D00000D
+  - D00000E
+  privacy:
+  - D000002
+  resilience:
+  - D000009
+  - D00000A
+  roadmap:
+  - D000004
+  - D000005
+  robustness:
+  - D000006
+  scope-boundary:
+  - D000002
+  - D000004
+  security:
+  - D000006
+  - D000009
+  survey:
+  - D000004
+  tier-1:
+  - D000001
+  types:
+  - D00000A
+  verification:
+  - D000001
+  verification-tier:
+  - D00000D
+  - D00000E
+files:
+  src/toolsconnector/auth/:
+  - D00000F
+  src/toolsconnector/connectors/_helpers/sanitize.py:
+  - D000009
+  src/toolsconnector/connectors/contactout/connector.py:
+  - D000007
+  - D000008
+  - D00000B
+  - D00000C
+  - D00000D
+  src/toolsconnector/connectors/linkedin/connector.py:
+  - D000001
+  - D000005
+  src/toolsconnector/connectors/linkedin_leads/connector.py:
+  - D000002
+  - D000003
+  src/toolsconnector/connectors/lusha/connector.py:
+  - D00000E
+  src/toolsconnector/types/paginated.py:
+  - D00000A
+do_not_revert_ids:
+- D000001
+- D000002
+- D000003
+- D000005
+- D000006
+- D000008
+- D000009
+- D00000A
+- D00000E

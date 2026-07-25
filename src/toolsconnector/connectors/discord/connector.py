@@ -20,6 +20,7 @@ from toolsconnector.errors import (
     ValidationError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, header_key_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 
 from .types import (
@@ -56,6 +57,14 @@ class Discord(BaseConnector):
     base_url = "https://discord.com/api/v10"
     description = "Connect to Discord to send messages, manage channels, and list guild members."
     _rate_limit_config = RateLimitSpec(rate=50, period=1, burst=10)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = header_key_auth(
+        "Authorization",
+        label="Bot token",
+        prefix="Bot",
+        obtain_url="https://discord.com/developers/applications",
+        field_name="bot_token",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

@@ -241,18 +241,36 @@ class TestVerificationStatus:
         from toolsconnector.connectors.linkedin import LinkedIn
         from toolsconnector.connectors.lusha import Lusha
         from toolsconnector.connectors.notion import Notion
+        from toolsconnector.connectors.whatsapp_business import WhatsAppBusiness
 
-        for cls in (Notion, Linear, GitHub, Gmail, LinkedIn, ContactOut, Lusha):
+        # whatsapp_business is live on a contract basis — 18/25 actions
+        # round-tripped against a real Meta test WABA 2026-07-22/23 with
+        # device-confirmed delivery of all 11 message types; the other 7 are
+        # envelope-verified (no media assets / webhook-dependent wamids).
+        for cls in (
+            Notion,
+            Linear,
+            GitHub,
+            Gmail,
+            LinkedIn,
+            ContactOut,
+            Lusha,
+            WhatsAppBusiness,
+        ):
             assert cls.verification_status == "live", f"{cls.__name__} should be Tier 1 (live)"
             assert cls.get_spec().verification_status == "live"
 
     def test_tier_2_connectors_marked_doc(self):
         """Tier 2 (doc) set: slack (doc-verification sweep) + linkedin_leads
-        (Lead Sync — doc-verified + respx-pinned, live pending real leads)."""
+        (Lead Sync — doc-verified + respx-pinned, live pending real leads) +
+        whatsapp (offline link builder — every scheme rule cross-checked
+        against official WhatsApp docs 2026-07-22 and test-pinned; no vendor
+        API exists for a live tier)."""
         from toolsconnector.connectors.linkedin_leads import LinkedInLeads
         from toolsconnector.connectors.slack import Slack
+        from toolsconnector.connectors.whatsapp import WhatsApp
 
-        for cls in (Slack, LinkedInLeads):
+        for cls in (Slack, LinkedInLeads, WhatsApp):
             assert cls.verification_status == "doc", f"{cls.__name__} should be Tier 2 (doc)"
             assert cls.get_spec().verification_status == "doc"
 

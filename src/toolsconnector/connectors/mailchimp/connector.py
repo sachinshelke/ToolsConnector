@@ -16,6 +16,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -51,6 +52,14 @@ class Mailchimp(BaseConnector):
     base_url = "https://{dc}.api.mailchimp.com/3.0"
     description = "Connect to Mailchimp to manage audience lists, subscribers, and email campaigns."
     _rate_limit_config = RateLimitSpec(rate=10, period=1, burst=5)
+    _default_auth_type = AuthType.BASIC
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("api_key", "API key"),
+        ],
+        prefix="Basic",
+        obtain_url="https://mailchimp.com/help/about-api-keys/",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

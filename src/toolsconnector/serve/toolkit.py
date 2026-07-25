@@ -914,6 +914,19 @@ class ToolKitFactory:
     In multi-tenant deployments (like AgentStore), each user/tenant
     gets their own ToolKit with isolated credentials and rate limits.
 
+    A cached kit is reused only while the tenant's credentials are
+    unchanged.  Passing different credentials for a cached tenant
+    (e.g. after a token refresh or rotation) retires the stale kit --
+    its connector instances are torn down -- and builds a fresh one,
+    so a rotated token always reaches the live kit.
+
+    Lifecycle discipline: call :meth:`close_tenant` when a tenant
+    disconnects and :meth:`close_all` on shutdown.  For deployments
+    with many tenants, set *max_tenants* to bound the cache; the
+    least-recently-used tenant's kit is then retired on overflow, so
+    callers should re-fetch kits via :meth:`for_tenant` per request
+    rather than holding long-lived references.
+
     Usage::
 
         factory = ToolKitFactory(
@@ -938,14 +951,21 @@ class ToolKitFactory:
         exclude_dangerous: bool = False,
         timeout_budget: float = 25.0,
         action_timeout: float = 15.0,
+        max_tenants: Optional[int] = None,
     ) -> None:
+        if max_tenants is not None and max_tenants < 1:
+            raise ValueError("max_tenants must be a positive integer or None.")
         self._connectors = connectors
         self._include_actions = include_actions
         self._exclude_actions = exclude_actions
         self._exclude_dangerous = exclude_dangerous
         self._timeout_budget = timeout_budget
         self._action_timeout = action_timeout
+        self._max_tenants = max_tenants
+        # Insertion order doubles as LRU order: most-recently-used last.
         self._tenant_kits: dict[str, ToolKit] = {}
+        self._tenant_credentials: dict[str, dict[str, str]] = {}
+        self._close_tasks: set[asyncio.Task[None]] = set()
 
     def for_tenant(
         self,
@@ -954,25 +974,68 @@ class ToolKitFactory:
     ) -> ToolKit:
         """Get or create a ToolKit for a specific tenant.
 
+        The cached kit is returned only if *credentials* match the ones
+        it was built with; otherwise the stale kit is retired and a new
+        kit is built with the fresh credentials.
+
         Args:
             tenant_id: Unique tenant identifier.
             credentials: Per-tenant credentials dict.
 
         Returns:
-            ToolKit configured for this tenant.
+            ToolKit configured for this tenant and these credentials.
         """
-        if tenant_id not in self._tenant_kits:
-            self._tenant_kits[tenant_id] = ToolKit(
-                self._connectors,
-                credentials=credentials,
-                tenant_id=tenant_id,
-                include_actions=self._include_actions,
-                exclude_actions=self._exclude_actions,
-                exclude_dangerous=self._exclude_dangerous,
-                timeout_budget=self._timeout_budget,
-                action_timeout=self._action_timeout,
-            )
-        return self._tenant_kits[tenant_id]
+        cached = self._tenant_kits.get(tenant_id)
+        if cached is not None:
+            if self._tenant_credentials[tenant_id] == credentials:
+                # Cache hit -- refresh LRU position.
+                self._tenant_kits.pop(tenant_id)
+                self._tenant_kits[tenant_id] = cached
+                return cached
+            # Credentials changed (rotated/refreshed token): the cached
+            # kit would keep using the stale ones, so retire and rebuild.
+            self._tenant_kits.pop(tenant_id)
+            self._tenant_credentials.pop(tenant_id)
+            self._retire_kit(cached)
+
+        if self._max_tenants is not None and len(self._tenant_kits) >= self._max_tenants:
+            evicted_id = next(iter(self._tenant_kits))
+            evicted_kit = self._tenant_kits.pop(evicted_id)
+            self._tenant_credentials.pop(evicted_id, None)
+            self._retire_kit(evicted_kit)
+
+        kit = ToolKit(
+            self._connectors,
+            credentials=credentials,
+            tenant_id=tenant_id,
+            include_actions=self._include_actions,
+            exclude_actions=self._exclude_actions,
+            exclude_dangerous=self._exclude_dangerous,
+            timeout_budget=self._timeout_budget,
+            action_timeout=self._action_timeout,
+        )
+        self._tenant_kits[tenant_id] = kit
+        self._tenant_credentials[tenant_id] = dict(credentials)
+        return kit
+
+    def _retire_kit(self, kit: ToolKit) -> None:
+        """Tear down a replaced or evicted kit's connector instances.
+
+        Inside a running event loop the teardown is scheduled as a task
+        on that loop (non-blocking); otherwise it runs to completion via
+        the sync/async bridge.  ``ToolKit.aclose`` swallows per-connector
+        teardown errors, so retirement never propagates them.
+        """
+        try:
+            loop: Optional[asyncio.AbstractEventLoop] = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop is None:
+            run_sync(kit.aclose())
+        else:
+            task = loop.create_task(kit.aclose())
+            self._close_tasks.add(task)
+            task.add_done_callback(self._close_tasks.discard)
 
     async def close_tenant(self, tenant_id: str) -> None:
         """Close and remove a tenant's ToolKit.
@@ -981,14 +1044,19 @@ class ToolKitFactory:
             tenant_id: Tenant to close.
         """
         kit = self._tenant_kits.pop(tenant_id, None)
+        self._tenant_credentials.pop(tenant_id, None)
         if kit:
             await kit.aclose()
 
     async def close_all(self) -> None:
-        """Close all tenant ToolKits."""
+        """Close all tenant ToolKits and await any pending retirements."""
         for kit in self._tenant_kits.values():
             await kit.aclose()
         self._tenant_kits.clear()
+        self._tenant_credentials.clear()
+        if self._close_tasks:
+            await asyncio.gather(*self._close_tasks, return_exceptions=True)
+            self._close_tasks.clear()
 
     @property
     def active_tenants(self) -> list[str]:

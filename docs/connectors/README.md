@@ -1,6 +1,6 @@
 # All Connectors
 
-ToolsConnector ships with 77 connectors organized into 20 categories, providing 1,578 total actions across communication, CRM, databases, DevOps, AI/ML, finance, productivity, and more.
+ToolsConnector ships with 79 connectors organized into 20 categories, providing 1,649 total actions across communication, CRM, databases, DevOps, AI/ML, finance, productivity, and more.
 
 ## How Connectors Work
 
@@ -27,13 +27,13 @@ result = kit.execute("gmail_list_emails", {"query": "is:unread"})
 
 | Category | Connectors | Actions |
 |---|---|---|
-| [Communication](communication.md) | Gmail, Slack, Discord, Outlook, Teams, Twilio, Telegram | 228 |
+| [Communication](communication.md) | Gmail, Slack, Discord, Outlook, Teams, Twilio, Telegram, WhatsApp Business, WhatsApp | 299 |
 | [AI/ML](ai-ml.md) | Anthropic, OpenAI, Pinecone, Hugging Face, Gemini, Cohere, Mistral, Groq | 172 |
 | [DevOps & Cloud](devops.md) | Cloudflare, CloudWatch, Datadog, Docker Hub, ECR, PagerDuty, Vercel | 123 |
 | [Database](database.md) | Airtable, Firestore, MongoDB, RDS, Redis, Supabase | 118 |
 | [Project Management](project-management.md) | Asana, Jira, Linear, Trello | 110 |
 | [Productivity](productivity.md) | Google Calendar, Docs, Sheets, Tasks, Calendly, Figma | 96 |
-| [CRM & Support](crm.md) | Freshdesk, HubSpot, Intercom, Salesforce, Zendesk | 95 |
+| [CRM & Support](crm.md) | Freshdesk, HubSpot, Intercom, Odoo, Salesforce, Zendesk | 106 |
 | Security & Identity | ACM, Auth0, IAM, Okta, Secrets Manager | 90 |
 | Compute | EC2, ECS, Lambda | 70 |
 | [Code Platforms](code-platforms.md) | GitHub, GitLab | 58 |

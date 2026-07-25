@@ -8,6 +8,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -49,6 +50,16 @@ class Plaid(BaseConnector):
         "balances, identity, and institution lookup."
     )
     _rate_limit_config = RateLimitSpec(rate=30, period=60, burst=10)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("client_id", "Client ID", secret=False),
+            auth_field("secret", "Secret"),
+        ],
+        auth_type=AuthType.API_KEY,
+        header="",
+        obtain_url="https://dashboard.plaid.com/team/keys",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

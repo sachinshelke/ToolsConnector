@@ -60,6 +60,7 @@ from toolsconnector.errors import (
     TimeoutError as ToolsConnectorTimeoutError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, custom_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -228,6 +229,40 @@ class Odoo(BaseConnector):
     # server). This is a conservative client-side courtesy default; override via
     # the connector config for beefier instances or tighter SaaS plans.
     _rate_limit_config = RateLimitSpec(rate=20, period=1, burst=10)
+    _default_auth_type = AuthType.CUSTOM
+    _auth_providers_config = custom_auth(
+        [
+            auth_field(
+                "url",
+                "Odoo instance URL",
+                secret=False,
+                hint="e.g. https://mycompany.odoo.com (aliases: host, base_url).",
+            ),
+            auth_field(
+                "db",
+                "Database name",
+                secret=False,
+                hint="Shown on the Odoo login page (aliases: database, db_name).",
+            ),
+            auth_field(
+                "username",
+                "Username",
+                secret=False,
+                hint="The login email of the Odoo user (aliases: login, user).",
+            ),
+            auth_field(
+                "api_key",
+                "API key",
+                hint=(
+                    "Odoo Settings > My Profile > Account Security > New API"
+                    " Key. A password works too but a key is preferred"
+                    " (aliases: password, key, token)."
+                ),
+            ),
+        ],
+        obtain_url="https://www.odoo.com/documentation/19.0/developer/reference/external_api.html",
+        note="Pass as a dict or a JSON string; keys are alias-tolerant.",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

@@ -89,6 +89,8 @@ _KNOWN_CONNECTORS: dict[str, str] = {
     "twilio": "toolsconnector.connectors.twilio:Twilio",
     "vercel": "toolsconnector.connectors.vercel:Vercel",
     "webhook": "toolsconnector.connectors.webhook:Webhook",
+    "whatsapp": "toolsconnector.connectors.whatsapp:WhatsApp",
+    "whatsapp_business": ("toolsconnector.connectors.whatsapp_business:WhatsAppBusiness"),
     "x": "toolsconnector.connectors.x:X",
     "zendesk": "toolsconnector.connectors.zendesk:Zendesk",
 }

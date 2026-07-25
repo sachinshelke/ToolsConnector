@@ -12,6 +12,7 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 import httpx
 
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, no_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -44,6 +45,10 @@ class Webhook(BaseConnector):
         "endpoint. Supports JSON, form, XML, GraphQL, HMAC signing, and batch."
     )
     _rate_limit_config = RateLimitSpec(rate=120, period=60, burst=30)
+    _default_auth_type = AuthType.CUSTOM
+    _auth_providers_config = no_auth(
+        hint="Per-request: pass any auth header or HMAC secret to the action."
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

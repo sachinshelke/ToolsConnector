@@ -22,6 +22,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, header_key_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -74,6 +75,12 @@ class Gemini(BaseConnector):
     )
     verification_status = "live"
     _rate_limit_config = RateLimitSpec(rate=60, period=60, burst=20)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = header_key_auth(
+        "x-goog-api-key",
+        label="API key",
+        obtain_url="https://aistudio.google.com/app/apikey",
+    )
 
     # ------------------------------------------------------------------
     # Internal helpers

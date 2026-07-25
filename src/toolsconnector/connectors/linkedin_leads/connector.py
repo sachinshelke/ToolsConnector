@@ -55,6 +55,7 @@ from toolsconnector.errors import (
     ValidationError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import ConnectorCategory, ProtocolType, RateLimitSpec
 from toolsconnector.types import PageState, PaginatedList
 
@@ -119,6 +120,11 @@ class LinkedInLeads(BaseConnector):
     )
     # Conservative advisory limit; LinkedIn enforces app + member quotas server-side.
     _rate_limit_config = RateLimitSpec(rate=5, period=1, burst=10)
+    _default_auth_type = AuthType.BEARER_TOKEN
+    _auth_providers_config = bearer_auth(
+        label="API token",
+        obtain_url="https://www.linkedin.com/developers/apps",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

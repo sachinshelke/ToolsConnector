@@ -13,6 +13,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, auth_field, delimited_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -150,6 +151,16 @@ class Datadog(BaseConnector):
         "Connect to Datadog to manage monitors, query metrics, create events, and list dashboards."
     )
     _rate_limit_config = RateLimitSpec(rate=300, period=60, burst=30)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = delimited_auth(
+        [
+            auth_field("api_key", "API key"),
+            auth_field("app_key", "Application key"),
+        ],
+        auth_type=AuthType.API_KEY,
+        header="DD-API-KEY",
+        obtain_url="https://app.datadoghq.com/organization-settings/api-keys",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

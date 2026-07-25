@@ -14,6 +14,7 @@ import httpx
 
 from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, header_key_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -47,6 +48,14 @@ class Telegram(BaseConnector):
         "Connect to Telegram Bot API to send messages, photos, documents, and receive updates."
     )
     _rate_limit_config = RateLimitSpec(rate=30, period=1, burst=30)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = header_key_auth(
+        "",
+        label="Bot token",
+        hint="Issued by @BotFather; sent in the request path, not a header.",
+        obtain_url="https://t.me/BotFather",
+        field_name="bot_token",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

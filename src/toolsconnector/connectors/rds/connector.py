@@ -28,6 +28,7 @@ import httpx
 from toolsconnector.connectors._aws.signing import sign_v4
 from toolsconnector.errors import APIError, NotFoundError
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, aws_sigv4_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -152,6 +153,10 @@ class RDS(BaseConnector):
     base_url = "https://rds.us-east-1.amazonaws.com"
     description = "Create and manage relational databases -- PostgreSQL, MySQL, Aurora, and more."
     _rate_limit_config = RateLimitSpec(rate=25, period=1, burst=50)
+    _default_auth_type = AuthType.AWS_SIGV4
+    _auth_providers_config = aws_sigv4_auth(
+        service="rds", docs_url="https://docs.aws.amazon.com/AmazonRDS/latest/APIReference/"
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

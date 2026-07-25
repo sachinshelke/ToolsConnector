@@ -437,3 +437,60 @@ The rule of thumb: **the connector boundary is the credential, not the brand.** 
 The **legitimate** "get people's contact details" path is `linkedin_leads` (the Lead Sync API): it returns leads — name/email/phone — that members *voluntarily submitted* to **your own** Lead Gen Forms. First-party, consented, opt-in. That is the boundary: we expose the full power the API actually offers, not capabilities the platform deliberately withholds.
 
 **References:** FAQ #8 (primitive, not platform), #9 (BYOK), #16 (verification tiers); connector READMEs under `src/toolsconnector/connectors/linkedin*/`.
+
+## 20. How does multi-tenant credential rotation work (`ToolKitFactory` + OAuth2 keystore keys)?
+
+**The bug class this answers (gap analysis G3/G4, 2026-07-22):** a platform embedding ToolsConnector for *its* users (the B2B2C persona) refreshes a tenant's OAuth token, calls `for_tenant(tenant_id, new_credentials)` — and silently gets back a cached kit still holding the **old** token. Separately, `OAuth2Provider` persisted refreshed tokens under `{connector}:default:{field}` regardless of tenant, so two tenants refreshing the same connector overwrote each other in the keystore.
+
+**Decisions:**
+
+1. **Credentials are part of the cache identity.** `ToolKitFactory.for_tenant` compares the passed credentials against the ones the cached kit was built with (a defensive copy, so caller-side mutation can't mask a rotation). Same credentials → cached kit; different → the stale kit is *retired* (connector instances torn down) and a fresh kit is built. No `refresh=` flag to remember — rotation is detected, not declared, so the failure mode "platform forgot to pass the flag" cannot exist.
+2. **Retirement never blocks the caller's event loop.** Inside a running loop, teardown is scheduled as a task (awaited at `close_all`); in sync contexts it completes via the `run_sync` bridge. `ToolKit.aclose` already swallows per-connector teardown errors, so retirement can't fail a request.
+3. **Bounded cache is opt-in (`max_tenants=None` default), LRU on overflow.** Default stays unbounded because evicting a kit *closes* it, which would break callers that hold long-lived kit references — a silent behavior change for existing single-tenant users. Platforms with many tenants opt in and follow the documented discipline: re-fetch via `for_tenant` per request, `close_tenant` on disconnect, `close_all` on shutdown.
+4. **`OAuth2Provider` takes `tenant_id` (default `"default"`)** and persists under the documented `{connector}:{tenant}:{type}` convention from `keystore/base.py`. Single-tenant callers keep their existing key namespace; multi-tenant refresh no longer collides.
+
+**Deliberately not done here:** factory↔KeyStore integration (auto-loading per-tenant credentials from a keystore) — that belongs to the `toolsconnector.auth` wiring work (G1/G2, decision D00000F), where credential *sourcing* is designed as a whole rather than bolted onto the cache.
+
+**References:** `serve/toolkit.py` (`ToolKitFactory`), `runtime/auth/oauth2.py`, `keystore/base.py` (key convention), `.agent/artifacts/whatsapp-connector-plan.md` §9a (G3/G4).
+
+---
+
+## 21. How do inbound events (webhooks) work if we're "a primitive, not a platform"?
+
+**Decision: the library ships pure verify/parse primitives; the listener is always the developer's.** For `whatsapp_business` that is `verify_signature()`, `handle_verification()` and `parse_events()` — exported functions, not `@action`s, because receiving is not a request/response call.
+
+**Why not ship a receiver?** FAQ #8 bans *us running a service*, not shipping a self-hosted surface (`serve/rest.py` and the MCP server are precedent). A hosted receiver would need retries, queues, replay stores and multi-tenant routing — each one a step from primitive to platform. A stateless `verify → parse → your callback` app can be added later as an optional extra; it must never become the only path.
+
+**Why this matters more than it looks.** WhatsApp is push-only: there is *no* polling endpoint, Meta retries for up to 7 days, and anything missed beyond that is unrecoverable. So "receive" cannot be an action — it is an endpoint you own. What the library can do is make the hard parts safe:
+
+- **Signature verification over raw bytes** with a constant-time compare. Re-serializing the JSON breaks the signature, so the helper takes `bytes`, and hostile header values return `False` instead of raising.
+- **Typed event parsing** across the full taxonomy, with `waba_id` and `phone_number_id` lifted onto every event as routing keys — the thing a multi-tenant platform actually needs, since one Meta app receives events for all its customers.
+- **Documented delivery reality**: dedupe by `wamid` (Meta re-sends — observed live), don't assume ordering, ACK 200 fast and process async.
+
+**Credential asymmetry worth knowing:** signature verification uses the *app secret* (app-level, one per Meta app) while actions use the *tenant's* access token. Platforms verify once at the edge, then route by the event's WABA/phone id.
+
+**Precedent for other connectors:** vendors with pull APIs keep using actions (`telegram.get_updates`, `stripe.list_events`, `gmail.list_history`). Shape A (primitives) is for push-only vendors; don't invent a polling action where the vendor has none.
+
+**References:** `connectors/whatsapp_business/webhooks.py`, `examples/17_whatsapp_webhook_receiver.py` (runnable localhost receiver), `tests/connectors/test_whatsapp_webhook_integration.py`.
+
+---
+
+## 22. Why is there no personal-WhatsApp connector?
+
+**Decision (locked): we ship `whatsapp_business` (the official Cloud API) and `whatsapp` (offline links). There is no personal-account transport, and there will not be one.**
+
+Personal WhatsApp has **no official API**. Every "personal WhatsApp API" — Baileys, whatsmeow, whatsapp-web.js, WPPConnect, and the hosted services reselling them — reverse-engineers the linked-device protocol. That violates WhatsApp's Terms of Service, including a clause aimed squarely at libraries like ours: *create software or APIs that function substantially the same as our Services and offer them for use by third parties*. Enforcement is active (warning banners since May 2025, bans reported at low volume even for reply-only bots) and Meta litigates **vendors**, not just senders. No mainstream connector platform ships it.
+
+This is the same boundary as the LinkedIn people-search decline (FAQ #19): a user consenting to *their own* account is not Meta authorizing an unofficial client, and the counterparties in those chats never consented to entering an agent pipeline. Handing an agent a linked-device session also hands it a total-account credential — a prime prompt-injection and exfiltration target.
+
+**What we ship instead, and it is not a consolation prize:**
+
+| The ask | The honest answer |
+|---|---|
+| "Send from my personal number" | `whatsapp` — build a `wa.me` link or QR; the agent composes, the human taps send. Officially documented, zero network calls. |
+| "Automate my number for real" | Convert it: install the free WhatsApp Business App (chats and history migrate on-device), then onboard through **Embedded Signup with coexistence** — the same number keeps working on the phone *and* gains Cloud API access, with up to 6 months of history synced. |
+| "Read my chat history" | WhatsApp's own in-app **Export chat** produces a file the user consciously exports; parsing that offline is a legitimate future primitive. |
+
+So the answer to "can a normal user connect their WhatsApp?" is **yes — by converting the number in about three minutes, not by impersonating a phone**.
+
+**References:** decision D00008W (locked), `connectors/whatsapp/README.md`, `.agent/artifacts/whatsapp-connector-plan.md` §1.

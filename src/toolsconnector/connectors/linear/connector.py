@@ -19,6 +19,7 @@ from toolsconnector.errors import (
     TimeoutError as ToolsConnectorTimeoutError,
 )
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, header_key_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -93,6 +94,12 @@ class Linear(BaseConnector):
     # accommodates short fan-outs (e.g. paginating through a large project list)
     # without immediately tripping the throttle.
     _rate_limit_config = RateLimitSpec(rate=40, period=60, burst=10)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = header_key_auth(
+        "Authorization",
+        label="API key",
+        obtain_url="https://linear.app/settings/api",
+    )
 
     # ------------------------------------------------------------------
     # Internal helpers

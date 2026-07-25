@@ -13,6 +13,7 @@ import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
 from toolsconnector.runtime import BaseConnector, action
+from toolsconnector.spec.auth import AuthType, header_key_auth
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ProtocolType,
@@ -65,6 +66,12 @@ class Figma(BaseConnector):
         "projects, components, and exported images."
     )
     _rate_limit_config = RateLimitSpec(rate=30, period=60, burst=10)
+    _default_auth_type = AuthType.API_KEY
+    _auth_providers_config = header_key_auth(
+        "X-FIGMA-TOKEN",
+        label="Personal access token",
+        obtain_url="https://www.figma.com/developers/api#access-tokens",
+    )
 
     # ------------------------------------------------------------------
     # Lifecycle

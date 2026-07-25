@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from toolsconnector.runtime._sync import run_sync
 from toolsconnector.runtime.action import ActionMeta, get_actions
 from toolsconnector.spec.action import ActionSpec
+from toolsconnector.spec.auth import AuthSpec
 from toolsconnector.spec.connector import (
     ConnectorCategory,
     ConnectorSpec,
@@ -78,8 +79,12 @@ class BaseConnector(ABC):
     # The website + agents key off this field to surface a badge.
     verification_status: ClassVar[str] = "pattern"
 
-    # Overridden by subclasses to declare auth, rate limits
+    # Overridden by subclasses to declare auth, rate limits.
+    # ``_auth_providers_config`` holds AuthProviderSpec entries and surfaces
+    # on ``get_spec().auth`` so platforms can discover what credentials a
+    # connector needs without reading its docs.
     _auth_providers_config: ClassVar[list[Any]] = []
+    _default_auth_type: ClassVar[Any] = None
     _rate_limit_config: ClassVar[Optional[RateLimitSpec]] = None
 
     def __init__(
@@ -255,8 +260,25 @@ class BaseConnector(ABC):
             base_url=cls.base_url,
             actions=action_specs,
             rate_limits=cls._rate_limit_config or RateLimitSpec(),
+            auth=cls._build_auth_spec(),
             verification_status=cls.verification_status,
         )
+
+    @classmethod
+    def _build_auth_spec(cls) -> AuthSpec:
+        """Assemble the auth spec, injecting the conventional env-var name.
+
+        Connectors declare *what* they need; the ``TC_<NAME>_CREDENTIALS``
+        environment variable is derived here so no connector repeats it.
+        """
+        providers = []
+        env_var = f"TC_{cls.name.upper()}_CREDENTIALS"
+        for provider in cls._auth_providers_config or []:
+            extra = dict(getattr(provider, "extra", {}) or {})
+            if extra.get("credential_format") != "none":
+                extra.setdefault("env_var", env_var)
+            providers.append(provider.model_copy(update={"extra": extra}))
+        return AuthSpec(supported=providers, default=cls._default_auth_type)
 
     def __repr__(self) -> str:
         tenant = f", tenant={self._tenant_id}" if self._tenant_id else ""
