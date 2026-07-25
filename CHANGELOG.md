@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.22](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.21...v0.3.22) (2026-07-25)
+
+
+### ✨ Features
+
+* whatsapp connectors (Cloud API + link builder) + machine-readable auth across all 79 connectors ([#76](https://github.com/sachinshelke/ToolsConnector/issues/76)) ([648db7c](https://github.com/sachinshelke/ToolsConnector/commit/648db7c09ce0edfe65cc102ca33c4246b48e882a))
+
 ## [0.3.21](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.20...v0.3.21) (2026-06-24)
 
 
