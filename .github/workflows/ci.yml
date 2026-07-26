@@ -351,6 +351,7 @@ jobs:
         run: python scripts/build_site.py
 
       - name: Deploy to ToolsConnector.github.io
+        id: deploy
         env:
           DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
           SOURCE_SHA: ${{ github.sha }}
@@ -367,8 +368,62 @@ jobs:
 
           cd _deploy
           git add -A
-          git diff --staged --quiet && echo "No changes to deploy." && exit 0
+          if git diff --staged --quiet; then
+            echo "No changes to deploy."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           SHORT_SHA="${SOURCE_SHA:0:7}"
           git commit -m "deploy: ToolsConnector@${SHORT_SHA}"
           git push
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+          echo "deploy_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # GitHub's legacy Pages builder can silently wedge in status:"building"
+      # for days, serving the PRIOR build while the deploy repo HEAD is correct
+      # (hit on the 0.3.22 release — site showed 0.3.21 for 2 days). Wait for the
+      # build of the SHA we just pushed to reach "built"; nudge one rebuild if it
+      # stalls; fail loudly if it never publishes so it can't go unnoticed again.
+      - name: Verify GitHub Pages published
+        if: steps.deploy.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          DEPLOY_SHA: ${{ steps.deploy.outputs.deploy_sha }}
+        run: |
+          set -uo pipefail
+          REPO="ToolsConnector/ToolsConnector.github.io"
+          echo "Waiting for Pages to publish ${DEPLOY_SHA:0:7} …"
+          saw_valid=0
+          nudged=0
+          for i in $(seq 1 30); do   # ~5 min ceiling (30 × 10s)
+            resp="$(gh api "repos/$REPO/pages/builds/latest" 2>/dev/null || echo '{}')"
+            st="$(echo "$resp" | jq -r '.status // "unknown"')"
+            cm="$(echo "$resp" | jq -r '.commit // ""')"
+            echo "  [$i] status=$st commit=${cm:0:7}"
+            case "$st" in
+              queued|building|built|errored) saw_valid=1 ;;
+            esac
+            if [ "$st" = "built" ] && [ "$cm" = "$DEPLOY_SHA" ]; then
+              echo "✓ Pages published $DEPLOY_SHA."
+              exit 0
+            fi
+            if [ "$st" = "errored" ] && [ "$cm" = "$DEPLOY_SHA" ]; then
+              echo "::error::Pages build errored: $(echo "$resp" | jq -r '.error.message // "(no message)"')"
+              exit 1
+            fi
+            # wedged 'building' on OUR sha for ~90s → request one fresh build
+            if [ "$st" = "building" ] && [ "$cm" = "$DEPLOY_SHA" ] \
+               && [ "$i" -ge 9 ] && [ "$nudged" -eq 0 ]; then
+              echo "  build appears wedged — requesting a fresh Pages build…"
+              gh api -X POST "repos/$REPO/pages/builds" >/dev/null 2>&1 || true
+              nudged=1
+            fi
+            sleep 10
+          done
+          if [ "$saw_valid" -eq 0 ]; then
+            echo "::warning::Could not read Pages build status (token scope?) — skipping publish verification."
+            exit 0
+          fi
+          echo "::error::Pages did not reach 'built' for $DEPLOY_SHA within timeout (wedged builder). Nudge: gh api -X POST repos/$REPO/pages/builds"
+          exit 1
