@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.23](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.22...v0.3.23) (2026-08-01)
+
+
+### 🐛 Bug Fixes
+
+* **gmail:** return thread messages + add batched header listing ([#79](https://github.com/sachinshelke/ToolsConnector/issues/79)) ([#80](https://github.com/sachinshelke/ToolsConnector/issues/80)) ([b85952e](https://github.com/sachinshelke/ToolsConnector/commit/b85952e9fbec78ce289ca49361602c56a904f7a3))
+
 ## [0.3.22](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.21...v0.3.22) (2026-07-25)
 
 
