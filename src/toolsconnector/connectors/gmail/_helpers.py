@@ -17,6 +17,7 @@ from .types import (
     Draft,
     Email,
     EmailAddress,
+    EmailHeader,
     Filter,
     FilterAction,
     FilterCriteria,
@@ -240,21 +241,127 @@ def parse_message(data: dict[str, Any]) -> Email:
     )
 
 
-def parse_thread(data: dict[str, Any]) -> Thread:
+def parse_thread(data: dict[str, Any], fmt: str = "full") -> Thread:
     """Parse a Gmail API thread response into a Thread model.
+
+    Gmail's ``users.threads.get`` returns the thread's ``messages`` array, but
+    each message only carries a ``payload`` (headers + body) when ``format`` is
+    ``"metadata"`` or ``"full"`` — a ``"minimal"`` fetch (and the
+    ``users.threads.list`` endpoint) returns only id/threadId/labelIds stubs.
+    We reuse :func:`parse_message` to hydrate ``messages`` whenever real
+    payloads are present, and skip parsing for ``"minimal"`` so callers who
+    deliberately asked for a cheap fetch get an empty list rather than a list
+    of content-free ``Email`` stubs. ``messages_count`` is populated either way.
 
     Args:
         data: Raw JSON response from a threads endpoint.
+        fmt: The Gmail ``format`` the thread was fetched with
+            (``"full"`` | ``"metadata"`` | ``"minimal"``). Controls whether
+            ``messages`` is hydrated.
 
     Returns:
         Populated Thread instance.
     """
+    raw_messages = data.get("messages", []) or []
+    messages = [parse_message(m) for m in raw_messages] if fmt != "minimal" else []
     return Thread(
         id=data.get("id", ""),
         snippet=data.get("snippet", ""),
         history_id=data.get("historyId"),
-        messages_count=len(data.get("messages", [])),
+        messages_count=len(raw_messages),
+        messages=messages,
     )
+
+
+def parse_email_header(data: dict[str, Any]) -> EmailHeader:
+    """Parse a Gmail message into a lightweight EmailHeader (no body decode).
+
+    Works on any message that includes ``payload.headers`` — i.e. a Gmail
+    ``format`` of ``"metadata"`` or ``"full"``. This is the cheap projection
+    used by ``list_email_headers``: it reads the envelope + snippet + labels
+    without decoding (or even requiring) the message body.
+
+    Args:
+        data: Raw JSON for a single message (metadata or full format).
+
+    Returns:
+        Populated EmailHeader instance.
+    """
+    payload = data.get("payload", {})
+    headers = payload.get("headers", [])
+
+    from_raw = get_header(headers, "From")
+    to_raw = get_header(headers, "To")
+    cc_raw = get_header(headers, "Cc")
+
+    from_addr = parse_email_address(from_raw) if from_raw else EmailAddress(email="")
+    to_addrs = [parse_email_address(a) for a in to_raw.split(",") if a.strip()] if to_raw else []
+    cc_addrs = [parse_email_address(a) for a in cc_raw.split(",") if a.strip()] if cc_raw else []
+
+    return EmailHeader(
+        message_id=data.get("id", ""),
+        thread_id=data.get("threadId", ""),
+        subject=get_header(headers, "Subject"),
+        from_address=from_addr,
+        to=to_addrs,
+        cc=cc_addrs,
+        date=get_header(headers, "Date"),
+        snippet=data.get("snippet", ""),
+        labels=data.get("labelIds", []),
+        has_attachments=has_attachments(payload),
+    )
+
+
+def parse_batch_response(content: bytes, content_type: str) -> list[dict[str, Any]]:
+    """Parse a Gmail ``multipart/mixed`` batch response into JSON message dicts.
+
+    Gmail's batch endpoint returns one ``application/http`` part per sub-request,
+    each wrapping a full inner HTTP response (status line, headers, blank line,
+    JSON body). We split on the boundary carried in the response Content-Type,
+    keep only 2xx sub-responses, and JSON-decode each body. Sub-responses that
+    errored (e.g. a since-deleted message id) are skipped, so the returned list
+    may be shorter than the id list — callers should treat it as best-effort.
+
+    Args:
+        content: Raw response body bytes.
+        content_type: The response ``Content-Type`` header (carries ``boundary=``).
+
+    Returns:
+        Parsed JSON dicts for every successful sub-response, in wire order.
+    """
+    import json
+    import re
+
+    m = re.search(r'boundary=(?:"([^"]+)"|([^;\s]+))', content_type)
+    if not m:
+        return []
+    boundary = m.group(1) or m.group(2)
+
+    text = content.decode("utf-8", errors="replace")
+    results: list[dict[str, Any]] = []
+    for segment in text.split(f"--{boundary}"):
+        # Each segment: outer part headers, blank line, then the inner HTTP
+        # response. Locate the inner response by its status line.
+        start = segment.find("HTTP/")
+        if start == -1:
+            continue
+        inner = segment[start:]
+        status_line = inner.splitlines()[0]
+        status_match = re.match(r"HTTP/\d\.\d\s+(\d{3})", status_line)
+        if not status_match or not status_match.group(1).startswith("2"):
+            continue
+        # Body is everything after the first blank line within the inner response.
+        split_parts = re.split(r"\r?\n\r?\n", inner, maxsplit=1)
+        if len(split_parts) < 2:
+            continue
+        body = split_parts[1].strip()
+        if not body:
+            continue
+        try:
+            results.append(json.loads(body))
+        except json.JSONDecodeError:
+            continue
+    return results
 
 
 def parse_label(data: dict[str, Any]) -> Label:

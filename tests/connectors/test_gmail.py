@@ -653,3 +653,217 @@ def test_html_to_text_helper() -> None:
     assert "alert" not in text
     # Style content is skipped
     assert "color: red" not in text
+
+
+# ---------------------------------------------------------------------------
+# Issue #79 — get_thread must return message content, not a stub
+# ---------------------------------------------------------------------------
+
+
+def _b64url(s: str) -> str:
+    return base64.urlsafe_b64encode(s.encode("utf-8")).decode("ascii")
+
+
+@pytest.mark.asyncio
+async def test_get_thread_full_populates_messages(gmail: Gmail) -> None:
+    """get_thread(format="full") on an N-message thread returns len(messages)==N
+    with real subject/from/body — not just a messages_count stub (Defect 1).
+    """
+    thread_json = {
+        "id": "t1",
+        "historyId": "555",
+        "messages": [
+            {
+                "id": "m1",
+                "threadId": "t1",
+                "snippet": "first",
+                "labelIds": ["INBOX"],
+                "payload": {
+                    "mimeType": "text/plain",
+                    "headers": [
+                        {"name": "Subject", "value": "Hello 1"},
+                        {"name": "From", "value": "Alice <alice@example.com>"},
+                    ],
+                    "body": {"data": _b64url("Body one")},
+                },
+            },
+            {
+                "id": "m2",
+                "threadId": "t1",
+                "snippet": "second",
+                "labelIds": ["INBOX"],
+                "payload": {
+                    "mimeType": "text/plain",
+                    "headers": [
+                        {"name": "Subject", "value": "Hello 2"},
+                        {"name": "From", "value": "Bob <bob@example.com>"},
+                    ],
+                    "body": {"data": _b64url("Body two")},
+                },
+            },
+        ],
+    }
+
+    with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
+        respx_mock.get("/users/me/threads/t1").mock(
+            return_value=httpx.Response(200, json=thread_json)
+        )
+
+        thread = await gmail.aget_thread(thread_id="t1", format="full")
+
+        assert thread.messages_count == 2
+        # The whole point of the fix: the messages survive parsing.
+        assert len(thread.messages) == 2
+        assert thread.messages[0].subject == "Hello 1"
+        assert thread.messages[0].from_address is not None
+        assert thread.messages[0].from_address.email == "alice@example.com"
+        assert thread.messages[0].body_text == "Body one"
+        assert thread.messages[1].subject == "Hello 2"
+        assert thread.messages[1].body_text == "Body two"
+
+
+@pytest.mark.asyncio
+async def test_get_thread_minimal_returns_count_without_parsing(gmail: Gmail) -> None:
+    """format="minimal" keeps messages_count but leaves messages empty — Gmail
+    sends no payloads, so we must not fabricate content-free Email stubs.
+    """
+    thread_json = {
+        "id": "t1",
+        "messages": [
+            {"id": "m1", "threadId": "t1", "labelIds": ["INBOX"]},
+            {"id": "m2", "threadId": "t1", "labelIds": ["INBOX"]},
+        ],
+    }
+    with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
+        respx_mock.get("/users/me/threads/t1").mock(
+            return_value=httpx.Response(200, json=thread_json)
+        )
+        thread = await gmail.aget_thread(thread_id="t1", format="minimal")
+        assert thread.messages_count == 2
+        assert thread.messages == []
+
+
+# ---------------------------------------------------------------------------
+# Issue #79 — cheap header listing must not fetch full bodies (Defect 2)
+# ---------------------------------------------------------------------------
+
+
+def _batch_body(*messages: dict) -> bytes:
+    """Build a Gmail multipart/mixed batch response body from message dicts."""
+    import json as _json
+
+    boundary = "batch_resp_boundary"
+    parts = []
+    for i, msg in enumerate(messages):
+        parts.append(
+            f"--{boundary}\r\n"
+            "Content-Type: application/http\r\n"
+            f"Content-ID: <response-item-{i}>\r\n\r\n"
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+            f"{_json.dumps(msg)}\r\n"
+        )
+    return ("".join(parts) + f"--{boundary}--\r\n").encode("utf-8")
+
+
+BATCH_CT = "multipart/mixed; boundary=batch_resp_boundary"
+
+
+@pytest.mark.asyncio
+async def test_list_email_headers_is_batched_no_full_body_fetch(gmail: Gmail) -> None:
+    """list_email_headers resolves the whole page in ONE batch request and makes
+    ZERO per-message full-body GETs — the N+1 is gone (Defect 2, priority 1-3).
+    """
+    list_json = {
+        "messages": [{"id": "m1", "threadId": "t1"}, {"id": "m2", "threadId": "t1"}],
+        "resultSizeEstimate": 2,
+    }
+    batch_msgs = [
+        {
+            "id": "m1",
+            "threadId": "t1",
+            "snippet": "first",
+            "labelIds": ["INBOX"],
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": "Hello 1"},
+                    {"name": "From", "value": "Alice <alice@example.com>"},
+                    {"name": "Date", "value": "Mon, 1 Jan 2026 10:00:00 +0000"},
+                ]
+            },
+        },
+        {
+            "id": "m2",
+            "threadId": "t1",
+            "snippet": "second",
+            "labelIds": ["INBOX"],
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": "Hello 2"},
+                    {"name": "From", "value": "Bob <bob@example.com>"},
+                    {"name": "Date", "value": "Mon, 1 Jan 2026 11:00:00 +0000"},
+                ]
+            },
+        },
+    ]
+
+    with respx.mock(assert_all_called=False) as respx_mock:
+        list_route = respx_mock.get("https://gmail.googleapis.com/gmail/v1/users/me/messages").mock(
+            return_value=httpx.Response(200, json=list_json)
+        )
+        batch_route = respx_mock.post("https://gmail.googleapis.com/batch/gmail/v1").mock(
+            return_value=httpx.Response(
+                200, content=_batch_body(*batch_msgs), headers={"Content-Type": BATCH_CT}
+            )
+        )
+        # Guard route: ANY per-message full-body GET would hit this and fail the test.
+        per_message_route = respx_mock.get(
+            url__regex=r"https://gmail\.googleapis\.com/gmail/v1/users/me/messages/m\d"
+        ).mock(return_value=httpx.Response(200, json={"id": "SHOULD_NOT_BE_CALLED"}))
+
+        result = await gmail.alist_email_headers(query="in:inbox", limit=2)
+
+        # Exactly one list + one batch; NO per-message hydration calls.
+        assert list_route.call_count == 1
+        assert batch_route.call_count == 1
+        assert per_message_route.call_count == 0, "list_email_headers fetched bodies!"
+
+        # Batch request asked for metadata (not full), for both ids.
+        sent = batch_route.calls.last.request.content.decode("utf-8")
+        assert "format=metadata" in sent
+        assert "/messages/m1?format=metadata" in sent
+        assert "/messages/m2?format=metadata" in sent
+
+        # Headers parsed correctly.
+        assert [h.message_id for h in result.items] == ["m1", "m2"]
+        assert result.items[0].subject == "Hello 1"
+        assert result.items[0].from_address.email == "alice@example.com"
+        assert result.items[1].subject == "Hello 2"
+        # EmailHeader is a body-free projection — no body fields exist on it.
+        assert not hasattr(result.items[0], "body_text")
+
+
+@pytest.mark.asyncio
+async def test_list_emails_format_metadata_forwarded_to_gmail(gmail: Gmail) -> None:
+    """The additive format param is forwarded to the per-message fetch, so a
+    caller can drop body decode without changing default behavior.
+    """
+    with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
+        respx_mock.get("/users/me/messages", params={"q": "x"}).mock(
+            return_value=httpx.Response(200, json={"messages": [{"id": "m1"}]})
+        )
+        msg_route = respx_mock.get("/users/me/messages/m1").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": "m1",
+                    "threadId": "t1",
+                    "payload": {"headers": [{"name": "Subject", "value": "S"}]},
+                },
+            )
+        )
+
+        await gmail.alist_emails(query="x", limit=1, format="metadata")
+
+        assert msg_route.call_count == 1
+        assert msg_route.calls.last.request.url.params["format"] == "metadata"
