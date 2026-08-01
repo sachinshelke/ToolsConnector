@@ -109,7 +109,16 @@ class Attachment(BaseModel):
 
 
 class Thread(BaseModel):
-    """Gmail conversation thread."""
+    """Gmail conversation thread.
+
+    ``messages`` holds the full per-message content when the thread was
+    fetched with ``format`` != ``"minimal"`` (the default for
+    :meth:`~toolsconnector.connectors.gmail.Gmail.get_thread` is
+    ``"metadata"``, which populates headers but not bodies). It stays empty
+    for ``"minimal"`` fetches and for threads produced by ``list_threads``
+    (whose upstream endpoint never returns message payloads).
+    ``messages_count`` is always populated.
+    """
 
     model_config = ConfigDict(frozen=True)
 
@@ -117,6 +126,7 @@ class Thread(BaseModel):
     snippet: str = ""
     history_id: Optional[str] = None
     messages_count: int = 0
+    messages: list[Email] = Field(default_factory=list)
 
 
 class LabelColor(BaseModel):

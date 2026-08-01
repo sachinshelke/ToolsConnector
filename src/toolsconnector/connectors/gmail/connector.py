@@ -37,10 +37,16 @@ from ._helpers import (
     parse_auto_forwarding as _parse_auto_forwarding,
 )
 from ._helpers import (
+    parse_batch_response as _parse_batch_response,
+)
+from ._helpers import (
     parse_delegate as _parse_delegate,
 )
 from ._helpers import (
     parse_draft as _parse_draft,
+)
+from ._helpers import (
+    parse_email_header as _parse_email_header,
 )
 from ._helpers import (
     parse_filter as _parse_filter,
@@ -82,6 +88,7 @@ from .types import (
     Draft,
     DraftId,
     Email,
+    EmailHeader,
     Filter,
     FilterAction,
     FilterCriteria,
@@ -177,6 +184,57 @@ class Gmail(BaseConnector):
             if response.status_code == 204 or not response.content:
                 return {}
             return response.json()
+
+    async def _batch_get_messages(
+        self,
+        message_ids: list[str],
+        message_format: str = "metadata",
+    ) -> list[dict[str, Any]]:
+        """Fetch many messages in ONE request via Gmail's batch endpoint.
+
+        Collapses N per-message GETs into a single ``multipart/mixed`` batch
+        POST to ``https://gmail.googleapis.com/batch/gmail/v1`` — turning
+        header hydration from O(N) upstream round trips into O(1). Returns the
+        parsed message JSON dicts for every sub-request that succeeded, in wire
+        order; ids that error inside the batch are omitted (best-effort).
+
+        Args:
+            message_ids: Gmail message ids to fetch.
+            message_format: Gmail ``format`` for each sub-request
+                (``"metadata"`` by default — headers without body decode).
+
+        Returns:
+            Parsed message dicts (same shape as ``GET /messages/{id}``).
+        """
+        if not message_ids:
+            return []
+
+        boundary = "batch_toolsconnector_gmail"
+        segments: list[str] = []
+        for i, mid in enumerate(message_ids):
+            segments.append(
+                f"--{boundary}\r\n"
+                "Content-Type: application/http\r\n"
+                f"Content-ID: <item-{i}>\r\n\r\n"
+                f"GET /gmail/v1/users/me/messages/{mid}?format={message_format}\r\n\r\n"
+            )
+        body = "".join(segments) + f"--{boundary}--\r\n"
+        headers = {
+            **self._get_headers(),
+            "Content-Type": f"multipart/mixed; boundary={boundary}",
+        }
+
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                "https://gmail.googleapis.com/batch/gmail/v1",
+                headers=headers,
+                content=body.encode("utf-8"),
+            )
+            raise_typed_for_status(response, connector=self.name)
+            return _parse_batch_response(
+                response.content,
+                response.headers.get("Content-Type", ""),
+            )
 
     def _build_rfc2822(
         self,
@@ -353,17 +411,35 @@ class Gmail(BaseConnector):
         limit: int = 10,
         labels: Optional[list[str]] = None,
         page_token: Optional[str] = None,
+        format: str = "full",
     ) -> PaginatedList[Email]:
         """List emails from the user's mailbox.
 
-        Fetches message IDs matching the query, then batch-fetches full
-        message details for each ID.
+        Fetches message IDs matching the query, then hydrates each ID with a
+        separate request.
+
+        **Cost — this is an O(N) action.** Gmail's ``messages.list`` returns
+        only ``{id, threadId}``, so each of the ``limit`` messages is fetched
+        individually: one logical read of N messages costs **N + 1 upstream
+        round trips**. At a large ``limit`` this can cross the transport
+        timeout. Cheaper alternatives:
+
+        - :meth:`list_email_headers` — subject/from/date/snippet for the whole
+          page in **one batched** round trip (O(1)); use this for triage.
+        - :meth:`list_threads` — one request, no per-item hydration (O(1)).
+
+        Pass ``format="metadata"`` here to skip body decoding when you only
+        need headers but still want ``Email`` objects.
 
         Args:
             query: Gmail search query (same syntax as Gmail search bar).
             limit: Maximum number of emails to return per page.
             labels: Filter by label IDs (e.g., ["INBOX", "IMPORTANT"]).
             page_token: Token for fetching the next page of results.
+            format: Per-message fidelity forwarded to Gmail —
+                ``"full"`` (default, includes bodies), ``"metadata"``
+                (headers only, cheaper), or ``"minimal"`` (ids/labels only).
+                Defaults to ``"full"`` so existing behavior is unchanged.
 
         Returns:
             Paginated list of Email objects.
@@ -379,19 +455,72 @@ class Gmail(BaseConnector):
         messages_meta = data.get("messages", [])
         next_page_token = data.get("nextPageToken")
 
-        # Fetch full message details for each returned ID
+        # Hydrate each returned ID (Gmail's list endpoint returns ids only).
         emails: list[Email] = []
         for msg_meta in messages_meta:
             msg_id = msg_meta.get("id", "")
             msg_data = await self._request(
                 "GET",
                 f"/users/me/messages/{msg_id}",
-                params={"format": "full"},
+                params={"format": format},
             )
             emails.append(_parse_message(msg_data))
 
         return PaginatedList(
             items=emails,
+            page_state=PageState(
+                cursor=next_page_token,
+                has_more=next_page_token is not None,
+            ),
+            total_count=data.get("resultSizeEstimate"),
+        )
+
+    @action("List email headers only (metadata, batched — cheap)", requires_scope="read")
+    async def list_email_headers(
+        self,
+        query: str = "is:unread",
+        limit: int = 10,
+        labels: Optional[list[str]] = None,
+        page_token: Optional[str] = None,
+    ) -> PaginatedList[EmailHeader]:
+        """List email headers (subject/from/to/date/snippet/labels) — no bodies.
+
+        The cheap counterpart to :meth:`list_emails`. Gmail's ``messages.list``
+        returns only ``{id, threadId}``, so the ids still have to be resolved —
+        but this fetches them all in **one batched request** (``format=metadata``)
+        rather than one full-body round trip per message. That turns the read
+        from **O(N) upstream round trips into O(1)** (~2 requests total),
+        regardless of ``limit``.
+
+        Use this for listing/triage ("which of these do I need to read?"); use
+        :meth:`get_email` or :meth:`list_emails` when you actually need a body.
+
+        Args:
+            query: Gmail search query (same syntax as Gmail search bar).
+            limit: Maximum number of headers to return per page.
+            labels: Filter by label IDs (e.g., ["INBOX", "IMPORTANT"]).
+            page_token: Token for fetching the next page of results.
+
+        Returns:
+            Paginated list of EmailHeader objects (best-effort: message ids
+            that error in the batch are omitted).
+        """
+        params: dict[str, Any] = {"q": query, "maxResults": limit}
+        if labels:
+            params["labelIds"] = labels
+        if page_token:
+            params["pageToken"] = page_token
+
+        data = await self._request("GET", "/users/me/messages", params=params)
+        messages_meta = data.get("messages", [])
+        next_page_token = data.get("nextPageToken")
+
+        ids = [m.get("id", "") for m in messages_meta if m.get("id")]
+        raw_messages = await self._batch_get_messages(ids, message_format="metadata")
+        headers = [_parse_email_header(m) for m in raw_messages]
+
+        return PaginatedList(
+            items=headers,
             page_state=PageState(
                 cursor=next_page_token,
                 has_more=next_page_token is not None,
@@ -552,21 +681,28 @@ class Gmail(BaseConnector):
         query: str,
         limit: int = 25,
         page_token: Optional[str] = None,
+        format: str = "full",
     ) -> PaginatedList[Email]:
         """Search emails using Gmail's advanced query syntax.
 
-        This is functionally identical to list_emails but provided as a
-        separate semantic action for clarity in agent tooling.
+        This is functionally identical to :meth:`list_emails` (and shares its
+        **O(N) per-message hydration cost** — see that method) but provided as a
+        separate semantic action for clarity in agent tooling. For a cheap,
+        O(1)-round-trip header listing, use :meth:`list_email_headers` instead.
 
         Args:
             query: Gmail search query (e.g., "from:boss has:attachment after:2024/01/01").
             limit: Maximum results per page.
             page_token: Pagination token for next page.
+            format: Per-message fidelity forwarded to Gmail (``"full"`` |
+                ``"metadata"`` | ``"minimal"``). Defaults to ``"full"``.
 
         Returns:
             Paginated list of matching emails.
         """
-        return await self.alist_emails(query=query, limit=limit, page_token=page_token)
+        return await self.alist_emails(
+            query=query, limit=limit, page_token=page_token, format=format
+        )
 
     @action("List all labels", requires_scope="read")
     async def list_labels(self) -> list[Label]:
@@ -700,6 +836,14 @@ class Gmail(BaseConnector):
     ) -> PaginatedList[Thread]:
         """List conversation threads from the user's mailbox.
 
+        **Cheap by design — O(1) round trips.** Gmail's ``threads.list`` never
+        returns message payloads, so each :class:`Thread` here carries only
+        ``id``/``snippet``/``history_id`` with an empty ``messages`` list and
+        ``messages_count == 0``. This action deliberately does **not** hydrate
+        per thread (that would reintroduce the ``list_emails`` N+1 problem). To
+        read a conversation, call :meth:`get_thread` with ``format="full"`` (or
+        ``"metadata"``) on the ids you actually want.
+
         Args:
             query: Gmail search query to filter threads (same syntax as
                 the Gmail search bar). Omit to list all threads.
@@ -707,7 +851,7 @@ class Gmail(BaseConnector):
             page_token: Token for fetching the next page of results.
 
         Returns:
-            Paginated list of Thread objects.
+            Paginated list of Thread stubs (no messages — see above).
         """
         params: dict[str, Any] = {"maxResults": limit}
         if query:
@@ -737,19 +881,26 @@ class Gmail(BaseConnector):
     ) -> Thread:
         """Retrieve a single conversation thread by its ID.
 
+        The returned :class:`~toolsconnector.connectors.gmail.types.Thread`
+        carries the full conversation in ``messages`` (parsed from the payloads
+        Gmail returns for ``format`` ``"metadata"`` / ``"full"``); ``"minimal"``
+        yields only ``messages_count`` with an empty ``messages`` list. A
+        ``"full"`` fetch includes message bodies; ``"metadata"`` (the default)
+        includes headers only and is cheaper.
+
         Args:
             thread_id: The ID of the thread to retrieve.
             format: Response format: 'full', 'metadata', or 'minimal'.
 
         Returns:
-            Thread object with message count populated.
+            Thread object with ``messages`` and ``messages_count`` populated.
         """
         data = await self._request(
             "GET",
             f"/users/me/threads/{thread_id}",
             params={"format": format},
         )
-        return _parse_thread(data)
+        return _parse_thread(data, fmt=format)
 
     # ------------------------------------------------------------------
     # Actions — Trash / Untrash
