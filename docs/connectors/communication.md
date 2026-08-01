@@ -1,6 +1,6 @@
 # Communication
 
-Connectors for email, messaging, and SMS services. 9 connectors, 299 actions.
+Connectors for email, messaging, and SMS services. 9 connectors, 300 actions.
 
 ---
 
