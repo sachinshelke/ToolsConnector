@@ -1,0 +1,2415 @@
+{
+  "id": "drive:v3",
+  "methods": {
+    "drive.about.get": {
+      "httpMethod": "GET",
+      "parameters": {},
+      "path": "about",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.accessproposals.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "proposalId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/accessproposals/{proposalId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.accessproposals.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "pageSize": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/accessproposals",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.accessproposals.resolve": {
+      "httpMethod": "POST",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "proposalId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/accessproposals/{proposalId}:resolve",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.approvals.approve": {
+      "httpMethod": "POST",
+      "parameters": {
+        "approvalId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/approvals/{approvalId}:approve",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata"
+      ]
+    },
+    "drive.approvals.cancel": {
+      "httpMethod": "POST",
+      "parameters": {
+        "approvalId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/approvals/{approvalId}:cancel",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata"
+      ]
+    },
+    "drive.approvals.comment": {
+      "httpMethod": "POST",
+      "parameters": {
+        "approvalId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/approvals/{approvalId}:comment",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata"
+      ]
+    },
+    "drive.approvals.decline": {
+      "httpMethod": "POST",
+      "parameters": {
+        "approvalId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/approvals/{approvalId}:decline",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata"
+      ]
+    },
+    "drive.approvals.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "approvalId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/approvals/{approvalId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.approvals.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "pageSize": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/approvals",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.approvals.reassign": {
+      "httpMethod": "POST",
+      "parameters": {
+        "approvalId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/approvals/{approvalId}:reassign",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata"
+      ]
+    },
+    "drive.approvals.start": {
+      "httpMethod": "POST",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/approvals:start",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata"
+      ]
+    },
+    "drive.apps.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "appId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "apps/{appId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.apps.readonly",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.apps.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "appFilterExtensions": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "appFilterMimeTypes": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "languageCode": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "apps",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive.apps.readonly"
+      ]
+    },
+    "drive.changes.getStartPageToken": {
+      "httpMethod": "GET",
+      "parameters": {
+        "driveId": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "teamDriveId": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "changes/startPageToken",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.changes.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "driveId": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includeCorpusRemovals": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "includeItemsFromAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "includeLabels": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includePermissionsForView": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includeRemoved": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "includeTeamDriveItems": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "pageSize": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": true,
+          "type": "string"
+        },
+        "restrictToMyDrive": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "spaces": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "teamDriveId": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "changes",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.changes.watch": {
+      "httpMethod": "POST",
+      "parameters": {
+        "driveId": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includeCorpusRemovals": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "includeItemsFromAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "includeLabels": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includePermissionsForView": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includeRemoved": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "includeTeamDriveItems": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "pageSize": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": true,
+          "type": "string"
+        },
+        "restrictToMyDrive": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "spaces": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "teamDriveId": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "changes/watch",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.channels.stop": {
+      "httpMethod": "POST",
+      "parameters": {},
+      "path": "channels/stop",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.comments.create": {
+      "httpMethod": "POST",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/comments",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.comments.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "commentId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/comments/{commentId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.comments.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "commentId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "includeDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/{fileId}/comments/{commentId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.comments.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "includeDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "pageSize": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "startModifiedTime": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/comments",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.comments.update": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "commentId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/comments/{commentId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.drives.create": {
+      "httpMethod": "POST",
+      "parameters": {
+        "requestId": {
+          "location": "query",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "drives",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive"
+      ]
+    },
+    "drive.drives.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "allowItemDeletion": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "driveId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "drives/{driveId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive"
+      ]
+    },
+    "drive.drives.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "driveId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "drives/{driveId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.drives.hide": {
+      "httpMethod": "POST",
+      "parameters": {
+        "driveId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "drives/{driveId}/hide",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive"
+      ]
+    },
+    "drive.drives.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "pageSize": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "q": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "drives",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.drives.unhide": {
+      "httpMethod": "POST",
+      "parameters": {
+        "driveId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "drives/{driveId}/unhide",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive"
+      ]
+    },
+    "drive.drives.update": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "driveId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "drives/{driveId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive"
+      ]
+    },
+    "drive.files.copy": {
+      "httpMethod": "POST",
+      "parameters": {
+        "enforceSingleParent": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "ignoreDefaultVisibility": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "includeLabels": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includePermissionsForView": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "keepRevisionForever": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "ocrLanguage": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/{fileId}/copy",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.photos.readonly"
+      ]
+    },
+    "drive.files.create": {
+      "httpMethod": "POST",
+      "parameters": {
+        "enforceSingleParent": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "ignoreDefaultVisibility": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "includeLabels": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includePermissionsForView": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "keepRevisionForever": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "ocrLanguage": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "useContentAsIndexableText": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.files.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "enforceSingleParent": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/{fileId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.files.download": {
+      "httpMethod": "POST",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "mimeType": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "revisionId": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/download",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.files.emptyTrash": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "driveId": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "enforceSingleParent": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/trash",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive"
+      ]
+    },
+    "drive.files.export": {
+      "httpMethod": "GET",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "mimeType": {
+          "location": "query",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/export",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.files.generateCseToken": {
+      "httpMethod": "GET",
+      "parameters": {
+        "fileId": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "parent": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "files/generateCseToken",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive"
+      ]
+    },
+    "drive.files.generateIds": {
+      "httpMethod": "GET",
+      "parameters": {
+        "count": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "space": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "type": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "files/generateIds",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.files.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "acknowledgeAbuse": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "includeLabels": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includePermissionsForView": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/{fileId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.files.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "corpora": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "corpus": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "driveId": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includeItemsFromAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "includeLabels": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includePermissionsForView": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includeTeamDriveItems": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "orderBy": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "pageSize": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "q": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "spaces": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "teamDriveId": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "files",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.files.listLabels": {
+      "httpMethod": "GET",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/listLabels",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.files.modifyLabels": {
+      "httpMethod": "POST",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/modifyLabels",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata"
+      ]
+    },
+    "drive.files.update": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "addParents": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "enforceSingleParent": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "includeLabels": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includePermissionsForView": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "keepRevisionForever": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "ocrLanguage": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "removeParents": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "useContentAsIndexableText": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/{fileId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.scripts"
+      ]
+    },
+    "drive.files.watch": {
+      "httpMethod": "POST",
+      "parameters": {
+        "acknowledgeAbuse": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "includeLabels": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "includePermissionsForView": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/{fileId}/watch",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.operations.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "name": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "operations/{name}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.permissions.create": {
+      "httpMethod": "POST",
+      "parameters": {
+        "emailMessage": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "enforceExpansiveAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "enforceSingleParent": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "moveToNewOwnersRoot": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "sendNotificationEmail": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "transferOwnership": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/{fileId}/permissions",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.permissions.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "enforceExpansiveAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "permissionId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/{fileId}/permissions/{permissionId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.permissions.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "permissionId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/{fileId}/permissions/{permissionId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.permissions.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "includePermissionsForView": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "pageSize": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/{fileId}/permissions",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.permissions.update": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "enforceExpansiveAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "permissionId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "removeExpiration": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsAllDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "supportsTeamDrives": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "transferOwnership": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "files/{fileId}/permissions/{permissionId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.replies.create": {
+      "httpMethod": "POST",
+      "parameters": {
+        "commentId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/comments/{commentId}/replies",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.replies.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "commentId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "replyId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/comments/{commentId}/replies/{replyId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.replies.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "commentId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "includeDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "replyId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/comments/{commentId}/replies/{replyId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.replies.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "commentId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "includeDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "pageSize": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/comments/{commentId}/replies",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.replies.update": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "commentId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "replyId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/comments/{commentId}/replies/{replyId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.revisions.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "revisionId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/revisions/{revisionId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.revisions.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "acknowledgeAbuse": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "revisionId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/revisions/{revisionId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.revisions.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "pageSize": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/revisions",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.meet.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.photos.readonly",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.revisions.update": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "fileId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "revisionId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "files/{fileId}/revisions/{revisionId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.appdata",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "drive.teamdrives.create": {
+      "httpMethod": "POST",
+      "parameters": {
+        "requestId": {
+          "location": "query",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "teamdrives",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive"
+      ]
+    },
+    "drive.teamdrives.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "teamDriveId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "teamdrives/{teamDriveId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive"
+      ]
+    },
+    "drive.teamdrives.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "teamDriveId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "teamdrives/{teamDriveId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.teamdrives.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "pageSize": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "q": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "teamdrives",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    },
+    "drive.teamdrives.update": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "teamDriveId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "useDomainAdminAccess": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "teamdrives/{teamDriveId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive"
+      ]
+    }
+  },
+  "name": "drive",
+  "revision": "20260728",
+  "schemas": {
+    "About": [
+      "appInstalled",
+      "canCreateDrives",
+      "canCreateTeamDrives",
+      "driveThemes",
+      "exportFormats",
+      "folderColorPalette",
+      "importFormats",
+      "kind",
+      "maxImportSizes",
+      "maxUploadSize",
+      "storageQuota",
+      "teamDriveThemes",
+      "user"
+    ],
+    "AccessProposal": [
+      "createTime",
+      "fileId",
+      "proposalId",
+      "recipientEmailAddress",
+      "requestMessage",
+      "requesterEmailAddress",
+      "rolesAndViews"
+    ],
+    "AccessProposalRoleAndView": [
+      "role",
+      "view"
+    ],
+    "AddReviewer": [
+      "addedReviewerEmail"
+    ],
+    "App": [
+      "authorized",
+      "createInFolderTemplate",
+      "createUrl",
+      "hasDriveWideScope",
+      "icons",
+      "id",
+      "installed",
+      "kind",
+      "longDescription",
+      "name",
+      "objectType",
+      "openUrlTemplate",
+      "primaryFileExtensions",
+      "primaryMimeTypes",
+      "productId",
+      "productUrl",
+      "secondaryFileExtensions",
+      "secondaryMimeTypes",
+      "shortDescription",
+      "supportsCreate",
+      "supportsImport",
+      "supportsMultiOpen",
+      "supportsOfflineCreate",
+      "useByDefault"
+    ],
+    "AppIcons": [
+      "category",
+      "iconUrl",
+      "size"
+    ],
+    "AppList": [
+      "defaultAppIds",
+      "items",
+      "kind",
+      "selfLink"
+    ],
+    "Approval": [
+      "approvalId",
+      "completeTime",
+      "createTime",
+      "dueTime",
+      "fileContentChangeBehavior",
+      "initiator",
+      "kind",
+      "modifyTime",
+      "reviewerResponses",
+      "status",
+      "targetFileId"
+    ],
+    "ApprovalList": [
+      "items",
+      "kind",
+      "nextPageToken"
+    ],
+    "ApproveApprovalRequest": [
+      "message"
+    ],
+    "CancelApprovalRequest": [
+      "message"
+    ],
+    "Change": [
+      "changeType",
+      "drive",
+      "driveId",
+      "file",
+      "fileId",
+      "kind",
+      "removed",
+      "teamDrive",
+      "teamDriveId",
+      "time",
+      "type"
+    ],
+    "ChangeList": [
+      "changes",
+      "kind",
+      "newStartPageToken",
+      "nextPageToken"
+    ],
+    "Channel": [
+      "address",
+      "expiration",
+      "id",
+      "kind",
+      "params",
+      "payload",
+      "resourceId",
+      "resourceUri",
+      "token",
+      "type"
+    ],
+    "ClientEncryptionDetails": [
+      "decryptionMetadata",
+      "encryptionState"
+    ],
+    "Comment": [
+      "anchor",
+      "assigneeEmailAddress",
+      "author",
+      "content",
+      "createdTime",
+      "deleted",
+      "htmlContent",
+      "id",
+      "kind",
+      "mentionedEmailAddresses",
+      "modifiedTime",
+      "quotedFileContent",
+      "replies",
+      "resolved"
+    ],
+    "CommentApprovalRequest": [
+      "message"
+    ],
+    "CommentList": [
+      "comments",
+      "kind",
+      "nextPageToken"
+    ],
+    "ContentRestriction": [
+      "ownerRestricted",
+      "readOnly",
+      "reason",
+      "restrictingUser",
+      "restrictionTime",
+      "systemRestricted",
+      "type"
+    ],
+    "DeclineApprovalRequest": [
+      "message"
+    ],
+    "DecryptionMetadata": [
+      "aes256GcmChunkSize",
+      "encryptionResourceKeyHash",
+      "jwt",
+      "kaclsId",
+      "kaclsName",
+      "keyFormat",
+      "wrappedKey"
+    ],
+    "DownloadRestriction": [
+      "restrictedForReaders",
+      "restrictedForWriters"
+    ],
+    "DownloadRestrictionsMetadata": [
+      "effectiveDownloadRestrictionWithContext",
+      "itemDownloadRestriction"
+    ],
+    "Drive": [
+      "backgroundImageFile",
+      "backgroundImageLink",
+      "capabilities",
+      "colorRgb",
+      "createdTime",
+      "hidden",
+      "id",
+      "kind",
+      "name",
+      "orgUnitId",
+      "restrictions",
+      "themeId"
+    ],
+    "DriveList": [
+      "drives",
+      "kind",
+      "nextPageToken"
+    ],
+    "File": [
+      "appProperties",
+      "capabilities",
+      "clientEncryptionDetails",
+      "contentHints",
+      "contentRestrictions",
+      "copyRequiresWriterPermission",
+      "createdTime",
+      "description",
+      "downloadRestrictions",
+      "driveId",
+      "explicitlyTrashed",
+      "exportLinks",
+      "fileExtension",
+      "folderColorRgb",
+      "fullFileExtension",
+      "hasAugmentedPermissions",
+      "hasThumbnail",
+      "headRevisionId",
+      "iconLink",
+      "id",
+      "imageMediaMetadata",
+      "inheritedPermissionsDisabled",
+      "isAppAuthorized",
+      "kind",
+      "labelInfo",
+      "lastModifyingUser",
+      "linkShareMetadata",
+      "md5Checksum",
+      "mimeType",
+      "modifiedByMe",
+      "modifiedByMeTime",
+      "modifiedTime",
+      "name",
+      "originalFilename",
+      "ownedByMe",
+      "owners",
+      "parents",
+      "permissionIds",
+      "permissions",
+      "properties",
+      "quotaBytesUsed",
+      "resourceKey",
+      "sha1Checksum",
+      "sha256Checksum",
+      "shared",
+      "sharedWithMeTime",
+      "sharingUser",
+      "shortcutDetails",
+      "size",
+      "spaces",
+      "starred",
+      "teamDriveId",
+      "thumbnailLink",
+      "thumbnailVersion",
+      "trashed",
+      "trashedTime",
+      "trashingUser",
+      "version",
+      "videoMediaMetadata",
+      "viewedByMe",
+      "viewedByMeTime",
+      "viewersCanCopyContent",
+      "webContentLink",
+      "webViewLink",
+      "writersCanShare"
+    ],
+    "FileList": [
+      "files",
+      "incompleteSearch",
+      "kind",
+      "nextPageToken"
+    ],
+    "GenerateCseTokenResponse": [
+      "currentKaclsId",
+      "currentKaclsName",
+      "fileId",
+      "jwt",
+      "kind"
+    ],
+    "GeneratedIds": [
+      "ids",
+      "kind",
+      "space"
+    ],
+    "Label": [
+      "fields",
+      "id",
+      "kind",
+      "revisionId"
+    ],
+    "LabelField": [
+      "dateString",
+      "id",
+      "integer",
+      "kind",
+      "selection",
+      "text",
+      "user",
+      "valueType"
+    ],
+    "LabelFieldModification": [
+      "fieldId",
+      "kind",
+      "setDateValues",
+      "setIntegerValues",
+      "setSelectionValues",
+      "setTextValues",
+      "setUserValues",
+      "unsetValues"
+    ],
+    "LabelList": [
+      "kind",
+      "labels",
+      "nextPageToken"
+    ],
+    "LabelModification": [
+      "fieldModifications",
+      "kind",
+      "labelId",
+      "removeLabel"
+    ],
+    "ListAccessProposalsResponse": [
+      "accessProposals",
+      "nextPageToken"
+    ],
+    "ModifyLabelsRequest": [
+      "kind",
+      "labelModifications"
+    ],
+    "ModifyLabelsResponse": [
+      "kind",
+      "modifiedLabels"
+    ],
+    "Operation": [
+      "done",
+      "error",
+      "metadata",
+      "name",
+      "response"
+    ],
+    "Permission": [
+      "allowFileDiscovery",
+      "deleted",
+      "displayName",
+      "domain",
+      "emailAddress",
+      "expirationTime",
+      "id",
+      "inheritedPermissionsDisabled",
+      "kind",
+      "pendingOwner",
+      "permissionDetails",
+      "photoLink",
+      "role",
+      "teamDrivePermissionDetails",
+      "type",
+      "view"
+    ],
+    "PermissionList": [
+      "kind",
+      "nextPageToken",
+      "permissions"
+    ],
+    "ReassignApprovalRequest": [
+      "addReviewers",
+      "message",
+      "replaceReviewers"
+    ],
+    "ReplaceReviewer": [
+      "addedReviewerEmail",
+      "removedReviewerEmail"
+    ],
+    "Reply": [
+      "action",
+      "assigneeEmailAddress",
+      "author",
+      "content",
+      "createdTime",
+      "deleted",
+      "htmlContent",
+      "id",
+      "kind",
+      "mentionedEmailAddresses",
+      "modifiedTime"
+    ],
+    "ReplyList": [
+      "kind",
+      "nextPageToken",
+      "replies"
+    ],
+    "ResolveAccessProposalRequest": [
+      "action",
+      "role",
+      "sendNotification",
+      "view"
+    ],
+    "ReviewerResponse": [
+      "kind",
+      "response",
+      "reviewer"
+    ],
+    "Revision": [
+      "exportLinks",
+      "id",
+      "keepForever",
+      "kind",
+      "lastModifyingUser",
+      "md5Checksum",
+      "mimeType",
+      "modifiedTime",
+      "originalFilename",
+      "publishAuto",
+      "published",
+      "publishedLink",
+      "publishedOutsideDomain",
+      "size"
+    ],
+    "RevisionList": [
+      "kind",
+      "nextPageToken",
+      "revisions"
+    ],
+    "StartApprovalRequest": [
+      "dueTime",
+      "fileContentChangeBehavior",
+      "lockFile",
+      "message",
+      "reviewerEmails"
+    ],
+    "StartPageToken": [
+      "kind",
+      "startPageToken"
+    ],
+    "Status": [
+      "code",
+      "details",
+      "message"
+    ],
+    "TeamDrive": [
+      "backgroundImageFile",
+      "backgroundImageLink",
+      "capabilities",
+      "colorRgb",
+      "createdTime",
+      "id",
+      "kind",
+      "name",
+      "orgUnitId",
+      "restrictions",
+      "themeId"
+    ],
+    "TeamDriveList": [
+      "kind",
+      "nextPageToken",
+      "teamDrives"
+    ],
+    "User": [
+      "displayName",
+      "emailAddress",
+      "kind",
+      "me",
+      "permissionId",
+      "photoLink"
+    ]
+  },
+  "scopes": [
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/drive.appdata",
+    "https://www.googleapis.com/auth/drive.apps.readonly",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive.meet.readonly",
+    "https://www.googleapis.com/auth/drive.metadata",
+    "https://www.googleapis.com/auth/drive.metadata.readonly",
+    "https://www.googleapis.com/auth/drive.photos.readonly",
+    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/drive.scripts"
+  ],
+  "version": "v3"
+}

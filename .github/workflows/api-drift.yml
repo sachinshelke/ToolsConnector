@@ -1,0 +1,77 @@
+name: API Drift (Tier 1)
+
+# Tier 1 API freshness monitor — Layer 1 (mechanical backbone).
+#
+# Weekly, fetch the Google Discovery Document for each Tier 1 connector, diff it
+# against the committed baselines in .agent/api-baselines/, and — on semantic
+# drift (methods/params/scopes/schemas/version change; a bare revision bump is
+# NOT drift) — open or update a single tracking issue with the report + impact.
+#
+# Plan: .agent/artifacts/tier1-api-freshness-monitor-plan.md
+# Checker + baselines are self-contained; only httpx is needed.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: api-drift
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    name: Check Google API drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install httpx
+        run: pip install httpx
+
+      - name: Run drift check
+        id: check
+        run: |
+          set +e
+          python scripts/check_api_drift.py | tee report.txt
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update tracking issue on drift
+        if: steps.check.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Automated Tier 1 (Google) API drift detected on $(date -u +%Y-%m-%d)."
+            echo ""
+            echo '```'
+            cat report.txt
+            echo '```'
+            echo ""
+            echo "Review the change, update the connector + docs if needed, then refresh the"
+            echo "baseline: \`python scripts/check_api_drift.py --update-baselines\` and commit."
+          } > body.md
+
+          EXISTING=$(gh issue list --state open --search '[api-drift] in:title' \
+            --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body-file body.md
+            echo "Commented on existing issue #$EXISTING"
+          else
+            gh issue create --title "[api-drift] Google API surface changed" \
+              --body-file body.md
+          fi
+
+      - name: Fail if baselines missing
+        if: steps.check.outputs.code == '2'
+        run: |
+          echo "::error::A baseline is missing — run 'python scripts/check_api_drift.py --update-baselines' and commit."
+          exit 1

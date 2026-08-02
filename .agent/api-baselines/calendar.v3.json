@@ -1,0 +1,1553 @@
+{
+  "id": "calendar:v3",
+  "methods": {
+    "calendar.acl.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "ruleId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/acl/{ruleId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.acls"
+      ]
+    },
+    "calendar.acl.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "ruleId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/acl/{ruleId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.acls",
+        "https://www.googleapis.com/auth/calendar.acls.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    "calendar.acl.insert": {
+      "httpMethod": "POST",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "sendNotifications": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "calendars/{calendarId}/acl",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.acls"
+      ]
+    },
+    "calendar.acl.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "showDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "syncToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/acl",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.acls",
+        "https://www.googleapis.com/auth/calendar.acls.readonly"
+      ]
+    },
+    "calendar.acl.patch": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "ruleId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "sendNotifications": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "calendars/{calendarId}/acl/{ruleId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.acls"
+      ]
+    },
+    "calendar.acl.update": {
+      "httpMethod": "PUT",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "ruleId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "sendNotifications": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "calendars/{calendarId}/acl/{ruleId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.acls"
+      ]
+    },
+    "calendar.acl.watch": {
+      "httpMethod": "POST",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "showDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "syncToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/acl/watch",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.acls",
+        "https://www.googleapis.com/auth/calendar.acls.readonly"
+      ]
+    },
+    "calendar.calendarList.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "users/me/calendarList/{calendarId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.calendarlist"
+      ]
+    },
+    "calendar.calendarList.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "users/me/calendarList/{calendarId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.calendarlist",
+        "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    "calendar.calendarList.insert": {
+      "httpMethod": "POST",
+      "parameters": {
+        "colorRgbFormat": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "users/me/calendarList",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.calendarlist"
+      ]
+    },
+    "calendar.calendarList.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "minAccessRole": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "showDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "showHidden": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "showOwnOrganizationOnly": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "syncToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "users/me/calendarList",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.calendarlist",
+        "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    "calendar.calendarList.patch": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "colorRgbFormat": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "users/me/calendarList/{calendarId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.calendarlist"
+      ]
+    },
+    "calendar.calendarList.update": {
+      "httpMethod": "PUT",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "colorRgbFormat": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "users/me/calendarList/{calendarId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.calendarlist"
+      ]
+    },
+    "calendar.calendarList.watch": {
+      "httpMethod": "POST",
+      "parameters": {
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "minAccessRole": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "showDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "showHidden": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "showOwnOrganizationOnly": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "syncToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "users/me/calendarList/watch",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.calendarlist",
+        "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    "calendar.calendars.clear": {
+      "httpMethod": "POST",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/clear",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.calendars"
+      ]
+    },
+    "calendar.calendars.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.calendars"
+      ]
+    },
+    "calendar.calendars.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.calendars",
+        "https://www.googleapis.com/auth/calendar.calendars.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    "calendar.calendars.insert": {
+      "httpMethod": "POST",
+      "parameters": {},
+      "path": "calendars",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.calendars"
+      ]
+    },
+    "calendar.calendars.patch": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.calendars"
+      ]
+    },
+    "calendar.calendars.transferOwnership": {
+      "httpMethod": "POST",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "newDataOwner": {
+          "location": "query",
+          "required": true,
+          "type": "string"
+        },
+        "useAdminAccess": {
+          "location": "query",
+          "required": true,
+          "type": "boolean"
+        }
+      },
+      "path": "calendars/{calendarId}/transferOwnership",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.calendars"
+      ]
+    },
+    "calendar.calendars.update": {
+      "httpMethod": "PUT",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.calendars"
+      ]
+    },
+    "calendar.channels.stop": {
+      "httpMethod": "POST",
+      "parameters": {},
+      "path": "channels/stop",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.acls",
+        "https://www.googleapis.com/auth/calendar.acls.readonly",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.calendarlist",
+        "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.freebusy",
+        "https://www.googleapis.com/auth/calendar.events.owned",
+        "https://www.googleapis.com/auth/calendar.events.owned.readonly",
+        "https://www.googleapis.com/auth/calendar.events.public.readonly",
+        "https://www.googleapis.com/auth/calendar.events.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.settings.readonly"
+      ]
+    },
+    "calendar.colors.get": {
+      "httpMethod": "GET",
+      "parameters": {},
+      "path": "colors",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.calendarlist",
+        "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+        "https://www.googleapis.com/auth/calendar.events.freebusy",
+        "https://www.googleapis.com/auth/calendar.events.owned",
+        "https://www.googleapis.com/auth/calendar.events.owned.readonly",
+        "https://www.googleapis.com/auth/calendar.events.public.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    "calendar.events.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "eventId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "sendNotifications": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "sendUpdates": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/events/{eventId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.owned"
+      ]
+    },
+    "calendar.events.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "alwaysIncludeEmail": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "eventId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "maxAttendees": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "timeZone": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/events/{eventId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.freebusy",
+        "https://www.googleapis.com/auth/calendar.events.owned",
+        "https://www.googleapis.com/auth/calendar.events.owned.readonly",
+        "https://www.googleapis.com/auth/calendar.events.public.readonly",
+        "https://www.googleapis.com/auth/calendar.events.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    "calendar.events.import": {
+      "httpMethod": "POST",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "conferenceDataVersion": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "eventLabelVersion": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "supportsAttachments": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "calendars/{calendarId}/events/import",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.owned"
+      ]
+    },
+    "calendar.events.insert": {
+      "httpMethod": "POST",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "conferenceDataVersion": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "eventLabelVersion": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "maxAttendees": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "sendNotifications": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "sendUpdates": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAttachments": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "calendars/{calendarId}/events",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.owned"
+      ]
+    },
+    "calendar.events.instances": {
+      "httpMethod": "GET",
+      "parameters": {
+        "alwaysIncludeEmail": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "eventId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "maxAttendees": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "originalStart": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "showDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "timeMax": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "timeMin": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "timeZone": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/events/{eventId}/instances",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.freebusy",
+        "https://www.googleapis.com/auth/calendar.events.owned",
+        "https://www.googleapis.com/auth/calendar.events.owned.readonly",
+        "https://www.googleapis.com/auth/calendar.events.public.readonly",
+        "https://www.googleapis.com/auth/calendar.events.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    "calendar.events.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "alwaysIncludeEmail": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "eventTypes": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "iCalUID": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "maxAttendees": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "orderBy": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "privateExtendedProperty": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "q": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "sharedExtendedProperty": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "showDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "showHiddenInvitations": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "singleEvents": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "syncToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "timeMax": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "timeMin": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "timeZone": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "updatedMin": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/events",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.freebusy",
+        "https://www.googleapis.com/auth/calendar.events.owned",
+        "https://www.googleapis.com/auth/calendar.events.owned.readonly",
+        "https://www.googleapis.com/auth/calendar.events.public.readonly",
+        "https://www.googleapis.com/auth/calendar.events.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    "calendar.events.move": {
+      "httpMethod": "POST",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "destination": {
+          "location": "query",
+          "required": true,
+          "type": "string"
+        },
+        "eventId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "sendNotifications": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "sendUpdates": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/events/{eventId}/move",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.owned"
+      ]
+    },
+    "calendar.events.patch": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "alwaysIncludeEmail": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "conferenceDataVersion": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "eventId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "eventLabelVersion": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "maxAttendees": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "sendNotifications": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "sendUpdates": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAttachments": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "calendars/{calendarId}/events/{eventId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.owned"
+      ]
+    },
+    "calendar.events.quickAdd": {
+      "httpMethod": "POST",
+      "parameters": {
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "sendNotifications": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "sendUpdates": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "text": {
+          "location": "query",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/events/quickAdd",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.owned"
+      ]
+    },
+    "calendar.events.update": {
+      "httpMethod": "PUT",
+      "parameters": {
+        "alwaysIncludeEmail": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "conferenceDataVersion": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "eventId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "eventLabelVersion": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "maxAttendees": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "sendNotifications": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "sendUpdates": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "supportsAttachments": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "path": "calendars/{calendarId}/events/{eventId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.owned"
+      ]
+    },
+    "calendar.events.watch": {
+      "httpMethod": "POST",
+      "parameters": {
+        "alwaysIncludeEmail": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "calendarId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "eventTypes": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "iCalUID": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "maxAttendees": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "orderBy": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "privateExtendedProperty": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "q": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "sharedExtendedProperty": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "showDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "showHiddenInvitations": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "singleEvents": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "syncToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "timeMax": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "timeMin": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "timeZone": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "updatedMin": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "calendars/{calendarId}/events/watch",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.events.freebusy",
+        "https://www.googleapis.com/auth/calendar.events.owned",
+        "https://www.googleapis.com/auth/calendar.events.owned.readonly",
+        "https://www.googleapis.com/auth/calendar.events.public.readonly",
+        "https://www.googleapis.com/auth/calendar.events.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    "calendar.freebusy.query": {
+      "httpMethod": "POST",
+      "parameters": {},
+      "path": "freeBusy",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.events.freebusy",
+        "https://www.googleapis.com/auth/calendar.freebusy",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ]
+    },
+    "calendar.settings.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "setting": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "users/me/settings/{setting}",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.settings.readonly"
+      ]
+    },
+    "calendar.settings.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "syncToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "users/me/settings",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.settings.readonly"
+      ]
+    },
+    "calendar.settings.watch": {
+      "httpMethod": "POST",
+      "parameters": {
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "syncToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "users/me/settings/watch",
+      "scopes": [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.settings.readonly"
+      ]
+    }
+  },
+  "name": "calendar",
+  "revision": "20260727",
+  "schemas": {
+    "Acl": [
+      "etag",
+      "items",
+      "kind",
+      "nextPageToken",
+      "nextSyncToken"
+    ],
+    "AclRule": [
+      "etag",
+      "id",
+      "kind",
+      "role",
+      "scope"
+    ],
+    "Calendar": [
+      "autoAcceptInvitations",
+      "conferenceProperties",
+      "dataOwner",
+      "description",
+      "etag",
+      "id",
+      "kind",
+      "labelProperties",
+      "location",
+      "summary",
+      "timeZone"
+    ],
+    "CalendarList": [
+      "etag",
+      "items",
+      "kind",
+      "nextPageToken",
+      "nextSyncToken"
+    ],
+    "CalendarListEntry": [
+      "accessRole",
+      "autoAcceptInvitations",
+      "backgroundColor",
+      "colorId",
+      "conferenceProperties",
+      "dataOwner",
+      "defaultReminders",
+      "deleted",
+      "description",
+      "etag",
+      "foregroundColor",
+      "hidden",
+      "id",
+      "kind",
+      "location",
+      "notificationSettings",
+      "primary",
+      "selected",
+      "summary",
+      "summaryOverride",
+      "timeZone"
+    ],
+    "CalendarNotification": [
+      "method",
+      "type"
+    ],
+    "Channel": [
+      "address",
+      "expiration",
+      "id",
+      "kind",
+      "params",
+      "payload",
+      "resourceId",
+      "resourceUri",
+      "token",
+      "type"
+    ],
+    "ColorDefinition": [
+      "background",
+      "foreground"
+    ],
+    "Colors": [
+      "calendar",
+      "event",
+      "kind",
+      "updated"
+    ],
+    "ConferenceData": [
+      "conferenceId",
+      "conferenceSolution",
+      "createRequest",
+      "entryPoints",
+      "notes",
+      "parameters",
+      "signature"
+    ],
+    "ConferenceParameters": [
+      "addOnParameters"
+    ],
+    "ConferenceParametersAddOnParameters": [
+      "parameters"
+    ],
+    "ConferenceProperties": [
+      "allowedConferenceSolutionTypes"
+    ],
+    "ConferenceRequestStatus": [
+      "statusCode"
+    ],
+    "ConferenceSolution": [
+      "iconUri",
+      "key",
+      "name"
+    ],
+    "ConferenceSolutionKey": [
+      "type"
+    ],
+    "CreateConferenceRequest": [
+      "conferenceSolutionKey",
+      "requestId",
+      "status"
+    ],
+    "EntryPoint": [
+      "accessCode",
+      "entryPointFeatures",
+      "entryPointType",
+      "label",
+      "meetingCode",
+      "passcode",
+      "password",
+      "pin",
+      "regionCode",
+      "uri"
+    ],
+    "Error": [
+      "domain",
+      "reason"
+    ],
+    "Event": [
+      "anyoneCanAddSelf",
+      "attachments",
+      "attendees",
+      "attendeesOmitted",
+      "birthdayProperties",
+      "colorId",
+      "conferenceData",
+      "created",
+      "creator",
+      "description",
+      "end",
+      "endTimeUnspecified",
+      "etag",
+      "eventLabelId",
+      "eventType",
+      "extendedProperties",
+      "focusTimeProperties",
+      "gadget",
+      "guestsCanInviteOthers",
+      "guestsCanModify",
+      "guestsCanSeeOtherGuests",
+      "hangoutLink",
+      "htmlLink",
+      "iCalUID",
+      "id",
+      "kind",
+      "location",
+      "locked",
+      "organizer",
+      "originalStartTime",
+      "outOfOfficeProperties",
+      "privateCopy",
+      "recurrence",
+      "recurringEventId",
+      "reminders",
+      "sequence",
+      "source",
+      "start",
+      "status",
+      "summary",
+      "transparency",
+      "updated",
+      "visibility",
+      "workingLocationProperties"
+    ],
+    "EventAttachment": [
+      "fileId",
+      "fileUrl",
+      "iconLink",
+      "mimeType",
+      "title"
+    ],
+    "EventAttendee": [
+      "additionalGuests",
+      "asyncOperation",
+      "comment",
+      "displayName",
+      "email",
+      "id",
+      "optional",
+      "organizer",
+      "resource",
+      "responseStatus",
+      "self"
+    ],
+    "EventBirthdayProperties": [
+      "contact",
+      "customTypeName",
+      "type"
+    ],
+    "EventDateTime": [
+      "date",
+      "dateTime",
+      "timeZone"
+    ],
+    "EventFocusTimeProperties": [
+      "autoDeclineMode",
+      "chatStatus",
+      "declineMessage"
+    ],
+    "EventLabel": [
+      "backgroundColor",
+      "id",
+      "name"
+    ],
+    "EventOutOfOfficeProperties": [
+      "autoDeclineMode",
+      "declineMessage"
+    ],
+    "EventReminder": [
+      "method",
+      "minutes"
+    ],
+    "EventWorkingLocationProperties": [
+      "customLocation",
+      "homeOffice",
+      "officeLocation",
+      "type"
+    ],
+    "Events": [
+      "accessRole",
+      "defaultReminders",
+      "description",
+      "etag",
+      "items",
+      "kind",
+      "nextPageToken",
+      "nextSyncToken",
+      "summary",
+      "timeZone",
+      "updated"
+    ],
+    "FreeBusyCalendar": [
+      "busy",
+      "errors"
+    ],
+    "FreeBusyGroup": [
+      "calendars",
+      "errors"
+    ],
+    "FreeBusyRequest": [
+      "calendarExpansionMax",
+      "groupExpansionMax",
+      "items",
+      "timeMax",
+      "timeMin",
+      "timeZone"
+    ],
+    "FreeBusyRequestItem": [
+      "id"
+    ],
+    "FreeBusyResponse": [
+      "calendars",
+      "groups",
+      "kind",
+      "timeMax",
+      "timeMin"
+    ],
+    "LabelProperties": [
+      "eventLabels"
+    ],
+    "Setting": [
+      "etag",
+      "id",
+      "kind",
+      "value"
+    ],
+    "Settings": [
+      "etag",
+      "items",
+      "kind",
+      "nextPageToken",
+      "nextSyncToken"
+    ],
+    "TimePeriod": [
+      "end",
+      "start"
+    ]
+  },
+  "scopes": [
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/calendar.acls",
+    "https://www.googleapis.com/auth/calendar.acls.readonly",
+    "https://www.googleapis.com/auth/calendar.app.created",
+    "https://www.googleapis.com/auth/calendar.calendarlist",
+    "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+    "https://www.googleapis.com/auth/calendar.calendars",
+    "https://www.googleapis.com/auth/calendar.calendars.readonly",
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.events.freebusy",
+    "https://www.googleapis.com/auth/calendar.events.owned",
+    "https://www.googleapis.com/auth/calendar.events.owned.readonly",
+    "https://www.googleapis.com/auth/calendar.events.public.readonly",
+    "https://www.googleapis.com/auth/calendar.events.readonly",
+    "https://www.googleapis.com/auth/calendar.freebusy",
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/calendar.settings.readonly"
+  ],
+  "version": "v3"
+}
