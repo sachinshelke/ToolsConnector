@@ -19,6 +19,7 @@ from .api_key import APIKeyProvider
 from .base import AuthProvider, AuthState
 from .basic import BasicAuthProvider
 from .bearer import BearerTokenProvider
+from .flows import GOOGLE, OAuthFlowError, PendingAuth, ProviderPreset, begin, complete
 from .manager import AuthManager
 from .oauth2 import OAuth2Provider
 
@@ -33,4 +34,11 @@ __all__ = [
     "BearerTokenProvider",
     "BasicAuthProvider",
     "OAuth2Provider",
+    # OAuth acquisition flow
+    "begin",
+    "complete",
+    "PendingAuth",
+    "ProviderPreset",
+    "OAuthFlowError",
+    "GOOGLE",
 ]

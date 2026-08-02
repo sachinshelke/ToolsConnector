@@ -150,11 +150,18 @@ Slims `[google]` and `[all]` substantially.
 
 **Decision: cover BOTH (option C), sequenced.**
 
+**Status: Slice 1 core DONE 2026-08-03** — `src/toolsconnector/runtime/auth/flows.py`
+(`begin`/`complete`, PKCE S256 + `state`, `GOOGLE` preset with offline+consent),
+4 tests green in `tests/unit/test_oauth_flow.py`. Web path usable now.
+Note: `OAuthConfig.client_secret` did NOT need widening — the flow's `complete()`
+takes `client_secret` as an optional arg and omits it on the wire for public
+(PKCE-only) clients, so the existing type is untouched (even more compatible).
+
 Slice 1 — core (serves Web):
-1. `begin()` / `complete()` core with PKCE + `state`.
-2. Google provider preset (endpoints + offline/consent/PKCE defaults + 6 scope sets),
-   with OIDC-discovery endpoints + pinned fallback (§9).
-3. Make `OAuthConfig.client_secret` Optional; exchange/refresh omit secret when absent.
+1. `begin()` / `complete()` core with PKCE + `state`. ✅ done
+2. Google provider preset (endpoints + offline/consent/PKCE defaults). ✅ done
+   Remaining: OIDC-discovery endpoints + pinned fallback (§9); per-connector scope sets.
+3. Public/confidential client handling. ✅ done (in-flow, OAuthConfig untouched).
 
 Slice 2 — Desktop:
 4. `login()` loopback convenience (127.0.0.1, one-shot, timeout, state-check,
