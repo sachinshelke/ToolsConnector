@@ -163,9 +163,14 @@ Slice 1 — core (serves Web):
    Remaining: OIDC-discovery endpoints + pinned fallback (§9); per-connector scope sets.
 3. Public/confidential client handling. ✅ done (in-flow, OAuthConfig untouched).
 
+**Status: Slice 2 DONE 2026-08-03** — `src/toolsconnector/runtime/auth/loopback.py`
+(`login()`: browser + one-shot 127.0.0.1 listener + `complete()`), 3 integration
+tests green in `tests/unit/test_oauth_loopback.py` (real socket + stdlib redirect +
+respx token). Core `flows.py` stays socket-free.
+
 Slice 2 — Desktop:
 4. `login()` loopback convenience (127.0.0.1, one-shot, timeout, state-check,
-   `error=access_denied` handling, configurable port).
+   `error=access_denied` handling, configurable port). ✅ done
 
 **Done when (tests that fail today):**
 - Unit: `begin(google, scopes=gmail)` → URL contains `access_type=offline`,
