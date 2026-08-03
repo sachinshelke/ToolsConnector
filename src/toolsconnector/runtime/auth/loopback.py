@@ -103,6 +103,7 @@ async def login(
     port: int = 8765,
     open_browser: bool = True,
     state: Optional[str] = None,
+    extra_params: Optional[dict[str, str]] = None,
     timeout: float = 180.0,
 ) -> CredentialSet:
     """Run the full desktop OAuth dance and return a :class:`CredentialSet`.
@@ -121,6 +122,8 @@ async def login(
         port: Loopback port; must match the registered redirect URI.
         open_browser: If ``False`` (or if opening fails), print the URL instead.
         state: Optional CSRF state; generated if omitted.
+        extra_params: Extra authorization-URL params (e.g.
+            ``{"include_granted_scopes": "true"}`` for Google incremental auth).
         timeout: Seconds to wait for the redirect before giving up.
 
     Returns:
@@ -136,6 +139,7 @@ async def login(
         redirect_uri=redirect_uri,
         scopes=scopes,
         state=state,
+        extra_params=extra_params,
     )
 
     opened = webbrowser.open(pending.authorization_url) if open_browser else False
