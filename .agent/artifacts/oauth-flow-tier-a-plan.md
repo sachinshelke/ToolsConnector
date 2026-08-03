@@ -187,8 +187,12 @@ Slice 2 — Desktop:
 - Stay-current requirement: **added** — OIDC discovery + data-driven presets +
   single-source scopes + override + release-sync (§9). RESOLVED 2026-08-03.
 
+- Connector wiring: **DONE 2026-08-03** — `runtime/auth/connectors.py`
+  (`oauth_scopes`/`begin_for`/`login_for`) reads each connector's declared OAuth2
+  scopes via `get_spec()` (single source of truth, no duplication). Takes a
+  connector class, imports only `BaseConnector` → no layering cycle. Works for all
+  6 Google connectors + any OAUTH2 connector. 4 tests in `test_google_oauth_wiring.py`.
+
 ### Still open
-- Scope source when wiring connectors: keep scopes hardcoded per connector (today)
-  vs. a shared Google scope registry the flow reads. Does not block Slice 1.
-- Meaning of "always updated" — confirm it covers provider-config currency (§9) and
-  whether it also means keeping docs/ROADMAP in sync each release.
+- OIDC discovery for endpoints + pinned fallback (§9) — not yet wired into the flow.
+- Live-verify against a real Google OAuth client (BYOK) — the real done-when (#3).
