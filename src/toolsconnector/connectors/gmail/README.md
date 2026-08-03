@@ -81,6 +81,40 @@ tools = kit.to_openai_tools()
 
 ## Authentication
 
+### Authenticate with ToolsConnector
+
+Skip manual token handling — ToolsConnector runs the OAuth flow and returns tokens,
+reading this connector's declared scopes automatically:
+
+```python
+import asyncio
+from toolsconnector.connectors.gmail import Gmail
+from toolsconnector.runtime.auth import login_for
+
+# Desktop / CLI: opens the browser, catches the redirect on 127.0.0.1, returns tokens.
+creds = asyncio.run(login_for(Gmail, client_id="...apps.googleusercontent.com"))
+# creds.access_token / creds.refresh_token
+```
+
+**Different permissions.** Request a subset now, or add more later without losing the
+existing grant (Google incremental auth):
+
+```python
+from toolsconnector.connectors.gdrive import GoogleDrive
+from toolsconnector.runtime.auth import scopes_for
+
+# only what you need now
+creds = asyncio.run(login_for(Gmail, client_id="...",
+    scopes=["https://www.googleapis.com/auth/gmail.readonly"]))
+
+# add GoogleDrive later, keeping the existing grant
+creds = asyncio.run(login_for(Gmail, client_id="...",
+    scopes=scopes_for(Gmail, GoogleDrive), incremental=True))
+```
+
+**Web apps:** use `begin_for(Gmail, client_id=..., redirect_uri=...)` then
+`complete(pending, code=..., state=...)` from your own callback route.
+
 ### OAuth 2.0 (recommended for user accounts)
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
