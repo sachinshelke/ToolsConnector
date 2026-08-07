@@ -20,6 +20,7 @@ from .base import AuthProvider, AuthState
 from .basic import BasicAuthProvider
 from .bearer import BearerTokenProvider
 from .connectors import begin_for, login_for, oauth_scopes, scopes_for
+from .credentials import RefreshingCredentials
 from .flows import GOOGLE, OAuthFlowError, PendingAuth, ProviderPreset, begin, complete
 from .loopback import login
 from .manager import AuthManager
@@ -49,4 +50,6 @@ __all__ = [
     "scopes_for",
     "begin_for",
     "login_for",
+    # Self-refreshing credentials for long-lived connectors
+    "RefreshingCredentials",
 ]
