@@ -1,0 +1,370 @@
+{
+  "id": "tasks:v1",
+  "methods": {
+    "tasks.tasklists.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/users/@me/lists/{tasklist}",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks"
+      ]
+    },
+    "tasks.tasklists.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/users/@me/lists/{tasklist}",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks",
+        "https://www.googleapis.com/auth/tasks.readonly"
+      ]
+    },
+    "tasks.tasklists.insert": {
+      "httpMethod": "POST",
+      "parameters": {},
+      "path": "tasks/v1/users/@me/lists",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks"
+      ]
+    },
+    "tasks.tasklists.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/users/@me/lists",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks",
+        "https://www.googleapis.com/auth/tasks.readonly"
+      ]
+    },
+    "tasks.tasklists.patch": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/users/@me/lists/{tasklist}",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks"
+      ]
+    },
+    "tasks.tasklists.update": {
+      "httpMethod": "PUT",
+      "parameters": {
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/users/@me/lists/{tasklist}",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks"
+      ]
+    },
+    "tasks.tasks.clear": {
+      "httpMethod": "POST",
+      "parameters": {
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/lists/{tasklist}/clear",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks"
+      ]
+    },
+    "tasks.tasks.delete": {
+      "httpMethod": "DELETE",
+      "parameters": {
+        "task": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/lists/{tasklist}/tasks/{task}",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks"
+      ]
+    },
+    "tasks.tasks.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "task": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/lists/{tasklist}/tasks/{task}",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks",
+        "https://www.googleapis.com/auth/tasks.readonly"
+      ]
+    },
+    "tasks.tasks.insert": {
+      "httpMethod": "POST",
+      "parameters": {
+        "parent": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "previous": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/lists/{tasklist}/tasks",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks"
+      ]
+    },
+    "tasks.tasks.list": {
+      "httpMethod": "GET",
+      "parameters": {
+        "completedMax": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "completedMin": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "dueMax": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "dueMin": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "maxResults": {
+          "location": "query",
+          "required": false,
+          "type": "integer"
+        },
+        "pageToken": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "showAssigned": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "showCompleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "showDeleted": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "showHidden": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "updatedMin": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/lists/{tasklist}/tasks",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks",
+        "https://www.googleapis.com/auth/tasks.readonly"
+      ]
+    },
+    "tasks.tasks.move": {
+      "httpMethod": "POST",
+      "parameters": {
+        "destinationTasklist": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "parent": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "previous": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "task": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/lists/{tasklist}/tasks/{task}/move",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks"
+      ]
+    },
+    "tasks.tasks.patch": {
+      "httpMethod": "PATCH",
+      "parameters": {
+        "task": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/lists/{tasklist}/tasks/{task}",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks"
+      ]
+    },
+    "tasks.tasks.update": {
+      "httpMethod": "PUT",
+      "parameters": {
+        "task": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "tasklist": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "tasks/v1/lists/{tasklist}/tasks/{task}",
+      "scopes": [
+        "https://www.googleapis.com/auth/tasks"
+      ]
+    }
+  },
+  "name": "tasks",
+  "revision": "20260728",
+  "schemas": {
+    "AssignmentInfo": [
+      "driveResourceInfo",
+      "linkToTask",
+      "spaceInfo",
+      "surfaceType"
+    ],
+    "DriveResourceInfo": [
+      "driveFileId",
+      "resourceKey"
+    ],
+    "SpaceInfo": [
+      "space"
+    ],
+    "Task": [
+      "assignmentInfo",
+      "completed",
+      "deleted",
+      "due",
+      "etag",
+      "hidden",
+      "id",
+      "kind",
+      "links",
+      "notes",
+      "parent",
+      "position",
+      "selfLink",
+      "status",
+      "title",
+      "updated",
+      "webViewLink"
+    ],
+    "TaskList": [
+      "etag",
+      "id",
+      "kind",
+      "selfLink",
+      "title",
+      "updated"
+    ],
+    "TaskLists": [
+      "etag",
+      "items",
+      "kind",
+      "nextPageToken"
+    ],
+    "Tasks": [
+      "etag",
+      "items",
+      "kind",
+      "nextPageToken"
+    ]
+  },
+  "scopes": [
+    "https://www.googleapis.com/auth/tasks",
+    "https://www.googleapis.com/auth/tasks.readonly"
+  ],
+  "version": "v1"
+}

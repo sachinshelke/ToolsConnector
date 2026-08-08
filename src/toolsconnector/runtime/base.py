@@ -28,6 +28,7 @@ from toolsconnector.spec.connector import (
     ProtocolType,
     RateLimitSpec,
 )
+from toolsconnector.types.credentials import resolve_credential
 
 logger = logging.getLogger("toolsconnector")
 
@@ -113,7 +114,7 @@ class BaseConnector(ABC):
             timeout: Default request timeout in seconds.
             max_retries: Maximum retry attempts for transient failures.
         """
-        self._credentials = credentials
+        self._raw_credentials = credentials
         self._keystore = keystore
         self._user_middleware = middleware or []
         self._storage = storage
@@ -125,6 +126,33 @@ class BaseConnector(ABC):
 
         # Install sync wrappers for all @action methods
         self._install_sync_wrappers()
+
+    # --- Credentials ---
+
+    @property
+    def _credentials(self) -> Any:
+        """The credential value to send, resolved on every access.
+
+        Connectors read this as a plain string (``f"Bearer {self._credentials}"``).
+        Resolution lets callers pass richer inputs without any connector
+        change:
+
+        * a :class:`~toolsconnector.types.credentials.CredentialSet` --
+          narrowed to the right field for its ``auth_type`` (so the output of
+          the OAuth flow can be handed over directly);
+        * a **callable** token provider -- invoked per access, so a caller can
+          return a freshly refreshed token while keeping custody of it;
+        * a plain string/dict/``None`` -- passed through unchanged.
+
+        Resolving per access (rather than once in ``__init__``) is what makes
+        token rotation visible to a long-lived connector instance.
+        """
+        return resolve_credential(self._raw_credentials)
+
+    @_credentials.setter
+    def _credentials(self, value: Any) -> None:
+        """Allow subclasses/tests to replace credentials post-init."""
+        self._raw_credentials = value
 
     def _install_sync_wrappers(self) -> None:
         """Create sync entry points for all @action methods.

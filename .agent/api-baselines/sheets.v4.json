@@ -1,0 +1,1886 @@
+{
+  "id": "sheets:v4",
+  "methods": {
+    "sheets.spreadsheets.batchUpdate": {
+      "httpMethod": "POST",
+      "parameters": {
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}:batchUpdate",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.create": {
+      "httpMethod": "POST",
+      "parameters": {},
+      "path": "v4/spreadsheets",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.developerMetadata.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "metadataId": {
+          "location": "path",
+          "required": true,
+          "type": "integer"
+        },
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/developerMetadata/{metadataId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.developerMetadata.search": {
+      "httpMethod": "POST",
+      "parameters": {
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/developerMetadata:search",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "excludeTablesInBandedRanges": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "includeGridData": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "ranges": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/spreadsheets.readonly"
+      ]
+    },
+    "sheets.spreadsheets.getByDataFilter": {
+      "httpMethod": "POST",
+      "parameters": {
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}:getByDataFilter",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.sheets.copyTo": {
+      "httpMethod": "POST",
+      "parameters": {
+        "sheetId": {
+          "location": "path",
+          "required": true,
+          "type": "integer"
+        },
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/sheets/{sheetId}:copyTo",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.values.append": {
+      "httpMethod": "POST",
+      "parameters": {
+        "includeValuesInResponse": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "insertDataOption": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "range": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "responseDateTimeRenderOption": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "responseValueRenderOption": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "valueInputOption": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/values/{range}:append",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.values.batchClear": {
+      "httpMethod": "POST",
+      "parameters": {
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/values:batchClear",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.values.batchClearByDataFilter": {
+      "httpMethod": "POST",
+      "parameters": {
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/values:batchClearByDataFilter",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.values.batchGet": {
+      "httpMethod": "GET",
+      "parameters": {
+        "dateTimeRenderOption": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "majorDimension": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "ranges": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "valueRenderOption": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/values:batchGet",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/spreadsheets.readonly"
+      ]
+    },
+    "sheets.spreadsheets.values.batchGetByDataFilter": {
+      "httpMethod": "POST",
+      "parameters": {
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/values:batchGetByDataFilter",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.values.batchUpdate": {
+      "httpMethod": "POST",
+      "parameters": {
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/values:batchUpdate",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.values.batchUpdateByDataFilter": {
+      "httpMethod": "POST",
+      "parameters": {
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/values:batchUpdateByDataFilter",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.values.clear": {
+      "httpMethod": "POST",
+      "parameters": {
+        "range": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/values/{range}:clear",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
+    "sheets.spreadsheets.values.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "dateTimeRenderOption": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "majorDimension": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "range": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "valueRenderOption": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/values/{range}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/spreadsheets.readonly"
+      ]
+    },
+    "sheets.spreadsheets.values.update": {
+      "httpMethod": "PUT",
+      "parameters": {
+        "includeValuesInResponse": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "range": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "responseDateTimeRenderOption": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "responseValueRenderOption": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        },
+        "spreadsheetId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "valueInputOption": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "v4/spreadsheets/{spreadsheetId}/values/{range}",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    }
+  },
+  "name": "sheets",
+  "revision": "20260727",
+  "schemas": {
+    "AddBandingRequest": [
+      "bandedRange"
+    ],
+    "AddBandingResponse": [
+      "bandedRange"
+    ],
+    "AddChartRequest": [
+      "chart"
+    ],
+    "AddChartResponse": [
+      "chart"
+    ],
+    "AddConditionalFormatRuleRequest": [
+      "index",
+      "rule"
+    ],
+    "AddDataSourceRequest": [
+      "dataSource"
+    ],
+    "AddDataSourceResponse": [
+      "dataExecutionStatus",
+      "dataSource"
+    ],
+    "AddDimensionGroupRequest": [
+      "range"
+    ],
+    "AddDimensionGroupResponse": [
+      "dimensionGroups"
+    ],
+    "AddFilterViewRequest": [
+      "filter"
+    ],
+    "AddFilterViewResponse": [
+      "filter"
+    ],
+    "AddNamedRangeRequest": [
+      "namedRange"
+    ],
+    "AddNamedRangeResponse": [
+      "namedRange"
+    ],
+    "AddProtectedRangeRequest": [
+      "protectedRange"
+    ],
+    "AddProtectedRangeResponse": [
+      "protectedRange"
+    ],
+    "AddSheetRequest": [
+      "properties"
+    ],
+    "AddSheetResponse": [
+      "properties"
+    ],
+    "AddSlicerRequest": [
+      "slicer"
+    ],
+    "AddSlicerResponse": [
+      "slicer"
+    ],
+    "AddTableRequest": [
+      "table"
+    ],
+    "AddTableResponse": [
+      "table"
+    ],
+    "AppendCellsRequest": [
+      "fields",
+      "rows",
+      "sheetId",
+      "tableId"
+    ],
+    "AppendDimensionRequest": [
+      "dimension",
+      "length",
+      "sheetId"
+    ],
+    "AppendValuesResponse": [
+      "spreadsheetId",
+      "tableRange",
+      "updates"
+    ],
+    "AutoFillRequest": [
+      "range",
+      "sourceAndDestination",
+      "useAlternateSeries"
+    ],
+    "AutoResizeDimensionsRequest": [
+      "dataSourceSheetDimensions",
+      "dimensions"
+    ],
+    "BandedRange": [
+      "bandedRangeId",
+      "bandedRangeReference",
+      "columnProperties",
+      "range",
+      "rowProperties"
+    ],
+    "BandingProperties": [
+      "firstBandColor",
+      "firstBandColorStyle",
+      "footerColor",
+      "footerColorStyle",
+      "headerColor",
+      "headerColorStyle",
+      "secondBandColor",
+      "secondBandColorStyle"
+    ],
+    "BaselineValueFormat": [
+      "comparisonType",
+      "description",
+      "negativeColor",
+      "negativeColorStyle",
+      "position",
+      "positiveColor",
+      "positiveColorStyle",
+      "textFormat"
+    ],
+    "BasicChartAxis": [
+      "format",
+      "position",
+      "title",
+      "titleTextPosition",
+      "viewWindowOptions"
+    ],
+    "BasicChartDomain": [
+      "domain",
+      "reversed"
+    ],
+    "BasicChartSeries": [
+      "color",
+      "colorStyle",
+      "dataLabel",
+      "lineStyle",
+      "pointStyle",
+      "series",
+      "styleOverrides",
+      "targetAxis",
+      "type"
+    ],
+    "BasicChartSpec": [
+      "axis",
+      "chartType",
+      "compareMode",
+      "domains",
+      "headerCount",
+      "interpolateNulls",
+      "legendPosition",
+      "lineSmoothing",
+      "series",
+      "stackedType",
+      "threeDimensional",
+      "totalDataLabel"
+    ],
+    "BasicFilter": [
+      "criteria",
+      "filterSpecs",
+      "range",
+      "sortSpecs",
+      "tableId"
+    ],
+    "BasicSeriesDataPointStyleOverride": [
+      "color",
+      "colorStyle",
+      "index",
+      "pointStyle"
+    ],
+    "BatchClearValuesByDataFilterRequest": [
+      "dataFilters"
+    ],
+    "BatchClearValuesByDataFilterResponse": [
+      "clearedRanges",
+      "spreadsheetId"
+    ],
+    "BatchClearValuesRequest": [
+      "ranges"
+    ],
+    "BatchClearValuesResponse": [
+      "clearedRanges",
+      "spreadsheetId"
+    ],
+    "BatchGetValuesByDataFilterRequest": [
+      "dataFilters",
+      "dateTimeRenderOption",
+      "majorDimension",
+      "valueRenderOption"
+    ],
+    "BatchGetValuesByDataFilterResponse": [
+      "spreadsheetId",
+      "valueRanges"
+    ],
+    "BatchGetValuesResponse": [
+      "spreadsheetId",
+      "valueRanges"
+    ],
+    "BatchUpdateSpreadsheetRequest": [
+      "includeSpreadsheetInResponse",
+      "requests",
+      "responseIncludeGridData",
+      "responseRanges"
+    ],
+    "BatchUpdateSpreadsheetResponse": [
+      "replies",
+      "spreadsheetId",
+      "updatedSpreadsheet"
+    ],
+    "BatchUpdateValuesByDataFilterRequest": [
+      "data",
+      "includeValuesInResponse",
+      "responseDateTimeRenderOption",
+      "responseValueRenderOption",
+      "valueInputOption"
+    ],
+    "BatchUpdateValuesByDataFilterResponse": [
+      "responses",
+      "spreadsheetId",
+      "totalUpdatedCells",
+      "totalUpdatedColumns",
+      "totalUpdatedRows",
+      "totalUpdatedSheets"
+    ],
+    "BatchUpdateValuesRequest": [
+      "data",
+      "includeValuesInResponse",
+      "responseDateTimeRenderOption",
+      "responseValueRenderOption",
+      "valueInputOption"
+    ],
+    "BatchUpdateValuesResponse": [
+      "responses",
+      "spreadsheetId",
+      "totalUpdatedCells",
+      "totalUpdatedColumns",
+      "totalUpdatedRows",
+      "totalUpdatedSheets"
+    ],
+    "BigQueryDataSourceSpec": [
+      "projectId",
+      "querySpec",
+      "tableSpec"
+    ],
+    "BigQueryQuerySpec": [
+      "rawQuery"
+    ],
+    "BigQueryTableSpec": [
+      "datasetId",
+      "tableId",
+      "tableProjectId"
+    ],
+    "BooleanCondition": [
+      "type",
+      "values"
+    ],
+    "BooleanRule": [
+      "condition",
+      "format"
+    ],
+    "Border": [
+      "color",
+      "colorStyle",
+      "style",
+      "width"
+    ],
+    "Borders": [
+      "bottom",
+      "left",
+      "right",
+      "top"
+    ],
+    "BubbleChartSpec": [
+      "bubbleBorderColor",
+      "bubbleBorderColorStyle",
+      "bubbleLabels",
+      "bubbleMaxRadiusSize",
+      "bubbleMinRadiusSize",
+      "bubbleOpacity",
+      "bubbleSizes",
+      "bubbleTextStyle",
+      "domain",
+      "groupIds",
+      "legendPosition",
+      "series"
+    ],
+    "CancelDataSourceRefreshRequest": [
+      "dataSourceId",
+      "isAll",
+      "references"
+    ],
+    "CancelDataSourceRefreshResponse": [
+      "statuses"
+    ],
+    "CancelDataSourceRefreshStatus": [
+      "reference",
+      "refreshCancellationStatus"
+    ],
+    "CandlestickChartSpec": [
+      "data",
+      "domain"
+    ],
+    "CandlestickData": [
+      "closeSeries",
+      "highSeries",
+      "lowSeries",
+      "openSeries"
+    ],
+    "CandlestickDomain": [
+      "data",
+      "reversed"
+    ],
+    "CandlestickSeries": [
+      "data"
+    ],
+    "CellData": [
+      "chipRuns",
+      "dataSourceFormula",
+      "dataSourceTable",
+      "dataValidation",
+      "effectiveFormat",
+      "effectiveValue",
+      "formattedValue",
+      "hyperlink",
+      "note",
+      "pivotTable",
+      "textFormatRuns",
+      "userEnteredFormat",
+      "userEnteredValue"
+    ],
+    "CellFormat": [
+      "backgroundColor",
+      "backgroundColorStyle",
+      "borders",
+      "horizontalAlignment",
+      "hyperlinkDisplayType",
+      "numberFormat",
+      "padding",
+      "textDirection",
+      "textFormat",
+      "textRotation",
+      "verticalAlignment",
+      "wrapStrategy"
+    ],
+    "ChartAxisViewWindowOptions": [
+      "viewWindowMax",
+      "viewWindowMin",
+      "viewWindowMode"
+    ],
+    "ChartCustomNumberFormatOptions": [
+      "prefix",
+      "suffix"
+    ],
+    "ChartData": [
+      "aggregateType",
+      "columnReference",
+      "groupRule",
+      "sourceRange"
+    ],
+    "ChartDateTimeRule": [
+      "type"
+    ],
+    "ChartGroupRule": [
+      "dateTimeRule",
+      "histogramRule"
+    ],
+    "ChartHistogramRule": [
+      "intervalSize",
+      "maxValue",
+      "minValue"
+    ],
+    "ChartSourceRange": [
+      "sources"
+    ],
+    "ChartSpec": [
+      "altText",
+      "backgroundColor",
+      "backgroundColorStyle",
+      "basicChart",
+      "bubbleChart",
+      "candlestickChart",
+      "dataSourceChartProperties",
+      "filterSpecs",
+      "fontName",
+      "hiddenDimensionStrategy",
+      "histogramChart",
+      "maximized",
+      "orgChart",
+      "pieChart",
+      "scorecardChart",
+      "sortSpecs",
+      "subtitle",
+      "subtitleTextFormat",
+      "subtitleTextPosition",
+      "title",
+      "titleTextFormat",
+      "titleTextPosition",
+      "treemapChart",
+      "waterfallChart"
+    ],
+    "Chip": [
+      "personProperties",
+      "richLinkProperties"
+    ],
+    "ChipRun": [
+      "chip",
+      "startIndex"
+    ],
+    "ClearBasicFilterRequest": [
+      "sheetId"
+    ],
+    "ClearValuesRequest": [],
+    "ClearValuesResponse": [
+      "clearedRange",
+      "spreadsheetId"
+    ],
+    "Color": [
+      "alpha",
+      "blue",
+      "green",
+      "red"
+    ],
+    "ColorStyle": [
+      "rgbColor",
+      "themeColor"
+    ],
+    "ConditionValue": [
+      "relativeDate",
+      "userEnteredValue"
+    ],
+    "ConditionalFormatRule": [
+      "booleanRule",
+      "gradientRule",
+      "ranges"
+    ],
+    "CopyPasteRequest": [
+      "destination",
+      "pasteOrientation",
+      "pasteType",
+      "source"
+    ],
+    "CopySheetToAnotherSpreadsheetRequest": [
+      "destinationSpreadsheetId"
+    ],
+    "CreateDeveloperMetadataRequest": [
+      "developerMetadata"
+    ],
+    "CreateDeveloperMetadataResponse": [
+      "developerMetadata"
+    ],
+    "CutPasteRequest": [
+      "destination",
+      "pasteType",
+      "source"
+    ],
+    "DataExecutionStatus": [
+      "errorCode",
+      "errorMessage",
+      "lastRefreshTime",
+      "state"
+    ],
+    "DataFilter": [
+      "a1Range",
+      "developerMetadataLookup",
+      "gridRange"
+    ],
+    "DataFilterValueRange": [
+      "dataFilter",
+      "majorDimension",
+      "values"
+    ],
+    "DataLabel": [
+      "customLabelData",
+      "placement",
+      "textFormat",
+      "type"
+    ],
+    "DataSource": [
+      "calculatedColumns",
+      "dataSourceId",
+      "sheetId",
+      "spec"
+    ],
+    "DataSourceChartProperties": [
+      "dataExecutionStatus",
+      "dataSourceId"
+    ],
+    "DataSourceColumn": [
+      "formula",
+      "reference"
+    ],
+    "DataSourceColumnReference": [
+      "name"
+    ],
+    "DataSourceFormula": [
+      "dataExecutionStatus",
+      "dataSourceId"
+    ],
+    "DataSourceObjectReference": [
+      "chartId",
+      "dataSourceFormulaCell",
+      "dataSourcePivotTableAnchorCell",
+      "dataSourceTableAnchorCell",
+      "sheetId"
+    ],
+    "DataSourceObjectReferences": [
+      "references"
+    ],
+    "DataSourceParameter": [
+      "name",
+      "namedRangeId",
+      "range"
+    ],
+    "DataSourceRefreshDailySchedule": [
+      "startTime"
+    ],
+    "DataSourceRefreshMonthlySchedule": [
+      "daysOfMonth",
+      "startTime"
+    ],
+    "DataSourceRefreshSchedule": [
+      "dailySchedule",
+      "enabled",
+      "monthlySchedule",
+      "nextRun",
+      "refreshScope",
+      "weeklySchedule"
+    ],
+    "DataSourceRefreshWeeklySchedule": [
+      "daysOfWeek",
+      "startTime"
+    ],
+    "DataSourceSheetDimensionRange": [
+      "columnReferences",
+      "sheetId"
+    ],
+    "DataSourceSheetProperties": [
+      "columns",
+      "dataExecutionStatus",
+      "dataSourceId"
+    ],
+    "DataSourceSpec": [
+      "bigQuery",
+      "looker",
+      "parameters"
+    ],
+    "DataSourceTable": [
+      "columnSelectionType",
+      "columns",
+      "dataExecutionStatus",
+      "dataSourceId",
+      "filterSpecs",
+      "rowLimit",
+      "sortSpecs"
+    ],
+    "DataValidationRule": [
+      "condition",
+      "inputMessage",
+      "showCustomUi",
+      "strict"
+    ],
+    "DateTimeRule": [
+      "type"
+    ],
+    "DeleteBandingRequest": [
+      "bandedRangeId"
+    ],
+    "DeleteConditionalFormatRuleRequest": [
+      "index",
+      "sheetId"
+    ],
+    "DeleteConditionalFormatRuleResponse": [
+      "rule"
+    ],
+    "DeleteDataSourceRequest": [
+      "dataSourceId"
+    ],
+    "DeleteDeveloperMetadataRequest": [
+      "dataFilter"
+    ],
+    "DeleteDeveloperMetadataResponse": [
+      "deletedDeveloperMetadata"
+    ],
+    "DeleteDimensionGroupRequest": [
+      "range"
+    ],
+    "DeleteDimensionGroupResponse": [
+      "dimensionGroups"
+    ],
+    "DeleteDimensionRequest": [
+      "range"
+    ],
+    "DeleteDuplicatesRequest": [
+      "comparisonColumns",
+      "range"
+    ],
+    "DeleteDuplicatesResponse": [
+      "duplicatesRemovedCount"
+    ],
+    "DeleteEmbeddedObjectRequest": [
+      "objectId"
+    ],
+    "DeleteFilterViewRequest": [
+      "filterId"
+    ],
+    "DeleteNamedRangeRequest": [
+      "namedRangeId"
+    ],
+    "DeleteProtectedRangeRequest": [
+      "protectedRangeId"
+    ],
+    "DeleteRangeRequest": [
+      "range",
+      "shiftDimension"
+    ],
+    "DeleteSheetRequest": [
+      "sheetId"
+    ],
+    "DeleteTableRequest": [
+      "tableId"
+    ],
+    "DeveloperMetadata": [
+      "location",
+      "metadataId",
+      "metadataKey",
+      "metadataValue",
+      "visibility"
+    ],
+    "DeveloperMetadataLocation": [
+      "dimensionRange",
+      "locationType",
+      "sheetId",
+      "spreadsheet"
+    ],
+    "DeveloperMetadataLookup": [
+      "locationMatchingStrategy",
+      "locationType",
+      "metadataId",
+      "metadataKey",
+      "metadataLocation",
+      "metadataValue",
+      "visibility"
+    ],
+    "DimensionGroup": [
+      "collapsed",
+      "depth",
+      "range"
+    ],
+    "DimensionProperties": [
+      "dataSourceColumnReference",
+      "developerMetadata",
+      "hiddenByFilter",
+      "hiddenByUser",
+      "pixelSize"
+    ],
+    "DimensionRange": [
+      "dimension",
+      "endIndex",
+      "sheetId",
+      "startIndex"
+    ],
+    "DuplicateFilterViewRequest": [
+      "filterId"
+    ],
+    "DuplicateFilterViewResponse": [
+      "filter"
+    ],
+    "DuplicateSheetRequest": [
+      "insertSheetIndex",
+      "newSheetId",
+      "newSheetName",
+      "sourceSheetId"
+    ],
+    "DuplicateSheetResponse": [
+      "properties"
+    ],
+    "Editors": [
+      "domainUsersCanEdit",
+      "groups",
+      "users"
+    ],
+    "EmbeddedChart": [
+      "border",
+      "chartId",
+      "position",
+      "spec"
+    ],
+    "EmbeddedObjectBorder": [
+      "color",
+      "colorStyle"
+    ],
+    "EmbeddedObjectPosition": [
+      "newSheet",
+      "overlayPosition",
+      "sheetId"
+    ],
+    "ErrorValue": [
+      "message",
+      "type"
+    ],
+    "ExtendedValue": [
+      "boolValue",
+      "errorValue",
+      "formulaValue",
+      "numberValue",
+      "stringValue"
+    ],
+    "FilterCriteria": [
+      "condition",
+      "hiddenValues",
+      "visibleBackgroundColor",
+      "visibleBackgroundColorStyle",
+      "visibleForegroundColor",
+      "visibleForegroundColorStyle"
+    ],
+    "FilterSpec": [
+      "columnIndex",
+      "dataSourceColumnReference",
+      "filterCriteria"
+    ],
+    "FilterView": [
+      "criteria",
+      "filterSpecs",
+      "filterViewId",
+      "namedRangeId",
+      "range",
+      "sortSpecs",
+      "tableId",
+      "title"
+    ],
+    "FindReplaceRequest": [
+      "allSheets",
+      "find",
+      "includeFormulas",
+      "matchCase",
+      "matchEntireCell",
+      "range",
+      "replacement",
+      "searchByRegex",
+      "sheetId"
+    ],
+    "FindReplaceResponse": [
+      "formulasChanged",
+      "occurrencesChanged",
+      "rowsChanged",
+      "sheetsChanged",
+      "valuesChanged"
+    ],
+    "GetSpreadsheetByDataFilterRequest": [
+      "dataFilters",
+      "excludeTablesInBandedRanges",
+      "includeGridData"
+    ],
+    "GradientRule": [
+      "maxpoint",
+      "midpoint",
+      "minpoint"
+    ],
+    "GridCoordinate": [
+      "columnIndex",
+      "rowIndex",
+      "sheetId"
+    ],
+    "GridData": [
+      "columnMetadata",
+      "rowData",
+      "rowMetadata",
+      "startColumn",
+      "startRow"
+    ],
+    "GridProperties": [
+      "columnCount",
+      "columnGroupControlAfter",
+      "frozenColumnCount",
+      "frozenRowCount",
+      "hideGridlines",
+      "rowCount",
+      "rowGroupControlAfter"
+    ],
+    "GridRange": [
+      "endColumnIndex",
+      "endRowIndex",
+      "sheetId",
+      "startColumnIndex",
+      "startRowIndex"
+    ],
+    "HistogramChartSpec": [
+      "bucketSize",
+      "legendPosition",
+      "outlierPercentile",
+      "series",
+      "showItemDividers"
+    ],
+    "HistogramRule": [
+      "end",
+      "interval",
+      "start"
+    ],
+    "HistogramSeries": [
+      "barColor",
+      "barColorStyle",
+      "data"
+    ],
+    "InsertDimensionRequest": [
+      "inheritFromBefore",
+      "range"
+    ],
+    "InsertRangeRequest": [
+      "range",
+      "shiftDimension"
+    ],
+    "InterpolationPoint": [
+      "color",
+      "colorStyle",
+      "type",
+      "value"
+    ],
+    "Interval": [
+      "endTime",
+      "startTime"
+    ],
+    "IterativeCalculationSettings": [
+      "convergenceThreshold",
+      "maxIterations"
+    ],
+    "KeyValueFormat": [
+      "position",
+      "textFormat"
+    ],
+    "LineStyle": [
+      "type",
+      "width"
+    ],
+    "Link": [
+      "uri"
+    ],
+    "LookerDataSourceSpec": [
+      "explore",
+      "instanceUri",
+      "model"
+    ],
+    "ManualRule": [
+      "groups"
+    ],
+    "ManualRuleGroup": [
+      "groupName",
+      "items"
+    ],
+    "MatchedDeveloperMetadata": [
+      "dataFilters",
+      "developerMetadata"
+    ],
+    "MatchedValueRange": [
+      "dataFilters",
+      "valueRange"
+    ],
+    "MergeCellsRequest": [
+      "mergeType",
+      "range"
+    ],
+    "MoveDimensionRequest": [
+      "destinationIndex",
+      "source"
+    ],
+    "NamedRange": [
+      "name",
+      "namedRangeId",
+      "range"
+    ],
+    "NumberFormat": [
+      "pattern",
+      "type"
+    ],
+    "OrgChartSpec": [
+      "labels",
+      "nodeColor",
+      "nodeColorStyle",
+      "nodeSize",
+      "parentLabels",
+      "selectedNodeColor",
+      "selectedNodeColorStyle",
+      "tooltips"
+    ],
+    "OverlayPosition": [
+      "anchorCell",
+      "heightPixels",
+      "offsetXPixels",
+      "offsetYPixels",
+      "widthPixels"
+    ],
+    "Padding": [
+      "bottom",
+      "left",
+      "right",
+      "top"
+    ],
+    "PasteDataRequest": [
+      "coordinate",
+      "data",
+      "delimiter",
+      "html",
+      "type"
+    ],
+    "PersonProperties": [
+      "displayFormat",
+      "email"
+    ],
+    "PieChartSpec": [
+      "domain",
+      "legendPosition",
+      "pieHole",
+      "series",
+      "threeDimensional"
+    ],
+    "PivotFilterCriteria": [
+      "condition",
+      "visibleByDefault",
+      "visibleValues"
+    ],
+    "PivotFilterSpec": [
+      "columnOffsetIndex",
+      "dataSourceColumnReference",
+      "filterCriteria"
+    ],
+    "PivotGroup": [
+      "dataSourceColumnReference",
+      "groupLimit",
+      "groupRule",
+      "label",
+      "repeatHeadings",
+      "showTotals",
+      "sortOrder",
+      "sourceColumnOffset",
+      "valueBucket",
+      "valueMetadata"
+    ],
+    "PivotGroupLimit": [
+      "applyOrder",
+      "countLimit"
+    ],
+    "PivotGroupRule": [
+      "dateTimeRule",
+      "histogramRule",
+      "manualRule"
+    ],
+    "PivotGroupSortValueBucket": [
+      "buckets",
+      "valuesIndex"
+    ],
+    "PivotGroupValueMetadata": [
+      "collapsed",
+      "value"
+    ],
+    "PivotTable": [
+      "columns",
+      "criteria",
+      "dataExecutionStatus",
+      "dataSourceId",
+      "filterSpecs",
+      "rows",
+      "source",
+      "valueLayout",
+      "values"
+    ],
+    "PivotValue": [
+      "calculatedDisplayType",
+      "dataSourceColumnReference",
+      "formula",
+      "name",
+      "sourceColumnOffset",
+      "summarizeFunction"
+    ],
+    "PointStyle": [
+      "shape",
+      "size"
+    ],
+    "ProtectedRange": [
+      "description",
+      "editors",
+      "namedRangeId",
+      "protectedRangeId",
+      "range",
+      "requestingUserCanEdit",
+      "tableId",
+      "unprotectedRanges",
+      "warningOnly"
+    ],
+    "RandomizeRangeRequest": [
+      "range"
+    ],
+    "RefreshCancellationStatus": [
+      "errorCode",
+      "state"
+    ],
+    "RefreshDataSourceObjectExecutionStatus": [
+      "dataExecutionStatus",
+      "reference"
+    ],
+    "RefreshDataSourceRequest": [
+      "dataSourceId",
+      "force",
+      "isAll",
+      "references"
+    ],
+    "RefreshDataSourceResponse": [
+      "statuses"
+    ],
+    "RepeatCellRequest": [
+      "cell",
+      "fields",
+      "range"
+    ],
+    "Request": [
+      "addBanding",
+      "addChart",
+      "addConditionalFormatRule",
+      "addDataSource",
+      "addDimensionGroup",
+      "addFilterView",
+      "addNamedRange",
+      "addProtectedRange",
+      "addSheet",
+      "addSlicer",
+      "addTable",
+      "appendCells",
+      "appendDimension",
+      "autoFill",
+      "autoResizeDimensions",
+      "cancelDataSourceRefresh",
+      "clearBasicFilter",
+      "copyPaste",
+      "createDeveloperMetadata",
+      "cutPaste",
+      "deleteBanding",
+      "deleteConditionalFormatRule",
+      "deleteDataSource",
+      "deleteDeveloperMetadata",
+      "deleteDimension",
+      "deleteDimensionGroup",
+      "deleteDuplicates",
+      "deleteEmbeddedObject",
+      "deleteFilterView",
+      "deleteNamedRange",
+      "deleteProtectedRange",
+      "deleteRange",
+      "deleteSheet",
+      "deleteTable",
+      "duplicateFilterView",
+      "duplicateSheet",
+      "findReplace",
+      "insertDimension",
+      "insertRange",
+      "mergeCells",
+      "moveDimension",
+      "pasteData",
+      "randomizeRange",
+      "refreshDataSource",
+      "repeatCell",
+      "setBasicFilter",
+      "setDataValidation",
+      "sortRange",
+      "textToColumns",
+      "trimWhitespace",
+      "unmergeCells",
+      "updateBanding",
+      "updateBorders",
+      "updateCells",
+      "updateChartSpec",
+      "updateConditionalFormatRule",
+      "updateDataSource",
+      "updateDeveloperMetadata",
+      "updateDimensionGroup",
+      "updateDimensionProperties",
+      "updateEmbeddedObjectBorder",
+      "updateEmbeddedObjectPosition",
+      "updateFilterView",
+      "updateNamedRange",
+      "updateProtectedRange",
+      "updateSheetProperties",
+      "updateSlicerSpec",
+      "updateSpreadsheetProperties",
+      "updateTable"
+    ],
+    "Response": [
+      "addBanding",
+      "addChart",
+      "addDataSource",
+      "addDimensionGroup",
+      "addFilterView",
+      "addNamedRange",
+      "addProtectedRange",
+      "addSheet",
+      "addSlicer",
+      "addTable",
+      "cancelDataSourceRefresh",
+      "createDeveloperMetadata",
+      "deleteConditionalFormatRule",
+      "deleteDeveloperMetadata",
+      "deleteDimensionGroup",
+      "deleteDuplicates",
+      "duplicateFilterView",
+      "duplicateSheet",
+      "findReplace",
+      "refreshDataSource",
+      "trimWhitespace",
+      "updateConditionalFormatRule",
+      "updateDataSource",
+      "updateDeveloperMetadata",
+      "updateEmbeddedObjectPosition"
+    ],
+    "RichLinkProperties": [
+      "mimeType",
+      "uri"
+    ],
+    "RowData": [
+      "values"
+    ],
+    "ScorecardChartSpec": [
+      "aggregateType",
+      "baselineValueData",
+      "baselineValueFormat",
+      "customFormatOptions",
+      "keyValueData",
+      "keyValueFormat",
+      "numberFormatSource",
+      "scaleFactor"
+    ],
+    "SearchDeveloperMetadataRequest": [
+      "dataFilters"
+    ],
+    "SearchDeveloperMetadataResponse": [
+      "matchedDeveloperMetadata"
+    ],
+    "SetBasicFilterRequest": [
+      "filter"
+    ],
+    "SetDataValidationRequest": [
+      "filteredRowsIncluded",
+      "range",
+      "rule"
+    ],
+    "Sheet": [
+      "bandedRanges",
+      "basicFilter",
+      "charts",
+      "columnGroups",
+      "conditionalFormats",
+      "data",
+      "developerMetadata",
+      "filterViews",
+      "merges",
+      "properties",
+      "protectedRanges",
+      "rowGroups",
+      "slicers",
+      "tables"
+    ],
+    "SheetProperties": [
+      "dataSourceSheetProperties",
+      "gridProperties",
+      "hidden",
+      "index",
+      "rightToLeft",
+      "sheetId",
+      "sheetType",
+      "tabColor",
+      "tabColorStyle",
+      "title"
+    ],
+    "Slicer": [
+      "position",
+      "slicerId",
+      "spec"
+    ],
+    "SlicerSpec": [
+      "applyToPivotTables",
+      "backgroundColor",
+      "backgroundColorStyle",
+      "columnIndex",
+      "dataRange",
+      "filterCriteria",
+      "horizontalAlignment",
+      "textFormat",
+      "title"
+    ],
+    "SortRangeRequest": [
+      "range",
+      "sortSpecs"
+    ],
+    "SortSpec": [
+      "backgroundColor",
+      "backgroundColorStyle",
+      "dataSourceColumnReference",
+      "dimensionIndex",
+      "foregroundColor",
+      "foregroundColorStyle",
+      "sortOrder"
+    ],
+    "SourceAndDestination": [
+      "dimension",
+      "fillLength",
+      "source"
+    ],
+    "Spreadsheet": [
+      "dataSourceSchedules",
+      "dataSources",
+      "developerMetadata",
+      "namedRanges",
+      "properties",
+      "sheets",
+      "spreadsheetId",
+      "spreadsheetUrl"
+    ],
+    "SpreadsheetProperties": [
+      "autoRecalc",
+      "defaultFormat",
+      "importFunctionsExternalUrlAccessAllowed",
+      "iterativeCalculationSettings",
+      "locale",
+      "spreadsheetTheme",
+      "timeZone",
+      "title"
+    ],
+    "SpreadsheetTheme": [
+      "primaryFontFamily",
+      "themeColors"
+    ],
+    "Table": [
+      "columnProperties",
+      "name",
+      "range",
+      "rowsProperties",
+      "tableId"
+    ],
+    "TableColumnDataValidationRule": [
+      "condition"
+    ],
+    "TableColumnProperties": [
+      "columnIndex",
+      "columnName",
+      "columnType",
+      "dataValidationRule"
+    ],
+    "TableRowsProperties": [
+      "firstBandColorStyle",
+      "footerColorStyle",
+      "headerColorStyle",
+      "secondBandColorStyle"
+    ],
+    "TextFormat": [
+      "bold",
+      "fontFamily",
+      "fontSize",
+      "foregroundColor",
+      "foregroundColorStyle",
+      "italic",
+      "link",
+      "strikethrough",
+      "underline"
+    ],
+    "TextFormatRun": [
+      "format",
+      "startIndex"
+    ],
+    "TextPosition": [
+      "horizontalAlignment"
+    ],
+    "TextRotation": [
+      "angle",
+      "vertical"
+    ],
+    "TextToColumnsRequest": [
+      "delimiter",
+      "delimiterType",
+      "source"
+    ],
+    "ThemeColorPair": [
+      "color",
+      "colorType"
+    ],
+    "TimeOfDay": [
+      "hours",
+      "minutes",
+      "nanos",
+      "seconds"
+    ],
+    "TreemapChartColorScale": [
+      "maxValueColor",
+      "maxValueColorStyle",
+      "midValueColor",
+      "midValueColorStyle",
+      "minValueColor",
+      "minValueColorStyle",
+      "noDataColor",
+      "noDataColorStyle"
+    ],
+    "TreemapChartSpec": [
+      "colorData",
+      "colorScale",
+      "headerColor",
+      "headerColorStyle",
+      "hideTooltips",
+      "hintedLevels",
+      "labels",
+      "levels",
+      "maxValue",
+      "minValue",
+      "parentLabels",
+      "sizeData",
+      "textFormat"
+    ],
+    "TrimWhitespaceRequest": [
+      "range"
+    ],
+    "TrimWhitespaceResponse": [
+      "cellsChangedCount"
+    ],
+    "UnmergeCellsRequest": [
+      "range"
+    ],
+    "UpdateBandingRequest": [
+      "bandedRange",
+      "fields"
+    ],
+    "UpdateBordersRequest": [
+      "bottom",
+      "innerHorizontal",
+      "innerVertical",
+      "left",
+      "range",
+      "right",
+      "top"
+    ],
+    "UpdateCellsRequest": [
+      "fields",
+      "range",
+      "rows",
+      "start"
+    ],
+    "UpdateChartSpecRequest": [
+      "chartId",
+      "spec"
+    ],
+    "UpdateConditionalFormatRuleRequest": [
+      "index",
+      "newIndex",
+      "rule",
+      "sheetId"
+    ],
+    "UpdateConditionalFormatRuleResponse": [
+      "newIndex",
+      "newRule",
+      "oldIndex",
+      "oldRule"
+    ],
+    "UpdateDataSourceRequest": [
+      "dataSource",
+      "fields"
+    ],
+    "UpdateDataSourceResponse": [
+      "dataExecutionStatus",
+      "dataSource"
+    ],
+    "UpdateDeveloperMetadataRequest": [
+      "dataFilters",
+      "developerMetadata",
+      "fields"
+    ],
+    "UpdateDeveloperMetadataResponse": [
+      "developerMetadata"
+    ],
+    "UpdateDimensionGroupRequest": [
+      "dimensionGroup",
+      "fields"
+    ],
+    "UpdateDimensionPropertiesRequest": [
+      "dataSourceSheetRange",
+      "fields",
+      "properties",
+      "range"
+    ],
+    "UpdateEmbeddedObjectBorderRequest": [
+      "border",
+      "fields",
+      "objectId"
+    ],
+    "UpdateEmbeddedObjectPositionRequest": [
+      "fields",
+      "newPosition",
+      "objectId"
+    ],
+    "UpdateEmbeddedObjectPositionResponse": [
+      "position"
+    ],
+    "UpdateFilterViewRequest": [
+      "fields",
+      "filter"
+    ],
+    "UpdateNamedRangeRequest": [
+      "fields",
+      "namedRange"
+    ],
+    "UpdateProtectedRangeRequest": [
+      "fields",
+      "protectedRange"
+    ],
+    "UpdateSheetPropertiesRequest": [
+      "fields",
+      "properties"
+    ],
+    "UpdateSlicerSpecRequest": [
+      "fields",
+      "slicerId",
+      "spec"
+    ],
+    "UpdateSpreadsheetPropertiesRequest": [
+      "fields",
+      "properties"
+    ],
+    "UpdateTableRequest": [
+      "fields",
+      "table"
+    ],
+    "UpdateValuesByDataFilterResponse": [
+      "dataFilter",
+      "updatedCells",
+      "updatedColumns",
+      "updatedData",
+      "updatedRange",
+      "updatedRows"
+    ],
+    "UpdateValuesResponse": [
+      "spreadsheetId",
+      "updatedCells",
+      "updatedColumns",
+      "updatedData",
+      "updatedRange",
+      "updatedRows"
+    ],
+    "ValueRange": [
+      "majorDimension",
+      "range",
+      "values"
+    ],
+    "WaterfallChartColumnStyle": [
+      "color",
+      "colorStyle",
+      "label"
+    ],
+    "WaterfallChartCustomSubtotal": [
+      "dataIsSubtotal",
+      "label",
+      "subtotalIndex"
+    ],
+    "WaterfallChartDomain": [
+      "data",
+      "reversed"
+    ],
+    "WaterfallChartSeries": [
+      "customSubtotals",
+      "data",
+      "dataLabel",
+      "hideTrailingSubtotal",
+      "negativeColumnsStyle",
+      "positiveColumnsStyle",
+      "subtotalColumnsStyle"
+    ],
+    "WaterfallChartSpec": [
+      "connectorLineStyle",
+      "domain",
+      "firstValueIsTotal",
+      "hideConnectorLines",
+      "series",
+      "stackedType",
+      "totalDataLabel"
+    ]
+  },
+  "scopes": [
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/spreadsheets.readonly"
+  ],
+  "version": "v4"
+}

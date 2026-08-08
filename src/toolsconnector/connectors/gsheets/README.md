@@ -95,6 +95,79 @@ tools = kit.to_openai_tools()
 
 ## Authentication
 
+### Authenticate with ToolsConnector
+
+Skip manual token handling — ToolsConnector runs the OAuth flow and returns tokens,
+reading this connector's declared scopes automatically:
+
+```python
+import asyncio
+from toolsconnector.connectors.gsheets import GoogleSheets
+from toolsconnector.runtime.auth import login_for
+
+# Desktop / CLI: opens the browser, catches the redirect on 127.0.0.1, returns tokens.
+creds = asyncio.run(login_for(
+    GoogleSheets,
+    client_id="...apps.googleusercontent.com",
+    client_secret="GOCSPX-...",   # Desktop-app clients get one too
+))
+# creds.access_token / creds.refresh_token
+```
+
+Create the OAuth client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+A **Desktop app** client is the easiest for `login_for()`; Google issues a `client_secret`
+for it too, so pass both. Register `http://127.0.0.1:8765/` as an authorized redirect URI
+(or use `port=0` to let the OS pick a free port — Desktop clients accept any loopback port).
+
+### Keeping the token alive
+
+A Google access token expires in about an hour. Wrap the credentials so they renew
+themselves — otherwise a long-running process dies overnight:
+
+```python
+from toolsconnector.runtime.auth import RefreshingCredentials
+
+auth = RefreshingCredentials(creds, on_refresh=save_somewhere)   # you choose where to persist
+kit = GoogleSheets(credentials=auth)      # keeps working past the 1-hour expiry
+```
+
+`on_refresh` hands rotated tokens back to you — ToolsConnector stores nothing.
+You can also pass the `CredentialSet` (or any callable returning a token) directly as
+`credentials=`.
+
+### Checking what the user actually granted
+
+Google lets the user untick individual scopes on the consent screen, so a successful
+login does not guarantee every scope:
+
+```python
+from toolsconnector.runtime.auth.flows import missing_scopes
+from toolsconnector.runtime.auth import oauth_scopes
+
+missing = missing_scopes(creds, oauth_scopes(GoogleSheets))
+if missing:
+    print("not authorized for:", missing)
+```
+
+**Different permissions.** Request a subset now, or add more later without losing the
+existing grant (Google incremental auth):
+
+```python
+from toolsconnector.connectors.gdrive import GoogleDrive
+from toolsconnector.runtime.auth import scopes_for
+
+# only what you need now
+creds = asyncio.run(login_for(GoogleSheets, client_id="...",
+    scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]))
+
+# add GoogleDrive later, keeping the existing grant
+creds = asyncio.run(login_for(GoogleSheets, client_id="...",
+    scopes=scopes_for(GoogleSheets, GoogleDrive), incremental=True))
+```
+
+**Web apps:** use `begin_for(GoogleSheets, client_id=..., redirect_uri=...)` then
+`complete(pending, code=..., state=...)` from your own callback route.
+
 Same paths as Google Docs — Google OAuth 2.0 access tokens. Easiest options:
 
 ### Path 1 — OAuth 2.0 Playground (fastest, no install)

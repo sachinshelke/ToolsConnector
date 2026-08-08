@@ -19,6 +19,10 @@ from .api_key import APIKeyProvider
 from .base import AuthProvider, AuthState
 from .basic import BasicAuthProvider
 from .bearer import BearerTokenProvider
+from .connectors import begin_for, login_for, oauth_scopes, scopes_for
+from .credentials import RefreshingCredentials
+from .flows import GOOGLE, OAuthFlowError, PendingAuth, ProviderPreset, begin, complete
+from .loopback import login
 from .manager import AuthManager
 from .oauth2 import OAuth2Provider
 
@@ -33,4 +37,19 @@ __all__ = [
     "BearerTokenProvider",
     "BasicAuthProvider",
     "OAuth2Provider",
+    # OAuth acquisition flow
+    "begin",
+    "complete",
+    "login",
+    "PendingAuth",
+    "ProviderPreset",
+    "OAuthFlowError",
+    "GOOGLE",
+    # Connector wiring (authenticate by connector, scopes from its spec)
+    "oauth_scopes",
+    "scopes_for",
+    "begin_for",
+    "login_for",
+    # Self-refreshing credentials for long-lived connectors
+    "RefreshingCredentials",
 ]

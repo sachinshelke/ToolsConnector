@@ -1,0 +1,1095 @@
+{
+  "id": "docs:v1",
+  "methods": {
+    "docs.documents.batchUpdate": {
+      "httpMethod": "POST",
+      "parameters": {
+        "documentId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "path": "v1/documents/{documentId}:batchUpdate",
+      "scopes": [
+        "https://www.googleapis.com/auth/documents",
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "docs.documents.create": {
+      "httpMethod": "POST",
+      "parameters": {},
+      "path": "v1/documents",
+      "scopes": [
+        "https://www.googleapis.com/auth/documents",
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "docs.documents.get": {
+      "httpMethod": "GET",
+      "parameters": {
+        "documentId": {
+          "location": "path",
+          "required": true,
+          "type": "string"
+        },
+        "includeTabsContent": {
+          "location": "query",
+          "required": false,
+          "type": "boolean"
+        },
+        "suggestionsViewMode": {
+          "location": "query",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "path": "v1/documents/{documentId}",
+      "scopes": [
+        "https://www.googleapis.com/auth/documents",
+        "https://www.googleapis.com/auth/documents.readonly",
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive.readonly"
+      ]
+    }
+  },
+  "name": "docs",
+  "revision": "20260727",
+  "schemas": {
+    "AddDocumentTabRequest": [
+      "tabProperties"
+    ],
+    "AddDocumentTabResponse": [
+      "tabProperties"
+    ],
+    "AutoText": [
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTextStyleChanges",
+      "textStyle",
+      "type"
+    ],
+    "Background": [
+      "color"
+    ],
+    "BackgroundSuggestionState": [
+      "backgroundColorSuggested"
+    ],
+    "BatchUpdateDocumentRequest": [
+      "requests",
+      "writeControl"
+    ],
+    "BatchUpdateDocumentResponse": [
+      "documentId",
+      "replies",
+      "writeControl"
+    ],
+    "Body": [
+      "content"
+    ],
+    "BookmarkLink": [
+      "id",
+      "tabId"
+    ],
+    "Bullet": [
+      "listId",
+      "nestingLevel",
+      "textStyle"
+    ],
+    "BulletSuggestionState": [
+      "listIdSuggested",
+      "nestingLevelSuggested",
+      "textStyleSuggestionState"
+    ],
+    "Color": [
+      "rgbColor"
+    ],
+    "ColumnBreak": [
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTextStyleChanges",
+      "textStyle"
+    ],
+    "CreateFooterRequest": [
+      "sectionBreakLocation",
+      "type"
+    ],
+    "CreateFooterResponse": [
+      "footerId"
+    ],
+    "CreateFootnoteRequest": [
+      "endOfSegmentLocation",
+      "location"
+    ],
+    "CreateFootnoteResponse": [
+      "footnoteId"
+    ],
+    "CreateHeaderRequest": [
+      "sectionBreakLocation",
+      "type"
+    ],
+    "CreateHeaderResponse": [
+      "headerId"
+    ],
+    "CreateNamedRangeRequest": [
+      "name",
+      "range"
+    ],
+    "CreateNamedRangeResponse": [
+      "namedRangeId"
+    ],
+    "CreateParagraphBulletsRequest": [
+      "bulletPreset",
+      "range"
+    ],
+    "CropProperties": [
+      "angle",
+      "offsetBottom",
+      "offsetLeft",
+      "offsetRight",
+      "offsetTop"
+    ],
+    "CropPropertiesSuggestionState": [
+      "angleSuggested",
+      "offsetBottomSuggested",
+      "offsetLeftSuggested",
+      "offsetRightSuggested",
+      "offsetTopSuggested"
+    ],
+    "DateElement": [
+      "dateElementProperties",
+      "dateId",
+      "suggestedDateElementPropertiesChanges",
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTextStyleChanges",
+      "textStyle"
+    ],
+    "DateElementProperties": [
+      "dateFormat",
+      "displayText",
+      "locale",
+      "timeFormat",
+      "timeZoneId",
+      "timestamp"
+    ],
+    "DateElementPropertiesSuggestionState": [
+      "dateFormatSuggested",
+      "localeSuggested",
+      "timeFormatSuggested",
+      "timeZoneIdSuggested",
+      "timestampSuggested"
+    ],
+    "DeleteContentRangeRequest": [
+      "range"
+    ],
+    "DeleteFooterRequest": [
+      "footerId",
+      "tabId"
+    ],
+    "DeleteHeaderRequest": [
+      "headerId",
+      "tabId"
+    ],
+    "DeleteNamedRangeRequest": [
+      "name",
+      "namedRangeId",
+      "tabsCriteria"
+    ],
+    "DeleteParagraphBulletsRequest": [
+      "range"
+    ],
+    "DeletePositionedObjectRequest": [
+      "objectId",
+      "tabId"
+    ],
+    "DeleteTabRequest": [
+      "tabId"
+    ],
+    "DeleteTableColumnRequest": [
+      "tableCellLocation"
+    ],
+    "DeleteTableRowRequest": [
+      "tableCellLocation"
+    ],
+    "Dimension": [
+      "magnitude",
+      "unit"
+    ],
+    "Document": [
+      "body",
+      "documentId",
+      "documentStyle",
+      "footers",
+      "footnotes",
+      "headers",
+      "inlineObjects",
+      "lists",
+      "namedRanges",
+      "namedStyles",
+      "positionedObjects",
+      "revisionId",
+      "suggestedDocumentStyleChanges",
+      "suggestedNamedStylesChanges",
+      "suggestionsViewMode",
+      "tabs",
+      "title"
+    ],
+    "DocumentFormat": [
+      "documentMode"
+    ],
+    "DocumentStyle": [
+      "background",
+      "defaultFooterId",
+      "defaultHeaderId",
+      "documentFormat",
+      "evenPageFooterId",
+      "evenPageHeaderId",
+      "firstPageFooterId",
+      "firstPageHeaderId",
+      "flipPageOrientation",
+      "marginBottom",
+      "marginFooter",
+      "marginHeader",
+      "marginLeft",
+      "marginRight",
+      "marginTop",
+      "pageNumberStart",
+      "pageSize",
+      "useCustomHeaderFooterMargins",
+      "useEvenPageHeaderFooter",
+      "useFirstPageHeaderFooter"
+    ],
+    "DocumentStyleSuggestionState": [
+      "backgroundSuggestionState",
+      "defaultFooterIdSuggested",
+      "defaultHeaderIdSuggested",
+      "evenPageFooterIdSuggested",
+      "evenPageHeaderIdSuggested",
+      "firstPageFooterIdSuggested",
+      "firstPageHeaderIdSuggested",
+      "flipPageOrientationSuggested",
+      "marginBottomSuggested",
+      "marginFooterSuggested",
+      "marginHeaderSuggested",
+      "marginLeftSuggested",
+      "marginRightSuggested",
+      "marginTopSuggested",
+      "pageNumberStartSuggested",
+      "pageSizeSuggestionState",
+      "useCustomHeaderFooterMarginsSuggested",
+      "useEvenPageHeaderFooterSuggested",
+      "useFirstPageHeaderFooterSuggested"
+    ],
+    "DocumentTab": [
+      "body",
+      "documentStyle",
+      "footers",
+      "footnotes",
+      "headers",
+      "inlineObjects",
+      "lists",
+      "namedRanges",
+      "namedStyles",
+      "positionedObjects",
+      "suggestedDocumentStyleChanges",
+      "suggestedNamedStylesChanges"
+    ],
+    "EmbeddedDrawingProperties": [],
+    "EmbeddedDrawingPropertiesSuggestionState": [],
+    "EmbeddedObject": [
+      "description",
+      "embeddedDrawingProperties",
+      "embeddedObjectBorder",
+      "imageProperties",
+      "linkedContentReference",
+      "marginBottom",
+      "marginLeft",
+      "marginRight",
+      "marginTop",
+      "size",
+      "title"
+    ],
+    "EmbeddedObjectBorder": [
+      "color",
+      "dashStyle",
+      "propertyState",
+      "width"
+    ],
+    "EmbeddedObjectBorderSuggestionState": [
+      "colorSuggested",
+      "dashStyleSuggested",
+      "propertyStateSuggested",
+      "widthSuggested"
+    ],
+    "EmbeddedObjectSuggestionState": [
+      "descriptionSuggested",
+      "embeddedDrawingPropertiesSuggestionState",
+      "embeddedObjectBorderSuggestionState",
+      "imagePropertiesSuggestionState",
+      "linkedContentReferenceSuggestionState",
+      "marginBottomSuggested",
+      "marginLeftSuggested",
+      "marginRightSuggested",
+      "marginTopSuggested",
+      "sizeSuggestionState",
+      "titleSuggested"
+    ],
+    "EndOfSegmentLocation": [
+      "segmentId",
+      "tabId"
+    ],
+    "Equation": [
+      "suggestedDeletionIds",
+      "suggestedInsertionIds"
+    ],
+    "Footer": [
+      "content",
+      "footerId"
+    ],
+    "Footnote": [
+      "content",
+      "footnoteId"
+    ],
+    "FootnoteReference": [
+      "footnoteId",
+      "footnoteNumber",
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTextStyleChanges",
+      "textStyle"
+    ],
+    "Header": [
+      "content",
+      "headerId"
+    ],
+    "HeadingLink": [
+      "id",
+      "tabId"
+    ],
+    "HorizontalRule": [
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTextStyleChanges",
+      "textStyle"
+    ],
+    "ImageProperties": [
+      "angle",
+      "brightness",
+      "contentUri",
+      "contrast",
+      "cropProperties",
+      "sourceUri",
+      "transparency"
+    ],
+    "ImagePropertiesSuggestionState": [
+      "angleSuggested",
+      "brightnessSuggested",
+      "contentUriSuggested",
+      "contrastSuggested",
+      "cropPropertiesSuggestionState",
+      "sourceUriSuggested",
+      "transparencySuggested"
+    ],
+    "InlineObject": [
+      "inlineObjectProperties",
+      "objectId",
+      "suggestedDeletionIds",
+      "suggestedInlineObjectPropertiesChanges",
+      "suggestedInsertionId"
+    ],
+    "InlineObjectElement": [
+      "inlineObjectId",
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTextStyleChanges",
+      "textStyle"
+    ],
+    "InlineObjectProperties": [
+      "embeddedObject"
+    ],
+    "InlineObjectPropertiesSuggestionState": [
+      "embeddedObjectSuggestionState"
+    ],
+    "InsertDateRequest": [
+      "dateElementProperties",
+      "endOfSegmentLocation",
+      "location"
+    ],
+    "InsertInlineImageRequest": [
+      "endOfSegmentLocation",
+      "location",
+      "objectSize",
+      "uri"
+    ],
+    "InsertInlineImageResponse": [
+      "objectId"
+    ],
+    "InsertInlineSheetsChartResponse": [
+      "objectId"
+    ],
+    "InsertPageBreakRequest": [
+      "endOfSegmentLocation",
+      "location"
+    ],
+    "InsertPersonRequest": [
+      "endOfSegmentLocation",
+      "location",
+      "personProperties"
+    ],
+    "InsertRichLinkRequest": [
+      "endOfSegmentLocation",
+      "location",
+      "richLinkProperties"
+    ],
+    "InsertSectionBreakRequest": [
+      "endOfSegmentLocation",
+      "location",
+      "sectionType"
+    ],
+    "InsertTableColumnRequest": [
+      "insertRight",
+      "tableCellLocation"
+    ],
+    "InsertTableRequest": [
+      "columns",
+      "endOfSegmentLocation",
+      "location",
+      "rows"
+    ],
+    "InsertTableRowRequest": [
+      "insertBelow",
+      "tableCellLocation"
+    ],
+    "InsertTextRequest": [
+      "endOfSegmentLocation",
+      "location",
+      "text"
+    ],
+    "Link": [
+      "bookmark",
+      "bookmarkId",
+      "heading",
+      "headingId",
+      "tabId",
+      "url"
+    ],
+    "LinkedContentReference": [
+      "sheetsChartReference"
+    ],
+    "LinkedContentReferenceSuggestionState": [
+      "sheetsChartReferenceSuggestionState"
+    ],
+    "List": [
+      "listProperties",
+      "suggestedDeletionIds",
+      "suggestedInsertionId",
+      "suggestedListPropertiesChanges"
+    ],
+    "ListProperties": [
+      "nestingLevels"
+    ],
+    "ListPropertiesSuggestionState": [
+      "nestingLevelsSuggestionStates"
+    ],
+    "Location": [
+      "index",
+      "segmentId",
+      "tabId"
+    ],
+    "MergeTableCellsRequest": [
+      "tableRange"
+    ],
+    "NamedRange": [
+      "name",
+      "namedRangeId",
+      "ranges"
+    ],
+    "NamedRanges": [
+      "name",
+      "namedRanges"
+    ],
+    "NamedStyle": [
+      "namedStyleType",
+      "paragraphStyle",
+      "textStyle"
+    ],
+    "NamedStyleSuggestionState": [
+      "namedStyleType",
+      "paragraphStyleSuggestionState",
+      "textStyleSuggestionState"
+    ],
+    "NamedStyles": [
+      "styles"
+    ],
+    "NamedStylesSuggestionState": [
+      "stylesSuggestionStates"
+    ],
+    "NestingLevel": [
+      "bulletAlignment",
+      "glyphFormat",
+      "glyphSymbol",
+      "glyphType",
+      "indentFirstLine",
+      "indentStart",
+      "startNumber",
+      "textStyle"
+    ],
+    "NestingLevelSuggestionState": [
+      "bulletAlignmentSuggested",
+      "glyphFormatSuggested",
+      "glyphSymbolSuggested",
+      "glyphTypeSuggested",
+      "indentFirstLineSuggested",
+      "indentStartSuggested",
+      "startNumberSuggested",
+      "textStyleSuggestionState"
+    ],
+    "ObjectReferences": [
+      "objectIds"
+    ],
+    "OptionalColor": [
+      "color"
+    ],
+    "PageBreak": [
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTextStyleChanges",
+      "textStyle"
+    ],
+    "Paragraph": [
+      "bullet",
+      "elements",
+      "paragraphStyle",
+      "positionedObjectIds",
+      "suggestedBulletChanges",
+      "suggestedParagraphStyleChanges",
+      "suggestedPositionedObjectIds"
+    ],
+    "ParagraphBorder": [
+      "color",
+      "dashStyle",
+      "padding",
+      "width"
+    ],
+    "ParagraphElement": [
+      "autoText",
+      "columnBreak",
+      "dateElement",
+      "endIndex",
+      "equation",
+      "footnoteReference",
+      "horizontalRule",
+      "inlineObjectElement",
+      "pageBreak",
+      "person",
+      "richLink",
+      "startIndex",
+      "textRun"
+    ],
+    "ParagraphStyle": [
+      "alignment",
+      "avoidWidowAndOrphan",
+      "borderBetween",
+      "borderBottom",
+      "borderLeft",
+      "borderRight",
+      "borderTop",
+      "direction",
+      "headingId",
+      "indentEnd",
+      "indentFirstLine",
+      "indentStart",
+      "keepLinesTogether",
+      "keepWithNext",
+      "lineSpacing",
+      "namedStyleType",
+      "pageBreakBefore",
+      "shading",
+      "spaceAbove",
+      "spaceBelow",
+      "spacingMode",
+      "tabStops"
+    ],
+    "ParagraphStyleSuggestionState": [
+      "alignmentSuggested",
+      "avoidWidowAndOrphanSuggested",
+      "borderBetweenSuggested",
+      "borderBottomSuggested",
+      "borderLeftSuggested",
+      "borderRightSuggested",
+      "borderTopSuggested",
+      "directionSuggested",
+      "headingIdSuggested",
+      "indentEndSuggested",
+      "indentFirstLineSuggested",
+      "indentStartSuggested",
+      "keepLinesTogetherSuggested",
+      "keepWithNextSuggested",
+      "lineSpacingSuggested",
+      "namedStyleTypeSuggested",
+      "pageBreakBeforeSuggested",
+      "shadingSuggestionState",
+      "spaceAboveSuggested",
+      "spaceBelowSuggested",
+      "spacingModeSuggested"
+    ],
+    "Person": [
+      "personId",
+      "personProperties",
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTextStyleChanges",
+      "textStyle"
+    ],
+    "PersonProperties": [
+      "email",
+      "name"
+    ],
+    "PinTableHeaderRowsRequest": [
+      "pinnedHeaderRowsCount",
+      "tableStartLocation"
+    ],
+    "PositionedObject": [
+      "objectId",
+      "positionedObjectProperties",
+      "suggestedDeletionIds",
+      "suggestedInsertionId",
+      "suggestedPositionedObjectPropertiesChanges"
+    ],
+    "PositionedObjectPositioning": [
+      "layout",
+      "leftOffset",
+      "topOffset"
+    ],
+    "PositionedObjectPositioningSuggestionState": [
+      "layoutSuggested",
+      "leftOffsetSuggested",
+      "topOffsetSuggested"
+    ],
+    "PositionedObjectProperties": [
+      "embeddedObject",
+      "positioning"
+    ],
+    "PositionedObjectPropertiesSuggestionState": [
+      "embeddedObjectSuggestionState",
+      "positioningSuggestionState"
+    ],
+    "Range": [
+      "endIndex",
+      "segmentId",
+      "startIndex",
+      "tabId"
+    ],
+    "ReplaceAllTextRequest": [
+      "containsText",
+      "replaceText",
+      "tabsCriteria"
+    ],
+    "ReplaceAllTextResponse": [
+      "occurrencesChanged"
+    ],
+    "ReplaceImageRequest": [
+      "imageObjectId",
+      "imageReplaceMethod",
+      "tabId",
+      "uri"
+    ],
+    "ReplaceNamedRangeContentRequest": [
+      "namedRangeId",
+      "namedRangeName",
+      "tabsCriteria",
+      "text"
+    ],
+    "Request": [
+      "addDocumentTab",
+      "createFooter",
+      "createFootnote",
+      "createHeader",
+      "createNamedRange",
+      "createParagraphBullets",
+      "deleteContentRange",
+      "deleteFooter",
+      "deleteHeader",
+      "deleteNamedRange",
+      "deleteParagraphBullets",
+      "deletePositionedObject",
+      "deleteTab",
+      "deleteTableColumn",
+      "deleteTableRow",
+      "insertDate",
+      "insertInlineImage",
+      "insertPageBreak",
+      "insertPerson",
+      "insertRichLink",
+      "insertSectionBreak",
+      "insertTable",
+      "insertTableColumn",
+      "insertTableRow",
+      "insertText",
+      "mergeTableCells",
+      "pinTableHeaderRows",
+      "replaceAllText",
+      "replaceImage",
+      "replaceNamedRangeContent",
+      "unmergeTableCells",
+      "updateDocumentStyle",
+      "updateDocumentTabProperties",
+      "updateNamedStyle",
+      "updateParagraphStyle",
+      "updateSectionStyle",
+      "updateTableCellStyle",
+      "updateTableColumnProperties",
+      "updateTableRowStyle",
+      "updateTextStyle"
+    ],
+    "Response": [
+      "addDocumentTab",
+      "createFooter",
+      "createFootnote",
+      "createHeader",
+      "createNamedRange",
+      "insertInlineImage",
+      "insertInlineSheetsChart",
+      "replaceAllText"
+    ],
+    "RgbColor": [
+      "blue",
+      "green",
+      "red"
+    ],
+    "RichLink": [
+      "richLinkId",
+      "richLinkProperties",
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTextStyleChanges",
+      "textStyle"
+    ],
+    "RichLinkProperties": [
+      "mimeType",
+      "title",
+      "uri"
+    ],
+    "SectionBreak": [
+      "sectionStyle",
+      "suggestedDeletionIds",
+      "suggestedInsertionIds"
+    ],
+    "SectionColumnProperties": [
+      "paddingEnd",
+      "width"
+    ],
+    "SectionStyle": [
+      "columnProperties",
+      "columnSeparatorStyle",
+      "contentDirection",
+      "defaultFooterId",
+      "defaultHeaderId",
+      "evenPageFooterId",
+      "evenPageHeaderId",
+      "firstPageFooterId",
+      "firstPageHeaderId",
+      "flipPageOrientation",
+      "marginBottom",
+      "marginFooter",
+      "marginHeader",
+      "marginLeft",
+      "marginRight",
+      "marginTop",
+      "pageNumberStart",
+      "sectionType",
+      "useFirstPageHeaderFooter"
+    ],
+    "Shading": [
+      "backgroundColor"
+    ],
+    "ShadingSuggestionState": [
+      "backgroundColorSuggested"
+    ],
+    "SheetsChartReference": [
+      "chartId",
+      "spreadsheetId"
+    ],
+    "SheetsChartReferenceSuggestionState": [
+      "chartIdSuggested",
+      "spreadsheetIdSuggested"
+    ],
+    "Size": [
+      "height",
+      "width"
+    ],
+    "SizeSuggestionState": [
+      "heightSuggested",
+      "widthSuggested"
+    ],
+    "StructuralElement": [
+      "endIndex",
+      "paragraph",
+      "sectionBreak",
+      "startIndex",
+      "table",
+      "tableOfContents"
+    ],
+    "SubstringMatchCriteria": [
+      "matchCase",
+      "searchByRegex",
+      "text"
+    ],
+    "SuggestedBullet": [
+      "bullet",
+      "bulletSuggestionState"
+    ],
+    "SuggestedDateElementProperties": [
+      "dateElementProperties",
+      "dateElementPropertiesSuggestionState"
+    ],
+    "SuggestedDocumentStyle": [
+      "documentStyle",
+      "documentStyleSuggestionState"
+    ],
+    "SuggestedInlineObjectProperties": [
+      "inlineObjectProperties",
+      "inlineObjectPropertiesSuggestionState"
+    ],
+    "SuggestedListProperties": [
+      "listProperties",
+      "listPropertiesSuggestionState"
+    ],
+    "SuggestedNamedStyles": [
+      "namedStyles",
+      "namedStylesSuggestionState"
+    ],
+    "SuggestedParagraphStyle": [
+      "paragraphStyle",
+      "paragraphStyleSuggestionState"
+    ],
+    "SuggestedPositionedObjectProperties": [
+      "positionedObjectProperties",
+      "positionedObjectPropertiesSuggestionState"
+    ],
+    "SuggestedTableCellStyle": [
+      "tableCellStyle",
+      "tableCellStyleSuggestionState"
+    ],
+    "SuggestedTableRowStyle": [
+      "tableRowStyle",
+      "tableRowStyleSuggestionState"
+    ],
+    "SuggestedTextStyle": [
+      "textStyle",
+      "textStyleSuggestionState"
+    ],
+    "Tab": [
+      "childTabs",
+      "documentTab",
+      "tabProperties"
+    ],
+    "TabProperties": [
+      "iconEmoji",
+      "index",
+      "nestingLevel",
+      "parentTabId",
+      "tabId",
+      "title"
+    ],
+    "TabStop": [
+      "alignment",
+      "offset"
+    ],
+    "Table": [
+      "columns",
+      "rows",
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "tableRows",
+      "tableStyle"
+    ],
+    "TableCell": [
+      "content",
+      "endIndex",
+      "startIndex",
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTableCellStyleChanges",
+      "tableCellStyle"
+    ],
+    "TableCellBorder": [
+      "color",
+      "dashStyle",
+      "width"
+    ],
+    "TableCellLocation": [
+      "columnIndex",
+      "rowIndex",
+      "tableStartLocation"
+    ],
+    "TableCellStyle": [
+      "backgroundColor",
+      "borderBottom",
+      "borderLeft",
+      "borderRight",
+      "borderTop",
+      "columnSpan",
+      "contentAlignment",
+      "paddingBottom",
+      "paddingLeft",
+      "paddingRight",
+      "paddingTop",
+      "rowSpan"
+    ],
+    "TableCellStyleSuggestionState": [
+      "backgroundColorSuggested",
+      "borderBottomSuggested",
+      "borderLeftSuggested",
+      "borderRightSuggested",
+      "borderTopSuggested",
+      "columnSpanSuggested",
+      "contentAlignmentSuggested",
+      "paddingBottomSuggested",
+      "paddingLeftSuggested",
+      "paddingRightSuggested",
+      "paddingTopSuggested",
+      "rowSpanSuggested"
+    ],
+    "TableColumnProperties": [
+      "width",
+      "widthType"
+    ],
+    "TableOfContents": [
+      "content",
+      "suggestedDeletionIds",
+      "suggestedInsertionIds"
+    ],
+    "TableRange": [
+      "columnSpan",
+      "rowSpan",
+      "tableCellLocation"
+    ],
+    "TableRow": [
+      "endIndex",
+      "startIndex",
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTableRowStyleChanges",
+      "tableCells",
+      "tableRowStyle"
+    ],
+    "TableRowStyle": [
+      "minRowHeight",
+      "preventOverflow",
+      "tableHeader"
+    ],
+    "TableRowStyleSuggestionState": [
+      "minRowHeightSuggested"
+    ],
+    "TableStyle": [
+      "tableColumnProperties"
+    ],
+    "TabsCriteria": [
+      "tabIds"
+    ],
+    "TextRun": [
+      "content",
+      "suggestedDeletionIds",
+      "suggestedInsertionIds",
+      "suggestedTextStyleChanges",
+      "textStyle"
+    ],
+    "TextStyle": [
+      "backgroundColor",
+      "baselineOffset",
+      "bold",
+      "fontSize",
+      "foregroundColor",
+      "italic",
+      "link",
+      "smallCaps",
+      "strikethrough",
+      "underline",
+      "weightedFontFamily"
+    ],
+    "TextStyleSuggestionState": [
+      "backgroundColorSuggested",
+      "baselineOffsetSuggested",
+      "boldSuggested",
+      "fontSizeSuggested",
+      "foregroundColorSuggested",
+      "italicSuggested",
+      "linkSuggested",
+      "smallCapsSuggested",
+      "strikethroughSuggested",
+      "underlineSuggested",
+      "weightedFontFamilySuggested"
+    ],
+    "UnmergeTableCellsRequest": [
+      "tableRange"
+    ],
+    "UpdateDocumentStyleRequest": [
+      "documentStyle",
+      "fields",
+      "tabId"
+    ],
+    "UpdateDocumentTabPropertiesRequest": [
+      "fields",
+      "tabProperties"
+    ],
+    "UpdateNamedStyleRequest": [
+      "fields",
+      "namedStyle",
+      "tabId"
+    ],
+    "UpdateParagraphStyleRequest": [
+      "fields",
+      "paragraphStyle",
+      "range"
+    ],
+    "UpdateSectionStyleRequest": [
+      "fields",
+      "range",
+      "sectionStyle"
+    ],
+    "UpdateTableCellStyleRequest": [
+      "fields",
+      "tableCellStyle",
+      "tableRange",
+      "tableStartLocation"
+    ],
+    "UpdateTableColumnPropertiesRequest": [
+      "columnIndices",
+      "fields",
+      "tableColumnProperties",
+      "tableStartLocation"
+    ],
+    "UpdateTableRowStyleRequest": [
+      "fields",
+      "rowIndices",
+      "tableRowStyle",
+      "tableStartLocation"
+    ],
+    "UpdateTextStyleRequest": [
+      "fields",
+      "range",
+      "textStyle"
+    ],
+    "WeightedFontFamily": [
+      "fontFamily",
+      "weight"
+    ],
+    "WriteControl": [
+      "requiredRevisionId",
+      "targetRevisionId"
+    ]
+  },
+  "scopes": [
+    "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/documents.readonly",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive.readonly"
+  ],
+  "version": "v1"
+}
