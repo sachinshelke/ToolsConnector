@@ -15,7 +15,7 @@ Boot mechanism:
        (which wires up respx mocks so no real Notion API access).
     2. Wait for ``MCP_SERVER_READY`` on stderr.
     3. Run the standard MCP handshake: initialize → initialized.
-    4. ``tools/list`` → verify all 24 notion tools.
+    4. ``tools/list`` → verify the notion tool surface by exact name set.
     5. ``tools/call notion_get_me`` → verify the result shape.
     6. ``tools/call notion_search`` → verify PaginatedList shape.
     7. ``tools/call notion_get_page`` with a path-traversal id →
@@ -43,6 +43,41 @@ pytestmark = pytest.mark.skipif(
     sys.version_info < (3, 10),
     reason="MCP server (FastMCP) requires Python 3.10+; skipping on this interpreter",
 )
+
+# The MCP tool surface for Notion, pinned by NAME rather than by count.
+# A bare count silently accepts a rename or a swapped pair, and its failure
+# message can't say what moved; this set makes the drift self-describing.
+# Deliberately literal — deriving it from ``Notion`` would re-use the same
+# ``__action_meta__`` reflection the serve layer uses (a tautology), and would
+# read from whatever ``toolsconnector`` is importable in the *test* process
+# rather than the ``src/`` tree the server subprocess actually loads.
+# When an action is added or removed, update this set in the same change.
+EXPECTED_NOTION_TOOLS = {
+    "notion_add_comment",
+    "notion_append_block_children",
+    "notion_archive_page",
+    "notion_create_database",
+    "notion_create_page",
+    "notion_delete_block",
+    "notion_delete_comment",
+    "notion_get_block",
+    "notion_get_block_children",
+    "notion_get_comment",
+    "notion_get_database",
+    "notion_get_me",
+    "notion_get_page",
+    "notion_get_page_property",
+    "notion_get_user",
+    "notion_list_comments",
+    "notion_list_users",
+    "notion_query_database",
+    "notion_restore_page",
+    "notion_search",
+    "notion_update_block",
+    "notion_update_comment",
+    "notion_update_database",
+    "notion_update_page",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -197,12 +232,17 @@ def test_notion_mcp_server_end_to_end_handshake() -> None:
 
             _send(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
 
-            # 2. tools/list
+            # 2. tools/list — every notion action must surface as an MCP tool
             _send(proc, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
             listed = _recv(proc, expected_id=2)
             tools = listed["result"]["tools"]
             notion_tools = [t for t in tools if t["name"].startswith("notion_")]
-            assert len(notion_tools) == 24, f"expected 24 tools, got {len(notion_tools)}"
+            notion_names = {t["name"] for t in notion_tools}
+            assert notion_names == EXPECTED_NOTION_TOOLS, (
+                "MCP tool surface drifted — "
+                f"unexpected: {sorted(notion_names - EXPECTED_NOTION_TOOLS)}, "
+                f"missing: {sorted(EXPECTED_NOTION_TOOLS - notion_names)}"
+            )
 
             # Spot-check a tool's inputSchema
             get_page = next(t for t in notion_tools if t["name"] == "notion_get_page")

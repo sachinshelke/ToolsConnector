@@ -224,6 +224,10 @@ dev = [
     "bandit>=1.7",
     "pip-audit>=2.6",
     "pre-commit>=3.5",
+    # Serve-layer integration tests (tests/integration/*_mcp_subprocess.py) boot a
+    # real FastMCP stdio server; without this they silently skip on every CI run.
+    # Marker is required: the test matrix includes 3.9 and mcp needs 3.10+.
+    "mcp>=1.0; python_version>='3.10'",
 ]
 
 # --- Everything ---
