@@ -25,6 +25,7 @@ to persist wherever they choose (their vault, a KeyStore, a file, nowhere).
 
 from __future__ import annotations
 
+import logging
 import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
@@ -35,6 +36,8 @@ from toolsconnector.errors import RefreshFailedError, TokenExpiredError
 from toolsconnector.types.credentials import CredentialSet
 
 from .flows import GOOGLE, ProviderPreset
+
+logger = logging.getLogger("toolsconnector")
 
 # Refresh this many seconds before the token actually expires.
 _DEFAULT_BUFFER_SECONDS = 60
@@ -78,6 +81,7 @@ class RefreshingCredentials:
         self._on_refresh = on_refresh
         self._buffer = buffer_seconds
         self._lock = threading.Lock()
+        self._refreshed_once = False
 
     # ------------------------------------------------------------------
     # Public surface
@@ -91,13 +95,20 @@ class RefreshingCredentials:
     def needs_refresh(self) -> bool:
         """Whether the access token is expired or within the refresh buffer.
 
+        An **unknown** expiry (``token_expiry is None``) counts as needing a
+        refresh, once. A credential rehydrated from a caller's vault often drops
+        the timestamp, and treating that as "never expires" silently degrades
+        this object into a static token that dies at the provider's real expiry
+        with a misleading error. Refreshing once establishes a real expiry; if
+        there is no refresh token to do it with, :meth:`__call__` uses the
+        access token as-is rather than failing a credential that may be valid.
+
         Returns:
-            ``False`` when no expiry is known (the token is then assumed
-            long-lived, matching :class:`OAuth2Provider`).
+            ``True`` if a refresh should be attempted before the next request.
         """
         expiry = self._credentials.token_expiry
         if expiry is None:
-            return False
+            return not self._refreshed_once
         if expiry.tzinfo is None:
             expiry = expiry.replace(tzinfo=timezone.utc)
         return (expiry - datetime.now(timezone.utc)).total_seconds() <= self._buffer
@@ -113,7 +124,29 @@ class RefreshingCredentials:
             with self._lock:
                 # Re-check: another thread may have refreshed while we waited.
                 if self.needs_refresh():
-                    self._refresh_sync()
+                    expiry_unknown = self._credentials.token_expiry is None
+                    if expiry_unknown and not self._credentials.refresh_token:
+                        # Nothing to refresh with, and no evidence the token is
+                        # dead. Use it; a real expiry surfaces as a 401.
+                        self._refreshed_once = True
+                    elif expiry_unknown:
+                        # Opportunistic: establish a real expiry if we can, but
+                        # never turn an *unproven* expiry into a hard failure --
+                        # the current token may be perfectly valid.
+                        try:
+                            self._refresh_sync()
+                        except (RefreshFailedError, TokenExpiredError) as exc:
+                            self._refreshed_once = True
+                            logger.warning(
+                                "Could not refresh a credential with unknown expiry (%s); "
+                                "using the existing access token. It will fail with a 401 "
+                                "if it has already expired.",
+                                exc,
+                            )
+                    else:
+                        # Expiry is known and has passed: the token IS dead, so a
+                        # failed refresh must surface.
+                        self._refresh_sync()
         token = self._credentials.access_token
         if token is None:  # pragma: no cover - guarded in __init__/refresh
             raise TokenExpiredError("No access token available.")
@@ -192,14 +225,22 @@ class RefreshingCredentials:
         if expires_in is not None:
             token_expiry = datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
 
+        extra = dict(self._credentials.extra)
+        # The refresh response restates the granted scopes; they can shrink if the
+        # user revoked part of the grant since acquisition.
+        if data.get("scope"):
+            extra["granted_scopes"] = data["scope"].split()
+
         self._credentials = self._credentials.model_copy(
             update={
                 "access_token": access_token,
                 # Providers may rotate the refresh token; keep the old one if not.
                 "refresh_token": data.get("refresh_token") or self._credentials.refresh_token,
                 "token_expiry": token_expiry,
+                "extra": extra,
             }
         )
+        self._refreshed_once = True
         if self._on_refresh is not None:
             self._on_refresh(self._credentials)
         return self._credentials

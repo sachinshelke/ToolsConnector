@@ -25,8 +25,8 @@ import hashlib
 import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Optional
-from urllib.parse import urlencode
+from typing import Any, Optional
+from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
 from pydantic import BaseModel
@@ -138,6 +138,41 @@ def begin(
     )
 
 
+def parse_redirect(url_or_query: str) -> dict[str, str]:
+    """Parse the provider's redirect and raise on an error response.
+
+    The web flow's counterpart to the loopback helper's denial handling: call
+    this on the incoming callback URL (or its raw query string) before
+    :func:`complete`, so a declined consent surfaces as the provider's actual
+    reason instead of an opaque HTTP 400 from the token endpoint::
+
+        params = parse_redirect(request.url)
+        creds = await complete(pending, code=params["code"], state=params["state"])
+
+    Args:
+        url_or_query: The full redirect URL, or just its query string.
+
+    Returns:
+        The flattened query parameters (including ``code`` and ``state``).
+
+    Raises:
+        OAuthFlowError: If the provider returned ``error`` (e.g.
+            ``access_denied``), or if no ``code`` is present.
+    """
+    query = urlparse(url_or_query).query or url_or_query
+    params = {key: value[0] for key, value in parse_qs(query).items()}
+
+    if "error" in params:
+        detail = params.get("error_description") or params["error"]
+        raise OAuthFlowError(f"Authorization was denied: {detail}")
+    if not params.get("code"):
+        raise OAuthFlowError(
+            "Redirect carried neither an authorization code nor an error; "
+            f"got parameters: {sorted(params)}",
+        )
+    return params
+
+
 async def complete(
     pending: PendingAuth,
     *,
@@ -164,8 +199,20 @@ async def complete(
         OAuthFlowError: On ``state`` mismatch, transport error, a non-200 token
             response, or a response without an ``access_token``.
     """
+    if not isinstance(state, str) or not state:
+        raise OAuthFlowError(
+            "No OAuth state was returned to the redirect URI. Pass the provider's "
+            "`state` query parameter through to complete(); a missing one cannot "
+            "be checked against the value from begin().",
+        )
     if not secrets.compare_digest(state, pending.state):
         raise OAuthFlowError("OAuth state mismatch -- possible CSRF; aborting token exchange.")
+    if not isinstance(code, str) or not code:
+        raise OAuthFlowError(
+            "No authorization code was returned to the redirect URI. If the provider "
+            "sent an `error` parameter instead, the user denied consent -- inspect it "
+            "with parse_redirect() before calling complete().",
+        )
 
     data = {
         "grant_type": "authorization_code",
@@ -202,6 +249,17 @@ async def complete(
     if expires_in is not None:
         token_expiry = datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
 
+    # The provider's `scope` is the ONLY authority on what the token actually
+    # covers: Google's granular consent lets a user untick individual boxes, and
+    # include_granted_scopes=true can return *more* than was requested. Carry it
+    # through so callers can compare granted vs requested instead of assuming.
+    extra: dict[str, Any] = {}
+    granted_raw = payload.get("scope")
+    if granted_raw:
+        extra["granted_scopes"] = granted_raw.split()
+    if payload.get("token_type"):
+        extra["token_type"] = payload["token_type"]
+
     return CredentialSet(
         auth_type=AuthType.OAUTH2,
         access_token=access_token,
@@ -209,4 +267,43 @@ async def complete(
         token_expiry=token_expiry,
         client_id=pending.client_id,
         client_secret=client_secret,
+        extra=extra,
     )
+
+
+def granted_scopes(credentials: CredentialSet) -> Optional[list[str]]:
+    """Return the scopes the provider actually granted, if it reported them.
+
+    Args:
+        credentials: A credential set produced by :func:`complete`.
+
+    Returns:
+        The granted scope list, or ``None`` when the provider did not report
+        one (in which case the requested scopes are the best available guess).
+    """
+    value = credentials.extra.get("granted_scopes")
+    return list(value) if value else None
+
+
+def missing_scopes(credentials: CredentialSet, required: list[str]) -> list[str]:
+    """Return the *required* scopes the provider did not grant.
+
+    Use after :func:`complete` to detect a partial consent before the first API
+    call fails::
+
+        missing = missing_scopes(creds, oauth_scopes(Gmail))
+        if missing:
+            raise SystemExit(f"Not authorized for: {missing}")
+
+    Args:
+        credentials: A credential set produced by :func:`complete`.
+        required: The scopes the caller needs.
+
+    Returns:
+        The missing scopes, or ``[]`` when nothing is missing **or** the
+        provider reported no scope at all (nothing can be concluded).
+    """
+    granted = granted_scopes(credentials)
+    if granted is None:
+        return []
+    return [scope for scope in required if scope not in granted]

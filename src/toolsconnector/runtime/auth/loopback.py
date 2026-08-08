@@ -49,6 +49,12 @@ class _LoopbackServer(HTTPServer):
 
 
 class _CallbackHandler(BaseHTTPRequestHandler):
+    # Bound the per-connection read. socketserver leaves this at None, which lets
+    # a peer that connects and never writes block rfile.readline() forever --
+    # and because HTTPServer is single-threaded, that also starves the accept
+    # backlog, defeating the caller's timeout entirely.
+    timeout = 5.0
+
     def do_GET(self) -> None:  # noqa: N802 -- stdlib requires the uppercase name
         query = parse_qs(urlparse(self.path).query)
         # Ignore stray hits (e.g. favicon) that carry neither code nor error so
@@ -70,26 +76,65 @@ class _CallbackHandler(BaseHTTPRequestHandler):
         pass  # silence stdlib stderr logging
 
 
-def _wait_for_callback(host: str, port: int, timeout: float) -> dict[str, str]:
+def _bind_loopback(host: str, port: int) -> _LoopbackServer:
+    """Bind the one-shot loopback listener.
+
+    Binding happens *before* the browser is opened so a port clash cannot leave
+    the user staring at an orphaned consent tab.
+
+    Args:
+        host: Loopback bind address.
+        port: Port to bind; ``0`` lets the OS pick a free one.
+
+    Returns:
+        The bound server. Read the real port from ``server.server_address[1]``.
+
+    Raises:
+        OAuthFlowError: If the port cannot be bound (e.g. already in use).
+    """
+    try:
+        server = _LoopbackServer((host, port), _CallbackHandler)
+    except OSError as exc:
+        raise OAuthFlowError(
+            f"Could not start the loopback listener on {host}:{port} ({exc.strerror}). "
+            "Another process is probably using that port -- pass a different port=, "
+            "or port=0 to let the OS choose one (Google Desktop-app clients accept "
+            "any loopback port).",
+        ) from exc
+    # Bounds only the wait on the *listening* socket; per-connection reads are
+    # bounded by _CallbackHandler.timeout.
+    server.timeout = 0.5
+    return server
+
+
+def _serve_until_redirect(server: _LoopbackServer, timeout: float) -> dict[str, str]:
     """Serve loopback requests until the authorization redirect arrives.
 
-    Binds to *host* (loopback only) and returns the parsed query dict of the
-    first request carrying ``code`` or ``error``.
+    Args:
+        server: An already-bound listener from :func:`_bind_loopback`.
+        timeout: Seconds to wait for the redirect.
+
+    Returns:
+        The parsed query dict of the first request carrying ``code`` or ``error``.
 
     Raises:
         OAuthFlowError: If no redirect arrives within *timeout* seconds.
     """
-    server = _LoopbackServer((host, port), _CallbackHandler)
-    server.timeout = 1.0
     deadline = time.monotonic() + timeout
     try:
-        while server.result is None and time.monotonic() < deadline:
+        # Check ``result`` first on every iteration so a redirect that has
+        # already been handled is never discarded by an expired deadline.
+        while server.result is None:
+            if time.monotonic() >= deadline:
+                break
             server.handle_request()
     finally:
         server.server_close()
 
     if server.result is None:
-        raise OAuthFlowError("Timed out waiting for the OAuth authorization redirect.")
+        raise OAuthFlowError(
+            f"Timed out after {timeout:g}s waiting for the OAuth authorization redirect.",
+        )
     return server.result
 
 
@@ -119,7 +164,9 @@ async def login(
         client_secret: Set for Google "Desktop app" clients (non-confidential);
             omit for pure public clients.
         host: Loopback bind address; defaults to ``127.0.0.1``.
-        port: Loopback port; must match the registered redirect URI.
+        port: Loopback port; must match the registered redirect URI. Pass ``0``
+            to let the OS pick a free port -- valid for Google "Desktop app"
+            clients, which accept any loopback port.
         open_browser: If ``False`` (or if opening fails), print the URL instead.
         state: Optional CSRF state; generated if omitted.
         extra_params: Extra authorization-URL params (e.g.
@@ -132,22 +179,39 @@ async def login(
     Raises:
         OAuthFlowError: On denial, state mismatch, timeout, or token error.
     """
-    redirect_uri = f"http://{host}:{port}/"
-    pending = begin(
-        preset,
-        client_id=client_id,
-        redirect_uri=redirect_uri,
-        scopes=scopes,
-        state=state,
-        extra_params=extra_params,
-    )
+    # Bind before anything else: a port clash must fail loudly *before* the user
+    # is sent to a consent screen whose redirect has nowhere to land. Binding
+    # first is also what makes port=0 possible -- the real port has to be known
+    # before the redirect_uri goes into the authorization URL.
+    server = _bind_loopback(host, port)
+    try:
+        bound_port = server.server_address[1]
+        redirect_uri = f"http://{host}:{bound_port}/"
+        pending = begin(
+            preset,
+            client_id=client_id,
+            redirect_uri=redirect_uri,
+            scopes=scopes,
+            state=state,
+            extra_params=extra_params,
+        )
 
-    opened = webbrowser.open(pending.authorization_url) if open_browser else False
-    if not opened:
-        print(f"Open this URL to authorize:\n\n  {pending.authorization_url}\n")
+        opened = webbrowser.open(pending.authorization_url) if open_browser else False
+        if not opened:
+            print(f"Open this URL to authorize:\n\n  {pending.authorization_url}\n")
 
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(None, _wait_for_callback, host, port, timeout)
+        loop = asyncio.get_running_loop()
+        # The worker honours *timeout* itself; wait_for is a backstop so a wedged
+        # thread can never block the caller indefinitely.
+        result = await asyncio.wait_for(
+            loop.run_in_executor(None, _serve_until_redirect, server, timeout),
+            timeout=timeout + 15,
+        )
+    except BaseException:
+        # _serve_until_redirect closes the socket on its own path; make sure the
+        # early-failure paths (begin/browser/cancellation) do not leak the bind.
+        server.server_close()
+        raise
 
     if "error" in result:
         detail = result.get("error_description") or result["error"]
@@ -155,7 +219,7 @@ async def login(
 
     return await complete(
         pending,
-        code=result["code"],
+        code=result.get("code", ""),
         state=result.get("state", ""),
         client_secret=client_secret,
     )

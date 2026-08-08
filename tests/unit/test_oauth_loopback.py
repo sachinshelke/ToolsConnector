@@ -45,16 +45,18 @@ def _fire_redirect(port: int, query: str) -> None:
 
 
 def test_wait_for_callback_captures_code():
-    port = _free_port()
+    server = loopback._bind_loopback("127.0.0.1", 0)
+    port = server.server_address[1]
     threading.Thread(target=_fire_redirect, args=(port, "code=abc&state=st"), daemon=True).start()
-    result = loopback._wait_for_callback("127.0.0.1", port, timeout=10)
+    result = loopback._serve_until_redirect(server, timeout=10)
     assert result == {"code": "abc", "state": "st"}
 
 
 def test_wait_for_callback_reports_error():
-    port = _free_port()
+    server = loopback._bind_loopback("127.0.0.1", 0)
+    port = server.server_address[1]
     threading.Thread(target=_fire_redirect, args=(port, "error=access_denied"), daemon=True).start()
-    result = loopback._wait_for_callback("127.0.0.1", port, timeout=10)
+    result = loopback._serve_until_redirect(server, timeout=10)
     assert result["error"] == "access_denied"
 
 
