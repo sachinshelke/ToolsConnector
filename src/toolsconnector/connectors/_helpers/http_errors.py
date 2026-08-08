@@ -215,6 +215,17 @@ def raise_typed_for_status(
                 f"{message} (token appears expired)",
                 **base_kwargs,
             )
+        # RFC 6750: the provider names the reason in the challenge header, not
+        # the body. `invalid_token` means expired / revoked / malformed -- in
+        # every case the fix is a new token, so callers can drive re-auth by
+        # catching TokenExpiredError (a subclass of InvalidCredentialsError,
+        # so existing handlers are unaffected).
+        if _bearer_auth_error(response) == "invalid_token":
+            raise TokenExpiredError(
+                f"{message} (provider rejected the token: invalid_token -- "
+                f"expired, revoked, or malformed; obtain a new one)",
+                **base_kwargs,
+            )
         raise InvalidCredentialsError(message, **base_kwargs)
 
     if status == 403:
@@ -353,6 +364,37 @@ def _extract_error_reason(response: httpx.Response) -> Optional[str]:
     if len(reason) > _MAX_REASON:
         reason = reason[:_MAX_REASON] + "…"
     return _redact_credentials(reason)
+
+
+def _bearer_auth_error(response: Any) -> Optional[str]:
+    """Return the RFC 6750 ``error`` code from a ``WWW-Authenticate`` header.
+
+    On a 401, OAuth 2.0 bearer-token providers state *why* the token was
+    rejected in the challenge header rather than the body, e.g. Google::
+
+        WWW-Authenticate: Bearer realm="https://accounts.google.com/",
+                          error="invalid_token"
+
+    (verified against ``gmail.googleapis.com`` on 2026-08-03). The body carries
+    no expiry marker at all, so without reading this header an expired token is
+    indistinguishable from a wrong one.
+
+    Args:
+        response: The HTTP response.
+
+    Returns:
+        The lowercase ``error`` value (e.g. ``"invalid_token"``), or ``None``
+        if the header is absent or carries no error code.
+    """
+    header = ""
+    try:
+        header = response.headers.get("WWW-Authenticate") or ""
+    except Exception:  # pragma: no cover - defensive: header bag may be absent
+        return None
+    if not header:
+        return None
+    match = re.search(r'error\s*=\s*"?([A-Za-z0-9_-]+)"?', header)
+    return match.group(1).lower() if match else None
 
 
 def _looks_like_expired_token(body_preview: str) -> bool:

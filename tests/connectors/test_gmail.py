@@ -324,12 +324,19 @@ async def test_401_unauthorized_raises_invalid_credentials_error(gmail: Gmail) -
     """Invalid token → 401 → typed :class:`InvalidCredentialsError`
     (was bare ``httpx.HTTPStatusError`` pre-0.3.5).
 
-    Gmail's "Request had invalid authentication credentials" body
-    doesn't contain an "expired" marker, so the helper picks
-    ``InvalidCredentialsError`` rather than ``TokenExpiredError`` —
-    correct because invalid-format tokens trigger this even when not
-    expired. Tokens that ARE expired return Google's
-    ``"invalid_grant"`` body in OAuth flows, not 401 on the API.
+    Gmail's "Request had invalid authentication credentials" body contains no
+    "expired" marker, so body-only classification yields
+    ``InvalidCredentialsError``. This mock omits the challenge header, which is
+    what keeps that classification here.
+
+    NOTE: a real Google 401 *does* carry
+    ``WWW-Authenticate: Bearer realm="...", error="invalid_token"`` (captured
+    2026-08-03), which the helper now maps to :class:`TokenExpiredError` — a
+    subclass of ``InvalidCredentialsError``, so this assertion holds either way.
+    An earlier version of this docstring claimed expired tokens surface only as
+    ``invalid_grant`` in OAuth flows and never as a 401 on the API; that was
+    wrong. ``invalid_grant`` is what the *token endpoint* returns for a bad
+    refresh token. See tests/unit/test_401_token_signal.py.
     """
     with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
         respx_mock.post("/users/me/messages/send").mock(

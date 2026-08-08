@@ -36,20 +36,20 @@ class AuthError(ToolsConnectorError):
         )
 
 
-class TokenExpiredError(AuthError):
-    """The access token has expired and must be refreshed or re-issued."""
+class InvalidCredentialsError(AuthError):
+    """The provided credentials (API key, username/password, etc.) are invalid."""
 
     def __init__(
         self,
-        message: str = "Access token has expired.",
+        message: str = "Invalid credentials provided.",
         *,
         connector: str = "",
         action: str | None = None,
-        code: str = "AUTH_TOKEN_EXPIRED",
-        retry_eligible: bool = True,
+        code: str = "AUTH_INVALID_CREDENTIALS",
+        retry_eligible: bool = False,
         retry_after_seconds: float | None = None,
         suggestion: str
-        | None = "Re-authenticate or refresh the token to obtain a new access token.",
+        | None = "Verify that the API key or credentials are correct and have not been revoked.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = 401,
     ) -> None:
@@ -66,20 +66,32 @@ class TokenExpiredError(AuthError):
         )
 
 
-class InvalidCredentialsError(AuthError):
-    """The provided credentials (API key, username/password, etc.) are invalid."""
+class TokenExpiredError(InvalidCredentialsError):
+    """The access token was rejected and must be refreshed or re-issued.
+
+    A **subclass** of :class:`InvalidCredentialsError`: an unusable token is a
+    kind of invalid credential, so every existing ``except
+    InvalidCredentialsError`` handler still catches this, while callers that
+    want to drive re-authentication can catch this narrower type.
+
+    Raised when the provider positively signals that the token itself is the
+    problem -- either an expiry marker in the body, or RFC 6750's
+    ``WWW-Authenticate: Bearer ... error="invalid_token"``, which covers
+    "expired, revoked, malformed, or otherwise invalid". The remedy is the same
+    in all of those cases: obtain a new access token.
+    """
 
     def __init__(
         self,
-        message: str = "Invalid credentials provided.",
+        message: str = "Access token has expired.",
         *,
         connector: str = "",
         action: str | None = None,
-        code: str = "AUTH_INVALID_CREDENTIALS",
-        retry_eligible: bool = False,
+        code: str = "AUTH_TOKEN_EXPIRED",
+        retry_eligible: bool = True,
         retry_after_seconds: float | None = None,
         suggestion: str
-        | None = "Verify that the API key or credentials are correct and have not been revoked.",
+        | None = "Re-authenticate or refresh the token to obtain a new access token.",
         details: dict[str, Any] | None = None,
         upstream_status: int | None = 401,
     ) -> None:
