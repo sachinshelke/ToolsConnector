@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.25](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.24...v0.3.25) (2026-08-20)
+
+
+### ✨ Features
+
+* read/write access classification + gmail batch fix + data.json freshness gate ([#89](https://github.com/sachinshelke/ToolsConnector/issues/89)) ([e8032a4](https://github.com/sachinshelke/ToolsConnector/commit/e8032a446d11387a5d1ca0850d78b4d804747038))
+
 ## [0.3.24](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.23...v0.3.24) (2026-08-20)
 
 
