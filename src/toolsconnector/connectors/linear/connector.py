@@ -414,7 +414,7 @@ class Linear(BaseConnector):
     # Actions
     # ------------------------------------------------------------------
 
-    @action("List issues with optional team and state filters")
+    @action("List issues with optional team and state filters", access="read")
     async def list_issues(
         self,
         team_id: Optional[str] = None,
@@ -467,7 +467,7 @@ class Linear(BaseConnector):
             ),
         )
 
-    @action("Get a single issue by ID")
+    @action("Get a single issue by ID", access="read")
     async def get_issue(self, issue_id: str) -> LinearIssue:
         """Retrieve a Linear issue by its UUID.
 
@@ -532,7 +532,7 @@ class Linear(BaseConnector):
             raise ValueError("Linear issue creation failed")
         return self._parse_issue(result["issue"])
 
-    @action("Update an existing issue")
+    @action("Update an existing issue", access="write")
     async def update_issue(
         self,
         issue_id: str,
@@ -578,7 +578,7 @@ class Linear(BaseConnector):
             raise ValueError("Linear issue update failed")
         return self._parse_issue(result["issue"])
 
-    @action("List all teams in the workspace")
+    @action("List all teams in the workspace", access="read")
     async def list_teams(self) -> list[LinearTeam]:
         """List all teams in the Linear workspace.
 
@@ -616,7 +616,7 @@ class Linear(BaseConnector):
             for t in data.get("teams", {}).get("nodes", [])
         ]
 
-    @action("List projects with pagination")
+    @action("List projects with pagination", access="read")
     async def list_projects(
         self,
         limit: int = 50,
@@ -693,7 +693,7 @@ class Linear(BaseConnector):
             raise ValueError("Linear comment creation failed")
         return self._parse_comment(result["comment"])
 
-    @action("Search issues by text query")
+    @action("Search issues by text query", access="read")
     async def search_issues(
         self,
         query: str,
@@ -766,7 +766,7 @@ class Linear(BaseConnector):
     # Actions — Labels
     # ------------------------------------------------------------------
 
-    @action("List issue labels, optionally filtered by team")
+    @action("List issue labels, optionally filtered by team", access="read")
     async def list_labels(
         self,
         team_id: Optional[str] = None,
@@ -844,7 +844,7 @@ class Linear(BaseConnector):
     # Actions — Workflow states
     # ------------------------------------------------------------------
 
-    @action("Get workflow states for a team")
+    @action("Get workflow states for a team", access="read")
     async def get_workflow_states(self, team_id: str) -> list[LinearState]:
         """List all workflow states for a team.
 
@@ -888,7 +888,7 @@ class Linear(BaseConnector):
     # Actions -- Cycles
     # ------------------------------------------------------------------
 
-    @action("List cycles, optionally filtered by team")
+    @action("List cycles, optionally filtered by team", access="read")
     async def list_cycles(
         self,
         team_id: Optional[str] = None,
@@ -942,7 +942,7 @@ class Linear(BaseConnector):
             ),
         )
 
-    @action("Get a single cycle by ID")
+    @action("Get a single cycle by ID", access="read")
     async def get_cycle(self, cycle_id: str) -> LinearCycle:
         """Retrieve a Linear cycle by its UUID.
 
@@ -962,7 +962,7 @@ class Linear(BaseConnector):
     # Actions -- Issue comments
     # ------------------------------------------------------------------
 
-    @action("List comments on an issue")
+    @action("List comments on an issue", access="read")
     async def list_issue_comments(
         self,
         issue_id: str,
@@ -1053,7 +1053,7 @@ class Linear(BaseConnector):
     # Actions -- Users
     # ------------------------------------------------------------------
 
-    @action("List all users in the workspace")
+    @action("List all users in the workspace", access="read")
     async def list_users(
         self,
         limit: int = 50,
@@ -1097,7 +1097,7 @@ class Linear(BaseConnector):
             ),
         )
 
-    @action("Get a single user by ID")
+    @action("Get a single user by ID", access="read")
     async def get_user(self, user_id: str) -> LinearUser:
         """Retrieve a Linear user by their UUID.
 

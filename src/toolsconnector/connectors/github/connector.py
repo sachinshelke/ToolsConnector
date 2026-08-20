@@ -364,7 +364,7 @@ class GitHub(BaseConnector):
     # REPOSITORIES
     # ======================================================================
 
-    @action("List repositories for a user or organisation")
+    @action("List repositories for a user or organisation", access="read")
     async def list_repos(
         self,
         org: Optional[str] = None,
@@ -409,7 +409,7 @@ class GitHub(BaseConnector):
             result._fetch_next = lambda c=ps.cursor: self.alist_repos(page=c)
         return result
 
-    @action("Get a single repository by owner and name")
+    @action("Get a single repository by owner and name", access="read")
     async def get_repo(self, owner: str, repo: str) -> Repository:
         """Retrieve a single repository.
 
@@ -492,7 +492,7 @@ class GitHub(BaseConnector):
     # ISSUES
     # ======================================================================
 
-    @action("List issues for a repository")
+    @action("List issues for a repository", access="read")
     async def list_issues(
         self,
         owner: str,
@@ -591,7 +591,7 @@ class GitHub(BaseConnector):
         )
         return parse_issue(resp.json())
 
-    @action("Get a single issue by number")
+    @action("Get a single issue by number", access="read")
     async def get_issue(
         self,
         owner: str,
@@ -623,7 +623,7 @@ class GitHub(BaseConnector):
         )
         return parse_issue(resp.json())
 
-    @action("Update an existing issue")
+    @action("Update an existing issue", access="write")
     async def update_issue(
         self,
         owner: str,
@@ -665,7 +665,7 @@ class GitHub(BaseConnector):
         )
         return parse_issue(resp.json())
 
-    @action("Add labels to an issue")
+    @action("Add labels to an issue", access="write")
     async def add_labels(
         self,
         owner: str,
@@ -769,7 +769,7 @@ class GitHub(BaseConnector):
         )
         return parse_comment(resp.json())
 
-    @action("List comments on an issue")
+    @action("List comments on an issue", access="read")
     async def list_comments(
         self,
         owner: str,
@@ -818,7 +818,7 @@ class GitHub(BaseConnector):
     # PULL REQUESTS
     # ======================================================================
 
-    @action("List pull requests for a repository")
+    @action("List pull requests for a repository", access="read")
     async def list_pull_requests(
         self,
         owner: str,
@@ -868,7 +868,7 @@ class GitHub(BaseConnector):
             )
         return result
 
-    @action("Get a single pull request by number")
+    @action("Get a single pull request by number", access="read")
     async def get_pull_request(
         self,
         owner: str,
@@ -987,7 +987,7 @@ class GitHub(BaseConnector):
     # COMMITS
     # ======================================================================
 
-    @action("List commits for a repository")
+    @action("List commits for a repository", access="read")
     async def list_commits(
         self,
         owner: str,
@@ -1048,7 +1048,7 @@ class GitHub(BaseConnector):
     # BRANCHES
     # ======================================================================
 
-    @action("List branches in a repository")
+    @action("List branches in a repository", access="read")
     async def list_branches(
         self,
         owner: str,
@@ -1093,7 +1093,7 @@ class GitHub(BaseConnector):
             )
         return result
 
-    @action("Get a single branch")
+    @action("Get a single branch", access="read")
     async def get_branch(
         self,
         owner: str,
@@ -1124,7 +1124,7 @@ class GitHub(BaseConnector):
     # RELEASES
     # ======================================================================
 
-    @action("List releases for a repository")
+    @action("List releases for a repository", access="read")
     async def list_releases(
         self,
         owner: str,
@@ -1165,7 +1165,7 @@ class GitHub(BaseConnector):
             )
         return result
 
-    @action("Get the latest release")
+    @action("Get the latest release", access="read")
     async def get_latest_release(
         self,
         owner: str,
@@ -1236,7 +1236,7 @@ class GitHub(BaseConnector):
     # FILE CONTENT
     # ======================================================================
 
-    @action("Get file or directory contents from a repository")
+    @action("Get file or directory contents from a repository", access="read")
     async def get_content(
         self,
         owner: str,
@@ -1357,7 +1357,7 @@ class GitHub(BaseConnector):
     # WORKFLOWS (GitHub Actions)
     # ======================================================================
 
-    @action("List workflows in a repository")
+    @action("List workflows in a repository", access="read")
     async def list_workflows(
         self,
         owner: str,
@@ -1406,7 +1406,7 @@ class GitHub(BaseConnector):
             )
         return result
 
-    @action("List workflow runs for a repository")
+    @action("List workflow runs for a repository", access="read")
     async def list_workflow_runs(
         self,
         owner: str,
@@ -1506,7 +1506,7 @@ class GitHub(BaseConnector):
     # GISTS
     # ======================================================================
 
-    @action("List gists for the authenticated user")
+    @action("List gists for the authenticated user", access="read")
     async def list_gists(
         self,
         limit: int = 30,
@@ -1568,7 +1568,7 @@ class GitHub(BaseConnector):
     # SEARCH
     # ======================================================================
 
-    @action("Search code across GitHub repositories")
+    @action("Search code across GitHub repositories", access="read")
     async def search_code(
         self,
         query: str,
@@ -1613,7 +1613,7 @@ class GitHub(BaseConnector):
             )
         return result
 
-    @action("Search repositories on GitHub")
+    @action("Search repositories on GitHub", access="read")
     async def search_repos(
         self,
         query: str,
@@ -1668,7 +1668,7 @@ class GitHub(BaseConnector):
             )
         return result
 
-    @action("Search issues and pull requests on GitHub")
+    @action("Search issues and pull requests on GitHub", access="read")
     async def search_issues(
         self,
         query: str,
@@ -1727,7 +1727,7 @@ class GitHub(BaseConnector):
     # USER / RATE LIMIT
     # ======================================================================
 
-    @action("Get the authenticated user's profile")
+    @action("Get the authenticated user's profile", access="read")
     async def get_authenticated_user(self) -> dict[str, Any]:
         """Get profile information for the authenticated user.
 
@@ -1738,7 +1738,7 @@ class GitHub(BaseConnector):
         resp = await self._execute_binding("get_authenticated_user", {})
         return resp.json()
 
-    @action("Get the current rate limit status")
+    @action("Get the current rate limit status", access="read")
     async def get_rate_limit(self) -> dict[str, Any]:
         """Check the current API rate limit status.
 

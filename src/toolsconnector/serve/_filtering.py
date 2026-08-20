@@ -43,6 +43,7 @@ class ToolEntry:
     input_schema: dict[str, Any] = field(default_factory=dict)
     output_schema: dict[str, Any] = field(default_factory=dict)
     dangerous: bool = False
+    access: Optional[str] = None
     idempotent: bool = False
     requires_scope: Optional[str] = None
     tags: list[str] = field(default_factory=list)
@@ -58,6 +59,8 @@ class ToolEntry:
             "description": self.description,
             "input_schema": self.input_schema,
             "dangerous": self.dangerous,
+            "access": self.access,
+            "idempotent": self.idempotent,
             "requires_scope": self.requires_scope,
         }
 
@@ -172,6 +175,7 @@ def build_tool_list(
                     input_schema=action_spec.input_schema,
                     output_schema=action_spec.output_schema,
                     dangerous=action_spec.dangerous,
+                    access=action_spec.access,
                     idempotent=action_spec.idempotent,
                     requires_scope=action_spec.requires_scope,
                     tags=action_spec.tags,

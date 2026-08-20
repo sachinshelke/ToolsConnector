@@ -348,7 +348,7 @@ class Gemini(BaseConnector):
     # Actions -- Content generation
     # ------------------------------------------------------------------
 
-    @action("Generate content with a Gemini model")
+    @action("Generate content with a Gemini model", access="read")
     async def generate_content(
         self,
         model: str,
@@ -415,7 +415,7 @@ class Gemini(BaseConnector):
 
         return parse_generate_response(data)
 
-    @action("Count tokens for a prompt", idempotent=True)
+    @action("Count tokens for a prompt", idempotent=True, access="read")
     async def count_tokens(
         self,
         model: str,
@@ -446,7 +446,7 @@ class Gemini(BaseConnector):
             cached_content_token_count=data.get("cachedContentTokenCount", 0),
         )
 
-    @action("Stream content generation with a Gemini model (server-sent events)")
+    @action("Stream content generation with a Gemini model (server-sent events)", access="read")
     async def stream_generate_content(
         self,
         model: str,
@@ -513,7 +513,7 @@ class Gemini(BaseConnector):
     # Actions -- Embeddings
     # ------------------------------------------------------------------
 
-    @action("Create an embedding for a single text")
+    @action("Create an embedding for a single text", access="read")
     async def embed_content(
         self,
         model: str,
@@ -557,7 +557,7 @@ class Gemini(BaseConnector):
         embedding = data.get("embedding", {})
         return Embedding(values=embedding.get("values", []))
 
-    @action("Create embeddings for multiple texts")
+    @action("Create embeddings for multiple texts", access="read")
     async def batch_embed_contents(
         self,
         model: str,
@@ -600,7 +600,7 @@ class Gemini(BaseConnector):
     # Actions -- Models
     # ------------------------------------------------------------------
 
-    @action("List available Gemini models", idempotent=True)
+    @action("List available Gemini models", idempotent=True, access="read")
     async def list_models(self) -> list[GeminiModel]:
         """List all models available to the authenticated API key.
 
@@ -610,7 +610,7 @@ class Gemini(BaseConnector):
         data = await self._request("GET", "/models")
         return [parse_model(m) for m in data.get("models", [])]
 
-    @action("Get a model by ID", idempotent=True)
+    @action("Get a model by ID", idempotent=True, access="read")
     async def get_model(self, model: str) -> GeminiModel:
         """Retrieve metadata about a specific Gemini model.
 
@@ -628,7 +628,7 @@ class Gemini(BaseConnector):
     # Actions -- Files API
     # ------------------------------------------------------------------
 
-    @action("Upload a file to the Gemini Files API")
+    @action("Upload a file to the Gemini Files API", access="write")
     async def upload_file(
         self,
         file_content: bytes,
@@ -689,7 +689,7 @@ class Gemini(BaseConnector):
 
         return parse_file(data)
 
-    @action("Get file metadata by name", idempotent=True)
+    @action("Get file metadata by name", idempotent=True, access="read")
     async def get_file(self, name: str) -> GeminiFile:
         """Retrieve metadata for an uploaded file.
 
@@ -703,7 +703,7 @@ class Gemini(BaseConnector):
         data = await self._request("GET", f"/{self._file_path(name)}")
         return parse_file(data)
 
-    @action("List uploaded files", idempotent=True)
+    @action("List uploaded files", idempotent=True, access="read")
     async def list_files(
         self,
         page_size: Optional[int] = None,
@@ -751,7 +751,7 @@ class Gemini(BaseConnector):
     # Actions -- Context caching (cachedContents)
     # ------------------------------------------------------------------
 
-    @action("Create a context cache")
+    @action("Create a context cache", access="write")
     async def create_cache(
         self,
         model: str,
@@ -797,7 +797,7 @@ class Gemini(BaseConnector):
         data = await self._request("POST", "/cachedContents", json=payload)
         return parse_cached_content(data)
 
-    @action("Get a context cache by name", idempotent=True)
+    @action("Get a context cache by name", idempotent=True, access="read")
     async def get_cache(self, name: str) -> CachedContent:
         """Retrieve metadata for a context cache.
 
@@ -811,7 +811,7 @@ class Gemini(BaseConnector):
         data = await self._request("GET", f"/{self._cache_path(name)}")
         return parse_cached_content(data)
 
-    @action("List context caches", idempotent=True)
+    @action("List context caches", idempotent=True, access="read")
     async def list_caches(
         self,
         page_size: Optional[int] = None,
@@ -840,7 +840,7 @@ class Gemini(BaseConnector):
             next_page_token=data.get("nextPageToken"),
         )
 
-    @action("Update a context cache's expiration")
+    @action("Update a context cache's expiration", access="write")
     async def update_cache(
         self,
         name: str,
@@ -903,6 +903,7 @@ class Gemini(BaseConnector):
     @action(
         "List tuned models",
         idempotent=True,
+        access="read",
         deprecated=True,
         deprecation_message="Google discontinued model tuning on the public Gemini API (the tunedModels endpoints return HTTP 501, verified live 2026-06-12); tune via Vertex AI instead.",
     )
@@ -943,6 +944,7 @@ class Gemini(BaseConnector):
     @action(
         "Get a tuned model by name",
         idempotent=True,
+        access="read",
         deprecated=True,
         deprecation_message="Google discontinued model tuning on the public Gemini API (the tunedModels endpoints return HTTP 501, verified live 2026-06-12); tune via Vertex AI instead.",
     )

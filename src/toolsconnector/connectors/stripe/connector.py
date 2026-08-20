@@ -255,7 +255,7 @@ class Stripe(BaseConnector):
     # Actions — Customers
     # ------------------------------------------------------------------
 
-    @action("List customers from your Stripe account")
+    @action("List customers from your Stripe account", access="read")
     async def list_customers(
         self,
         limit: int = 10,
@@ -294,7 +294,7 @@ class Stripe(BaseConnector):
             ),
         )
 
-    @action("Retrieve a single Stripe customer by ID")
+    @action("Retrieve a single Stripe customer by ID", access="read")
     async def get_customer(self, customer_id: str) -> StripeCustomer:
         """Retrieve a single customer.
 
@@ -349,7 +349,7 @@ class Stripe(BaseConnector):
     # Actions — Charges
     # ------------------------------------------------------------------
 
-    @action("List charges from your Stripe account")
+    @action("List charges from your Stripe account", access="read")
     async def list_charges(
         self,
         customer: Optional[str] = None,
@@ -387,7 +387,7 @@ class Stripe(BaseConnector):
             ),
         )
 
-    @action("Retrieve a single Stripe charge by ID")
+    @action("Retrieve a single Stripe charge by ID", access="read")
     async def get_charge(self, charge_id: str) -> StripeCharge:
         """Retrieve a single charge.
 
@@ -458,7 +458,7 @@ class Stripe(BaseConnector):
     # Actions — Invoices
     # ------------------------------------------------------------------
 
-    @action("List invoices from your Stripe account")
+    @action("List invoices from your Stripe account", access="read")
     async def list_invoices(
         self,
         customer: Optional[str] = None,
@@ -500,7 +500,7 @@ class Stripe(BaseConnector):
     # Actions — Balance
     # ------------------------------------------------------------------
 
-    @action("Retrieve the current Stripe account balance")
+    @action("Retrieve the current Stripe account balance", access="read")
     async def get_balance(self) -> StripeBalance:
         """Retrieve the current balance for your Stripe account.
 
@@ -666,7 +666,7 @@ class Stripe(BaseConnector):
         )
         return parse_refund(resp.json())
 
-    @action("List refunds from your Stripe account")
+    @action("List refunds from your Stripe account", access="read")
     async def list_refunds(
         self,
         charge: Optional[str] = None,
@@ -775,7 +775,7 @@ class Stripe(BaseConnector):
             )
         return parse_subscription(resp.json())
 
-    @action("List subscriptions from your Stripe account")
+    @action("List subscriptions from your Stripe account", access="read")
     async def list_subscriptions(
         self,
         customer: Optional[str] = None,
@@ -818,7 +818,7 @@ class Stripe(BaseConnector):
             ),
         )
 
-    @action("Retrieve a single Stripe subscription by ID")
+    @action("Retrieve a single Stripe subscription by ID", access="read")
     async def get_subscription(self, subscription_id: str) -> StripeSubscription:
         """Retrieve a single subscription.
 
@@ -875,7 +875,7 @@ class Stripe(BaseConnector):
         )
         return parse_product(resp.json())
 
-    @action("List products from your Stripe account")
+    @action("List products from your Stripe account", access="read")
     async def list_products(
         self,
         limit: int = 10,
@@ -948,7 +948,7 @@ class Stripe(BaseConnector):
         )
         return parse_price(resp.json())
 
-    @action("List prices from your Stripe account")
+    @action("List prices from your Stripe account", access="read")
     async def list_prices(
         self,
         product: Optional[str] = None,
@@ -1026,7 +1026,7 @@ class Stripe(BaseConnector):
     # Actions — Payment Methods
     # ------------------------------------------------------------------
 
-    @action("List payment methods for a customer")
+    @action("List payment methods for a customer", access="read")
     async def list_payment_methods(
         self,
         customer: str,
@@ -1077,7 +1077,7 @@ class Stripe(BaseConnector):
     # Actions — Invoices (continued)
     # ------------------------------------------------------------------
 
-    @action("Retrieve a single Stripe invoice by ID")
+    @action("Retrieve a single Stripe invoice by ID", access="read")
     async def get_invoice(self, invoice_id: str) -> StripeInvoice:
         """Retrieve a single invoice.
 
@@ -1114,7 +1114,7 @@ class Stripe(BaseConnector):
     # Actions — Payment Intents (lifecycle)
     # ------------------------------------------------------------------
 
-    @action("Retrieve a single Stripe PaymentIntent by ID")
+    @action("Retrieve a single Stripe PaymentIntent by ID", access="read")
     async def get_payment_intent(
         self,
         payment_intent_id: str,
@@ -1139,7 +1139,7 @@ class Stripe(BaseConnector):
         )
         return parse_payment_intent(resp.json())
 
-    @action("List PaymentIntents from your Stripe account")
+    @action("List PaymentIntents from your Stripe account", access="read")
     async def list_payment_intents(
         self,
         customer: Optional[str] = None,
@@ -1213,7 +1213,7 @@ class Stripe(BaseConnector):
         )
         return parse_payment_intent(resp.json())
 
-    @action("Cancel a Stripe PaymentIntent")
+    @action("Cancel a Stripe PaymentIntent", access="write")
     async def cancel_payment_intent(
         self,
         payment_intent_id: str,
@@ -1267,7 +1267,7 @@ class Stripe(BaseConnector):
     # Actions — Disputes
     # ------------------------------------------------------------------
 
-    @action("List disputes from your Stripe account")
+    @action("List disputes from your Stripe account", access="read")
     async def list_disputes(
         self,
         limit: int = 10,
@@ -1301,7 +1301,7 @@ class Stripe(BaseConnector):
             ),
         )
 
-    @action("Retrieve a single Stripe dispute by ID")
+    @action("Retrieve a single Stripe dispute by ID", access="read")
     async def get_dispute(self, dispute_id: str) -> StripeDispute:
         """Retrieve a single dispute.
 
@@ -1338,7 +1338,7 @@ class Stripe(BaseConnector):
     # Actions — Payouts
     # ------------------------------------------------------------------
 
-    @action("List payouts from your Stripe account")
+    @action("List payouts from your Stripe account", access="read")
     async def list_payouts(
         self,
         limit: int = 10,
@@ -1405,7 +1405,7 @@ class Stripe(BaseConnector):
         )
         return parse_payout(resp.json())
 
-    @action("Retrieve a single Stripe payout by ID")
+    @action("Retrieve a single Stripe payout by ID", access="read")
     async def get_payout(self, payout_id: str) -> StripePayout:
         """Retrieve a single payout.
 
@@ -1425,7 +1425,7 @@ class Stripe(BaseConnector):
     # Actions — Events
     # ------------------------------------------------------------------
 
-    @action("List events from your Stripe account")
+    @action("List events from your Stripe account", access="read")
     async def list_events(
         self,
         type: Optional[str] = None,
@@ -1464,7 +1464,7 @@ class Stripe(BaseConnector):
             ),
         )
 
-    @action("Retrieve a single Stripe event by ID")
+    @action("Retrieve a single Stripe event by ID", access="read")
     async def get_event(self, event_id: str) -> StripeEvent:
         """Retrieve a single event.
 
@@ -1485,7 +1485,7 @@ class Stripe(BaseConnector):
     # Actions — Setup Intents
     # ------------------------------------------------------------------
 
-    @action("Create a Stripe SetupIntent", dangerous=False)
+    @action("Create a Stripe SetupIntent", dangerous=False, access="write")
     async def create_setup_intent(
         self,
         customer: Optional[str] = None,
@@ -1512,7 +1512,7 @@ class Stripe(BaseConnector):
         )
         return parse_setup_intent(resp.json())
 
-    @action("Retrieve a single Stripe SetupIntent by ID")
+    @action("Retrieve a single Stripe SetupIntent by ID", access="read")
     async def get_setup_intent(
         self,
         setup_intent_id: str,

@@ -157,7 +157,7 @@ class GoogleTasks(BaseConnector):
     # Actions — Task Lists
     # ------------------------------------------------------------------
 
-    @action("List all task lists", requires_scope="read")
+    @action("List all task lists", requires_scope="read", access="read")
     async def list_task_lists(
         self,
         limit: Optional[int] = None,
@@ -195,7 +195,7 @@ class GoogleTasks(BaseConnector):
             ),
         )
 
-    @action("Get a task list by ID", requires_scope="read")
+    @action("Get a task list by ID", requires_scope="read", access="read")
     async def get_task_list(self, task_list_id: str) -> TaskList:
         """Retrieve a specific task list by its ID.
 
@@ -253,7 +253,7 @@ class GoogleTasks(BaseConnector):
     # Actions — Tasks
     # ------------------------------------------------------------------
 
-    @action("List tasks in a task list", requires_scope="read")
+    @action("List tasks in a task list", requires_scope="read", access="read")
     async def list_tasks(
         self,
         task_list_id: str,
@@ -315,7 +315,7 @@ class GoogleTasks(BaseConnector):
             ),
         )
 
-    @action("Get a task by ID", requires_scope="read")
+    @action("Get a task by ID", requires_scope="read", access="read")
     async def get_task(self, task_list_id: str, task_id: str) -> GoogleTask:
         """Retrieve a specific task by its ID.
 
@@ -442,7 +442,7 @@ class GoogleTasks(BaseConnector):
         )
         return _parse_task(data)
 
-    @action("Move a task", requires_scope="write")
+    @action("Move a task", requires_scope="write", access="write")
     async def move_task(
         self,
         task_list_id: str,

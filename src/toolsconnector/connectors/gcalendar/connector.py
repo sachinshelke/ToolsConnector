@@ -244,7 +244,7 @@ class GoogleCalendar(BaseConnector):
     # Actions
     # ------------------------------------------------------------------
 
-    @action("List calendar events", requires_scope="read")
+    @action("List calendar events", requires_scope="read", access="read")
     async def list_events(
         self,
         calendar_id: str = "primary",
@@ -308,7 +308,7 @@ class GoogleCalendar(BaseConnector):
             ),
         )
 
-    @action("Get a single event by ID", requires_scope="read")
+    @action("Get a single event by ID", requires_scope="read", access="read")
     async def get_event(
         self,
         event_id: str,
@@ -472,7 +472,7 @@ class GoogleCalendar(BaseConnector):
             params={"sendUpdates": send_updates},
         )
 
-    @action("List calendars", requires_scope="read")
+    @action("List calendars", requires_scope="read", access="read")
     async def list_calendars(
         self,
         page_token: Optional[str] = None,
@@ -529,7 +529,7 @@ class GoogleCalendar(BaseConnector):
     # Actions — Free/busy and advanced event operations
     # ------------------------------------------------------------------
 
-    @action("Query free/busy information for calendars")
+    @action("Query free/busy information for calendars", access="read")
     async def get_free_busy(
         self,
         time_min: str,
@@ -568,7 +568,7 @@ class GoogleCalendar(BaseConnector):
             )
         return results
 
-    @action("List instances of a recurring event")
+    @action("List instances of a recurring event", access="read")
     async def list_event_instances(
         self,
         calendar_id: str,
@@ -594,7 +594,7 @@ class GoogleCalendar(BaseConnector):
         )
         return [_parse_event(e) for e in data.get("items", [])]
 
-    @action("Move an event to a different calendar")
+    @action("Move an event to a different calendar", access="write")
     async def move_event(
         self,
         calendar_id: str,
@@ -790,7 +790,7 @@ class GoogleCalendar(BaseConnector):
     # Actions — ACL (sharing)
     # ------------------------------------------------------------------
 
-    @action("List access-control rules for a calendar", requires_scope="read")
+    @action("List access-control rules for a calendar", requires_scope="read", access="read")
     async def list_calendar_acl(
         self,
         calendar_id: str,
@@ -924,7 +924,7 @@ class GoogleCalendar(BaseConnector):
         )
         return _parse_event(data)
 
-    @action("Get available calendar and event colors", requires_scope="read")
+    @action("Get available calendar and event colors", requires_scope="read", access="read")
     async def get_colors(self) -> CalendarColors:
         """Retrieve the set of colors available for calendars and events.
 

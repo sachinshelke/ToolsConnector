@@ -204,7 +204,7 @@ class GoogleDocs(BaseConnector):
     # Actions
     # ------------------------------------------------------------------
 
-    @action("Get a document by ID", requires_scope="read")
+    @action("Get a document by ID", requires_scope="read", access="read")
     async def get_document(self, document_id: str) -> Document:
         """Retrieve a Google Docs document with metadata.
 
@@ -305,7 +305,7 @@ class GoogleDocs(BaseConnector):
         # Awaiting that wrapper's return value would raise TypeError.
         return await self.abatch_update(document_id, requests)
 
-    @action("Extract plain text from a document", requires_scope="read")
+    @action("Extract plain text from a document", requires_scope="read", access="read")
     async def get_document_text(self, document_id: str) -> str:
         """Retrieve the full plain-text content of a document.
 

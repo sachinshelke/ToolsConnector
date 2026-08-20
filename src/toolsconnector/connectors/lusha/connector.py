@@ -240,7 +240,7 @@ class Lusha(BaseConnector):
     # CONTACTS
     # ======================================================================
 
-    @action("Search/resolve people and get a non-PII preview (no emails/phones)")
+    @action("Search/resolve people and get a non-PII preview (no emails/phones)", access="read")
     async def search_contacts(self, contacts: list[dict[str, Any]]) -> LushaContactResult:
         """Resolve people to Lusha ids — step 1 of the reveal flow (no PII, no reveal cost).
 
@@ -261,7 +261,7 @@ class Lusha(BaseConnector):
         body = await self._request("POST", "/v3/contacts/search", json_body={"contacts": contacts})
         return self._contact_result(body)
 
-    @action("Reveal emails + phones for contact ids from search_contacts")
+    @action("Reveal emails + phones for contact ids from search_contacts", access="read")
     async def enrich_contacts(
         self, ids: list[str], reveal: Optional[list[str]] = None
     ) -> LushaContactResult:
@@ -285,7 +285,7 @@ class Lusha(BaseConnector):
         body = await self._request("POST", "/v3/contacts/enrich", json_body=payload)
         return self._contact_result(body)
 
-    @action("One-call person lookup → reveal emails + phones (search + enrich)")
+    @action("One-call person lookup → reveal emails + phones (search + enrich)", access="read")
     async def search_and_enrich_contacts(
         self, contacts: list[dict[str, Any]], reveal: Optional[list[str]] = None
     ) -> LushaContactResult:
@@ -309,7 +309,7 @@ class Lusha(BaseConnector):
         body = await self._request("POST", "/v3/contacts/search-and-enrich", json_body=payload)
         return self._contact_result(body)
 
-    @action("Find decision-makers at given companies (preview; enrich for PII)")
+    @action("Find decision-makers at given companies (preview; enrich for PII)", access="read")
     async def get_decision_makers(self, companies: list[dict[str, Any]]) -> LushaContactResult:
         """Return ranked decision-makers per company (preview, no PII until enriched).
 
@@ -346,7 +346,7 @@ class Lusha(BaseConnector):
     # COMPANIES
     # ======================================================================
 
-    @action("Resolve companies and get a firmographic preview")
+    @action("Resolve companies and get a firmographic preview", access="read")
     async def search_companies(self, companies: list[dict[str, Any]]) -> LushaCompanyResult:
         """Resolve companies to Lusha ids — step 1 of company enrichment.
 
@@ -365,7 +365,7 @@ class Lusha(BaseConnector):
         )
         return self._company_result(body)
 
-    @action("Reveal full firmographics for company ids from search_companies")
+    @action("Reveal full firmographics for company ids from search_companies", access="read")
     async def enrich_companies(self, ids: list[str]) -> LushaCompanyResult:
         """Reveal full firmographic data for company ids.
 
@@ -383,7 +383,7 @@ class Lusha(BaseConnector):
         body = await self._request("POST", "/v3/companies/enrich", json_body={"ids": ids})
         return self._company_result(body)
 
-    @action("One-call company lookup → full firmographics")
+    @action("One-call company lookup → full firmographics", access="read")
     async def search_and_enrich_companies(
         self, companies: list[dict[str, Any]]
     ) -> LushaCompanyResult:
@@ -407,7 +407,9 @@ class Lusha(BaseConnector):
     # PROSPECTING  (filter-based discovery, paginated)
     # ======================================================================
 
-    @action("Discover NEW contacts by ICP filters (paginated preview; enrich for PII)")
+    @action(
+        "Discover NEW contacts by ICP filters (paginated preview; enrich for PII)", access="read"
+    )
     async def prospecting_search_contacts(
         self,
         filters: dict[str, Any],
@@ -454,7 +456,7 @@ class Lusha(BaseConnector):
             )
         return result
 
-    @action("Discover NEW companies by firmographic filters (paginated)")
+    @action("Discover NEW companies by firmographic filters (paginated)", access="read")
     async def prospecting_search_companies(
         self,
         filters: dict[str, Any],
@@ -502,7 +504,7 @@ class Lusha(BaseConnector):
     # ACCOUNT
     # ======================================================================
 
-    @action("Get remaining/consumed Lusha credit balances for the account")
+    @action("Get remaining/consumed Lusha credit balances for the account", access="read")
     async def get_account_usage(self) -> dict[str, Any]:
         """Report credit usage/quota for the account. Throttled to 5 req/min. No PII.
 
@@ -525,7 +527,7 @@ class Lusha(BaseConnector):
     # LOOKALIKES  (find new contacts/companies similar to seeds)
     # ======================================================================
 
-    @action("Find NEW contacts similar to seed people (AI lookalikes)")
+    @action("Find NEW contacts similar to seed people (AI lookalikes)", access="read")
     async def find_contact_lookalikes(
         self,
         seeds: dict[str, Any],
@@ -559,7 +561,7 @@ class Lusha(BaseConnector):
             payload["dedupeSessionId"] = dedupe_session_id
         return await self._request("POST", "/v3/contacts/lookalike", json_body=payload)
 
-    @action("Find NEW companies similar to seed companies (AI lookalikes)")
+    @action("Find NEW companies similar to seed companies (AI lookalikes)", access="read")
     async def find_company_lookalikes(
         self,
         seeds: dict[str, Any],
@@ -594,7 +596,7 @@ class Lusha(BaseConnector):
     # SIGNALS  (job-change / buying signals)
     # ======================================================================
 
-    @action("Get job-change / promotion signals for known contact ids")
+    @action("Get job-change / promotion signals for known contact ids", access="read")
     async def get_contact_signals(
         self,
         ids: list[str],
@@ -623,7 +625,7 @@ class Lusha(BaseConnector):
             payload["startDate"] = start_date
         return await self._request("POST", "/v3/contacts/signals", json_body=payload)
 
-    @action("Get company signals (hiring, headcount, news, intent) for company ids")
+    @action("Get company signals (hiring, headcount, news, intent) for company ids", access="read")
     async def get_company_signals(
         self,
         ids: list[str],
@@ -656,17 +658,17 @@ class Lusha(BaseConnector):
             payload["maxResultsPerSignal"] = int(max_results_per_signal)
         return await self._request("POST", "/v3/companies/signals", json_body=payload)
 
-    @action("List the valid contact signal types")
+    @action("List the valid contact signal types", access="read")
     async def get_contact_signal_types(self) -> dict[str, Any]:
         """List valid people signal types. Endpoint: ``GET /v3/contacts/signals/types``."""
         return await self._request("GET", "/v3/contacts/signals/types")
 
-    @action("List the valid company signal types")
+    @action("List the valid company signal types", access="read")
     async def get_company_signal_types(self) -> dict[str, Any]:
         """List valid company signal types. Endpoint: ``GET /v3/companies/signals/types``."""
         return await self._request("GET", "/v3/companies/signals/types")
 
-    @action("List the available company signal filters")
+    @action("List the available company signal filters", access="read")
     async def get_company_signal_filters(self) -> dict[str, Any]:
         """List available company-signal filters (+ whether each needs a query).
 
@@ -674,7 +676,7 @@ class Lusha(BaseConnector):
         """
         return await self._request("GET", "/v3/companies/signals/filters")
 
-    @action("List valid values for a company signal filter")
+    @action("List valid values for a company signal filter", access="read")
     async def get_company_signal_filter_values(
         self, filter_type: str, query: Optional[str] = None
     ) -> dict[str, Any]:
@@ -697,7 +699,7 @@ class Lusha(BaseConnector):
     # PROSPECTING FILTER DISCOVERY
     # ======================================================================
 
-    @action("List valid values for a contact prospecting filter")
+    @action("List valid values for a contact prospecting filter", access="read")
     async def get_contact_prospecting_filters(self, filter_type: str) -> dict[str, Any]:
         """List valid values for a contact-prospecting filter (departments,
         seniorities, locations, …) — use to build ``prospecting_search_contacts`` filters.
@@ -706,7 +708,7 @@ class Lusha(BaseConnector):
         """
         return await self._request("GET", f"/v3/contacts/prospecting/filters/{filter_type}")
 
-    @action("List valid values for a company prospecting filter")
+    @action("List valid values for a company prospecting filter", access="read")
     async def get_company_prospecting_filters(self, filter_type: str) -> dict[str, Any]:
         """List valid values for a company-prospecting filter (industries, sizes,
         technologies, …) — use to build ``prospecting_search_companies`` filters.

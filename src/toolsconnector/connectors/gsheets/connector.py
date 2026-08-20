@@ -206,7 +206,7 @@ class GoogleSheets(BaseConnector):
     # Actions — Spreadsheet-level
     # ------------------------------------------------------------------
 
-    @action("Get spreadsheet metadata and sheets", requires_scope="read")
+    @action("Get spreadsheet metadata and sheets", requires_scope="read", access="read")
     async def get_spreadsheet(self, spreadsheet_id: str) -> Spreadsheet:
         """Retrieve a spreadsheet's metadata including all sheet tabs.
 
@@ -247,7 +247,7 @@ class GoogleSheets(BaseConnector):
         data = await self._request("POST", "/spreadsheets", json=body)
         return _parse_spreadsheet(data)
 
-    @action("Get sheet metadata for all tabs", requires_scope="read")
+    @action("Get sheet metadata for all tabs", requires_scope="read", access="read")
     async def get_sheet_metadata(self, spreadsheet_id: str) -> list[Sheet]:
         """Retrieve metadata for all sheets in a spreadsheet.
 
@@ -268,7 +268,7 @@ class GoogleSheets(BaseConnector):
     # Actions — Values (read)
     # ------------------------------------------------------------------
 
-    @action("Get values from a range", requires_scope="read")
+    @action("Get values from a range", requires_scope="read", access="read")
     async def get_values(
         self,
         spreadsheet_id: str,
@@ -293,7 +293,7 @@ class GoogleSheets(BaseConnector):
             values=data.get("values", []),
         )
 
-    @action("Batch get values from multiple ranges", requires_scope="read")
+    @action("Batch get values from multiple ranges", requires_scope="read", access="read")
     async def batch_get_values(
         self,
         spreadsheet_id: str,
@@ -551,7 +551,7 @@ class GoogleSheets(BaseConnector):
             json=body,
         )
 
-    @action("Copy a sheet to another spreadsheet", requires_scope="write")
+    @action("Copy a sheet to another spreadsheet", requires_scope="write", access="write")
     async def copy_sheet(
         self,
         spreadsheet_id: str,
@@ -715,7 +715,7 @@ class GoogleSheets(BaseConnector):
             ],
         )
 
-    @action("Auto-resize columns to fit content")
+    @action("Auto-resize columns to fit content", access="write")
     async def auto_resize_columns(
         self,
         spreadsheet_id: str,

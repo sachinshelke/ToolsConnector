@@ -430,7 +430,7 @@ class LinkedIn(BaseConnector):
     # PROFILE  (uses /v2/userinfo — OIDC)
     # ======================================================================
 
-    @action("Get the authenticated LinkedIn user's profile (OIDC userinfo)")
+    @action("Get the authenticated LinkedIn user's profile (OIDC userinfo)", access="read")
     async def get_profile(self) -> LinkedInProfile:
         """Get the authenticated user's profile via the OIDC userinfo endpoint.
 
@@ -549,7 +549,7 @@ class LinkedIn(BaseConnector):
         await self._request("DELETE", f"/rest/posts/{encoded}")
         return None
 
-    @action("Get a single LinkedIn post by URN (PARTNER APPROVAL REQUIRED)")
+    @action("Get a single LinkedIn post by URN (PARTNER APPROVAL REQUIRED)", access="read")
     async def get_post(self, urn: str) -> LinkedInPost:
         """Fetch a post via the LinkedIn Posts API.
 
@@ -570,7 +570,7 @@ class LinkedIn(BaseConnector):
         body = await self._request("GET", f"/rest/posts/{encoded}")
         return LinkedInPost.model_validate(body)
 
-    @action("List the authenticated user's recent posts (PARTNER APPROVAL REQUIRED)")
+    @action("List the authenticated user's recent posts (PARTNER APPROVAL REQUIRED)", access="read")
     async def list_my_posts(
         self,
         author: str,
@@ -675,7 +675,7 @@ class LinkedIn(BaseConnector):
         )
         return LinkedInComment.model_validate(body)
 
-    @action("List comments on a LinkedIn post (PARTNER APPROVAL REQUIRED)")
+    @action("List comments on a LinkedIn post (PARTNER APPROVAL REQUIRED)", access="read")
     async def list_comments(
         self,
         post_urn: str,
@@ -899,7 +899,7 @@ class LinkedIn(BaseConnector):
         etag = resp.headers.get("etag") or resp.headers.get("ETag")
         return self._unquote_etag(etag) if etag else None
 
-    @action("Upload an image and return its urn:li:image asset URN for posting")
+    @action("Upload an image and return its urn:li:image asset URN for posting", access="write")
     async def upload_image(self, owner: str, file_path: str) -> str:
         """Upload a local image (Images API) and return its asset URN.
 
@@ -938,7 +938,7 @@ class LinkedIn(BaseConnector):
         await self._put_binary(upload_url, path.read_bytes())
         return image_urn
 
-    @action("Upload a document (PDF/PPT/DOC) and return its urn:li:document URN")
+    @action("Upload a document (PDF/PPT/DOC) and return its urn:li:document URN", access="write")
     async def upload_document(self, owner: str, file_path: str) -> str:
         """Upload a local document (Documents API) and return its asset URN.
 
@@ -979,7 +979,7 @@ class LinkedIn(BaseConnector):
         await self._put_binary(upload_url, path.read_bytes())
         return doc_urn
 
-    @action("Upload a video (multi-part) and return its urn:li:video asset URN")
+    @action("Upload a video (multi-part) and return its urn:li:video asset URN", access="write")
     async def upload_video(self, owner: str, file_path: str) -> str:
         """Upload a local MP4 video (Videos API) and return its asset URN.
 

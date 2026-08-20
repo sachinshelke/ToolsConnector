@@ -2,11 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
 from .pagination import PaginationSpec
+
+AccessKind = Literal["read", "write", "destructive"]
+"""Positive read/write classification for an action's side effect on the vendor.
+
+- ``read`` — no side effect; safe to call for observation (GET-like).
+- ``write`` — mutates state but is not irreversibly destructive (create/update).
+- ``destructive`` — deletes/sends/irreversible; always mirrors ``dangerous``.
+
+Distinct from ``dangerous`` (a *destructive* flag only) — ``access`` gives a
+consumer a positive read-vs-write contract instead of a naming heuristic.
+"""
 
 
 class ParameterSpec(BaseModel):
@@ -81,6 +92,14 @@ class ActionSpec(BaseModel):
     dangerous: bool = Field(
         default=False,
         description="Whether this action has destructive side effects (delete, send, etc.).",
+    )
+    access: Optional[AccessKind] = Field(
+        default=None,
+        description=(
+            "Positive read/write/destructive classification (see AccessKind). "
+            "``None`` means unclassified — a read-only consumer should fail closed "
+            "on it. Tier-1 (live) connectors classify every action."
+        ),
     )
     idempotent: bool = Field(
         default=False,
