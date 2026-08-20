@@ -334,7 +334,8 @@ class ContactOut(BaseConnector):
     # ======================================================================
 
     @action(
-        "Search people by filters (paginated); set reveal_info to spend credits for emails/phones"
+        "Search people by filters (paginated); set reveal_info to spend credits for emails/phones",
+        access="read",
     )
     async def search_people(
         self, filters: dict[str, Any], page: int = 1, reveal_info: bool = False
@@ -371,7 +372,10 @@ class ContactOut(BaseConnector):
             lambda p: self.asearch_people(filters=filters, page=p, reveal_info=reveal_info),
         )
 
-    @action("Free dry-run: count how many people match a search (no credits, no contact data)")
+    @action(
+        "Free dry-run: count how many people match a search (no credits, no contact data)",
+        access="read",
+    )
     async def count_people(self, filters: dict[str, Any]) -> int:
         """Return the total match count for a search — FREE, spends no credits.
 
@@ -390,7 +394,10 @@ class ContactOut(BaseConnector):
         resp = await self._request("POST", "/v1/people/count", json_body=filters)
         return safe_int(resp.get("total_results"), 0)
 
-    @action("Find decision-makers for a company (by domain / LinkedIn / name); paginated")
+    @action(
+        "Find decision-makers for a company (by domain / LinkedIn / name); paginated",
+        access="read",
+    )
     async def get_decision_makers(
         self,
         domain: Optional[str] = None,
@@ -435,7 +442,7 @@ class ContactOut(BaseConnector):
     # ENRICH / LOOKUP  (single person)
     # ======================================================================
 
-    @action("Enrich a LinkedIn profile URL into full profile + contact data")
+    @action("Enrich a LinkedIn profile URL into full profile + contact data", access="read")
     async def enrich_linkedin_profile(self, profile: str) -> ContactOutProfile:
         """Full enrichment of one LinkedIn profile URL (profile + emails + phones).
 
@@ -451,7 +458,7 @@ class ContactOut(BaseConnector):
         resp = await self._request("GET", "/v1/linkedin/enrich", params={"profile": profile})
         return self._profile(self._unwrap(resp), linkedin_url=profile)
 
-    @action("Reveal contact info (emails/phone) for one LinkedIn profile URL")
+    @action("Reveal contact info (emails/phone) for one LinkedIn profile URL", access="read")
     async def get_linkedin_contact_info(
         self, profile: str, include_phone: bool = True, email_type: str = "both"
     ) -> ContactOutProfile:
@@ -475,7 +482,7 @@ class ContactOut(BaseConnector):
         resp = await self._request("GET", "/v1/people/linkedin", params=params)
         return self._profile(self._unwrap(resp), linkedin_url=profile)
 
-    @action("Reveal contact info for up to 100 LinkedIn profile URLs in one call")
+    @action("Reveal contact info for up to 100 LinkedIn profile URLs in one call", access="read")
     async def get_linkedin_contact_info_bulk(
         self, profiles: list[str], include_phone: bool = True, email_type: str = "both"
     ) -> list[ContactOutProfile]:
@@ -519,7 +526,7 @@ class ContactOut(BaseConnector):
                 out.append(ContactOutProfile(linkedin_url=key, emails=_as_list(value)))
         return out
 
-    @action("Enrich a person by LinkedIn URL / email / phone / name+company")
+    @action("Enrich a person by LinkedIn URL / email / phone / name+company", access="read")
     async def enrich_people(
         self,
         linkedin_url: Optional[str] = None,
@@ -583,7 +590,7 @@ class ContactOut(BaseConnector):
         resp = await self._request("POST", "/v1/people/enrich", json_body=body)
         return self._profile(self._unwrap(resp), linkedin_url=linkedin_url or "")
 
-    @action("Reverse-enrich a person from an email address")
+    @action("Reverse-enrich a person from an email address", access="read")
     async def enrich_by_email(
         self, email: str, include_work_email: bool = False
     ) -> ContactOutProfile:
@@ -604,7 +611,7 @@ class ContactOut(BaseConnector):
         resp = await self._request("GET", "/v1/email/enrich", params=params)
         return self._profile(self._unwrap(resp))
 
-    @action("Resolve an email address to its LinkedIn profile URL")
+    @action("Resolve an email address to its LinkedIn profile URL", access="read")
     async def find_linkedin_by_email(self, email: str) -> dict[str, Any]:
         """Resolve an email to a LinkedIn profile URL.
 
@@ -621,7 +628,7 @@ class ContactOut(BaseConnector):
     # COMPANIES
     # ======================================================================
 
-    @action("Enrich company firmographics from domains (up to 30)")
+    @action("Enrich company firmographics from domains (up to 30)", access="read")
     async def enrich_domain(self, domains: list[str]) -> dict[str, Any]:
         """Company/firmographic enrichment from domains.
 
@@ -643,7 +650,7 @@ class ContactOut(BaseConnector):
             )
         return await self._request("POST", "/v1/domain/enrich", json_body={"domains": domains})
 
-    @action("Search companies by firmographic filters")
+    @action("Search companies by firmographic filters", access="read")
     async def search_companies(self, filters: dict[str, Any]) -> dict[str, Any]:
         """Company/firmographic search by filters.
 
@@ -662,7 +669,10 @@ class ContactOut(BaseConnector):
     # FREE PRE-FLIGHT CHECKS + VERIFICATION
     # ======================================================================
 
-    @action("FREE check: does a personal email exist for a LinkedIn profile? (no reveal)")
+    @action(
+        "FREE check: does a personal email exist for a LinkedIn profile? (no reveal)",
+        access="read",
+    )
     async def check_personal_email_status(self, profile: str) -> bool:
         """Free existence check for a personal email (spends no credits).
 
@@ -673,7 +683,10 @@ class ContactOut(BaseConnector):
         )
         return bool(self._unwrap(resp).get("email", False))
 
-    @action("FREE check: does a work email exist (+ verification status) for a profile?")
+    @action(
+        "FREE check: does a work email exist (+ verification status) for a profile?",
+        access="read",
+    )
     async def check_work_email_status(self, profile: str) -> dict[str, Any]:
         """Free existence + verification check for a work email (no credits).
 
@@ -688,7 +701,7 @@ class ContactOut(BaseConnector):
         prof = self._unwrap(resp)
         return {"email": bool(prof.get("email", False)), "email_status": prof.get("email_status")}
 
-    @action("FREE check: does a phone exist for a LinkedIn profile? (no reveal)")
+    @action("FREE check: does a phone exist for a LinkedIn profile? (no reveal)", access="read")
     async def check_phone_status(self, profile: str) -> bool:
         """Free existence check for a phone number (spends no credits).
 
@@ -699,7 +712,7 @@ class ContactOut(BaseConnector):
         )
         return bool(self._unwrap(resp).get("phone", False))
 
-    @action("Verify deliverability of an email address")
+    @action("Verify deliverability of an email address", access="read")
     async def verify_email(self, email: str) -> dict[str, Any]:
         """Verify an email's deliverability (spends a verifier credit on a result).
 
@@ -714,7 +727,7 @@ class ContactOut(BaseConnector):
         data = resp.get("data") if isinstance(resp.get("data"), dict) else resp
         return {"status": data.get("status")}
 
-    @action("Async bulk reveal: queue up to 1000 LinkedIn URLs (returns a job id)")
+    @action("Async bulk reveal: queue up to 1000 LinkedIn URLs (returns a job id)", access="read")
     async def enrich_linkedin_bulk_async(
         self,
         profiles: list[str],
@@ -757,7 +770,7 @@ class ContactOut(BaseConnector):
             body["callback_url"] = callback_url
         return await self._request("POST", "/v2/people/linkedin/batch", json_body=body)
 
-    @action("Poll an async bulk-reveal job by id for status + results")
+    @action("Poll an async bulk-reveal job by id for status + results", access="read")
     async def get_bulk_reveal_job(self, job_id: str) -> dict[str, Any]:
         """Fetch the status + results of an async bulk-reveal job.
 
@@ -769,7 +782,10 @@ class ContactOut(BaseConnector):
         """
         return await self._request("GET", f"/v2/people/linkedin/batch/{job_id}")
 
-    @action("Async bulk email verification: queue up to 100 emails (returns a job id)")
+    @action(
+        "Async bulk email verification: queue up to 100 emails (returns a job id)",
+        access="read",
+    )
     async def verify_emails_bulk(
         self, emails: list[str], callback_url: Optional[str] = None
     ) -> dict[str, Any]:
@@ -799,7 +815,7 @@ class ContactOut(BaseConnector):
             body["callback_url"] = callback_url
         return await self._request("POST", "/v1/email/verify/batch", json_body=body)
 
-    @action("Get remaining/consumed ContactOut credit balances (free)")
+    @action("Get remaining/consumed ContactOut credit balances (free)", access="read")
     async def get_usage(self) -> dict[str, Any]:
         """Report credit balances per pool (email / phone / search). FREE.
 

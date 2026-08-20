@@ -113,6 +113,10 @@ logger = logging.getLogger("toolsconnector.gmail")
 # HTML directly in `body` without setting `html_body`).
 _HTML_TAG_RE = re.compile(r"<[a-zA-Z][^>]*>")
 
+# Gmail's batch endpoint caps a single request at 100 sub-requests, so id lists
+# longer than this are paged into multiple batches.
+_GMAIL_BATCH_LIMIT = 100
+
 
 class Gmail(BaseConnector):
     """Connect to Gmail to read, send, and manage emails.
@@ -190,18 +194,20 @@ class Gmail(BaseConnector):
         message_ids: list[str],
         message_format: str = "metadata",
     ) -> list[dict[str, Any]]:
-        """Fetch many messages in ONE request via Gmail's batch endpoint.
+        """Fetch many messages via Gmail's batch endpoint.
 
-        Collapses N per-message GETs into a single ``multipart/mixed`` batch
-        POST to ``https://gmail.googleapis.com/batch/gmail/v1`` — turning
-        header hydration from O(N) upstream round trips into O(1). Returns the
-        parsed message JSON dicts for every sub-request that succeeded, in wire
-        order; ids that error inside the batch are omitted (best-effort).
+        Collapses N per-message GETs into one ``multipart/mixed`` batch POST to
+        ``https://gmail.googleapis.com/batch/gmail/v1`` per 100 ids — turning
+        hydration from O(N) upstream round trips into O(ceil(N/100)) (~1 for a
+        normal page). Returns the parsed message JSON dicts for every
+        sub-request that succeeded, in wire order; ids that error inside the
+        batch are omitted (best-effort).
 
         Args:
             message_ids: Gmail message ids to fetch.
             message_format: Gmail ``format`` for each sub-request
-                (``"metadata"`` by default — headers without body decode).
+                (``"metadata"`` by default — headers without body decode;
+                ``"full"`` fetches bodies in the same batched round trip).
 
         Returns:
             Parsed message dicts (same shape as ``GET /messages/{id}``).
@@ -209,32 +215,36 @@ class Gmail(BaseConnector):
         if not message_ids:
             return []
 
-        boundary = "batch_toolsconnector_gmail"
-        segments: list[str] = []
-        for i, mid in enumerate(message_ids):
-            segments.append(
+        results: list[dict[str, Any]] = []
+        for start in range(0, len(message_ids), _GMAIL_BATCH_LIMIT):
+            chunk = message_ids[start : start + _GMAIL_BATCH_LIMIT]
+            boundary = "batch_toolsconnector_gmail"
+            segments = [
                 f"--{boundary}\r\n"
                 "Content-Type: application/http\r\n"
                 f"Content-ID: <item-{i}>\r\n\r\n"
                 f"GET /gmail/v1/users/me/messages/{mid}?format={message_format}\r\n\r\n"
-            )
-        body = "".join(segments) + f"--{boundary}--\r\n"
-        headers = {
-            **self._get_headers(),
-            "Content-Type": f"multipart/mixed; boundary={boundary}",
-        }
-
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(
-                "https://gmail.googleapis.com/batch/gmail/v1",
-                headers=headers,
-                content=body.encode("utf-8"),
-            )
-            raise_typed_for_status(response, connector=self.name)
-            return _parse_batch_response(
-                response.content,
-                response.headers.get("Content-Type", ""),
-            )
+                for i, mid in enumerate(chunk)
+            ]
+            body = "".join(segments) + f"--{boundary}--\r\n"
+            headers = {
+                **self._get_headers(),
+                "Content-Type": f"multipart/mixed; boundary={boundary}",
+            }
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.post(
+                    "https://gmail.googleapis.com/batch/gmail/v1",
+                    headers=headers,
+                    content=body.encode("utf-8"),
+                )
+                raise_typed_for_status(response, connector=self.name)
+                results.extend(
+                    _parse_batch_response(
+                        response.content,
+                        response.headers.get("Content-Type", ""),
+                    )
+                )
+        return results
 
     def _build_rfc2822(
         self,
@@ -404,7 +414,7 @@ class Gmail(BaseConnector):
     # Actions
     # ------------------------------------------------------------------
 
-    @action("List emails matching a query", requires_scope="read")
+    @action("List emails matching a query", requires_scope="read", access="read")
     async def list_emails(
         self,
         query: str = "is:unread",
@@ -415,21 +425,15 @@ class Gmail(BaseConnector):
     ) -> PaginatedList[Email]:
         """List emails from the user's mailbox.
 
-        Fetches message IDs matching the query, then hydrates each ID with a
-        separate request.
+        Fetches message IDs matching the query, then hydrates them in **one
+        batched round trip** (Gmail's batch endpoint, ~1 request per 100 ids)
+        rather than one request per message — so a page of N emails costs ~2
+        upstream calls, not N + 1.
 
-        **Cost — this is an O(N) action.** Gmail's ``messages.list`` returns
-        only ``{id, threadId}``, so each of the ``limit`` messages is fetched
-        individually: one logical read of N messages costs **N + 1 upstream
-        round trips**. At a large ``limit`` this can cross the transport
-        timeout. Cheaper alternatives:
-
-        - :meth:`list_email_headers` — subject/from/date/snippet for the whole
-          page in **one batched** round trip (O(1)); use this for triage.
-        - :meth:`list_threads` — one request, no per-item hydration (O(1)).
-
-        Pass ``format="metadata"`` here to skip body decoding when you only
-        need headers but still want ``Email`` objects.
+        For an even cheaper, body-free listing use :meth:`list_email_headers`
+        (subject/from/date/snippet only); :meth:`list_threads` groups a whole
+        conversation in one request. Pass ``format="metadata"`` here to skip
+        body decoding while still returning ``Email`` objects.
 
         Args:
             query: Gmail search query (same syntax as Gmail search bar).
@@ -455,16 +459,11 @@ class Gmail(BaseConnector):
         messages_meta = data.get("messages", [])
         next_page_token = data.get("nextPageToken")
 
-        # Hydrate each returned ID (Gmail's list endpoint returns ids only).
-        emails: list[Email] = []
-        for msg_meta in messages_meta:
-            msg_id = msg_meta.get("id", "")
-            msg_data = await self._request(
-                "GET",
-                f"/users/me/messages/{msg_id}",
-                params={"format": format},
-            )
-            emails.append(_parse_message(msg_data))
+        # Hydrate all ids in one batched round trip (Gmail's list endpoint
+        # returns ids only). Best-effort: an id that errors mid-batch is omitted.
+        ids = [m.get("id", "") for m in messages_meta if m.get("id")]
+        raw_messages = await self._batch_get_messages(ids, message_format=format)
+        emails = [_parse_message(m) for m in raw_messages]
 
         return PaginatedList(
             items=emails,
@@ -475,7 +474,11 @@ class Gmail(BaseConnector):
             total_count=data.get("resultSizeEstimate"),
         )
 
-    @action("List email headers only (metadata, batched — cheap)", requires_scope="read")
+    @action(
+        "List email headers only (metadata, batched — cheap)",
+        requires_scope="read",
+        access="read",
+    )
     async def list_email_headers(
         self,
         query: str = "is:unread",
@@ -528,7 +531,7 @@ class Gmail(BaseConnector):
             total_count=data.get("resultSizeEstimate"),
         )
 
-    @action("Get a single email by ID", requires_scope="read")
+    @action("Get a single email by ID", requires_scope="read", access="read")
     async def get_email(
         self,
         email_id: str,
@@ -675,7 +678,7 @@ class Gmail(BaseConnector):
             thread_id=data.get("threadId"),
         )
 
-    @action("Search emails with advanced query", requires_scope="read")
+    @action("Search emails with advanced query", requires_scope="read", access="read")
     async def search_emails(
         self,
         query: str,
@@ -704,7 +707,7 @@ class Gmail(BaseConnector):
             query=query, limit=limit, page_token=page_token, format=format
         )
 
-    @action("List all labels", requires_scope="read")
+    @action("List all labels", requires_scope="read", access="read")
     async def list_labels(self) -> list[Label]:
         """List all labels in the user's mailbox.
 
@@ -714,7 +717,7 @@ class Gmail(BaseConnector):
         data = await self._request("GET", "/users/me/labels")
         return [_parse_label(lbl) for lbl in data.get("labels", [])]
 
-    @action("Create a draft email", requires_scope="send")
+    @action("Create a draft email", requires_scope="send", access="write")
     async def create_draft(
         self,
         to: str,
@@ -793,7 +796,7 @@ class Gmail(BaseConnector):
         """
         await self._request("DELETE", f"/users/me/messages/{email_id}")
 
-    @action("Modify email labels", requires_scope="full")
+    @action("Modify email labels", requires_scope="full", access="write")
     async def modify_labels(
         self,
         email_id: str,
@@ -827,7 +830,7 @@ class Gmail(BaseConnector):
     # Actions — Threads
     # ------------------------------------------------------------------
 
-    @action("List email threads", requires_scope="read")
+    @action("List email threads", requires_scope="read", access="read")
     async def list_threads(
         self,
         query: Optional[str] = None,
@@ -873,7 +876,7 @@ class Gmail(BaseConnector):
             total_count=data.get("resultSizeEstimate"),
         )
 
-    @action("Get a single thread by ID", requires_scope="read")
+    @action("Get a single thread by ID", requires_scope="read", access="read")
     async def get_thread(
         self,
         thread_id: str,
@@ -906,7 +909,7 @@ class Gmail(BaseConnector):
     # Actions — Trash / Untrash
     # ------------------------------------------------------------------
 
-    @action("Move an email to trash", requires_scope="full")
+    @action("Move an email to trash", requires_scope="full", access="write")
     async def trash_email(self, email_id: str) -> Email:
         """Move an email to the trash folder.
 
@@ -924,7 +927,7 @@ class Gmail(BaseConnector):
         )
         return _parse_message(data)
 
-    @action("Remove an email from trash", requires_scope="full")
+    @action("Remove an email from trash", requires_scope="full", access="write")
     async def untrash_email(self, email_id: str) -> Email:
         """Remove an email from the trash folder.
 
@@ -944,7 +947,7 @@ class Gmail(BaseConnector):
     # Actions — Read / Unread / Star / Unstar
     # ------------------------------------------------------------------
 
-    @action("Mark an email as read", requires_scope="full")
+    @action("Mark an email as read", requires_scope="full", access="write")
     async def mark_as_read(self, email_id: str) -> Email:
         """Mark an email as read by removing the UNREAD label.
 
@@ -959,7 +962,7 @@ class Gmail(BaseConnector):
             remove_labels=["UNREAD"],
         )
 
-    @action("Mark an email as unread", requires_scope="full")
+    @action("Mark an email as unread", requires_scope="full", access="write")
     async def mark_as_unread(self, email_id: str) -> Email:
         """Mark an email as unread by adding the UNREAD label.
 
@@ -974,7 +977,7 @@ class Gmail(BaseConnector):
             add_labels=["UNREAD"],
         )
 
-    @action("Star an email", requires_scope="full")
+    @action("Star an email", requires_scope="full", access="write")
     async def star_email(self, email_id: str) -> Email:
         """Star an email by adding the STARRED label.
 
@@ -989,7 +992,7 @@ class Gmail(BaseConnector):
             add_labels=["STARRED"],
         )
 
-    @action("Remove star from an email", requires_scope="full")
+    @action("Remove star from an email", requires_scope="full", access="write")
     async def unstar_email(self, email_id: str) -> Email:
         """Remove the star from an email by removing the STARRED label.
 
@@ -1008,7 +1011,7 @@ class Gmail(BaseConnector):
     # Actions — Labels (create / delete)
     # ------------------------------------------------------------------
 
-    @action("Create a new label", requires_scope="full")
+    @action("Create a new label", requires_scope="full", access="write")
     async def create_label(
         self,
         name: str,
@@ -1070,7 +1073,7 @@ class Gmail(BaseConnector):
     # Actions — Attachments
     # ------------------------------------------------------------------
 
-    @action("Download an email attachment", requires_scope="read")
+    @action("Download an email attachment", requires_scope="read", access="read")
     async def get_attachment(
         self,
         email_id: str,
@@ -1134,7 +1137,7 @@ class Gmail(BaseConnector):
     # Actions — Batch operations
     # ------------------------------------------------------------------
 
-    @action("Batch modify labels on multiple emails", requires_scope="full")
+    @action("Batch modify labels on multiple emails", requires_scope="full", access="write")
     async def batch_modify(
         self,
         email_ids: list[str],
@@ -1164,7 +1167,7 @@ class Gmail(BaseConnector):
     # Actions — Drafts (full lifecycle)
     # ------------------------------------------------------------------
 
-    @action("List drafts", requires_scope="read")
+    @action("List drafts", requires_scope="read", access="read")
     async def list_drafts(
         self,
         limit: int = 10,
@@ -1197,7 +1200,7 @@ class Gmail(BaseConnector):
             total_count=data.get("resultSizeEstimate"),
         )
 
-    @action("Get a single draft by ID", requires_scope="read")
+    @action("Get a single draft by ID", requires_scope="read", access="read")
     async def get_draft(
         self,
         draft_id: str,
@@ -1226,7 +1229,7 @@ class Gmail(BaseConnector):
         )
         return _parse_draft(data)
 
-    @action("Update a draft", requires_scope="send")
+    @action("Update a draft", requires_scope="send", access="write")
     async def update_draft(
         self,
         draft_id: str,
@@ -1325,7 +1328,7 @@ class Gmail(BaseConnector):
     # Actions — Threads (complete)
     # ------------------------------------------------------------------
 
-    @action("Modify thread labels", requires_scope="full")
+    @action("Modify thread labels", requires_scope="full", access="write")
     async def modify_thread(
         self,
         thread_id: str,
@@ -1355,7 +1358,7 @@ class Gmail(BaseConnector):
         )
         return _parse_thread(data)
 
-    @action("Move a thread to trash", requires_scope="full")
+    @action("Move a thread to trash", requires_scope="full", access="write")
     async def trash_thread(self, thread_id: str) -> Thread:
         """Move all messages in a thread to the trash folder.
 
@@ -1373,7 +1376,7 @@ class Gmail(BaseConnector):
         )
         return _parse_thread(data)
 
-    @action("Remove a thread from trash", requires_scope="full")
+    @action("Remove a thread from trash", requires_scope="full", access="write")
     async def untrash_thread(self, thread_id: str) -> Thread:
         """Remove all messages in a thread from the trash folder.
 
@@ -1405,7 +1408,7 @@ class Gmail(BaseConnector):
     # Actions — Labels (complete)
     # ------------------------------------------------------------------
 
-    @action("Get a single label by ID", requires_scope="read")
+    @action("Get a single label by ID", requires_scope="read", access="read")
     async def get_label(self, label_id: str) -> Label:
         """Retrieve a single label by its ID.
 
@@ -1425,7 +1428,7 @@ class Gmail(BaseConnector):
         data = await self._request("GET", f"/users/me/labels/{label_id}")
         return _parse_label(data)
 
-    @action("Update a label", requires_scope="full")
+    @action("Update a label", requires_scope="full", access="write")
     async def update_label(
         self,
         label_id: str,
@@ -1472,7 +1475,7 @@ class Gmail(BaseConnector):
     # Actions — User profile
     # ------------------------------------------------------------------
 
-    @action("Get user profile", requires_scope="read")
+    @action("Get user profile", requires_scope="read", access="read")
     async def get_profile(self) -> UserProfile:
         """Retrieve the authenticated user's Gmail profile.
 
@@ -1492,7 +1495,7 @@ class Gmail(BaseConnector):
     # Actions — History (incremental sync)
     # ------------------------------------------------------------------
 
-    @action("List mailbox history", requires_scope="read")
+    @action("List mailbox history", requires_scope="read", access="read")
     async def list_history(
         self,
         start_history_id: str,
@@ -1549,7 +1552,7 @@ class Gmail(BaseConnector):
     # Actions — Settings (vacation auto-reply)
     # ------------------------------------------------------------------
 
-    @action("Get vacation auto-reply settings", requires_scope="read")
+    @action("Get vacation auto-reply settings", requires_scope="read", access="read")
     async def get_vacation_settings(self) -> VacationSettings:
         """Retrieve the user's vacation auto-reply settings.
 
@@ -1717,7 +1720,7 @@ class Gmail(BaseConnector):
     # Docs: https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.filters
     # All filter actions require the gmail.settings.basic scope.
 
-    @action("List all filters", requires_scope="settings")
+    @action("List all filters", requires_scope="settings", access="read")
     async def list_filters(self) -> list[Filter]:
         """List every filter (auto-categorization rule) on the mailbox.
 
@@ -1730,7 +1733,7 @@ class Gmail(BaseConnector):
         data = await self._request("GET", "/users/me/settings/filters")
         return [_parse_filter(f) for f in data.get("filter", [])]
 
-    @action("Get a single filter by ID", requires_scope="settings")
+    @action("Get a single filter by ID", requires_scope="settings", access="read")
     async def get_filter(self, filter_id: str) -> Filter:
         """Retrieve a single filter by its ID.
 
@@ -1796,7 +1799,7 @@ class Gmail(BaseConnector):
     # ==================================================================
     # Docs: https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.sendAs
 
-    @action("List send-as aliases", requires_scope="settings")
+    @action("List send-as aliases", requires_scope="settings", access="read")
     async def list_send_as(self) -> list[SendAs]:
         """List every address the user can send email from.
 
@@ -1808,7 +1811,7 @@ class Gmail(BaseConnector):
         data = await self._request("GET", "/users/me/settings/sendAs")
         return [_parse_send_as(s) for s in data.get("sendAs", [])]
 
-    @action("Get a single send-as alias", requires_scope="settings")
+    @action("Get a single send-as alias", requires_scope="settings", access="read")
     async def get_send_as(self, send_as_email: str) -> SendAs:
         """Retrieve a single send-as alias by email.
 
@@ -1865,7 +1868,7 @@ class Gmail(BaseConnector):
         data = await self._request("POST", "/users/me/settings/sendAs", json=payload)
         return _parse_send_as(data)
 
-    @action("Update a send-as alias", requires_scope="settings")
+    @action("Update a send-as alias", requires_scope="settings", access="write")
     async def update_send_as(
         self,
         send_as_email: str,
@@ -1919,7 +1922,11 @@ class Gmail(BaseConnector):
         """
         await self._request("DELETE", f"/users/me/settings/sendAs/{send_as_email}")
 
-    @action("Re-send verification for a pending send-as", requires_scope="settings")
+    @action(
+        "Re-send verification for a pending send-as",
+        requires_scope="settings",
+        access="write",
+    )
     async def verify_send_as(self, send_as_email: str) -> None:
         """Trigger Gmail to re-send the ownership-verification email.
 
@@ -1935,7 +1942,7 @@ class Gmail(BaseConnector):
     # ==================================================================
     # Docs: https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.delegates
 
-    @action("List mailbox delegates", requires_scope="settings")
+    @action("List mailbox delegates", requires_scope="settings", access="read")
     async def list_delegates(self) -> list[Delegate]:
         """List accounts that have been delegated access to this mailbox.
 
@@ -1944,7 +1951,7 @@ class Gmail(BaseConnector):
         data = await self._request("GET", "/users/me/settings/delegates")
         return [_parse_delegate(d) for d in data.get("delegates", [])]
 
-    @action("Get a delegate by email", requires_scope="settings")
+    @action("Get a delegate by email", requires_scope="settings", access="read")
     async def get_delegate(self, delegate_email: str) -> Delegate:
         """Retrieve a single delegate's info (including verification status)."""
         data = await self._request("GET", f"/users/me/settings/delegates/{delegate_email}")
@@ -1986,7 +1993,7 @@ class Gmail(BaseConnector):
     # ==================================================================
     # Docs: https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.settings.forwardingAddresses
 
-    @action("List forwarding addresses", requires_scope="settings")
+    @action("List forwarding addresses", requires_scope="settings", access="read")
     async def list_forwarding_addresses(self) -> list[ForwardingAddress]:
         """List every verified forwarding address on the account.
 
@@ -1996,7 +2003,7 @@ class Gmail(BaseConnector):
         data = await self._request("GET", "/users/me/settings/forwardingAddresses")
         return [_parse_forwarding_address(f) for f in data.get("forwardingAddresses", [])]
 
-    @action("Get a forwarding address", requires_scope="settings")
+    @action("Get a forwarding address", requires_scope="settings", access="read")
     async def get_forwarding_address(self, forwarding_email: str) -> ForwardingAddress:
         """Retrieve a single forwarding address and its verification status."""
         data = await self._request(
@@ -2047,7 +2054,7 @@ class Gmail(BaseConnector):
     # Separate from filters and forwarding addresses: this is the global
     # "forward ALL incoming mail to X" setting.
 
-    @action("Get auto-forwarding settings", requires_scope="settings")
+    @action("Get auto-forwarding settings", requires_scope="settings", access="read")
     async def get_auto_forwarding(self) -> AutoForwarding:
         """Retrieve the global auto-forwarding configuration."""
         data = await self._request("GET", "/users/me/settings/autoForwarding")
@@ -2086,7 +2093,7 @@ class Gmail(BaseConnector):
     # Settings — IMAP / POP / Language
     # ==================================================================
 
-    @action("Get IMAP settings", requires_scope="settings")
+    @action("Get IMAP settings", requires_scope="settings", access="read")
     async def get_imap_settings(self) -> ImapSettings:
         """Retrieve IMAP access configuration."""
         data = await self._request("GET", "/users/me/settings/imap")
@@ -2118,7 +2125,7 @@ class Gmail(BaseConnector):
         data = await self._request("PUT", "/users/me/settings/imap", json=payload)
         return _parse_imap_settings(data)
 
-    @action("Get POP settings", requires_scope="settings")
+    @action("Get POP settings", requires_scope="settings", access="read")
     async def get_pop_settings(self) -> PopSettings:
         """Retrieve POP3 access configuration."""
         data = await self._request("GET", "/users/me/settings/pop")
@@ -2154,13 +2161,13 @@ class Gmail(BaseConnector):
         data = await self._request("PUT", "/users/me/settings/pop", json=payload)
         return _parse_pop_settings(data)
 
-    @action("Get language settings", requires_scope="settings")
+    @action("Get language settings", requires_scope="settings", access="read")
     async def get_language(self) -> LanguageSettings:
         """Retrieve the account's Gmail UI language preference."""
         data = await self._request("GET", "/users/me/settings/language")
         return _parse_language_settings(data)
 
-    @action("Update language settings", requires_scope="settings")
+    @action("Update language settings", requires_scope="settings", access="write")
     async def update_language(self, display_language: str) -> LanguageSettings:
         """Set the Gmail UI language.
 
@@ -2232,7 +2239,7 @@ class Gmail(BaseConnector):
             payload["labelFilterBehavior"] = label_filter_behavior
         return await self._request("POST", "/users/me/watch", json=payload)
 
-    @action("Stop push notifications", requires_scope="read")
+    @action("Stop push notifications", requires_scope="read", access="write")
     async def stop(self) -> None:
         """Cancel any active push-notification subscription for this mailbox.
 

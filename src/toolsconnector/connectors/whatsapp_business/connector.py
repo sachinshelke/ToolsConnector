@@ -609,7 +609,7 @@ class WhatsAppBusiness(BaseConnector):
     # Messaging actions (free-form types need an open 24h service window)
     # ------------------------------------------------------------------
 
-    @action("Send a WhatsApp text message (24h window)")
+    @action("Send a WhatsApp text message (24h window)", access="write")
     async def send_text(
         self,
         to: str,
@@ -648,7 +648,7 @@ class WhatsAppBusiness(BaseConnector):
             tracking_data=tracking_data,
         )
 
-    @action("Send an image (24h window)")
+    @action("Send an image (24h window)", access="write")
     async def send_image(
         self,
         to: str,
@@ -678,7 +678,7 @@ class WhatsAppBusiness(BaseConnector):
             tracking_data=tracking_data,
         )
 
-    @action("Send an audio clip or voice note (24h window)")
+    @action("Send an audio clip or voice note (24h window)", access="write")
     async def send_audio(
         self,
         to: str,
@@ -706,7 +706,7 @@ class WhatsAppBusiness(BaseConnector):
             tracking_data=tracking_data,
         )
 
-    @action("Send a video (24h window)")
+    @action("Send a video (24h window)", access="write")
     async def send_video(
         self,
         to: str,
@@ -736,7 +736,7 @@ class WhatsAppBusiness(BaseConnector):
             tracking_data=tracking_data,
         )
 
-    @action("Send a document (24h window)")
+    @action("Send a document (24h window)", access="write")
     async def send_document(
         self,
         to: str,
@@ -768,7 +768,7 @@ class WhatsAppBusiness(BaseConnector):
             tracking_data=tracking_data,
         )
 
-    @action("Send a sticker (24h window)")
+    @action("Send a sticker (24h window)", access="write")
     async def send_sticker(
         self,
         to: str,
@@ -796,7 +796,7 @@ class WhatsAppBusiness(BaseConnector):
             tracking_data=tracking_data,
         )
 
-    @action("Send a location pin (24h window)")
+    @action("Send a location pin (24h window)", access="write")
     async def send_location(
         self,
         to: str,
@@ -842,7 +842,7 @@ class WhatsAppBusiness(BaseConnector):
             tracking_data=tracking_data,
         )
 
-    @action("Send contact cards (24h window)")
+    @action("Send contact cards (24h window)", access="write")
     async def send_contacts(
         self,
         to: str,
@@ -877,7 +877,7 @@ class WhatsAppBusiness(BaseConnector):
         raw = await self._request("POST", self._phone_path(), json_body=body)
         return safe_validate(WhatsAppSendResult, raw) or WhatsAppSendResult()
 
-    @action("React to a message with an emoji")
+    @action("React to a message with an emoji", access="write")
     async def send_reaction(
         self,
         to: str,
@@ -901,7 +901,7 @@ class WhatsAppBusiness(BaseConnector):
     # Interactive messages (agent-friendly structured choices)
     # ------------------------------------------------------------------
 
-    @action("Send up to 3 tappable reply buttons (24h window)")
+    @action("Send up to 3 tappable reply buttons (24h window)", access="write")
     async def send_interactive_buttons(
         self,
         to: str,
@@ -959,7 +959,7 @@ class WhatsAppBusiness(BaseConnector):
             tracking_data=tracking_data,
         )
 
-    @action("Send a selectable list menu (24h window)")
+    @action("Send a selectable list menu (24h window)", access="write")
     async def send_interactive_list(
         self,
         to: str,
@@ -1012,7 +1012,7 @@ class WhatsAppBusiness(BaseConnector):
             tracking_data=tracking_data,
         )
 
-    @action("Send a call-to-action URL button (24h window)")
+    @action("Send a call-to-action URL button (24h window)", access="write")
     async def send_cta_url(
         self,
         to: str,
@@ -1058,7 +1058,7 @@ class WhatsAppBusiness(BaseConnector):
             tracking_data=tracking_data,
         )
 
-    @action("Ask the user to share their location (24h window)")
+    @action("Ask the user to share their location (24h window)", access="write")
     async def send_location_request(
         self,
         to: str,
@@ -1081,7 +1081,7 @@ class WhatsAppBusiness(BaseConnector):
         }
         return await self._send(to, "interactive", interactive, reply_to=reply_to)
 
-    @action("Send a raw interactive payload (flows, products, address)")
+    @action("Send a raw interactive payload (flows, products, address)", access="write")
     async def send_interactive(
         self,
         to: str,
@@ -1114,7 +1114,7 @@ class WhatsAppBusiness(BaseConnector):
             tracking_data=tracking_data,
         )
 
-    @action("Send an approved template (works outside the 24h window)")
+    @action("Send an approved template (works outside the 24h window)", access="write")
     async def send_template(
         self,
         to: str,
@@ -1155,7 +1155,7 @@ class WhatsAppBusiness(BaseConnector):
     # Message management
     # ------------------------------------------------------------------
 
-    @action("Mark a received message as read (blue ticks)")
+    @action("Mark a received message as read (blue ticks)", access="write")
     async def mark_as_read(self, message_id: str) -> WhatsAppSuccessResult:
         """Mark a message (and everything before it) as read.
 
@@ -1177,7 +1177,7 @@ class WhatsAppBusiness(BaseConnector):
         )
         return safe_validate(WhatsAppSuccessResult, raw) or WhatsAppSuccessResult()
 
-    @action("Show a typing indicator in the chat")
+    @action("Show a typing indicator in the chat", access="write")
     async def send_typing_indicator(self, message_id: str) -> WhatsAppSuccessResult:
         """Mark as read AND show typing (auto-dismisses after ~25s or on reply).
 
@@ -1204,7 +1204,7 @@ class WhatsAppBusiness(BaseConnector):
     # Media
     # ------------------------------------------------------------------
 
-    @action("Upload media, returns a reusable media id (30 days)")
+    @action("Upload media, returns a reusable media id (30 days)", access="write")
     async def upload_media(
         self,
         content_base64: str,
@@ -1243,7 +1243,7 @@ class WhatsAppBusiness(BaseConnector):
         )
         return safe_validate(WhatsAppUploadResult, raw) or WhatsAppUploadResult()
 
-    @action("Get a media item's short-lived download URL")
+    @action("Get a media item's short-lived download URL", access="read")
     async def get_media_info(self, media_id: str) -> WhatsAppMediaInfo:
         """Look up a media id — the returned URL expires in ~5 minutes.
 
@@ -1258,7 +1258,7 @@ class WhatsAppBusiness(BaseConnector):
         raw = await self._request("GET", f"/{media_id}")
         return safe_validate(WhatsAppMediaInfo, raw) or WhatsAppMediaInfo()
 
-    @action("Download media content (handles the 5-minute URL dance)")
+    @action("Download media content (handles the 5-minute URL dance)", access="read")
     async def download_media(self, media_id: str) -> WhatsAppMediaContent:
         """Resolve the media URL and download the bytes in one call.
 
@@ -1305,7 +1305,7 @@ class WhatsAppBusiness(BaseConnector):
     # Business profile + phone numbers
     # ------------------------------------------------------------------
 
-    @action("Get the business profile shown in the chat header")
+    @action("Get the business profile shown in the chat header", access="read")
     async def get_business_profile(self) -> WhatsAppBusinessProfile:
         """Fetch the number's public business profile.
 
@@ -1365,7 +1365,7 @@ class WhatsAppBusiness(BaseConnector):
         )
         return safe_validate(WhatsAppSuccessResult, raw) or WhatsAppSuccessResult()
 
-    @action("Get this number's quality, limits, and name status")
+    @action("Get this number's quality, limits, and name status", access="read")
     async def get_phone_number(self) -> WhatsAppPhoneNumber:
         """Fetch the business phone-number node (health/limit monitoring).
 
@@ -1384,7 +1384,7 @@ class WhatsAppBusiness(BaseConnector):
         )
         return safe_validate(WhatsAppPhoneNumber, raw) or WhatsAppPhoneNumber.model_validate({})
 
-    @action("List all phone numbers on the WhatsApp Business Account")
+    @action("List all phone numbers on the WhatsApp Business Account", access="read")
     async def list_phone_numbers(
         self,
         limit: int = 25,
@@ -1433,7 +1433,7 @@ class WhatsAppBusiness(BaseConnector):
     # Template management (WABA-level)
     # ------------------------------------------------------------------
 
-    @action("Create a message template (goes to Meta review)")
+    @action("Create a message template (goes to Meta review)", access="write")
     async def create_template(
         self,
         name: str,
@@ -1468,7 +1468,7 @@ class WhatsAppBusiness(BaseConnector):
         raw = await self._request("POST", self._waba_path("message_templates"), json_body=body)
         return safe_validate(WhatsAppTemplateCreateResult, raw) or WhatsAppTemplateCreateResult()
 
-    @action("List message templates with status and quality")
+    @action("List message templates with status and quality", access="read")
     async def list_templates(
         self,
         status: Optional[str] = None,
@@ -1527,7 +1527,7 @@ class WhatsAppBusiness(BaseConnector):
             )
         return result
 
-    @action("Get one template by id")
+    @action("Get one template by id", access="read")
     async def get_template(self, template_id: str) -> WhatsAppTemplate:
         """Fetch a single template node.
 
@@ -1609,7 +1609,7 @@ class WhatsAppBusiness(BaseConnector):
     # QR codes / short links (wa.me/message/<code>)
     # ------------------------------------------------------------------
 
-    @action("Create a managed QR code / short link")
+    @action("Create a managed QR code / short link", access="write")
     async def create_qr_code(
         self,
         prefilled_message: str,
@@ -1639,7 +1639,7 @@ class WhatsAppBusiness(BaseConnector):
         )
         return safe_validate(WhatsAppQRCode, raw) or WhatsAppQRCode()
 
-    @action("List managed QR codes")
+    @action("List managed QR codes", access="read")
     async def list_qr_codes(self, code: Optional[str] = None) -> list[WhatsAppQRCode]:
         """List QR codes on the number (max 2,000 exist per number).
 
@@ -1745,7 +1745,7 @@ class WhatsAppBusiness(BaseConnector):
         )
         return self._block_result(raw)
 
-    @action("List blocked users")
+    @action("List blocked users", access="read")
     async def list_blocked_users(
         self, limit: int = 100, after: Optional[str] = None
     ) -> dict[str, Any]:
@@ -1850,7 +1850,7 @@ class WhatsAppBusiness(BaseConnector):
     # WABA + analytics
     # ------------------------------------------------------------------
 
-    @action("Get the WhatsApp Business Account node")
+    @action("Get the WhatsApp Business Account node", access="read")
     async def get_waba(self) -> WhatsAppWABA:
         """Fetch WABA name/currency/status/verification.
 
@@ -1863,7 +1863,7 @@ class WhatsAppBusiness(BaseConnector):
         )
         return safe_validate(WhatsAppWABA, raw) or WhatsAppWABA()
 
-    @action("Get message-volume analytics")
+    @action("Get message-volume analytics", access="read")
     async def get_messaging_analytics(
         self,
         start: int,
@@ -1887,7 +1887,7 @@ class WhatsAppBusiness(BaseConnector):
             field += f".phone_numbers([{numbers}])"
         return await self._request("GET", self._waba_path("").rstrip("/"), params={"fields": field})
 
-    @action("Get per-message pricing/cost analytics")
+    @action("Get per-message pricing/cost analytics", access="read")
     async def get_pricing_analytics(
         self,
         start: int,
@@ -1922,7 +1922,7 @@ class WhatsAppBusiness(BaseConnector):
             field += f".dimensions([{quoted}])"
         return await self._request("GET", self._waba_path("").rstrip("/"), params={"fields": field})
 
-    @action("Get per-template analytics (opt-in required)")
+    @action("Get per-template analytics (opt-in required)", access="read")
     async def get_template_analytics(
         self,
         template_ids: list[str],
@@ -1975,7 +1975,7 @@ class WhatsAppBusiness(BaseConnector):
     # Webhook subscription management (live-verified pattern 2026-07-23)
     # ------------------------------------------------------------------
 
-    @action("Subscribe this app to the WABA's webhooks")
+    @action("Subscribe this app to the WABA's webhooks", access="write")
     async def subscribe_app(
         self,
         override_callback_uri: Optional[str] = None,
@@ -2008,7 +2008,7 @@ class WhatsAppBusiness(BaseConnector):
         raw = await self._request("POST", self._waba_path("subscribed_apps"), json_body=body)
         return safe_validate(WhatsAppSuccessResult, raw) or WhatsAppSuccessResult()
 
-    @action("List apps subscribed to the WABA's webhooks")
+    @action("List apps subscribed to the WABA's webhooks", access="read")
     async def list_subscribed_apps(self) -> dict[str, Any]:
         """List webhook-subscribed apps (raw envelope).
 
@@ -2020,7 +2020,7 @@ class WhatsAppBusiness(BaseConnector):
     # Flows — in-chat forms (CSAT, booking, lead capture, KYC)
     # ------------------------------------------------------------------
 
-    @action("Create a Flow (in-chat form); returns it in DRAFT")
+    @action("Create a Flow (in-chat form); returns it in DRAFT", access="write")
     async def create_flow(
         self,
         name: str,
@@ -2070,7 +2070,7 @@ class WhatsAppBusiness(BaseConnector):
         raw = await self._request("POST", self._waba_path("flows"), json_body=body)
         return safe_validate(WhatsAppFlowMutationResult, raw) or WhatsAppFlowMutationResult()
 
-    @action("List Flows on the WhatsApp Business Account")
+    @action("List Flows on the WhatsApp Business Account", access="read")
     async def list_flows(
         self,
         limit: int = 25,
@@ -2107,7 +2107,7 @@ class WhatsAppBusiness(BaseConnector):
             )
         return result
 
-    @action("Get a Flow's status, categories, and validation errors")
+    @action("Get a Flow's status, categories, and validation errors", access="read")
     async def get_flow(self, flow_id: str, include_preview: bool = False) -> WhatsAppFlow:
         """Fetch one Flow.
 
@@ -2161,7 +2161,7 @@ class WhatsAppBusiness(BaseConnector):
         raw = await self._request("POST", f"/{flow_id}", json_body=body)
         return safe_validate(WhatsAppSuccessResult, raw) or WhatsAppSuccessResult()
 
-    @action("Upload the Flow JSON that defines the form's screens")
+    @action("Upload the Flow JSON that defines the form's screens", access="write")
     async def upload_flow_json(self, flow_id: str, flow_json: str) -> WhatsAppFlowMutationResult:
         """Attach/replace a Flow's JSON definition (max 10 MB).
 
@@ -2186,7 +2186,7 @@ class WhatsAppBusiness(BaseConnector):
         )
         return safe_validate(WhatsAppFlowMutationResult, raw) or WhatsAppFlowMutationResult()
 
-    @action("List a Flow's assets (its Flow JSON download URL)")
+    @action("List a Flow's assets (its Flow JSON download URL)", access="read")
     async def list_flow_assets(self, flow_id: str) -> list[WhatsAppFlowAsset]:
         """List assets attached to a Flow.
 
@@ -2245,7 +2245,7 @@ class WhatsAppBusiness(BaseConnector):
         raw = await self._request("DELETE", f"/{flow_id}")
         return safe_validate(WhatsAppSuccessResult, raw) or WhatsAppSuccessResult()
 
-    @action("Send a Flow (in-chat form) to a user")
+    @action("Send a Flow (in-chat form) to a user", access="write")
     async def send_flow(
         self,
         to: str,
@@ -2339,7 +2339,7 @@ class WhatsAppBusiness(BaseConnector):
     # Marketing Messages API (formerly "MM Lite")
     # ------------------------------------------------------------------
 
-    @action("Check whether the WABA can use the Marketing Messages API")
+    @action("Check whether the WABA can use the Marketing Messages API", access="read")
     async def get_marketing_eligibility(self) -> WhatsAppMarketingEligibility:
         """Read the WABA's Marketing Messages API onboarding status.
 
@@ -2356,7 +2356,7 @@ class WhatsAppBusiness(BaseConnector):
         )
         return safe_validate(WhatsAppMarketingEligibility, raw) or WhatsAppMarketingEligibility()
 
-    @action("Send a marketing template via the Marketing Messages API")
+    @action("Send a marketing template via the Marketing Messages API", access="write")
     async def send_marketing_message(
         self,
         to: str,
@@ -2428,7 +2428,7 @@ class WhatsAppBusiness(BaseConnector):
             )
         return self._creds.app_secret
 
-    @action("Exchange an Embedded Signup code for a customer access token")
+    @action("Exchange an Embedded Signup code for a customer access token", access="write")
     async def exchange_code(
         self,
         code: str,
@@ -2476,7 +2476,7 @@ class WhatsAppBusiness(BaseConnector):
         )
         return safe_validate(WhatsAppTokenExchange, raw) or WhatsAppTokenExchange()
 
-    @action("Inspect a token: validity, scopes, and the WABA ids it can reach")
+    @action("Inspect a token: validity, scopes, and the WABA ids it can reach", access="read")
     async def debug_token(
         self,
         input_token: Optional[str] = None,

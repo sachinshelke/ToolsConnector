@@ -252,7 +252,7 @@ class GoogleDrive(BaseConnector):
     # Actions
     # ------------------------------------------------------------------
 
-    @action("List files in Google Drive", requires_scope="read")
+    @action("List files in Google Drive", requires_scope="read", access="read")
     async def list_files(
         self,
         page_size: int = 20,
@@ -294,7 +294,7 @@ class GoogleDrive(BaseConnector):
             ),
         )
 
-    @action("Get file metadata by ID", requires_scope="read")
+    @action("Get file metadata by ID", requires_scope="read", access="read")
     async def get_file(self, file_id: str) -> DriveFile:
         """Retrieve metadata for a single file.
 
@@ -311,7 +311,7 @@ class GoogleDrive(BaseConnector):
         )
         return _parse_file(data)
 
-    @action("Upload a file to Google Drive", requires_scope="write")
+    @action("Upload a file to Google Drive", requires_scope="write", access="write")
     async def upload_file(
         self,
         name: str,
@@ -450,7 +450,7 @@ class GoogleDrive(BaseConnector):
             web_view_link=data.get("webViewLink"),
         )
 
-    @action("Download a file from Google Drive", requires_scope="read")
+    @action("Download a file from Google Drive", requires_scope="read", access="read")
     async def download_file(self, file_id: str) -> FileDownloadResult:
         """Download a file's content from Google Drive.
 
@@ -487,7 +487,7 @@ class GoogleDrive(BaseConnector):
             content_base64=content_b64,
         )
 
-    @action("Create a folder in Google Drive", requires_scope="write")
+    @action("Create a folder in Google Drive", requires_scope="write", access="write")
     async def create_folder(
         self,
         name: str,
@@ -545,7 +545,7 @@ class GoogleDrive(BaseConnector):
         """
         await self._request("DELETE", f"/files/{_p(file_id)}")
 
-    @action("Search files in Google Drive", requires_scope="read")
+    @action("Search files in Google Drive", requires_scope="read", access="read")
     async def search_files(
         self,
         query: str,
@@ -653,7 +653,7 @@ class GoogleDrive(BaseConnector):
     # Actions — File operations (extended)
     # ------------------------------------------------------------------
 
-    @action("Move a file to a different folder")
+    @action("Move a file to a different folder", access="write")
     async def move_file(
         self,
         file_id: str,
@@ -694,7 +694,7 @@ class GoogleDrive(BaseConnector):
         )
         return _parse_file(data)
 
-    @action("Copy a file")
+    @action("Copy a file", access="write")
     async def copy_file(
         self,
         file_id: str,
@@ -720,7 +720,7 @@ class GoogleDrive(BaseConnector):
         )
         return _parse_file(data)
 
-    @action("List permissions on a file")
+    @action("List permissions on a file", access="read")
     async def list_permissions(
         self,
         file_id: str,
@@ -757,7 +757,7 @@ class GoogleDrive(BaseConnector):
             for p in data.get("permissions", [])
         ]
 
-    @action("Get storage quota information")
+    @action("Get storage quota information", access="read")
     async def get_storage_quota(self) -> StorageQuota:
         """Get the authenticated user's storage quota.
 
@@ -781,7 +781,7 @@ class GoogleDrive(BaseConnector):
     # Actions — File metadata updates
     # ------------------------------------------------------------------
 
-    @action("Update file metadata", requires_scope="write")
+    @action("Update file metadata", requires_scope="write", access="write")
     async def update_file(
         self,
         file_id: str,
@@ -818,7 +818,7 @@ class GoogleDrive(BaseConnector):
         )
         return _parse_file(data)
 
-    @action("Export a Google Workspace file", requires_scope="read")
+    @action("Export a Google Workspace file", requires_scope="read", access="read")
     async def export_file(
         self,
         file_id: str,
@@ -859,7 +859,7 @@ class GoogleDrive(BaseConnector):
     # Actions — Comments
     # ------------------------------------------------------------------
 
-    @action("List comments on a file", requires_scope="read")
+    @action("List comments on a file", requires_scope="read", access="read")
     async def list_comments(
         self,
         file_id: str,
@@ -1001,7 +1001,7 @@ class GoogleDrive(BaseConnector):
     # Actions — Revisions
     # ------------------------------------------------------------------
 
-    @action("List revisions of a file", requires_scope="read")
+    @action("List revisions of a file", requires_scope="read", access="read")
     async def list_revisions(
         self,
         file_id: str,
@@ -1062,7 +1062,7 @@ class GoogleDrive(BaseConnector):
             ),
         )
 
-    @action("Get a specific revision of a file", requires_scope="read")
+    @action("Get a specific revision of a file", requires_scope="read", access="read")
     async def get_revision(
         self,
         file_id: str,
@@ -1106,7 +1106,7 @@ class GoogleDrive(BaseConnector):
     # Actions — Permissions (extended)
     # ------------------------------------------------------------------
 
-    @action("Get a specific permission on a file", requires_scope="read")
+    @action("Get a specific permission on a file", requires_scope="read", access="read")
     async def get_permission(
         self,
         file_id: str,

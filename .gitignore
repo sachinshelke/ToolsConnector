@@ -50,3 +50,8 @@ service-account.json
 
 # Codevira tool cache
 .codevira-cache/
+
+# Generated at deploy (served fresh from the org-pages repo); the committed
+# copy went stale and misled catalog consumers. Read the deployed data.json
+# (toolsconnector.github.io/data.json) instead.
+site/data.json

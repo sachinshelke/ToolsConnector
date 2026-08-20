@@ -444,7 +444,7 @@ class Odoo(BaseConnector):
     # Actions -- the generic ORM primitive
     # ------------------------------------------------------------------
 
-    @action("Get the Odoo server version (connectivity / capability check)")
+    @action("Get the Odoo server version (connectivity / capability check)", access="read")
     async def get_version(self) -> OdooVersion:
         """Return the Odoo server version info. Requires no authentication, so
         it doubles as a connectivity check.
@@ -456,7 +456,7 @@ class Odoo(BaseConnector):
         result = await self._jsonrpc("common", "version", [])
         return OdooVersion(**(result or {}))
 
-    @action("Search and read records of any Odoo model in one call")
+    @action("Search and read records of any Odoo model in one call", access="read")
     async def search_read(
         self,
         model: str,
@@ -511,7 +511,7 @@ class Odoo(BaseConnector):
             ),
         )
 
-    @action("Count records of an Odoo model matching a domain filter")
+    @action("Count records of an Odoo model matching a domain filter", access="read")
     async def search_count(self, model: str, domain: Optional[list[Any]] = None) -> int:
         """Count records matching a domain -- far cheaper than reading them.
 
@@ -531,7 +531,7 @@ class Odoo(BaseConnector):
         count = await self._call(model, "search_count", [domain if domain is not None else []])
         return int(count or 0)
 
-    @action("Read specific records of an Odoo model by their IDs")
+    @action("Read specific records of an Odoo model by their IDs", access="read")
     async def read(
         self, model: str, ids: list[int], fields: Optional[list[str]] = None
     ) -> list[dict[str, Any]]:
@@ -558,7 +558,7 @@ class Odoo(BaseConnector):
         records = await self._call(model, "read", [ids], call_kwargs)
         return records or []
 
-    @action("Create a new record of any Odoo model")
+    @action("Create a new record of any Odoo model", access="write")
     async def create(self, model: str, values: dict[str, Any]) -> int:
         """Create a record and return its new integer ID.
 
@@ -576,7 +576,7 @@ class Odoo(BaseConnector):
         new_id = await self._call(model, "create", [values])
         return int(new_id)
 
-    @action("Update existing records of an Odoo model")
+    @action("Update existing records of an Odoo model", access="write")
     async def write(self, model: str, ids: list[int], values: dict[str, Any]) -> bool:
         """Update one or more records in place.
 
@@ -600,7 +600,7 @@ class Odoo(BaseConnector):
         ok = await self._call(model, "write", [ids, values])
         return bool(ok)
 
-    @action("Delete records of an Odoo model by their IDs")
+    @action("Delete records of an Odoo model by their IDs", access="write")
     async def unlink(self, model: str, ids: list[int]) -> bool:
         """Permanently delete records.
 
@@ -617,7 +617,7 @@ class Odoo(BaseConnector):
         ok = await self._call(model, "unlink", [ids])
         return bool(ok)
 
-    @action("Find records by display name (typeahead-style lookup)")
+    @action("Find records by display name (typeahead-style lookup)", access="read")
     async def name_search(
         self,
         model: str,
@@ -646,7 +646,7 @@ class Odoo(BaseConnector):
         result = await self._call(model, "name_search", [], call_kwargs)
         return result or []
 
-    @action("Discover the fields (schema) of an Odoo model")
+    @action("Discover the fields (schema) of an Odoo model", access="read")
     async def fields_get(
         self, model: str, attributes: Optional[list[str]] = None
     ) -> dict[str, Any]:
@@ -669,7 +669,7 @@ class Odoo(BaseConnector):
         result = await self._call(model, "fields_get", [], call_kwargs)
         return result or {}
 
-    @action("Aggregate Odoo records grouped by one or more fields (GROUP BY)")
+    @action("Aggregate Odoo records grouped by one or more fields (GROUP BY)", access="read")
     async def read_group(
         self,
         model: str,
@@ -745,7 +745,7 @@ class Odoo(BaseConnector):
         )
         return result or []
 
-    @action("Call any method on any Odoo model (advanced escape hatch)")
+    @action("Call any method on any Odoo model (advanced escape hatch)", access="write")
     async def call_method(
         self,
         model: str,

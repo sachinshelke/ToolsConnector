@@ -338,7 +338,7 @@ class HuggingFace(BaseConnector):
     # Actions -- Text generation & chat completion
     # ==================================================================
 
-    @action("Generate text from a prompt with a hosted model")
+    @action("Generate text from a prompt with a hosted model", access="read")
     async def text_generation(
         self,
         model: str,
@@ -397,7 +397,7 @@ class HuggingFace(BaseConnector):
         )
         return p.parse_generated_rows(data, "generated_text")
 
-    @action("Create a chat completion via the OpenAI-compatible router")
+    @action("Create a chat completion via the OpenAI-compatible router", access="read")
     async def chat_completion(
         self,
         model: str,
@@ -468,7 +468,9 @@ class HuggingFace(BaseConnector):
         )
         return p.parse_chat_completion(data)
 
-    @action("List the Inference Providers model catalog with pricing", idempotent=True)
+    @action(
+        "List the Inference Providers model catalog with pricing", idempotent=True, access="read"
+    )
     async def list_inference_catalog(self) -> list[HFCatalogModel]:
         """List every model available through the Inference Providers router.
 
@@ -491,7 +493,7 @@ class HuggingFace(BaseConnector):
     # Actions -- Text-to-text (summarize, translate)
     # ==================================================================
 
-    @action("Summarize text with a hosted model")
+    @action("Summarize text with a hosted model", access="read")
     async def summarize(
         self,
         model: str,
@@ -519,7 +521,7 @@ class HuggingFace(BaseConnector):
         )
         return p.parse_generated_rows(data, "summary_text")
 
-    @action("Translate text with a hosted model")
+    @action("Translate text with a hosted model", access="read")
     async def translate(
         self,
         model: str,
@@ -553,7 +555,7 @@ class HuggingFace(BaseConnector):
     # Actions -- Token-level NLP (fill-mask, classification, QA)
     # ==================================================================
 
-    @action("Fill a masked token in text with a hosted model")
+    @action("Fill a masked token in text with a hosted model", access="read")
     async def fill_mask(
         self,
         model: str,
@@ -579,7 +581,7 @@ class HuggingFace(BaseConnector):
         data = await self._infer(model, inputs, "fill-mask", provider=provider)
         return p.parse_fill_mask(data)
 
-    @action("Classify text with a hosted model")
+    @action("Classify text with a hosted model", access="read")
     async def text_classification(
         self,
         model: str,
@@ -602,7 +604,7 @@ class HuggingFace(BaseConnector):
         data = await self._infer(model, inputs, "text-classification", provider=provider)
         return p.parse_classification(data)
 
-    @action("Tag tokens in text (NER / part-of-speech)")
+    @action("Tag tokens in text (NER / part-of-speech)", access="read")
     async def token_classification(
         self,
         model: str,
@@ -632,7 +634,7 @@ class HuggingFace(BaseConnector):
         )
         return p.parse_token_classification(data)
 
-    @action("Classify text against candidate labels without training")
+    @action("Classify text against candidate labels without training", access="read")
     async def zero_shot_classification(
         self,
         model: str,
@@ -665,7 +667,7 @@ class HuggingFace(BaseConnector):
         )
         return p.parse_zero_shot(data)
 
-    @action("Answer a question from a context passage")
+    @action("Answer a question from a context passage", access="read")
     async def question_answering(
         self,
         model: str,
@@ -693,7 +695,7 @@ class HuggingFace(BaseConnector):
         )
         return p.parse_question_answer(data)
 
-    @action("Answer a question about a table")
+    @action("Answer a question about a table", access="read")
     async def table_question_answering(
         self,
         model: str,
@@ -725,7 +727,7 @@ class HuggingFace(BaseConnector):
     # Actions -- Embeddings & similarity
     # ==================================================================
 
-    @action("Extract embedding vectors from text", idempotent=True)
+    @action("Extract embedding vectors from text", idempotent=True, access="read")
     async def feature_extraction(
         self,
         model: str,
@@ -757,7 +759,7 @@ class HuggingFace(BaseConnector):
             return [[float(x) for x in data]]
         return data
 
-    @action("Score a sentence against candidates for similarity", idempotent=True)
+    @action("Score a sentence against candidates for similarity", idempotent=True, access="read")
     async def sentence_similarity(
         self,
         model: str,
@@ -793,7 +795,7 @@ class HuggingFace(BaseConnector):
     # Actions -- Vision (text-to-image, image-to-text, classification, ...)
     # ==================================================================
 
-    @action("Generate an image from a text prompt")
+    @action("Generate an image from a text prompt", access="read")
     async def text_to_image(
         self,
         model: str,
@@ -842,7 +844,7 @@ class HuggingFace(BaseConnector):
             model, inputs, "text-to-image", parameters or None, provider=provider
         )
 
-    @action("Generate a caption for an image")
+    @action("Generate a caption for an image", access="read")
     async def image_to_text(
         self,
         model: str,
@@ -865,7 +867,7 @@ class HuggingFace(BaseConnector):
         data = await self._infer(model, self._to_base64(image), "image-to-text", provider=provider)
         return p.parse_generated_rows(data, "generated_text")
 
-    @action("Classify an image into labels")
+    @action("Classify an image into labels", access="read")
     async def image_classification(
         self,
         model: str,
@@ -897,7 +899,7 @@ class HuggingFace(BaseConnector):
         )
         return p.parse_classification(data)
 
-    @action("Detect objects and bounding boxes in an image")
+    @action("Detect objects and bounding boxes in an image", access="read")
     async def object_detection(
         self,
         model: str,
@@ -925,7 +927,7 @@ class HuggingFace(BaseConnector):
         )
         return p.parse_object_detection(data)
 
-    @action("Segment an image into labelled masks")
+    @action("Segment an image into labelled masks", access="read")
     async def image_segmentation(
         self,
         model: str,
@@ -973,7 +975,7 @@ class HuggingFace(BaseConnector):
     # Actions -- Audio (ASR, classification, text-to-speech)
     # ==================================================================
 
-    @action("Transcribe speech audio to text")
+    @action("Transcribe speech audio to text", access="read")
     async def automatic_speech_recognition(
         self,
         model: str,
@@ -1004,7 +1006,7 @@ class HuggingFace(BaseConnector):
         )
         return p.parse_transcription(data)
 
-    @action("Classify audio into labels")
+    @action("Classify audio into labels", access="read")
     async def audio_classification(
         self,
         model: str,
@@ -1036,7 +1038,7 @@ class HuggingFace(BaseConnector):
         )
         return p.parse_classification(data)
 
-    @action("Synthesize speech audio from text")
+    @action("Synthesize speech audio from text", access="read")
     async def text_to_speech(
         self,
         model: str,
@@ -1062,7 +1064,7 @@ class HuggingFace(BaseConnector):
     # Actions -- Hub: models
     # ==================================================================
 
-    @action("Search models on the Hugging Face Hub", idempotent=True)
+    @action("Search models on the Hugging Face Hub", idempotent=True, access="read")
     async def list_models(
         self,
         search: Optional[str] = None,
@@ -1098,7 +1100,7 @@ class HuggingFace(BaseConnector):
         rows = data if isinstance(data, list) else []
         return [p.parse_model_info(m) for m in rows]
 
-    @action("Get metadata for a model on the Hub", idempotent=True)
+    @action("Get metadata for a model on the Hub", idempotent=True, access="read")
     async def get_model(self, model_id: str, expand: Optional[list[str]] = None) -> HFModelInfo:
         """Retrieve metadata for a single model on the Hub (HFModelInfo).
 
@@ -1118,7 +1120,7 @@ class HuggingFace(BaseConnector):
         data = await self._request("GET", f"/models/{model_id}", base=_HUB_BASE, params=params)
         return p.parse_model_info(data)
 
-    @action("List the inference providers that serve a Hub model", idempotent=True)
+    @action("List the inference providers that serve a Hub model", idempotent=True, access="read")
     async def get_model_providers(self, model_id: str) -> list[HFInferenceProvider]:
         """List which inference providers serve a model, and their status.
 
@@ -1141,7 +1143,7 @@ class HuggingFace(BaseConnector):
         )
         return p.parse_model_provider_mapping(data)
 
-    @action("List files in a Hub repository's tree", idempotent=True)
+    @action("List files in a Hub repository's tree", idempotent=True, access="read")
     async def list_repo_files(
         self,
         repo_id: str,
@@ -1172,7 +1174,7 @@ class HuggingFace(BaseConnector):
     # Actions -- Hub: datasets
     # ==================================================================
 
-    @action("Search datasets on the Hugging Face Hub", idempotent=True)
+    @action("Search datasets on the Hugging Face Hub", idempotent=True, access="read")
     async def list_datasets(
         self,
         search: Optional[str] = None,
@@ -1197,7 +1199,7 @@ class HuggingFace(BaseConnector):
         rows = data if isinstance(data, list) else []
         return [p.parse_dataset_info(d) for d in rows]
 
-    @action("Get metadata for a dataset on the Hub", idempotent=True)
+    @action("Get metadata for a dataset on the Hub", idempotent=True, access="read")
     async def get_dataset(self, dataset_id: str) -> HFDatasetInfo:
         """Retrieve metadata for a single dataset on the Hub (HFDatasetInfo).
 
@@ -1211,7 +1213,7 @@ class HuggingFace(BaseConnector):
     # Actions -- Hub: Spaces
     # ==================================================================
 
-    @action("Search Spaces on the Hugging Face Hub", idempotent=True)
+    @action("Search Spaces on the Hugging Face Hub", idempotent=True, access="read")
     async def list_spaces(
         self,
         search: Optional[str] = None,
@@ -1236,7 +1238,7 @@ class HuggingFace(BaseConnector):
         rows = data if isinstance(data, list) else []
         return [p.parse_space_info(s) for s in rows]
 
-    @action("Get metadata for a Space on the Hub", idempotent=True)
+    @action("Get metadata for a Space on the Hub", idempotent=True, access="read")
     async def get_space(self, space_id: str) -> HFSpaceInfo:
         """Retrieve metadata for a single Space on the Hub (HFSpaceInfo).
 
@@ -1250,7 +1252,7 @@ class HuggingFace(BaseConnector):
     # Actions -- Hub: identity
     # ==================================================================
 
-    @action("Get the authenticated Hugging Face identity", idempotent=True)
+    @action("Get the authenticated Hugging Face identity", idempotent=True, access="read")
     async def whoami(self) -> HFWhoAmI:
         """Return the identity for the supplied token (HFWhoAmI).
 

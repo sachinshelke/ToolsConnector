@@ -467,7 +467,7 @@ class Notion(BaseConnector):
     # Actions -- Search & Pages
     # ------------------------------------------------------------------
 
-    @action("Search pages and databases in the workspace")
+    @action("Search pages and databases in the workspace", access="read")
     async def search(
         self,
         query: str = "",
@@ -517,7 +517,7 @@ class Notion(BaseConnector):
             total_count=None,
         )
 
-    @action("Get a single page by ID")
+    @action("Get a single page by ID", access="read")
     async def get_page(self, page_id: str) -> NotionPage:
         """Retrieve a Notion page by its ID.
 
@@ -576,7 +576,7 @@ class Notion(BaseConnector):
         data = await self._request("POST", "/pages", json=body)
         return parse_page(data)
 
-    @action("Update page properties")
+    @action("Update page properties", access="write")
     async def update_page(
         self,
         page_id: str,
@@ -602,7 +602,7 @@ class Notion(BaseConnector):
     # Actions -- Databases
     # ------------------------------------------------------------------
 
-    @action("Get a database schema and metadata")
+    @action("Get a database schema and metadata", access="read")
     async def get_database(self, database_id: str) -> NotionDatabase:
         """Retrieve a Notion database by its ID.
 
@@ -622,7 +622,7 @@ class Notion(BaseConnector):
         data = await self._execute_binding("get_database", {"database_id": database_id})
         return parse_database(data)
 
-    @action("Query a database with optional filters and sorts")
+    @action("Query a database with optional filters and sorts", access="read")
     async def query_database(
         self,
         database_id: str,
@@ -699,7 +699,7 @@ class Notion(BaseConnector):
     # Actions -- Blocks
     # ------------------------------------------------------------------
 
-    @action("Get child blocks of a page or block")
+    @action("Get child blocks of a page or block", access="read")
     async def get_block_children(
         self,
         block_id: str,
@@ -772,7 +772,7 @@ class Notion(BaseConnector):
         _validate_id(block_id, "block_id")
         await self._execute_binding("delete_block", {"block_id": block_id})
 
-    @action("Update a block's content")
+    @action("Update a block's content", access="write")
     async def update_block(
         self,
         block_id: str,
@@ -802,7 +802,7 @@ class Notion(BaseConnector):
     # Actions -- Users
     # ------------------------------------------------------------------
 
-    @action("List all users in the workspace")
+    @action("List all users in the workspace", access="read")
     async def list_users(self) -> list[NotionUser]:
         """List all users (members and bots) in the workspace.
 
@@ -817,7 +817,7 @@ class Notion(BaseConnector):
                 users.append(parsed)
         return users
 
-    @action("Get a single user by ID")
+    @action("Get a single user by ID", access="read")
     async def get_user(self, user_id: str) -> NotionUser:
         """Retrieve a single workspace user by their ID.
 
@@ -835,7 +835,7 @@ class Notion(BaseConnector):
         assert parsed is not None, "Notion /users/{id} returned no user object"
         return parsed
 
-    @action("Get the bot user associated with the integration token")
+    @action("Get the bot user associated with the integration token", access="read")
     async def get_me(self) -> NotionUser:
         """Retrieve the bot user that owns the current integration token.
 
@@ -856,7 +856,7 @@ class Notion(BaseConnector):
     # Actions -- Comments
     # ------------------------------------------------------------------
 
-    @action("List comments on a block or page")
+    @action("List comments on a block or page", access="read")
     async def list_comments(
         self,
         block_id: str,
@@ -950,7 +950,7 @@ class Notion(BaseConnector):
         data = await self._request("POST", "/comments", json=body)
         return parse_comment(data)
 
-    @action("Get a single comment by ID")
+    @action("Get a single comment by ID", access="read")
     async def get_comment(self, comment_id: str) -> NotionComment:
         """Retrieve a single Notion comment by its ID.
 
@@ -964,7 +964,7 @@ class Notion(BaseConnector):
         data = await self._execute_binding("get_comment", {"comment_id": comment_id})
         return parse_comment(data)
 
-    @action("Update a comment's text")
+    @action("Update a comment's text", access="write")
     async def update_comment(
         self,
         comment_id: str,
@@ -1002,7 +1002,7 @@ class Notion(BaseConnector):
     # Actions -- Database management (extended)
     # ------------------------------------------------------------------
 
-    @action("Update a database's title, description, or properties")
+    @action("Update a database's title, description, or properties", access="write")
     async def update_database(
         self,
         database_id: str,
@@ -1065,7 +1065,7 @@ class Notion(BaseConnector):
         data = await self._execute_binding("archive_page", {"page_id": page_id})
         return parse_page(data)
 
-    @action("Restore an archived page")
+    @action("Restore an archived page", access="write")
     async def restore_page(self, page_id: str) -> NotionPage:
         """Restore a previously archived Notion page.
 
@@ -1083,7 +1083,7 @@ class Notion(BaseConnector):
     # Actions -- Blocks (extended)
     # ------------------------------------------------------------------
 
-    @action("Get a single block by ID")
+    @action("Get a single block by ID", access="read")
     async def get_block(self, block_id: str) -> NotionBlock:
         """Retrieve a single Notion block by its ID.
 
@@ -1101,7 +1101,7 @@ class Notion(BaseConnector):
     # Actions -- Page properties
     # ------------------------------------------------------------------
 
-    @action("Get a page property value by ID")
+    @action("Get a page property value by ID", access="read")
     async def get_page_property(
         self,
         page_id: str,

@@ -12,6 +12,12 @@ from toolsconnector.spec.connector import ConnectorSpec
 if TYPE_CHECKING:
     from toolsconnector.runtime.base import BaseConnector
 
+# Exposed access value for an action that has not been explicitly classified.
+# Never "read" — a read-only consumer must fail closed on the unknown case.
+# Tier-1 actions are always explicitly classified, so only not-yet-classified
+# non-Tier-1 actions surface this default.
+_UNCLASSIFIED_ACCESS = "write"
+
 
 @dataclass(frozen=True)
 class ToolEntry:
@@ -29,6 +35,9 @@ class ToolEntry:
         input_schema: JSON Schema for the action input.
         output_schema: JSON Schema for the action output.
         dangerous: Whether this action has destructive side effects.
+        access: Read/write classification — ``"read"`` | ``"write"`` |
+            ``"destructive"``. Never ``None`` in the exposed output: an
+            unclassified action surfaces ``"write"`` (fail-safe), never ``"read"``.
         idempotent: Whether this action is safe to retry.
         requires_scope: OAuth scope required, if any.
         tags: Categorization tags.
@@ -43,6 +52,7 @@ class ToolEntry:
     input_schema: dict[str, Any] = field(default_factory=dict)
     output_schema: dict[str, Any] = field(default_factory=dict)
     dangerous: bool = False
+    access: Optional[str] = None
     idempotent: bool = False
     requires_scope: Optional[str] = None
     tags: list[str] = field(default_factory=list)
@@ -58,6 +68,8 @@ class ToolEntry:
             "description": self.description,
             "input_schema": self.input_schema,
             "dangerous": self.dangerous,
+            "access": self.access,
+            "idempotent": self.idempotent,
             "requires_scope": self.requires_scope,
         }
 
@@ -112,12 +124,18 @@ def _build_description(spec: ConnectorSpec, action: ActionSpec) -> str:
 
     Returns:
         ``"{display_name}: {title}"``, with the docstring prose appended on a
-        blank line when the action has any.
+        blank line when the action has any. The WHOLE returned string is bounded
+        by ``_PROSE_CHAR_CAP`` (the prose cap is budgeted against the headline),
+        so a consumer can cap tool descriptions at that same number without
+        clipping the contract.
     """
     headline = f"{spec.display_name}: {action.description}"
     prose = (getattr(action, "long_description", "") or "").strip()
     if prose:
-        return f"{headline}\n\n{_truncate_prose(prose)}"
+        # Budget the prose cap against the headline (+2 for the blank line and
+        # +2 for a possible " …") so the FULL description stays <= _PROSE_CHAR_CAP.
+        budget = max(0, _PROSE_CHAR_CAP - len(headline) - 4)
+        return f"{headline}\n\n{_truncate_prose(prose, budget)}"
     return headline
 
 
@@ -172,6 +190,7 @@ def build_tool_list(
                     input_schema=action_spec.input_schema,
                     output_schema=action_spec.output_schema,
                     dangerous=action_spec.dangerous,
+                    access=action_spec.access or _UNCLASSIFIED_ACCESS,
                     idempotent=action_spec.idempotent,
                     requires_scope=action_spec.requires_scope,
                     tags=action_spec.tags,

@@ -31,7 +31,7 @@ from typing import (
 from docstring_parser import parse as parse_docstring
 
 from toolsconnector.runtime._sync import run_sync
-from toolsconnector.spec.action import ParameterSpec
+from toolsconnector.spec.action import AccessKind, ParameterSpec
 from toolsconnector.spec.pagination import PaginationSpec
 
 # Union origins to unwrap: ``typing.Union`` (``Optional[X]`` / ``Union[...]``)
@@ -83,6 +83,7 @@ class ActionMeta:
     return_type_name: str = "Any"
     requires_scope: Optional[str] = None
     dangerous: bool = False
+    access: Optional[AccessKind] = None
     idempotent: bool = False
     pagination: Optional[PaginationSpec] = None
     tags: list[str] = field(default_factory=list)
@@ -299,6 +300,7 @@ def action(
     *,
     requires_scope: Optional[str] = None,
     dangerous: bool = False,
+    access: Optional[AccessKind] = None,
     idempotent: bool = False,
     pagination: Optional[PaginationSpec] = None,
     tags: Optional[list[str]] = None,
@@ -312,6 +314,11 @@ def action(
         description: Human-readable description of what this action does.
         requires_scope: OAuth scope name required for this action.
         dangerous: Whether this action has destructive side effects.
+        access: Positive read/write classification — ``"read"`` | ``"write"`` |
+            ``"destructive"``. Defaults to ``"destructive"`` when ``dangerous``
+            is set (the two always agree); otherwise declare ``"read"`` or
+            ``"write"`` explicitly. Tier-1 (live) connectors classify every
+            action; a read-only consumer treats ``None`` as "not provably read".
         idempotent: Whether this action is safe to retry.
         pagination: Pagination configuration for list actions.
         tags: Categorization tags.
@@ -350,6 +357,10 @@ def action(
         return_type = hints.get("return", Any)
         return_type_name = getattr(return_type, "__name__", str(return_type))
 
+        # A dangerous action is always destructive; keep the two in agreement
+        # without requiring every dangerous action to restate access.
+        resolved_access: Optional[AccessKind] = access or ("destructive" if dangerous else None)
+
         # Build ActionMeta
         meta = ActionMeta(
             name=func.__name__,
@@ -361,6 +372,7 @@ def action(
             return_type_name=return_type_name,
             requires_scope=requires_scope,
             dangerous=dangerous,
+            access=resolved_access,
             idempotent=idempotent,
             pagination=pagination,
             tags=tags or [],

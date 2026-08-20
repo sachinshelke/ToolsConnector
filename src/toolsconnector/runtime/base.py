@@ -244,6 +244,7 @@ class BaseConnector(ABC):
                 return_type=meta.return_type_name,
                 requires_scope=meta.requires_scope,
                 dangerous=meta.dangerous,
+                access=meta.access,
                 idempotent=meta.idempotent,
                 pagination=meta.pagination,
                 tags=meta.tags,
