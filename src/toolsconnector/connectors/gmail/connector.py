@@ -113,6 +113,10 @@ logger = logging.getLogger("toolsconnector.gmail")
 # HTML directly in `body` without setting `html_body`).
 _HTML_TAG_RE = re.compile(r"<[a-zA-Z][^>]*>")
 
+# Gmail's batch endpoint caps a single request at 100 sub-requests, so id lists
+# longer than this are paged into multiple batches.
+_GMAIL_BATCH_LIMIT = 100
+
 
 class Gmail(BaseConnector):
     """Connect to Gmail to read, send, and manage emails.
@@ -190,18 +194,20 @@ class Gmail(BaseConnector):
         message_ids: list[str],
         message_format: str = "metadata",
     ) -> list[dict[str, Any]]:
-        """Fetch many messages in ONE request via Gmail's batch endpoint.
+        """Fetch many messages via Gmail's batch endpoint.
 
-        Collapses N per-message GETs into a single ``multipart/mixed`` batch
-        POST to ``https://gmail.googleapis.com/batch/gmail/v1`` — turning
-        header hydration from O(N) upstream round trips into O(1). Returns the
-        parsed message JSON dicts for every sub-request that succeeded, in wire
-        order; ids that error inside the batch are omitted (best-effort).
+        Collapses N per-message GETs into one ``multipart/mixed`` batch POST to
+        ``https://gmail.googleapis.com/batch/gmail/v1`` per 100 ids — turning
+        hydration from O(N) upstream round trips into O(ceil(N/100)) (~1 for a
+        normal page). Returns the parsed message JSON dicts for every
+        sub-request that succeeded, in wire order; ids that error inside the
+        batch are omitted (best-effort).
 
         Args:
             message_ids: Gmail message ids to fetch.
             message_format: Gmail ``format`` for each sub-request
-                (``"metadata"`` by default — headers without body decode).
+                (``"metadata"`` by default — headers without body decode;
+                ``"full"`` fetches bodies in the same batched round trip).
 
         Returns:
             Parsed message dicts (same shape as ``GET /messages/{id}``).
@@ -209,32 +215,36 @@ class Gmail(BaseConnector):
         if not message_ids:
             return []
 
-        boundary = "batch_toolsconnector_gmail"
-        segments: list[str] = []
-        for i, mid in enumerate(message_ids):
-            segments.append(
+        results: list[dict[str, Any]] = []
+        for start in range(0, len(message_ids), _GMAIL_BATCH_LIMIT):
+            chunk = message_ids[start : start + _GMAIL_BATCH_LIMIT]
+            boundary = "batch_toolsconnector_gmail"
+            segments = [
                 f"--{boundary}\r\n"
                 "Content-Type: application/http\r\n"
                 f"Content-ID: <item-{i}>\r\n\r\n"
                 f"GET /gmail/v1/users/me/messages/{mid}?format={message_format}\r\n\r\n"
-            )
-        body = "".join(segments) + f"--{boundary}--\r\n"
-        headers = {
-            **self._get_headers(),
-            "Content-Type": f"multipart/mixed; boundary={boundary}",
-        }
-
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(
-                "https://gmail.googleapis.com/batch/gmail/v1",
-                headers=headers,
-                content=body.encode("utf-8"),
-            )
-            raise_typed_for_status(response, connector=self.name)
-            return _parse_batch_response(
-                response.content,
-                response.headers.get("Content-Type", ""),
-            )
+                for i, mid in enumerate(chunk)
+            ]
+            body = "".join(segments) + f"--{boundary}--\r\n"
+            headers = {
+                **self._get_headers(),
+                "Content-Type": f"multipart/mixed; boundary={boundary}",
+            }
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.post(
+                    "https://gmail.googleapis.com/batch/gmail/v1",
+                    headers=headers,
+                    content=body.encode("utf-8"),
+                )
+                raise_typed_for_status(response, connector=self.name)
+                results.extend(
+                    _parse_batch_response(
+                        response.content,
+                        response.headers.get("Content-Type", ""),
+                    )
+                )
+        return results
 
     def _build_rfc2822(
         self,
@@ -415,21 +425,15 @@ class Gmail(BaseConnector):
     ) -> PaginatedList[Email]:
         """List emails from the user's mailbox.
 
-        Fetches message IDs matching the query, then hydrates each ID with a
-        separate request.
+        Fetches message IDs matching the query, then hydrates them in **one
+        batched round trip** (Gmail's batch endpoint, ~1 request per 100 ids)
+        rather than one request per message — so a page of N emails costs ~2
+        upstream calls, not N + 1.
 
-        **Cost — this is an O(N) action.** Gmail's ``messages.list`` returns
-        only ``{id, threadId}``, so each of the ``limit`` messages is fetched
-        individually: one logical read of N messages costs **N + 1 upstream
-        round trips**. At a large ``limit`` this can cross the transport
-        timeout. Cheaper alternatives:
-
-        - :meth:`list_email_headers` — subject/from/date/snippet for the whole
-          page in **one batched** round trip (O(1)); use this for triage.
-        - :meth:`list_threads` — one request, no per-item hydration (O(1)).
-
-        Pass ``format="metadata"`` here to skip body decoding when you only
-        need headers but still want ``Email`` objects.
+        For an even cheaper, body-free listing use :meth:`list_email_headers`
+        (subject/from/date/snippet only); :meth:`list_threads` groups a whole
+        conversation in one request. Pass ``format="metadata"`` here to skip
+        body decoding while still returning ``Email`` objects.
 
         Args:
             query: Gmail search query (same syntax as Gmail search bar).
@@ -455,16 +459,11 @@ class Gmail(BaseConnector):
         messages_meta = data.get("messages", [])
         next_page_token = data.get("nextPageToken")
 
-        # Hydrate each returned ID (Gmail's list endpoint returns ids only).
-        emails: list[Email] = []
-        for msg_meta in messages_meta:
-            msg_id = msg_meta.get("id", "")
-            msg_data = await self._request(
-                "GET",
-                f"/users/me/messages/{msg_id}",
-                params={"format": format},
-            )
-            emails.append(_parse_message(msg_data))
+        # Hydrate all ids in one batched round trip (Gmail's list endpoint
+        # returns ids only). Best-effort: an id that errors mid-batch is omitted.
+        ids = [m.get("id", "") for m in messages_meta if m.get("id")]
+        raw_messages = await self._batch_get_messages(ids, message_format=format)
+        emails = [_parse_message(m) for m in raw_messages]
 
         return PaginatedList(
             items=emails,

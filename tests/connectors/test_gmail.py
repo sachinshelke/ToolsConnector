@@ -844,26 +844,46 @@ async def test_list_email_headers_is_batched_no_full_body_fetch(gmail: Gmail) ->
 
 
 @pytest.mark.asyncio
-async def test_list_emails_format_metadata_forwarded_to_gmail(gmail: Gmail) -> None:
-    """The additive format param is forwarded to the per-message fetch, so a
-    caller can drop body decode without changing default behavior.
+async def test_list_emails_is_batched_not_n_plus_1(gmail: Gmail) -> None:
+    """list_emails hydrates the whole page in ONE batch request (not one GET per
+    message) and forwards `format` into the batch sub-requests — the N+1 is gone.
     """
-    with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
-        respx_mock.get("/users/me/messages", params={"q": "x"}).mock(
-            return_value=httpx.Response(200, json={"messages": [{"id": "m1"}]})
+    list_json = {"messages": [{"id": "m1"}, {"id": "m2"}], "resultSizeEstimate": 2}
+    batch_msgs = [
+        {
+            "id": "m1",
+            "threadId": "t1",
+            "snippet": "one",
+            "payload": {"headers": [{"name": "Subject", "value": "S1"}]},
+        },
+        {
+            "id": "m2",
+            "threadId": "t1",
+            "snippet": "two",
+            "payload": {"headers": [{"name": "Subject", "value": "S2"}]},
+        },
+    ]
+    with respx.mock(assert_all_called=False) as respx_mock:
+        list_route = respx_mock.get("https://gmail.googleapis.com/gmail/v1/users/me/messages").mock(
+            return_value=httpx.Response(200, json=list_json)
         )
-        msg_route = respx_mock.get("/users/me/messages/m1").mock(
+        batch_route = respx_mock.post("https://gmail.googleapis.com/batch/gmail/v1").mock(
             return_value=httpx.Response(
-                200,
-                json={
-                    "id": "m1",
-                    "threadId": "t1",
-                    "payload": {"headers": [{"name": "Subject", "value": "S"}]},
-                },
+                200, content=_batch_body(*batch_msgs), headers={"Content-Type": BATCH_CT}
             )
         )
+        # Any per-message full GET would hit this guard and fail the test.
+        per_message = respx_mock.get(
+            url__regex=r"https://gmail\.googleapis\.com/gmail/v1/users/me/messages/m\d"
+        ).mock(return_value=httpx.Response(200, json={"id": "SHOULD_NOT_BE_CALLED"}))
 
-        await gmail.alist_emails(query="x", limit=1, format="metadata")
+        result = await gmail.alist_emails(query="x", limit=2, format="metadata")
 
-        assert msg_route.call_count == 1
-        assert msg_route.calls.last.request.url.params["format"] == "metadata"
+        assert list_route.call_count == 1
+        assert batch_route.call_count == 1
+        assert per_message.call_count == 0, "list_emails made per-message GETs (N+1)!"
+        sent = batch_route.calls.last.request.content.decode("utf-8")
+        assert "/messages/m1?format=metadata" in sent
+        assert "/messages/m2?format=metadata" in sent
+        assert [e.id for e in result.items] == ["m1", "m2"]
+        assert result.items[0].subject == "S1"
