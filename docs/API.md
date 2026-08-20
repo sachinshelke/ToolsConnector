@@ -132,6 +132,7 @@ from toolsconnector.runtime import action
     *,
     requires_scope: str | None,     # OAuth scope needed
     dangerous: bool = False,        # Destructive side effects
+    access: str | None = None,      # "read"|"write"|"destructive" (auto-"destructive" if dangerous)
     idempotent: bool = False,       # Safe to retry
     pagination: PaginationSpec | None,
     tags: list[str] | None,
@@ -304,6 +305,8 @@ from toolsconnector.spec.action import ActionSpec
 | `output_schema` | `dict` | JSON Schema for output |
 | `return_type` | `str` | Python return type as string |
 | `dangerous` | `bool` | Has destructive side effects |
+| `access` | `str \| null` | Read/write classification: `read` \| `write` \| `destructive`, or `null` if unclassified (read-only consumers fail closed on `null`) |
+| `idempotent` | `bool` | Safe to retry |
 | `idempotent` | `bool` | Safe to retry |
 | `deprecated` | `bool` | Whether deprecated |
 

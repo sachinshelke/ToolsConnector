@@ -202,6 +202,7 @@ Key parameters:
 |-----------|------|---------|
 | `description` | `str` | Human-readable action description (required, positional) |
 | `dangerous` | `bool` | Mark destructive actions (send, delete, create) |
+| `access` | `str` | Read/write classification: `"read"` \| `"write"` \| `"destructive"` (auto-`"destructive"` when `dangerous=True`). Tier-1 connectors must classify every action — a conformance ratchet enforces it. |
 | `idempotent` | `bool` | Mark safe-to-retry actions (list, get) |
 | `requires_scope` | `str` | OAuth scope needed for this action |
 | `tags` | `list[str]` | Categorization tags |
