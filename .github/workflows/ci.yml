@@ -111,14 +111,12 @@ jobs:
       needs.detect-changes.outputs.code == 'true'
     strategy:
       matrix:
-        # Full 4-version matrix on push-to-main (pre-release coverage) and
-        # workflow_dispatch; on PRs drop only 3.10 — the single *interior*
-        # version (bracketed by 3.9 and 3.11, which both still run), so a
-        # 3.10-only break is the least probable single-version failure. The PR
-        # set keeps both boundaries (3.9 oldest, 3.12 newest) + the required
-        # check (3.11). Anything version-specific still surfaces on the
-        # merge-to-main run before any release.
-        python-version: ${{ (github.event_name == 'pull_request') && fromJSON('["3.9", "3.11", "3.12"]') || fromJSON('["3.9", "3.10", "3.11", "3.12"]') }}
+        # PRs run ONLY 3.11 (the required status check) for fast feedback; the
+        # full 3.9–3.12 matrix runs on push-to-main (the pre-release gate) and
+        # workflow_dispatch, so any version-specific break still surfaces on the
+        # merge-to-main run before a release is ever cut. 3.9/3.10/3.12 are not
+        # required checks, so dropping them on PRs never blocks a PR.
+        python-version: ${{ (github.event_name == 'pull_request') && fromJSON('["3.11"]') || fromJSON('["3.9", "3.10", "3.11", "3.12"]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -127,16 +125,17 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
       - name: Run tests (with coverage on 3.11)
+        # ``-n auto`` (pytest-xdist) runs the suite across all runner cores.
         # Coverage is collected only on 3.11 to keep the matrix fast
-        # (coverage ~doubles test runtime). The XML report is uploaded
-        # for optional downstream analysis.
+        # (coverage ~doubles test runtime); pytest-cov combines the per-worker
+        # data automatically. The XML report is uploaded for downstream analysis.
         run: |
           if [ "${{ matrix.python-version }}" = "3.11" ]; then
-            pytest tests/ -v --tb=short \
+            pytest tests/ -n auto --tb=short \
               --cov=toolsconnector --cov-report=term-missing \
               --cov-report=xml --cov-report=html
           else
-            pytest tests/ -v --tb=short
+            pytest tests/ -n auto --tb=short
           fi
       - name: Upload coverage report
         if: matrix.python-version == '3.11'
