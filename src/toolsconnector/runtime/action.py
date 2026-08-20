@@ -31,7 +31,7 @@ from typing import (
 from docstring_parser import parse as parse_docstring
 
 from toolsconnector.runtime._sync import run_sync
-from toolsconnector.spec.action import ParameterSpec
+from toolsconnector.spec.action import AccessKind, ParameterSpec
 from toolsconnector.spec.pagination import PaginationSpec
 
 # Union origins to unwrap: ``typing.Union`` (``Optional[X]`` / ``Union[...]``)
@@ -83,7 +83,7 @@ class ActionMeta:
     return_type_name: str = "Any"
     requires_scope: Optional[str] = None
     dangerous: bool = False
-    access: Optional[str] = None
+    access: Optional[AccessKind] = None
     idempotent: bool = False
     pagination: Optional[PaginationSpec] = None
     tags: list[str] = field(default_factory=list)
@@ -300,7 +300,7 @@ def action(
     *,
     requires_scope: Optional[str] = None,
     dangerous: bool = False,
-    access: Optional[str] = None,
+    access: Optional[AccessKind] = None,
     idempotent: bool = False,
     pagination: Optional[PaginationSpec] = None,
     tags: Optional[list[str]] = None,
@@ -359,7 +359,7 @@ def action(
 
         # A dangerous action is always destructive; keep the two in agreement
         # without requiring every dangerous action to restate access.
-        resolved_access = access or ("destructive" if dangerous else None)
+        resolved_access: Optional[AccessKind] = access or ("destructive" if dangerous else None)
 
         # Build ActionMeta
         meta = ActionMeta(
