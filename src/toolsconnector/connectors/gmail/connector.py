@@ -1016,6 +1016,14 @@ class Gmail(BaseConnector):
     ) -> Label:
         """Create a new user label.
 
+        Issues ``POST /users/me/labels`` with the label always made visible in
+        both the label list and the message list (``labelListVisibility=labelShow``,
+        ``messageListVisibility=show``). Nest a label under a parent by embedding
+        ``/`` in ``name`` (e.g. ``"Work/Projects"``). If ``label_color`` is set,
+        both colors must be drawn from Gmail's fixed color palette — arbitrary hex
+        values are rejected with a 400. Returns the label with its server-assigned
+        ``Label_<n>`` id.
+
         Args:
             name: Display name for the label.
             label_color: Optional color specification with text_color and
@@ -1069,6 +1077,16 @@ class Gmail(BaseConnector):
         attachment_id: str,
     ) -> Attachment:
         """Download an attachment from an email.
+
+        Two round trips: fetches the full message to resolve the attachment's
+        ``filename``/``mime_type``/``size`` from its part, then ``GET
+        /users/me/messages/{email_id}/attachments/{attachment_id}`` for the
+        bytes. The returned ``data`` is **base64url**-encoded (web-safe; decode
+        with ``base64.urlsafe_b64decode``). ``attachment_id`` comes from a
+        message part's ``body.attachmentId`` (via :meth:`get_email` with
+        ``format="full"``). Only top-level parts are scanned for the
+        filename/mime-type, so a deeply nested attachment may return those
+        fields empty even though its data still downloads.
 
         Args:
             email_id: The ID of the email containing the attachment.
@@ -1186,6 +1204,13 @@ class Gmail(BaseConnector):
         format: str = "full",
     ) -> Draft:
         """Retrieve a single draft by its ID.
+
+        Issues ``GET /users/me/drafts/{draft_id}`` with the given ``format``.
+        ``draft_id`` is the draft resource id (from :meth:`list_drafts`), which
+        is distinct from the id of the message the draft contains. ``format``
+        controls fidelity: ``"full"`` (default) includes the message body,
+        ``"metadata"`` returns headers only, and ``"minimal"`` returns just
+        ids/labels.
 
         Args:
             draft_id: The ID of the draft to retrieve.
@@ -1383,6 +1408,13 @@ class Gmail(BaseConnector):
     @action("Get a single label by ID", requires_scope="read")
     async def get_label(self, label_id: str) -> Label:
         """Retrieve a single label by its ID.
+
+        Issues ``GET /users/me/labels/{label_id}``. ``label_id`` is either a
+        system-label constant (``INBOX``, ``SENT``, ``SPAM``, ``UNREAD``,
+        ``STARRED``, …) or a user label's ``Label_<n>`` id from
+        :meth:`list_labels`. Unlike :meth:`list_labels`, this single-label fetch
+        also returns the per-label counters (``messagesTotal``,
+        ``messagesUnread``, ``threadsTotal``, ``threadsUnread``).
 
         Args:
             label_id: The ID of the label to retrieve.
@@ -1702,6 +1734,13 @@ class Gmail(BaseConnector):
     async def get_filter(self, filter_id: str) -> Filter:
         """Retrieve a single filter by its ID.
 
+        Issues ``GET /users/me/settings/filters/{filter_id}`` (requires the
+        ``gmail.settings.basic`` scope). ``filter_id`` is the server-assigned id
+        from :meth:`list_filters` or :meth:`create_filter`; an unknown id
+        returns a 404. The returned :class:`Filter` carries the rule's
+        ``criteria`` (match conditions) and ``action`` (labels added/removed or
+        forwarding applied to matching mail).
+
         Args:
             filter_id: The filter's server-assigned ID.
 
@@ -1932,6 +1971,11 @@ class Gmail(BaseConnector):
     async def delete_delegate(self, delegate_email: str) -> None:
         """Revoke a delegate's access.
 
+        Issues ``DELETE /users/me/settings/delegates/{delegate_email}`` and
+        returns nothing on success (HTTP 204); the delegate loses access
+        immediately. Workspace-only — consumer Gmail has no delegation. The
+        delegate is keyed by their full email address (the resource path key).
+
         Args:
             delegate_email: The delegate to remove.
         """
@@ -2088,6 +2132,15 @@ class Gmail(BaseConnector):
     ) -> PopSettings:
         """Configure POP3 access.
 
+        Issues ``PUT /users/me/settings/pop`` with only the fields you set.
+        ``access_window="disabled"`` turns POP off entirely; ``"allMail"``
+        exposes the whole mailbox to POP clients while ``"fromNowOn"`` exposes
+        only mail arriving after this call. ``disposition`` governs what happens
+        to a message in Gmail once a POP client fetches it, and is only
+        meaningful when access is enabled. Because this is a full-replace PUT of
+        the singleton POP resource, pass both fields together when enabling —
+        sending one alone may reset the other.
+
         Args:
             access_window: ``"disabled"``, ``"allMail"``, or ``"fromNowOn"``.
             disposition: What happens to fetched messages in the mailbox
@@ -2110,6 +2163,12 @@ class Gmail(BaseConnector):
     @action("Update language settings", requires_scope="settings")
     async def update_language(self, display_language: str) -> LanguageSettings:
         """Set the Gmail UI language.
+
+        Issues ``PUT /users/me/settings/language`` with
+        ``{"displayLanguage": ...}`` and returns the language actually applied —
+        which can differ from what you sent, since Gmail silently ignores an
+        unrecognized code rather than erroring. Affects only the web-UI display
+        language for this account; it does not translate any mail.
 
         Args:
             display_language: BCP-47 language code (e.g. ``"en-US"``,

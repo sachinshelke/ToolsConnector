@@ -237,6 +237,7 @@ class BaseConnector(ABC):
             action_specs[name] = ActionSpec(
                 name=meta.name,
                 description=meta.description,
+                long_description=meta.long_description,
                 parameters=meta.parameters,
                 input_schema=meta.input_schema,
                 output_schema=meta.output_schema,

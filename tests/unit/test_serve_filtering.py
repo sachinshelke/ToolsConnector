@@ -85,3 +85,87 @@ class TestToolEntry:
         assert "input_schema" in d
         assert "dangerous" in d
         assert "requires_scope" in d
+
+
+class TestDescriptionCarriesDocstringProse:
+    """The published tool description must include the docstring usage contract,
+    not just the @action title — a model can't read the source, so syntax,
+    examples, value formats, and "use X instead" pointers are invisible without
+    it (and produce wrong / destructive calls).
+    """
+
+    @staticmethod
+    def _desc(conn_cls: type, action_suffix: str) -> str:
+        by = {e.tool_name: e for e in build_tool_list([conn_cls])}
+        for name, entry in by.items():
+            if name.endswith(action_suffix):
+                return entry.description
+        raise AssertionError(f"no tool ending {action_suffix!r}")
+
+    def test_gdrive_search_files_publishes_query_syntax(self) -> None:
+        from toolsconnector.connectors.gdrive import GoogleDrive
+
+        d = self._desc(GoogleDrive, "search_files")
+        # Headline (title) is still there — backward compatible.
+        assert d.startswith("Google Drive: ")
+        # The previously-dropped usage contract is now published, incl. a
+        # concrete, copyable example — so a model forms a valid Drive query
+        # instead of sending a bare "quarterly report" and getting HTTP 400.
+        assert "Drive query language" in d
+        assert "name contains '" in d
+
+    def test_spot_checks_across_connectors(self) -> None:
+        from toolsconnector.connectors.gcalendar import GoogleCalendar
+        from toolsconnector.connectors.gdocs import GoogleDocs
+        from toolsconnector.connectors.github import GitHub
+        from toolsconnector.connectors.gmail import Gmail
+
+        assert "usage shapes" in self._desc(Gmail, "send_email")
+        assert "PUT semantics" in self._desc(GoogleCalendar, "update_calendar")
+        assert "base64" in self._desc(GitHub, "get_content")
+        assert "get_document_text" in self._desc(GoogleDocs, "get_document")
+
+    def test_long_docstring_is_capped_but_keeps_the_key_fact(self) -> None:
+        from toolsconnector.connectors.gmail import Gmail
+
+        # gmail.send_email has ~1150 chars of prose (four code-block examples);
+        # it must be bounded, but the usage-shape fact survives the cap.
+        d = self._desc(Gmail, "send_email")
+        assert d.endswith("…"), "long prose should be truncated with an ellipsis"
+        assert len(d) < 1000
+        assert "usage shapes" in d
+
+
+class TestBuildDescriptionUnit:
+    """Direct unit tests of the description builder + prose truncation."""
+
+    @staticmethod
+    def _spec_action(title: str, prose: str):
+        from toolsconnector.spec import ActionSpec, ConnectorCategory, ConnectorSpec
+
+        spec = ConnectorSpec(
+            name="x", display_name="X", category=ConnectorCategory.CUSTOM, description="d"
+        )
+        action = ActionSpec(name="do", description=title, long_description=prose)
+        return spec, action
+
+    def test_no_prose_returns_clean_headline(self) -> None:
+        from toolsconnector.serve._filtering import _build_description
+
+        spec, action = self._spec_action("Do a thing", "")
+        # No docstring prose → exactly the old behavior, no trailing separator.
+        assert _build_description(spec, action) == "X: Do a thing"
+
+    def test_prose_appended_on_blank_line(self) -> None:
+        from toolsconnector.serve._filtering import _build_description
+
+        spec, action = self._spec_action("Do a thing", "Extra contract detail.")
+        assert _build_description(spec, action) == "X: Do a thing\n\nExtra contract detail."
+
+    def test_truncate_prose(self) -> None:
+        from toolsconnector.serve._filtering import _truncate_prose
+
+        assert _truncate_prose("short", 900) == "short"  # under cap: untouched
+        capped = _truncate_prose("Sentence one. " * 100, 100)
+        assert capped.endswith("…")
+        assert len(capped) <= 104  # cap + boundary slack + ellipsis

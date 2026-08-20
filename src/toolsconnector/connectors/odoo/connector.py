@@ -515,6 +515,12 @@ class Odoo(BaseConnector):
     async def search_count(self, model: str, domain: Optional[list[Any]] = None) -> int:
         """Count records matching a domain -- far cheaper than reading them.
 
+        Uses the same domain filter language as :meth:`search_read` -- a list of
+        ``[field, operator, value]`` triplets combined with the prefix operators
+        ``'&'``/``'|'``/``'!'`` (e.g. ``[["customer_rank", ">", 0]]``). Only the
+        domain is sent (no limit/offset), so it returns the total count of every
+        matching record the authenticated user may see, not a single page.
+
         Args:
             model: Technical model name.
             domain: Odoo search domain; omit to count all records.
@@ -530,6 +536,13 @@ class Odoo(BaseConnector):
         self, model: str, ids: list[int], fields: Optional[list[str]] = None
     ) -> list[dict[str, Any]]:
         """Read field values for records whose IDs you already have.
+
+        Fetches records by primary-key ``id`` -- use it when you already hold the
+        IDs (from :meth:`search_read`, :meth:`name_search`, or :meth:`create`);
+        it applies no domain filter. Each result dict always includes ``id``, and
+        many2one relations come back as ``[id, display_name]`` pairs. The returned
+        order is not guaranteed to match ``ids``, and IDs that do not exist raise
+        a not-found error rather than being silently dropped.
 
         Args:
             model: Technical model name.
@@ -566,6 +579,14 @@ class Odoo(BaseConnector):
     @action("Update existing records of an Odoo model")
     async def write(self, model: str, ids: list[int], values: dict[str, Any]) -> bool:
         """Update one or more records in place.
+
+        Applies a partial update: only the fields present in ``values`` are
+        changed, and the same ``values`` are written to every id in ``ids``. To
+        modify one2many/many2many fields use Odoo's command tuples inside
+        ``values`` -- e.g. ``[(6, 0, [tag_ids])]`` to replace links, ``(4, id)``
+        to add one, or ``(0, 0, {...})`` to create a related record. Odoo returns
+        ``True`` on success and raises a typed error on failure, so a ``False``
+        return is not the normal failure signal.
 
         Args:
             model: Technical model name.

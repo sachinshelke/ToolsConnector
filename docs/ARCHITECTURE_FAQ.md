@@ -494,3 +494,19 @@ This is the same boundary as the LinkedIn people-search decline (FAQ #19): a use
 So the answer to "can a normal user connect their WhatsApp?" is **yes — by converting the number in about three minutes, not by impersonating a phone**.
 
 **References:** decision D00008W (locked), `connectors/whatsapp/README.md`, `.agent/artifacts/whatsapp-connector-plan.md` §1.
+
+## 23. Why publish the docstring prose in the tool description (and how is it bounded)?
+
+**Decision: the LLM-facing tool description is the `@action` title *plus* the docstring prose above `Args:` — because a model can't read our source, so any usage contract that lives only in the docstring is invisible and produces wrong or destructive calls.**
+
+Previously `serve/_filtering.py::_build_description` published only `"{connector}: {title}"`. Measured on the 0.3.23 catalog, 93% of actions (1,425/1,530) had docstring prose — query syntax, value formats, "returns base64", PUT-vs-PATCH semantics, "use `X` instead" — that was written by the authors and then dropped before it reached the model. The failure mode was concrete: `gdrive.search_files` published "Search files in Google Drive", so a model sent `"quarterly report"` and Drive returned HTTP 400 — the schema didn't contain the answer, and the model couldn't diagnose it. The information already existed; we just weren't publishing it.
+
+Three guards keep it from becoming noise, honouring the same token-cost discipline that keeps `requires_scope`/`dangerous` *out* of the string (they're structured fields):
+
+- **Capped** (~900 chars, clean-boundary truncation) so one docstring with several code-block examples can't dominate a tool list re-sent every turn — catalog p99 is ~480 chars, so only the rare outlier is trimmed.
+- **Title-deduped** — a summary line that merely restates the `@action` title is dropped, so the same sentence is never emitted twice.
+- **Excluded from `site/data.json`** — the website renders only title/params/return-type, so the prose ships to MCP/function-calling callers but not as dead weight in the committed site catalog.
+
+The `Args:` block is unchanged — it still flows to the parameter schema. And Tier-1 (live-verified) connectors are held to a real usage-contract docstring by a conformance ratchet (`tests/conformance/test_docstring_quality.py`) that only tightens toward zero thin docstrings.
+
+**References:** `serve/_filtering.py`, `runtime/action.py` (`_extract_docstring_prose`), `spec/action.py` (`ActionSpec.long_description`); guide `docs/guides/adding-connector.md` ("Your docstring is the tool contract").

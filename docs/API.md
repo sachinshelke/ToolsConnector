@@ -141,7 +141,10 @@ from toolsconnector.runtime import action
 
 The decorated method MUST be `async def`. The decorator automatically:
 - Parses type hints to build JSON Schema for inputs.
-- Parses Google-style docstring to extract parameter descriptions.
+- Parses the Google-style docstring: the `Args:` block becomes the parameter
+  descriptions, and the prose above it (summary + body) becomes the action's
+  `long_description`, published to LLM callers after the `description` title
+  (length-capped; a summary that just repeats the title is dropped).
 - Creates a sync wrapper (original becomes `alist_*`, sync becomes `list_*`).
 - Attaches `ActionMeta` as `__action_meta__`.
 

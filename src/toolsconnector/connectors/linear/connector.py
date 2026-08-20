@@ -494,6 +494,12 @@ class Linear(BaseConnector):
     ) -> LinearIssue:
         """Create a new Linear issue.
 
+        Runs the ``issueCreate`` mutation. ``team_id`` is required and must
+        be the team's UUID (from ``list_teams``), not the short key like
+        ``ENG``. ``description`` is Markdown and ``priority`` maps 0=none,
+        1=urgent, 2=high, 3=medium, 4=low. Raises ``ValueError`` if the
+        mutation reports failure.
+
         Args:
             team_id: UUID of the team to create the issue in.
             title: Issue title.
@@ -576,6 +582,13 @@ class Linear(BaseConnector):
     async def list_teams(self) -> list[LinearTeam]:
         """List all teams in the Linear workspace.
 
+        Runs the ``teams`` query and returns every team as a plain list. It
+        sends no pagination arguments, so it returns only Linear's default
+        page (up to 50 teams). Each team's ``key`` is the short prefix shown
+        in issue identifiers (e.g. ``ENG`` in ``ENG-123``), while ``id`` is
+        the UUID that ``create_issue`` and ``list_issues`` expect as
+        ``team_id``.
+
         Returns:
             List of LinearTeam objects.
         """
@@ -611,6 +624,13 @@ class Linear(BaseConnector):
     ) -> PaginatedList[LinearProject]:
         """List projects in the Linear workspace.
 
+        Runs the ``projects`` query across the whole workspace (no team
+        filter), with cursor pagination via ``pageInfo.endCursor`` (default
+        page size 50, max 250). Each ``LinearProject.state`` is derived from
+        the project's status category (e.g. ``planned``, ``started``,
+        ``paused``, ``completed``, ``canceled``) and ``progress`` is a
+        fraction from 0.0 to 1.0.
+
         Args:
             limit: Maximum results per page (max 250).
             cursor: Pagination cursor from a previous response.
@@ -644,6 +664,11 @@ class Linear(BaseConnector):
     @action("Add a comment to an issue", dangerous=True)
     async def add_comment(self, issue_id: str, body: str) -> LinearComment:
         """Add a comment to a Linear issue.
+
+        Runs the ``commentCreate`` mutation, posting a top-level comment on
+        the issue. ``issue_id`` must be the issue's UUID (its ``id`` field),
+        not the human identifier like ``ENG-123``; ``body`` is Markdown.
+        Raises ``ValueError`` if the mutation reports failure.
 
         Args:
             issue_id: UUID of the issue to comment on.
@@ -823,6 +848,13 @@ class Linear(BaseConnector):
     async def get_workflow_states(self, team_id: str) -> list[LinearState]:
         """List all workflow states for a team.
 
+        Runs the ``workflowStates`` query filtered to the given team,
+        fetching up to 100 states in a single unpaginated call. ``team_id``
+        is the team's UUID. A returned state's ``id`` is what ``update_issue``
+        expects as ``state_id``, and ``type`` is the state category (e.g.
+        ``backlog``, ``unstarted``, ``started``, ``completed``,
+        ``canceled``).
+
         Args:
             team_id: UUID of the team.
 
@@ -864,6 +896,12 @@ class Linear(BaseConnector):
         cursor: Optional[str] = None,
     ) -> PaginatedList[LinearCycle]:
         """List cycles (sprints) in the Linear workspace.
+
+        Runs the ``cycles`` query ordered by ``updatedAt``, with cursor
+        pagination via ``pageInfo.endCursor`` (default page size 50, max
+        250). Pass ``team_id`` (a team UUID) to scope to one team. Cycles
+        are Linear's time-boxed sprints; each carries a ``number``,
+        ``starts_at``/``ends_at`` timestamps, and ``progress`` (0.0 to 1.0).
 
         Args:
             team_id: Optional team UUID to filter cycles by.
@@ -1022,6 +1060,12 @@ class Linear(BaseConnector):
         cursor: Optional[str] = None,
     ) -> PaginatedList[LinearUser]:
         """List all users in the Linear workspace.
+
+        Runs the ``users`` query with cursor pagination via
+        ``pageInfo.endCursor`` (default page size 50, max 250). Each user
+        carries an ``active`` flag distinguishing active from deactivated
+        members, and the user ``id`` is the UUID that ``create_issue``
+        expects as ``assignee_id``.
 
         Args:
             limit: Maximum results per page (max 250).

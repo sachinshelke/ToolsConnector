@@ -190,9 +190,11 @@ class YourService(BaseConnector):
 
 The decorator is the heart of every connector. It does three things automatically:
 
-1. Parses type hints and the Google-style docstring to generate JSON Schema.
+1. Parses type hints and the Google-style docstring to generate JSON Schema (the `Args:` block becomes the parameter descriptions).
 2. Creates a sync wrapper so both `connector.list_items()` and `await connector.alist_items()` work.
 3. Registers the method for discovery by `ToolKit`.
+
+**Your docstring is the tool contract.** The prose *above* `Args:` — the summary line and any body — is published to LLM callers as the tool description, appended after the `@action` title. A model can't read your source, so this is the *only* place to state query syntax, value formats, examples, and gotchas (`end` is exclusive; IDs are base64; "use `get_text` instead"). Write it as the caller's contract, not a one-line restatement of the title — a title-only docstring publishes nothing a model can act on. (The prose is length-capped for the tool list, and a summary that merely repeats the title is dropped, so there's no penalty for a proper docstring.) Tier-1 (live-verified) connectors are held to this by a conformance ratchet — see `tests/conformance/test_docstring_quality.py`.
 
 Key parameters:
 
