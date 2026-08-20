@@ -5,6 +5,13 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.24](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.23...v0.3.24) (2026-08-20)
+
+
+### 🐛 Bug Fixes
+
+* **serve:** publish docstring usage contract in tool descriptions ([#86](https://github.com/sachinshelke/ToolsConnector/issues/86)) ([8bb6480](https://github.com/sachinshelke/ToolsConnector/commit/8bb6480f03599b581ade17d9cb77b732d82f59fd))
+
 ## [0.3.23](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.22...v0.3.23) (2026-08-01)
 
 
