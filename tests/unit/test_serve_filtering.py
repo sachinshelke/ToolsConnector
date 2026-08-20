@@ -194,3 +194,16 @@ class TestAccessAndIdempotentSurfaced:
         by = self._by_action(Gmail)
         assert by["list_labels"].access == "read"  # GET, no side effect
         assert by["create_label"].access == "write"  # POST create
+
+    def test_unclassified_exposes_write_never_null_or_read(self) -> None:
+        # A non-Tier-1 connector is not classified, so its actions must surface
+        # the fail-safe "write" default — never null, never "read".
+        from toolsconnector.connectors.airtable import Airtable
+
+        entries = build_tool_list([Airtable])
+        values = {e.access for e in entries}
+        assert None not in values
+        assert "read" not in values  # unclassified must not claim read
+        assert values <= {"write", "destructive"}
+        # to_dict never emits null either
+        assert all(d["access"] is not None for d in (e.to_dict() for e in entries))
