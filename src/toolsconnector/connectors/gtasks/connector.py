@@ -215,6 +215,11 @@ class GoogleTasks(BaseConnector):
     async def create_task_list(self, title: str) -> TaskList:
         """Create a new task list.
 
+        Issues ``POST /users/@me/lists`` (``tasklists.insert``) with a body
+        of just ``{"title": title}``; ``title`` is the only field sent and
+        is required. The list is created empty (no tasks), and its
+        server-assigned ``id`` is returned on the TaskList.
+
         Args:
             title: Title for the new task list.
 
@@ -259,6 +264,14 @@ class GoogleTasks(BaseConnector):
         page_token: Optional[str] = None,
     ) -> PaginatedList[GoogleTask]:
         """List tasks in a specific task list.
+
+        Calls ``GET /lists/{task_list_id}/tasks`` (``tasks.list``),
+        returning only the tasks in that one list ordered by their
+        ``position`` string (not by due date). ``completed`` maps to the
+        API's ``showCompleted`` flag; because completed tasks are hidden by
+        default, also pass ``show_hidden=True`` to actually retrieve them.
+        ``due_min``/``due_max`` are RFC 3339 timestamps; paginate by feeding
+        the returned cursor back in as ``page_token``.
 
         Args:
             task_list_id: The ID of the task list.
@@ -473,6 +486,11 @@ class GoogleTasks(BaseConnector):
         title: str,
     ) -> TaskList:
         """Rename a task list.
+
+        Issues ``PATCH /users/@me/lists/{task_list_id}``
+        (``tasklists.patch``) with only ``{"title": title}``; the title is
+        the sole mutable field and the list's ``id`` is immutable. Returns
+        the updated TaskList (``id``, ``title``, ``updated``).
 
         Args:
             task_list_id: The task list ID.

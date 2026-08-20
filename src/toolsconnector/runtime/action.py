@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import functools
 import inspect
+import re
 import types
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -65,10 +66,17 @@ class ActionMeta:
             compatibility but no longer recommended / supported upstream).
         deprecation_message: Guidance surfaced with the deprecation —
             what to use instead, and why it was deprecated.
+        long_description: The docstring prose beneath the ``@action`` title
+            (summary + body, excluding the ``Args:``/``Returns:`` sections).
+            This is the real usage contract — query syntax, examples, value
+            formats, PUT-vs-PATCH semantics — that would otherwise be dropped
+            before it ever reaches an LLM caller. Empty when there is no
+            docstring prose.
     """
 
     name: str
     description: str
+    long_description: str = ""
     parameters: list[ParameterSpec] = field(default_factory=list)
     input_schema: dict[str, Any] = field(default_factory=dict)
     output_schema: dict[str, Any] = field(default_factory=dict)
@@ -235,6 +243,57 @@ def _build_input_schema(
     return schema
 
 
+# A docstring with no summary line — one that starts directly with a section
+# header like ``Args:`` — makes ``docstring_parser`` mis-detect the style and
+# push the header (and raw parameter lines) into short/long_description. Detect
+# a bare section header so we don't publish that leaked block as "prose".
+_SECTION_HEADER_RE = re.compile(
+    r"^(args|arguments|parameters|returns?|yields?|raises?|attributes?|notes?|"
+    r"warnings?|examples?)\s*:?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _normalize_title(text: str) -> str:
+    """Casefold and strip trailing sentence punctuation for equality checks."""
+    return text.strip().rstrip(".!").strip().casefold()
+
+
+def _extract_docstring_prose(func: Callable[..., Any], title: str = "") -> str:
+    """Return a function's docstring summary + body (the prose above ``Args:``).
+
+    The ``@action`` title is a one-liner; the docstring beneath it is where the
+    real usage contract lives (query syntax, examples, value formats, PUT-vs-
+    PATCH semantics, "use X instead" pointers). ``docstring_parser`` already
+    splits that prose off from the ``Args:``/``Returns:`` sections — this
+    recombines the summary and long body (the ``Args:`` block keeps flowing to
+    parameter descriptions as before). Returns ``""`` when there is no prose.
+
+    Two guards keep the published prose clean:
+
+    * **Args-first docstrings** (no real summary) make ``docstring_parser``
+      leak the parameter block into the summary/body — a bare section header in
+      ``short_description`` signals that, so we return ``""``.
+    * **Title-restating summaries** are dropped: when the summary merely repeats
+      ``title`` (already published as the headline), it is omitted so the same
+      sentence is never emitted twice.
+    """
+    doc = parse_docstring(func.__doc__ or "")
+    short = (doc.short_description or "").strip()
+    long_body = (doc.long_description or "").strip()
+
+    # Mis-detected Args-first docstring — nothing publishable here.
+    if short and _SECTION_HEADER_RE.match(short):
+        return ""
+
+    parts: list[str] = []
+    if short and _normalize_title(short) != _normalize_title(title):
+        parts.append(short)
+    if long_body:
+        parts.append(long_body)
+    return "\n\n".join(parts)
+
+
 def action(
     description: str,
     *,
@@ -295,6 +354,7 @@ def action(
         meta = ActionMeta(
             name=func.__name__,
             description=description,
+            long_description=_extract_docstring_prose(func, description),
             parameters=param_specs,
             input_schema=input_schema,
             output_schema={},  # Populated when return type has model_json_schema

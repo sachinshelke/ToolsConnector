@@ -374,6 +374,12 @@ class GitHub(BaseConnector):
     ) -> PaginatedList[Repository]:
         """List repositories for a user or organisation.
 
+        Routes to one of three endpoints: ``GET /user/repos`` (the
+        authenticated user's own repos, the default), ``/orgs/{org}/repos``
+        when ``org`` is set, or ``/users/{user}/repos`` when ``user`` is set.
+        Uses GitHub Link-header pagination; ``limit`` maps to the ``per_page``
+        query parameter (capped at 100).
+
         Args:
             org: Organisation login name. Lists org repos when provided.
             user: Username. Lists that user's repos when provided.
@@ -406,6 +412,11 @@ class GitHub(BaseConnector):
     @action("Get a single repository by owner and name")
     async def get_repo(self, owner: str, repo: str) -> Repository:
         """Retrieve a single repository.
+
+        Calls ``GET /repos/{owner}/{repo}``. The returned Repository carries
+        fields such as ``default_branch``, ``private``, star/fork counts, and
+        ``pushed_at``. A nonexistent repo — or one the token cannot see —
+        surfaces as a typed 404 error rather than an empty result.
 
         Args:
             owner: Repository owner (user or org login).
@@ -494,6 +505,13 @@ class GitHub(BaseConnector):
     ) -> PaginatedList[Issue]:
         """List issues for a repository.
 
+        Calls ``GET /repos/{owner}/{repo}/issues`` and defaults to ``open``
+        issues. GitHub models every pull request as an issue, so this list
+        also includes PRs — items carrying a ``pull_request`` field are PRs,
+        not issues; filter them out for issues-only. ``labels`` is a
+        comma-separated string; Link-header pagination, ``limit``→``per_page``
+        (max 100).
+
         Args:
             owner: Repository owner.
             repo: Repository name.
@@ -544,6 +562,11 @@ class GitHub(BaseConnector):
     ) -> Issue:
         """Create a new issue.
 
+        POSTs to ``/repos/{owner}/{repo}/issues`` with ``title`` required;
+        ``labels`` and ``assignees`` are lists of names/logins (invalid ones
+        are silently ignored by GitHub). Requires write access to the repo and
+        returns the created Issue including its newly assigned ``number``.
+
         Args:
             owner: Repository owner.
             repo: Repository name.
@@ -576,6 +599,11 @@ class GitHub(BaseConnector):
         issue_number: int,
     ) -> Issue:
         """Retrieve a single issue.
+
+        Calls ``GET /repos/{owner}/{repo}/issues/{issue_number}``. Because
+        GitHub represents pull requests as issues, passing a PR number also
+        succeeds here and returns that PR as an Issue (it carries an extra
+        ``pull_request`` field).
 
         Args:
             owner: Repository owner.
@@ -680,6 +708,11 @@ class GitHub(BaseConnector):
     ) -> None:
         """Remove a single label from an issue.
 
+        Calls ``DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels/{label_name}``
+        — removes only the one named label, leaving the issue's other labels
+        intact (use ``update_issue`` to replace the whole set). Returns nothing
+        on success; a label not present on the issue surfaces as a typed 404.
+
         Args:
             owner: Repository owner.
             repo: Repository name.
@@ -709,6 +742,12 @@ class GitHub(BaseConnector):
         body: str,
     ) -> Comment:
         """Create a comment on an issue or PR.
+
+        POSTs to ``/repos/{owner}/{repo}/issues/{issue_number}/comments``.
+        Because GitHub treats PRs as issues, ``issue_number`` may be a
+        pull-request number to add a comment to its conversation timeline
+        (this is not a code-review/diff comment). ``body`` (Markdown) is
+        required.
 
         Args:
             owner: Repository owner.
@@ -790,6 +829,11 @@ class GitHub(BaseConnector):
     ) -> PaginatedList[PullRequest]:
         """List pull requests for a repository.
 
+        Calls ``GET /repos/{owner}/{repo}/pulls`` and defaults to ``open``
+        PRs (``state`` accepts ``open``, ``closed``, or ``all``). Unlike
+        ``list_issues``, this returns only pull requests. Link-header
+        pagination; ``limit``→``per_page`` (max 100).
+
         Args:
             owner: Repository owner.
             repo: Repository name.
@@ -864,6 +908,12 @@ class GitHub(BaseConnector):
     ) -> PullRequest:
         """Create a new pull request.
 
+        POSTs to ``/repos/{owner}/{repo}/pulls``. ``head`` is the source
+        branch holding your changes (use ``user:branch`` to open from a fork);
+        ``base`` is the target branch in this repo to merge into (e.g.
+        ``main``). ``title``, ``head``, and ``base`` are required; set
+        ``draft=True`` to open as a draft.
+
         Args:
             owner: Repository owner.
             repo: Repository name.
@@ -901,6 +951,13 @@ class GitHub(BaseConnector):
         commit_message: Optional[str] = None,
     ) -> dict[str, Any]:
         """Merge a pull request.
+
+        Calls ``PUT /repos/{owner}/{repo}/pulls/{pr_number}/merge`` with
+        ``merge_method`` one of ``merge`` (default), ``squash``, or ``rebase``.
+        If the PR is not mergeable — pending required checks/reviews (HTTP 405)
+        or merge conflicts (HTTP 409) — it surfaces as a typed error rather
+        than merging. Returns a dict with ``sha`` (the merge commit),
+        ``merged``, and ``message``.
 
         Args:
             owner: Repository owner.
@@ -942,6 +999,12 @@ class GitHub(BaseConnector):
         page: Optional[str] = None,
     ) -> PaginatedList[Commit]:
         """List commits for a repository.
+
+        Calls ``GET /repos/{owner}/{repo}/commits``, newest first. ``sha`` is
+        the starting branch name or commit SHA (defaults to the repo's default
+        branch), ``path`` limits to commits that touched that file, and
+        ``author`` filters by GitHub login or commit-author email. Link-header
+        pagination; ``limit``→``per_page`` (max 100).
 
         Args:
             owner: Repository owner.
@@ -994,6 +1057,10 @@ class GitHub(BaseConnector):
         page: Optional[str] = None,
     ) -> PaginatedList[Branch]:
         """List branches in a repository.
+
+        Calls ``GET /repos/{owner}/{repo}/branches``. Each Branch carries its
+        head commit SHA and a ``protected`` flag. Link-header pagination;
+        ``limit``→``per_page`` (max 100).
 
         Args:
             owner: Repository owner.
@@ -1256,6 +1323,12 @@ class GitHub(BaseConnector):
     ) -> dict[str, Any]:
         """Delete a file from a repository.
 
+        Calls ``DELETE /repos/{owner}/{repo}/contents/{path}`` and creates a
+        commit that removes the file. Both ``sha`` (the file's current blob
+        SHA, obtainable from ``get_content``) and ``message`` are required;
+        ``branch`` defaults to the repo's default branch, committing directly
+        to it. Returns a dict with the resulting ``commit``.
+
         Args:
             owner: Repository owner.
             repo: Repository name.
@@ -1346,6 +1419,13 @@ class GitHub(BaseConnector):
     ) -> PaginatedList[WorkflowRun]:
         """List GitHub Actions workflow runs.
 
+        Calls ``GET /repos/{owner}/{repo}/actions/runs``, or
+        ``/actions/workflows/{workflow_id}/runs`` when ``workflow_id`` is
+        given. Unwraps the ``workflow_runs`` array (``total_count`` is exposed
+        on the returned list). ``status`` accepts run states like ``queued``,
+        ``in_progress``, ``completed`` as well as conclusion filters such as
+        ``success`` and ``failure``.
+
         Args:
             owner: Repository owner.
             repo: Repository name.
@@ -1433,6 +1513,10 @@ class GitHub(BaseConnector):
         page: Optional[str] = None,
     ) -> PaginatedList[GitHubGist]:
         """List gists for the authenticated user.
+
+        Calls ``GET /gists`` — the authenticated user's own gists only; there
+        is no owner/user parameter, so it cannot list another user's gists.
+        Link-header pagination; ``limit``→``per_page`` (max 100).
 
         Args:
             limit: Maximum gists per page (max 100).
@@ -1540,6 +1624,12 @@ class GitHub(BaseConnector):
     ) -> PaginatedList[Repository]:
         """Search for repositories on GitHub.
 
+        Calls ``GET /search/repositories`` with ``query`` sent as the ``q``
+        parameter using GitHub's search qualifiers. ``order`` is always sent
+        (default ``desc``); omit ``sort`` for best-match relevance ranking.
+        Results unwrap from the ``items`` array and expose ``total_count``, but
+        the Search API returns at most 1000 results across all pages.
+
         Args:
             query: Search query (e.g. ``"language:python stars:>1000"``).
             sort: Sort field: ``stars``, ``forks``, ``help-wanted-issues``,
@@ -1588,6 +1678,12 @@ class GitHub(BaseConnector):
         page: Optional[str] = None,
     ) -> PaginatedList[Issue]:
         """Search for issues and pull requests across GitHub.
+
+        Calls ``GET /search/issues`` with ``query`` sent as the ``q``
+        parameter; this searches both issues and pull requests, so add
+        ``is:issue`` or ``is:pr`` to narrow. ``order`` defaults to ``desc``;
+        omit ``sort`` for best-match ranking. Results unwrap from ``items``
+        with ``total_count``, capped at 1000 total by the Search API.
 
         Args:
             query: Search query (e.g. ``"is:issue is:open label:bug"``).
@@ -1645,6 +1741,11 @@ class GitHub(BaseConnector):
     @action("Get the current rate limit status")
     async def get_rate_limit(self) -> dict[str, Any]:
         """Check the current API rate limit status.
+
+        Calls ``GET /rate_limit``, which itself does not consume your
+        rate-limit budget. The ``resources`` block breaks down separate limits
+        (``core``, ``search``, ``graphql``, etc.), each with ``limit``,
+        ``remaining``, and an epoch-seconds ``reset`` timestamp.
 
         Returns:
             Dict with ``resources`` (core, search, graphql limits)

@@ -263,6 +263,11 @@ class Stripe(BaseConnector):
     ) -> PaginatedList[StripeCustomer]:
         """List customers with cursor-based pagination.
 
+        Calls ``GET /customers`` and returns customers newest-first. To page,
+        set ``starting_after`` to the last returned ``cus_...`` ID and repeat
+        while the response's ``has_more`` is true; ``limit`` ranges 1-100
+        (default 10).
+
         Args:
             limit: Maximum number of customers to return (1-100).
             starting_after: Customer ID to paginate after (cursor).
@@ -293,6 +298,9 @@ class Stripe(BaseConnector):
     async def get_customer(self, customer_id: str) -> StripeCustomer:
         """Retrieve a single customer.
 
+        Calls ``GET /customers/{customer_id}`` where ``customer_id`` is a
+        ``cus_...`` ID. An unknown ID raises ``NotFoundError`` (HTTP 404).
+
         Args:
             customer_id: The Stripe customer ID (e.g. ``cus_...``).
 
@@ -311,6 +319,11 @@ class Stripe(BaseConnector):
         metadata: Optional[dict[str, str]] = None,
     ) -> StripeCustomer:
         """Create a new customer in Stripe.
+
+        Calls ``POST /customers`` with a form-encoded body; every field is
+        optional, so a bare call creates an empty customer. ``metadata`` is
+        sent as ``metadata[key]=value`` pairs. Returns the new customer with a
+        generated ``cus_...`` ID.
 
         Args:
             email: Customer email address.
@@ -377,6 +390,9 @@ class Stripe(BaseConnector):
     @action("Retrieve a single Stripe charge by ID")
     async def get_charge(self, charge_id: str) -> StripeCharge:
         """Retrieve a single charge.
+
+        Calls ``GET /charges/{charge_id}`` where ``charge_id`` is a ``ch_...``
+        ID. An unknown ID raises ``NotFoundError`` (HTTP 404).
 
         Args:
             charge_id: The Stripe charge ID (e.g. ``ch_...``).
@@ -488,6 +504,11 @@ class Stripe(BaseConnector):
     async def get_balance(self) -> StripeBalance:
         """Retrieve the current balance for your Stripe account.
 
+        Calls ``GET /balance`` and takes no parameters; it reflects the account
+        behind the API key (test vs live per the key's mode). ``available`` and
+        ``pending`` are arrays with one entry per currency, each ``amount`` in
+        the smallest currency unit (e.g. cents).
+
         Returns:
             StripeBalance with available and pending amounts by currency.
         """
@@ -580,6 +601,14 @@ class Stripe(BaseConnector):
         metadata: Optional[dict[str, str]] = None,
     ) -> StripeCharge:
         """Create a new charge.
+
+        Calls ``POST /charges`` (the legacy Charges API) and attempts to
+        capture funds immediately; ``amount`` is in the smallest currency unit
+        (e.g. cents) and ``currency`` is a three-letter ISO code. Fund it with
+        either a ``customer`` (charging their default source) or a ``source``
+        token. For card payments subject to SCA/3D-Secure, prefer
+        ``create_payment_intent`` instead; ``metadata`` is sent as
+        ``metadata[key]=value``.
 
         Args:
             amount: Amount in the smallest currency unit (e.g. cents).
@@ -714,6 +743,13 @@ class Stripe(BaseConnector):
     ) -> StripeSubscription:
         """Cancel an active subscription.
 
+        With ``at_period_end=True`` (the default) this sends
+        ``POST /subscriptions/{id}`` with ``cancel_at_period_end=true``, leaving
+        the subscription active and billing until the current period ends. With
+        ``at_period_end=False`` it sends ``DELETE /subscriptions/{id}``,
+        cancelling immediately. The returned subscription reflects the new
+        state — ``status`` becomes ``canceled`` only on immediate cancellation.
+
         Args:
             subscription_id: The subscription ID to cancel.
             at_period_end: If True, cancel at end of current billing
@@ -786,6 +822,10 @@ class Stripe(BaseConnector):
     async def get_subscription(self, subscription_id: str) -> StripeSubscription:
         """Retrieve a single subscription.
 
+        Calls ``GET /subscriptions/{subscription_id}`` where
+        ``subscription_id`` is a ``sub_...`` ID. An unknown ID raises
+        ``NotFoundError`` (HTTP 404).
+
         Args:
             subscription_id: The Stripe subscription ID (e.g. ``sub_...``).
 
@@ -813,6 +853,10 @@ class Stripe(BaseConnector):
     ) -> StripeProduct:
         """Create a new product in Stripe.
 
+        Calls ``POST /products``; ``name`` is required while ``description`` and
+        ``metadata`` are optional (``metadata`` sent as ``metadata[key]=value``).
+        Returns the new product with a generated ``prod_...`` ID.
+
         Args:
             name: Product name.
             description: Product description.
@@ -838,6 +882,10 @@ class Stripe(BaseConnector):
         starting_after: Optional[str] = None,
     ) -> PaginatedList[StripeProduct]:
         """List products with cursor-based pagination.
+
+        Calls ``GET /products`` and returns products newest-first. To page, set
+        ``starting_after`` to the last returned ``prod_...`` ID and repeat while
+        ``has_more`` is true; ``limit`` ranges 1-100 (default 10).
 
         Args:
             limit: Maximum number of products to return (1-100).
@@ -988,6 +1036,11 @@ class Stripe(BaseConnector):
     ) -> PaginatedList[StripePaymentMethod]:
         """List payment methods attached to a customer.
 
+        Calls ``GET /payment_methods`` filtered to the required ``customer`` ID,
+        returning only payment methods attached to that customer. Pass ``type``
+        (e.g. ``card``) to filter by kind; results are cursor-paginated via
+        ``starting_after`` with ``limit`` ranging 1-100 (default 10).
+
         Args:
             customer: The customer ID to list payment methods for.
             type: Filter by payment method type (e.g. ``card``).
@@ -1028,6 +1081,9 @@ class Stripe(BaseConnector):
     async def get_invoice(self, invoice_id: str) -> StripeInvoice:
         """Retrieve a single invoice.
 
+        Calls ``GET /invoices/{invoice_id}`` where ``invoice_id`` is an
+        ``in_...`` ID. An unknown ID raises ``NotFoundError`` (HTTP 404).
+
         Args:
             invoice_id: The Stripe invoice ID (e.g. ``in_...``).
 
@@ -1064,6 +1120,9 @@ class Stripe(BaseConnector):
         payment_intent_id: str,
     ) -> PaymentIntent:
         """Retrieve a single PaymentIntent.
+
+        Calls ``GET /payment_intents/{payment_intent_id}`` where the ID is a
+        ``pi_...`` value. An unknown ID raises ``NotFoundError`` (HTTP 404).
 
         Args:
             payment_intent_id: The Stripe PaymentIntent ID
@@ -1246,6 +1305,9 @@ class Stripe(BaseConnector):
     async def get_dispute(self, dispute_id: str) -> StripeDispute:
         """Retrieve a single dispute.
 
+        Calls ``GET /disputes/{dispute_id}`` where ``dispute_id`` is a ``dp_...``
+        ID. An unknown ID raises ``NotFoundError`` (HTTP 404).
+
         Args:
             dispute_id: The Stripe dispute ID (e.g. ``dp_...``).
 
@@ -1283,6 +1345,10 @@ class Stripe(BaseConnector):
         starting_after: Optional[str] = None,
     ) -> PaginatedList[StripePayout]:
         """List payouts with cursor-based pagination.
+
+        Calls ``GET /payouts`` and returns payouts newest-first. To page, set
+        ``starting_after`` to the last returned ``po_...`` ID and repeat while
+        ``has_more`` is true; ``limit`` ranges 1-100 (default 10).
 
         Args:
             limit: Maximum number of payouts to return (1-100).
@@ -1343,6 +1409,9 @@ class Stripe(BaseConnector):
     async def get_payout(self, payout_id: str) -> StripePayout:
         """Retrieve a single payout.
 
+        Calls ``GET /payouts/{payout_id}`` where ``payout_id`` is a ``po_...``
+        ID. An unknown ID raises ``NotFoundError`` (HTTP 404).
+
         Args:
             payout_id: The Stripe payout ID (e.g. ``po_...``).
 
@@ -1399,6 +1468,10 @@ class Stripe(BaseConnector):
     async def get_event(self, event_id: str) -> StripeEvent:
         """Retrieve a single event.
 
+        Calls ``GET /events/{event_id}`` where ``event_id`` is an ``evt_...``
+        ID. Stripe retains events for roughly 30 days, after which an older ID
+        raises ``NotFoundError`` (HTTP 404).
+
         Args:
             event_id: The Stripe event ID (e.g. ``evt_...``).
 
@@ -1445,6 +1518,9 @@ class Stripe(BaseConnector):
         setup_intent_id: str,
     ) -> StripeSetupIntent:
         """Retrieve a single SetupIntent.
+
+        Calls ``GET /setup_intents/{setup_intent_id}`` where the ID is a
+        ``seti_...`` value. An unknown ID raises ``NotFoundError`` (HTTP 404).
 
         Args:
             setup_intent_id: The Stripe SetupIntent ID

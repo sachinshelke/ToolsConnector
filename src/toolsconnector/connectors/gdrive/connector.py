@@ -496,6 +496,13 @@ class GoogleDrive(BaseConnector):
     ) -> FolderId:
         """Create a new folder in Google Drive.
 
+        A folder is just a file with the reserved MIME type
+        ``application/vnd.google-apps.folder``; this ``POST``s to
+        ``/files`` with that ``mimeType`` set. If ``parent_folder_id`` is
+        omitted the folder is created in the "My Drive" root. The result
+        carries only ``id``, ``name`` and ``web_view_link`` (the response
+        ``fields`` are deliberately narrow), not the full metadata.
+
         Args:
             name: Name of the folder to create.
             parent_folder_id: Optional parent folder ID.
@@ -654,6 +661,13 @@ class GoogleDrive(BaseConnector):
     ) -> DriveFile:
         """Move a file to a different folder.
 
+        Makes two calls: a ``GET`` to read the file's current ``parents``,
+        then a ``PATCH`` to ``/files/{file_id}`` with
+        ``addParents=new_parent_id`` and ``removeParents`` set to every
+        existing parent. This removes the file from ALL of its current
+        folders and re-parents it solely under ``new_parent_id`` — it is a
+        move, not a copy. ``new_parent_id`` must be a folder ID.
+
         Args:
             file_id: The ID of the file to move.
             new_parent_id: The ID of the destination folder.
@@ -712,6 +726,13 @@ class GoogleDrive(BaseConnector):
         file_id: str,
     ) -> list[FilePermission]:
         """List all permissions on a file.
+
+        ``GET``s ``/files/{file_id}/permissions`` and returns the
+        ``permissions`` array as a plain list. This returns a SINGLE page
+        only — it does not follow ``nextPageToken`` — so on files with
+        many grants (common on shared drives) the list may be truncated.
+        Each entry's ``id`` is what ``get_permission`` and
+        ``delete_permission`` take as ``permission_id``.
 
         Args:
             file_id: The ID of the file.
@@ -847,6 +868,14 @@ class GoogleDrive(BaseConnector):
     ) -> PaginatedList[DriveComment]:
         """List comments on a file.
 
+        ``GET``s ``/files/{file_id}/comments``; ``page_size`` is capped at
+        100. Deleted comments are excluded (the ``includeDeleted`` param
+        is not sent, so it defaults to false). Only files that support
+        comments return results (Google Docs/Sheets/Slides plus many
+        binary types such as PDF and images). Each comment carries a
+        ``resolved`` flag and both plain ``content`` and rendered
+        ``html_content``.
+
         Args:
             file_id: The ID of the file.
             page_size: Maximum number of comments per page (max 100).
@@ -906,6 +935,13 @@ class GoogleDrive(BaseConnector):
     ) -> DriveComment:
         """Create a comment on a file.
 
+        ``POST``s ``{"content": content}`` to
+        ``/files/{file_id}/comments``, creating a top-level, unanchored
+        comment — not a reply, and not tied to any text range or region.
+        ``content`` is plain text. The file must be a type that supports
+        comments (Google Docs/Sheets/Slides plus many binary formats such
+        as PDF and images); otherwise Drive rejects the request.
+
         Args:
             file_id: The ID of the file to comment on.
             content: The plain-text content of the comment.
@@ -945,6 +981,12 @@ class GoogleDrive(BaseConnector):
         comment_id: str,
     ) -> None:
         """Delete a comment from a file.
+
+        Issues ``DELETE`` to
+        ``/files/{file_id}/comments/{comment_id}`` and returns nothing on
+        the API's ``204`` response. ``comment_id`` is an ID from
+        ``list_comments`` or ``create_comment``; deleting a comment also
+        removes all of its replies.
 
         Args:
             file_id: The ID of the file containing the comment.
@@ -1071,6 +1113,11 @@ class GoogleDrive(BaseConnector):
         permission_id: str,
     ) -> FilePermission:
         """Retrieve a specific permission on a file.
+
+        ``GET``s ``/files/{file_id}/permissions/{permission_id}``.
+        ``permission_id`` is not the grantee's email — it is the
+        permission entry's own ID as returned by ``list_permissions`` or
+        ``share_file`` (a numeric string for ``user``/``group`` grants).
 
         Args:
             file_id: The ID of the file.

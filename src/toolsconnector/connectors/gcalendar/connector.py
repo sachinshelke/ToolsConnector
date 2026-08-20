@@ -258,6 +258,12 @@ class GoogleCalendar(BaseConnector):
     ) -> PaginatedList[CalendarEvent]:
         """List events from a calendar.
 
+        Times use RFC 3339 (e.g. ``2024-01-01T00:00:00Z`` or with an offset);
+        ``time_max`` is exclusive. ``order_by="startTime"`` is only valid with
+        ``single_events=True`` (otherwise use ``"updated"``). With
+        ``single_events=True`` recurring events are expanded into their
+        individual instances rather than returned as one recurring master.
+
         Args:
             calendar_id: Calendar ID ('primary' for the user's main calendar).
             time_min: Lower bound (inclusive) as RFC 3339 timestamp.
@@ -340,6 +346,12 @@ class GoogleCalendar(BaseConnector):
         send_updates: str = "none",
     ) -> CalendarEvent:
         """Create a new calendar event.
+
+        ``start``/``end`` accept either a date (``2024-01-01`` — an all-day
+        event) or a datetime (``2024-01-01T10:00:00``); for datetimes,
+        ``time_zone`` (IANA, e.g. ``America/New_York``) sets the zone, otherwise
+        the calendar's own zone applies. ``end`` is exclusive. Attendees are
+        not emailed unless ``send_updates`` is ``"all"`` or ``"externalOnly"``.
 
         Args:
             summary: Event title/summary.
@@ -440,6 +452,11 @@ class GoogleCalendar(BaseConnector):
         send_updates: str = "none",
     ) -> None:
         """Delete a calendar event.
+
+        Permanent — there is no un-delete. Pass ``send_updates="all"`` to email
+        attendees a cancellation; ``"none"`` (default) deletes silently. To
+        cancel one occurrence of a recurring event, delete that instance's id
+        (from ``list_event_instances``), not the recurring master.
 
         Args:
             event_id: The ID of the event to delete.
@@ -559,6 +576,11 @@ class GoogleCalendar(BaseConnector):
     ) -> list[CalendarEvent]:
         """List all instances of a recurring event.
 
+        Expands a recurring event (its master ``event_id``) into concrete dated
+        occurrences. Each returned instance carries its own instance id that
+        ``get_event`` / ``delete_event`` accept to read or cancel just that one
+        occurrence without touching the rest of the series.
+
         Args:
             calendar_id: Calendar ID containing the event.
             event_id: The recurring event ID.
@@ -580,6 +602,10 @@ class GoogleCalendar(BaseConnector):
         destination_calendar_id: str,
     ) -> CalendarEvent:
         """Move an event from one calendar to another.
+
+        Re-homes a single event to ``destination_calendar_id`` (the event keeps
+        its id). Only non-recurring events can be moved, and both the source and
+        destination calendars must be writable by the caller.
 
         Args:
             calendar_id: Source calendar ID.
@@ -771,6 +797,11 @@ class GoogleCalendar(BaseConnector):
     ) -> list[CalendarACL]:
         """List all access-control rules on a calendar.
 
+        Each rule pairs a ``role`` (``none`` | ``freeBusyReader`` | ``reader`` |
+        ``writer`` | ``owner``) with a ``scope`` (type ``user`` / ``group`` /
+        ``domain`` / ``default`` plus its value). Requires owner access to the
+        calendar.
+
         Args:
             calendar_id: The ID of the calendar.
 
@@ -803,6 +834,12 @@ class GoogleCalendar(BaseConnector):
         role: str = "reader",
     ) -> CalendarACL:
         """Grant a user access to a calendar.
+
+        Creates a ``user``-scoped rule granting ``email`` the given ``role``:
+        ``reader`` (see events), ``writer`` (edit events), ``owner`` (full
+        control incl. sharing), or ``freeBusyReader`` (busy/free only). Re-adding
+        an address updates its existing rule instead of duplicating it. Requires
+        owner access.
 
         Args:
             calendar_id: The ID of the calendar to share.
@@ -841,6 +878,10 @@ class GoogleCalendar(BaseConnector):
         rule_id: str,
     ) -> None:
         """Remove an access-control rule from a calendar.
+
+        Revokes the grantee's access immediately. ``rule_id`` is the ACL rule id
+        from ``list_calendar_acl`` (e.g. ``user:alice@example.com``), NOT a bare
+        email address. Requires owner access.
 
         Args:
             calendar_id: The ID of the calendar.

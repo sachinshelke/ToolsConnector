@@ -50,6 +50,14 @@ class ActionSpec(BaseModel):
 
     name: str = Field(description="Method name (e.g., 'list_emails').")
     description: str = Field(description="Human-readable description of what this action does.")
+    long_description: str = Field(
+        default="",
+        description=(
+            "Docstring prose beneath the @action title (summary + body, excluding "
+            "the Args:/Returns: sections) — the usage contract (syntax, examples, "
+            "value formats) surfaced to LLM callers. Empty when absent."
+        ),
+    )
     parameters: list[ParameterSpec] = Field(
         default_factory=list,
         description="Input parameters for this action.",

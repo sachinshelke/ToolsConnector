@@ -725,6 +725,14 @@ class GoogleSheets(BaseConnector):
     ) -> dict[str, Any]:
         """Auto-resize columns to fit their content.
 
+        Resizes each column's width to fit its widest cell via an
+        ``autoResizeDimensions`` batchUpdate request over the half-open,
+        0-indexed range ``[start_column, end_column)`` — the default ``0``–``26``
+        covers columns A through Z, and ``end_column`` is exclusive. Only columns
+        are resized (``dimension`` is fixed to ``COLUMNS``, so rows are untouched),
+        and ``sheet_id`` is the numeric sheet ID (gid), not the tab name; this
+        overrides any manually set widths on the affected columns.
+
         Args:
             spreadsheet_id: The spreadsheet ID.
             sheet_id: The numeric sheet ID.

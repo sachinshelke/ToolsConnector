@@ -62,31 +62,63 @@ class ToolEntry:
         }
 
 
+# Cap on the docstring prose appended to a tool description. The LLM-facing
+# tool list is re-sent every turn, so an unbounded docstring (e.g. one with
+# several code-block examples) shouldn't dominate it. Catalog stats: p99 prose
+# is ~480 chars and the max ~1150, so this only trims the rare outlier while
+# keeping the summary + first example — which is where the usage contract lives.
+_PROSE_CHAR_CAP = 900
+
+
+def _truncate_prose(prose: str, cap: int = _PROSE_CHAR_CAP) -> str:
+    """Trim prose to ``cap`` chars at a clean boundary, adding an ellipsis.
+
+    Prefers to cut at a paragraph, then line, then sentence, then word boundary
+    (never below half the cap, so truncation stays generous), so an example
+    block or sentence isn't sliced mid-token.
+    """
+    if len(prose) <= cap:
+        return prose
+    window = prose[:cap]
+    for sep in ("\n\n", "\n", ". ", " "):
+        idx = window.rfind(sep)
+        if idx >= cap // 2:
+            return window[:idx].rstrip() + " …"
+    return window.rstrip() + " …"
+
+
 def _build_description(spec: ConnectorSpec, action: ActionSpec) -> str:
-    """Build LLM-optimized description with connector context.
+    """Build the LLM-facing tool description: title headline + docstring prose.
 
-    Returns just the connector-prefixed action description. We deliberately
-    do NOT inline ``requires_scope`` or ``dangerous`` here — both are
-    already structured fields on :class:`ToolEntry` (and reachable by
-    REST/MCP/schema consumers via the entry's ``requires_scope`` and
-    ``dangerous`` attributes). Inlining them duplicated the metadata,
-    bloated every per-tool description by ~15% in tokens, and got
-    re-paid on every chat turn. Drop the duplication; let consumers read
-    the structured fields if they care.
+    The ``@action`` title alone ("Gmail: Send an email") is not the interface —
+    the model can't read the source, so any usage contract that lives only in
+    the docstring (Drive query syntax, "returns base64", PUT-vs-PATCH semantics,
+    "use ``get_document_text`` instead") is invisible and produces wrong or
+    destructive calls. So we append :attr:`ActionSpec.long_description` — the
+    docstring summary + body the authors already wrote — beneath the headline,
+    capped by :func:`_truncate_prose`. The ``Args:`` block still reaches the
+    parameter schema separately; this is only the prose above it.
 
-    The connector-name prefix (``"Gmail: "``) IS kept — it helps LLMs
-    disambiguate when many connectors are loaded (e.g. ``"List records"``
-    is ambiguous across Airtable, MongoDB, Salesforce; ``"Airtable: List
-    records"`` is not).
+    We still deliberately do NOT inline ``requires_scope`` or ``dangerous`` —
+    both are structured fields on :class:`ToolEntry`, and duplicating them here
+    bloated every description by ~15% in tokens re-paid every turn. The
+    connector-name prefix (``"Gmail: "``) IS kept — it disambiguates when many
+    connectors are loaded (``"List records"`` is ambiguous across Airtable,
+    MongoDB, Salesforce; ``"Airtable: List records"`` is not).
 
     Args:
         spec: The parent connector specification.
         action: The action specification.
 
     Returns:
-        ``"{display_name}: {action_description}"``.
+        ``"{display_name}: {title}"``, with the docstring prose appended on a
+        blank line when the action has any.
     """
-    return f"{spec.display_name}: {action.description}"
+    headline = f"{spec.display_name}: {action.description}"
+    prose = (getattr(action, "long_description", "") or "").strip()
+    if prose:
+        return f"{headline}\n\n{_truncate_prose(prose)}"
+    return headline
 
 
 def build_tool_list(

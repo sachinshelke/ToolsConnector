@@ -727,6 +727,12 @@ def main():
             continue
 
         actions = sp.get("actions", {})
+        # ``long_description`` is the LLM-facing tool prose used by the serve
+        # layer (MCP / function-calling); the site renders only the title,
+        # parameters, and return type, so strip it from the committed data.json
+        # to keep the catalog lean (it is also uncapped on this path).
+        for _act in actions.values():
+            _act.pop("long_description", None)
         total_actions += len(actions)
         meta = get_tool_meta(name)
 

@@ -521,6 +521,14 @@ class Notion(BaseConnector):
     async def get_page(self, page_id: str) -> NotionPage:
         """Retrieve a Notion page by its ID.
 
+        Calls ``GET /pages/{page_id}`` and returns the page's metadata and
+        property values — NOT its body content; fetch the body separately
+        with ``get_block_children``. Paginated property types (``title``,
+        ``rich_text``, ``relation``, ``rollup``, ``people``) are truncated
+        to 25 references in this response — use ``get_page_property`` to read
+        the complete value. ``page_id`` must be a 32-char UUID (dashes
+        optional) that is shared with the integration, else the call 404s.
+
         Args:
             page_id: The UUID of the page to retrieve.
 
@@ -597,6 +605,12 @@ class Notion(BaseConnector):
     @action("Get a database schema and metadata")
     async def get_database(self, database_id: str) -> NotionDatabase:
         """Retrieve a Notion database by its ID.
+
+        Calls ``GET /databases/{database_id}`` and returns the database's
+        metadata and property schema (the column definitions under
+        ``properties``) — NOT the rows/pages it contains; use
+        ``query_database`` to fetch rows. ``database_id`` must be a UUID
+        shared with the integration, else the call 404s.
 
         Args:
             database_id: UUID of the database.
@@ -851,6 +865,14 @@ class Notion(BaseConnector):
     ) -> PaginatedList[NotionComment]:
         """Retrieve comments on a block or page.
 
+        Calls ``GET /comments`` with ``block_id`` passed as a query-string
+        param (it accepts either a page ID or a block ID). Returns only
+        un-resolved (open) comments — resolved threads are not included.
+        Results are cursor-paginated at ``limit`` per page (default 50,
+        clamped to 1-100); feed the returned cursor back to page. Requires
+        the integration's "Read comments" capability, else it raises
+        ``PermissionDeniedError`` (``notion_code == "restricted_resource"``).
+
         Args:
             block_id: UUID of the block or page to list comments for.
             limit: Maximum results per page (max 100).
@@ -989,6 +1011,13 @@ class Notion(BaseConnector):
         properties: Optional[dict[str, Any]] = None,
     ) -> NotionDatabase:
         """Update an existing Notion database.
+
+        Calls ``PATCH /databases/{database_id}``; only the fields you pass
+        are changed (partial update), so omit a field to leave it as-is.
+        ``title`` and ``description`` take plain strings — the connector
+        wraps each into Notion's ``rich_text`` array for you, so pass
+        ``"My DB"``, not the rich-text shape. Returns the full updated
+        NotionDatabase schema.
 
         Args:
             database_id: UUID of the database to update.
