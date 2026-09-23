@@ -415,7 +415,7 @@ class X(BaseConnector):
         Returns:
             The reply tweet.
         """
-        return await self.create_tweet(text=text, reply_to_tweet_id=tweet_id)
+        return await self.acreate_tweet(text=text, reply_to_tweet_id=tweet_id)  # type: ignore[attr-defined]
 
     @action(
         "Post a thread of tweets sequentially",
@@ -456,7 +456,7 @@ class X(BaseConnector):
         reply_to: Optional[str] = None
         for text in texts:
             try:
-                tw = await self.create_tweet(text=text, reply_to_tweet_id=reply_to)
+                tw = await self.acreate_tweet(text=text, reply_to_tweet_id=reply_to)  # type: ignore[attr-defined]
             except Exception as e:
                 # Attach partial result so the caller can recover.
                 if hasattr(e, "details") and isinstance(e.details, dict):
