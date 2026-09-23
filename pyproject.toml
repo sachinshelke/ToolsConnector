@@ -189,7 +189,20 @@ s3-storage = ["boto3>=1.28"]
 gcs-storage = ["google-cloud-storage>=2.0"]
 
 # --- Serve layer ---
-mcp = ["mcp>=1.0"]
+# Pinned range, not ``>=1.0``. Both ends are load-bearing:
+#   * ``<2``    — mcp 2.x removed ``mcp.server.fastmcp``; the module is a
+#                 tombstone that raises ModuleNotFoundError. FastMCP became
+#                 ``mcp.server.mcpserver.MCPServer``. ``serve/mcp.py`` still
+#                 imports FastMCP, so an unpinned resolve to 2.x breaks every
+#                 fresh ``pip install "toolsconnector[mcp]"``.
+#   * ``>=1.10`` — ``FastMCP.tool()`` only grew ``structured_output=`` in
+#                 1.10.0 (and ``annotations=`` in 1.7.0). Both are needed to
+#                 emit tool annotations and to suppress the auto-generated
+#                 outputSchema. Verified by inspecting the wheels.
+# No python_version marker: ``mcp`` needs Python >=3.10, the floor set by
+# decision D00000G. Until ``requires-python`` above is raised to match, the
+# extra does not resolve on 3.9 — unchanged from the old ``mcp>=1.0``.
+mcp = ["mcp>=1.10,<2"]
 rest = ["starlette>=0.27", "uvicorn>=0.23"]
 
 # --- Category bundles ---
