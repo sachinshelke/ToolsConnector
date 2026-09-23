@@ -36,47 +36,6 @@ pytestmark = pytest.mark.skipif(
     reason="MCP server (FastMCP) requires Python 3.10+; skipping on this interpreter",
 )
 
-# The MCP tool surface for HuggingFace, pinned by NAME rather than by count.
-# A bare count silently accepts a rename or a swapped pair, and its failure
-# message can't say what moved; this set makes the drift self-describing.
-# Deliberately literal — deriving it from ``HuggingFace`` would re-use the same
-# ``__action_meta__`` reflection the serve layer uses (a tautology), and would
-# read from whatever ``toolsconnector`` is importable in the *test* process
-# rather than the ``src/`` tree the server subprocess actually loads.
-# When an action is added or removed, update this set in the same change.
-EXPECTED_HF_TOOLS = {
-    "huggingface_audio_classification",
-    "huggingface_automatic_speech_recognition",
-    "huggingface_chat_completion",
-    "huggingface_feature_extraction",
-    "huggingface_fill_mask",
-    "huggingface_get_dataset",
-    "huggingface_get_model",
-    "huggingface_get_model_providers",
-    "huggingface_get_space",
-    "huggingface_image_classification",
-    "huggingface_image_segmentation",
-    "huggingface_image_to_text",
-    "huggingface_list_datasets",
-    "huggingface_list_inference_catalog",
-    "huggingface_list_models",
-    "huggingface_list_repo_files",
-    "huggingface_list_spaces",
-    "huggingface_object_detection",
-    "huggingface_question_answering",
-    "huggingface_sentence_similarity",
-    "huggingface_summarize",
-    "huggingface_table_question_answering",
-    "huggingface_text_classification",
-    "huggingface_text_generation",
-    "huggingface_text_to_image",
-    "huggingface_text_to_speech",
-    "huggingface_token_classification",
-    "huggingface_translate",
-    "huggingface_whoami",
-    "huggingface_zero_shot_classification",
-}
-
 
 def _server_script(repo_root: Path) -> str:
     """Inline server script with respx routes for the two HF hosts (router +
@@ -165,6 +124,19 @@ def test_huggingface_mcp_server_end_to_end_handshake() -> None:
     repo_root = Path(__file__).resolve().parent.parent.parent
     server_src = _server_script(repo_root)
 
+    # Expected tools come from the connector's action registry, not a hardcoded
+    # count. The subprocess puts src/ first on sys.path, so this process must
+    # read the same copy or the comparison is meaningless.
+    import toolsconnector
+    from toolsconnector.connectors.huggingface import HuggingFace
+
+    assert Path(toolsconnector.__file__).resolve().is_relative_to(repo_root / "src"), (
+        f"test imported {toolsconnector.__file__}, not {repo_root / 'src'}; "
+        "run with PYTHONPATH=src or an editable install"
+    )
+    spec = HuggingFace.get_spec()
+    expected_tools = sorted(f"{spec.name}_{action}" for action in spec.actions)
+
     with tempfile.TemporaryDirectory() as tmpdir:
         server_path = Path(tmpdir) / "huggingface_mcp_server.py"
         server_path.write_text(server_src)
@@ -208,17 +180,12 @@ def test_huggingface_mcp_server_end_to_end_handshake() -> None:
 
             _send(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
 
-            # 2. tools/list — every huggingface action must surface as an MCP tool
+            # 2. tools/list — exactly the connector's registered actions
             _send(proc, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
             listed = _recv(proc, expected_id=2)
             tools = listed["result"]["tools"]
             hf_tools = [t for t in tools if t["name"].startswith("huggingface_")]
-            hf_names = {t["name"] for t in hf_tools}
-            assert hf_names == EXPECTED_HF_TOOLS, (
-                "MCP tool surface drifted — "
-                f"unexpected: {sorted(hf_names - EXPECTED_HF_TOOLS)}, "
-                f"missing: {sorted(EXPECTED_HF_TOOLS - hf_names)}"
-            )
+            assert sorted(t["name"] for t in hf_tools) == expected_tools
 
             # feature_extraction inputSchema must advertise the union (string or array)
             fe = next(t for t in hf_tools if t["name"] == "huggingface_feature_extraction")
