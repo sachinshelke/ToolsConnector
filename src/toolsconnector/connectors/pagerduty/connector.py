@@ -381,7 +381,7 @@ class PagerDuty(BaseConnector):
         Returns:
             The acknowledged PDIncident object.
         """
-        return await self.update_incident(incident_id, "acknowledged")
+        return await self.aupdate_incident(incident_id, "acknowledged")  # type: ignore[attr-defined]
 
     # ------------------------------------------------------------------
     # Actions -- Services
