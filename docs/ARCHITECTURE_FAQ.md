@@ -537,3 +537,20 @@ From its first commit through 0.3.25, the class caught that `ImportError` and si
 - *Silently auto-migrating legacy files.* That would hide the fact that those credentials sat on disk unencrypted. The error tells the user to rotate them, and `migrate_legacy=True` is the deliberate re-encrypt step.
 
 **References:** `keystore/local.py` (`LocalFileKeyStore`, `LegacyKeyFileError`), `pyproject.toml` (`local-keystore`), `tests/unit/test_keystore.py`.
+
+## 26. Why does `LocalFileKeyStore` refuse a key file it can't read, instead of starting fresh?
+
+**Decision: an existing key file must decrypt, with the given password, to a JSON object. Otherwise the constructor raises `UnreadableKeyFileError` and leaves the file untouched. That covers a wrong password, a corrupted or truncated file, and an empty one. Only a missing file opens as a new, empty store.**
+
+Through 0.3.25, `_load()` caught every exception and opened an empty store ("start fresh"). The next `set()` or `delete()` then saved that empty store over the file, which destroyed every credential in it. The usual trigger was a wrong password, most often the machine-default one, which is used silently whenever `TC_KEYSTORE_PASSWORD` isn't set. This was reproduced on 2026-09-24. Fernet raises the same `InvalidToken` for a wrong key and for damaged bytes, so the error says "the password is wrong or the file is corrupted" rather than guessing. It also names `TC_KEYSTORE_PASSWORD` when the machine default was tried.
+
+**Why an empty file raises too:** `_save()` only leaves a file empty when a write is cut short, because it truncates the file before writing. An empty file holds nothing, but opening it as a new store would hide that its credentials are gone. Deleting it is a cheap, explicit way to start over.
+
+**What we rejected:**
+- *Start fresh but back up the old file first.* A wrong password would still go unnoticed until a credential went missing, and every mistyped password would leave another copy of the ciphertext behind.
+- *Open an empty, read-only store.* Callers would see every credential as missing without knowing why.
+- *Treat an empty file as a new store.* Nothing would be lost, but an interrupted write would go unnoticed.
+
+**Permissions:** new key files are created `0600`, and a parent directory the store creates is `0700`. Existing files and directories keep their permissions. Before this change they got the umask default (typically `0644` / `0755`), so any local user could read them. A store opened without a password is protected only by the machine-default password, which is derived from the hostname and username.
+
+**References:** `keystore/local.py` (`UnreadableKeyFileError`, `LocalFileKeyStore._load` / `_save`), `tests/unit/test_keystore.py`.

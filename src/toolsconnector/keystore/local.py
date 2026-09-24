@@ -43,6 +43,15 @@ class LegacyKeyFileError(ValueError):
     """
 
 
+class UnreadableKeyFileError(ValueError):
+    """The key file exists but cannot be read with this password.
+
+    The password is wrong, or the file is empty or corrupted. The store
+    refuses to open rather than start empty, because its next write
+    would replace every credential in the file. The file is left as is.
+    """
+
+
 def _decode_legacy(raw: bytes) -> Optional[dict[str, str]]:
     """Return the credentials in a legacy base64 key file, or None.
 
@@ -89,6 +98,8 @@ class LocalFileKeyStore:
         ImportError: ``cryptography`` is not installed.
         LegacyKeyFileError: The key file is in the legacy base64 format
             and ``migrate_legacy`` is False.
+        UnreadableKeyFileError: The key file exists but cannot be read
+            with this password (wrong password, empty, or corrupted).
     """
 
     def __init__(
@@ -107,9 +118,11 @@ class LocalFileKeyStore:
             ) from exc
 
         self._path = Path(path) if path else _DEFAULT_PATH
-        self._password = (
-            password or os.environ.get("TC_KEYSTORE_PASSWORD") or self._machine_default_password()
-        )
+        supplied = password or os.environ.get("TC_KEYSTORE_PASSWORD")
+        # Kept for the wrong-password error: an unset TC_KEYSTORE_PASSWORD
+        # silently switches to the machine default.
+        self._password_is_default = not supplied
+        self._password = supplied or self._machine_default_password()
         self._data: dict[str, str] = {}
         self._key = self._derive_key(self._password)
         self._fernet = Fernet(self._key)
@@ -175,6 +188,9 @@ class LocalFileKeyStore:
     def _load(self, migrate_legacy: bool = False) -> None:
         """Load and decrypt the key file.
 
+        A file that exists but can't be read raises instead of opening as
+        an empty store, which the next write would save over the file.
+
         Args:
             migrate_legacy: Re-encrypt a legacy base64 key file in place
                 instead of raising.
@@ -182,12 +198,21 @@ class LocalFileKeyStore:
         Raises:
             LegacyKeyFileError: The file is in the legacy base64 format
                 and *migrate_legacy* is False.
+            UnreadableKeyFileError: The file is empty, can't be decrypted
+                with this password, or doesn't hold a JSON object.
         """
         if not self._path.exists():
             self._data = {}
             return
 
         raw = self._path.read_bytes()
+        if not raw.strip():
+            # _save() never leaves a file empty unless a write was cut short;
+            # say so rather than quietly open it as a new store.
+            raise UnreadableKeyFileError(
+                f"{self._path} is empty, so it holds no credentials. The file was left "
+                "untouched; delete it to start a new store."
+            )
         legacy = _decode_legacy(raw)
         if legacy is not None:
             if not migrate_legacy:
@@ -202,19 +227,44 @@ class LocalFileKeyStore:
             self._save()
             return
 
+        from cryptography.fernet import InvalidToken
+
         try:
-            decrypted = self._decrypt(raw)
-            self._data = json.loads(decrypted)
-        except Exception:
-            # Corrupted or wrong password — start fresh
-            self._data = {}
+            data = json.loads(self._decrypt(raw))
+        except InvalidToken as exc:  # Fernet can't tell a wrong key from damaged bytes
+            hint = (
+                "Neither password= nor TC_KEYSTORE_PASSWORD was set, so the machine-default "
+                "password was tried; supply the password the file was created with. "
+                if self._password_is_default
+                else ""
+            )
+            raise UnreadableKeyFileError(
+                f"{self._path} could not be decrypted: the password is wrong or the file is "
+                f"corrupted. {hint}The file was left untouched; to start a new store instead, "
+                "move it aside."
+            ) from exc
+        except ValueError:  # UnicodeDecodeError or JSONDecodeError
+            data = None
+        if not isinstance(data, dict):
+            raise UnreadableKeyFileError(
+                f"{self._path} decrypted, but it does not hold a JSON object of credentials, "
+                "so it is corrupted. The file was left untouched; to start a new store "
+                "instead, move it aside."
+            )
+        self._data = data
 
     def _save(self) -> None:
-        """Encrypt and save the key file."""
-        self._path.parent.mkdir(parents=True, exist_ok=True)
+        """Encrypt and save the key file.
+
+        A new key file is created 0600 and a missing parent directory 0700.
+        An existing file or directory keeps its permissions.
+        """
+        self._path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         plaintext = json.dumps(self._data, indent=2)
         encrypted = self._encrypt(plaintext)
-        self._path.write_bytes(encrypted)
+        # Mode set at creation, so the file is never readable by others, even briefly.
+        with open(self._path, "wb", opener=lambda p, flags: os.open(p, flags, 0o600)) as f:
+            f.write(encrypted)
 
     async def get(self, key: str) -> Optional[str]:
         """Get a credential by key.

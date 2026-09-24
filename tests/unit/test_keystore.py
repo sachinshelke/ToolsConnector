@@ -5,11 +5,14 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
+import stat
 import sys
 
 import pytest
 
 from toolsconnector.keystore import EnvironmentKeyStore, InMemoryKeyStore, LocalFileKeyStore
+from toolsconnector.keystore.local import UnreadableKeyFileError
 
 
 def _hide_cryptography(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -157,3 +160,66 @@ class TestLocalFileKeyStore:
         assert _is_fernet_token(path.read_bytes())
         reopened = LocalFileKeyStore(path=str(path), password="pw")
         assert asyncio.run(reopened.get("gmail:default:access_token")) == "ya29.secret"
+
+    def test_wrong_password_raises_and_leaves_the_file_intact(self, tmp_path):
+        path = tmp_path / "keys.enc"
+        asyncio.run(LocalFileKeyStore(path=str(path), password="right").set("k", "ya29.secret"))
+        before = path.read_bytes()
+
+        # It used to open as an empty store, which the next set() saved over the file.
+        with pytest.raises(UnreadableKeyFileError, match="could not be decrypted"):
+            LocalFileKeyStore(path=str(path), password="wrong")
+
+        assert path.read_bytes() == before
+        reopened = LocalFileKeyStore(path=str(path), password="right")
+        assert asyncio.run(reopened.get("k")) == "ya29.secret"
+
+    def test_unset_env_password_error_names_the_variable(self, tmp_path, monkeypatch):
+        path = tmp_path / "keys.enc"
+        monkeypatch.setenv("TC_KEYSTORE_PASSWORD", "right")
+        asyncio.run(LocalFileKeyStore(path=str(path)).set("k", "ya29.secret"))
+
+        # Without the variable, the machine-default password is tried instead.
+        monkeypatch.delenv("TC_KEYSTORE_PASSWORD")
+        with pytest.raises(UnreadableKeyFileError, match="TC_KEYSTORE_PASSWORD"):
+            LocalFileKeyStore(path=str(path))
+
+    def test_truncated_file_raises(self, tmp_path):
+        path = tmp_path / "keys.enc"
+        asyncio.run(LocalFileKeyStore(path=str(path), password="pw").set("k", "ya29.secret"))
+        truncated = path.read_bytes()[:40]  # what an interrupted write leaves behind
+        path.write_bytes(truncated)
+
+        with pytest.raises(UnreadableKeyFileError, match="wrong or the file is corrupted"):
+            LocalFileKeyStore(path=str(path), password="pw")
+        assert path.read_bytes() == truncated
+
+    @pytest.mark.parametrize("content", [b"", b"\n"])
+    def test_empty_file_raises(self, tmp_path, content):
+        path = tmp_path / "keys.enc"
+        path.write_bytes(content)
+
+        with pytest.raises(UnreadableKeyFileError, match="is empty"):
+            LocalFileKeyStore(path=str(path), password="pw")
+        assert path.read_bytes() == content
+
+    @pytest.mark.parametrize("plaintext", ["not json", '["k"]'])
+    def test_decrypted_content_that_is_not_a_json_object_raises(self, tmp_path, plaintext):
+        path = tmp_path / "keys.enc"
+        ks = LocalFileKeyStore(path=str(path), password="pw")
+        path.write_bytes(ks._encrypt(plaintext))  # right password, wrong content
+
+        with pytest.raises(UnreadableKeyFileError, match="JSON object"):
+            LocalFileKeyStore(path=str(path), password="pw")
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+    def test_new_key_file_and_directory_are_owner_only(self, tmp_path):
+        path = tmp_path / "store" / "keys.enc"
+        previous = os.umask(0o022)  # the usual default, under which they were 0644 and 0755
+        try:
+            asyncio.run(LocalFileKeyStore(path=str(path), password="pw").set("k", "ya29.secret"))
+        finally:
+            os.umask(previous)
+
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
+        assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
