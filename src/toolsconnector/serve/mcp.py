@@ -9,7 +9,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 if TYPE_CHECKING:
     from toolsconnector.serve.toolkit import ToolKit
@@ -68,6 +68,39 @@ def _json_type_to_python(param_schema: dict[str, Any], required: bool) -> Any:
                 py_type = list[type_map.get(item_type, Any)]  # type: ignore[misc]
 
     return py_type if required else Optional[py_type]
+
+
+def _tool_annotation_hints(entry: dict[str, Any]) -> dict[str, bool]:
+    """Map a tool's declared safety metadata to MCP ``ToolAnnotations`` hints.
+
+    Only declared facts become hints. Anything undeclared is omitted, so the
+    client falls back to the MCP spec defaults, which are the worst case
+    (not read-only, destructive, not idempotent). In particular, an action
+    with no declared ``access`` surfaces the library's fail-safe ``"write"``
+    in :class:`ToolEntry`; stating that as ``destructiveHint: false`` would
+    publish a guess as fact, so it is not emitted.
+
+    ``openWorldHint`` is never emitted: every connector calls a remote API,
+    which is the spec default.
+
+    Args:
+        entry: A tool dict from ``ToolKit.list_tools()``.
+
+    Returns:
+        Keyword arguments for ``mcp.types.ToolAnnotations`` (possibly empty).
+    """
+    hints: dict[str, bool] = {}
+    access = entry.get("access")
+    if entry.get("access_classified"):
+        if access == "read":
+            hints["readOnlyHint"] = True
+        else:
+            hints["readOnlyHint"] = False
+            hints["destructiveHint"] = access == "destructive"
+    # The spec defines idempotentHint only for tools that are not read-only.
+    if entry.get("idempotent") and not hints.get("readOnlyHint"):
+        hints["idempotentHint"] = True
+    return hints
 
 
 def _make_tool_handler(
@@ -137,6 +170,61 @@ def _make_tool_handler(
     return _handler
 
 
+# Minimum ``mcp`` version whose ``FastMCP.tool()`` accepts BOTH
+# ``annotations=`` (added 1.7.0) and ``structured_output=`` (added 1.10.0).
+# Kept in sync with the ``[mcp]`` extra in pyproject.toml.
+_MCP_MIN = "1.10"
+# Exclusive ceiling: mcp 2.x removed ``mcp.server.fastmcp`` entirely.
+_MCP_MAX_EXCLUSIVE = "2"
+_MCP_SPECIFIER = f"mcp>={_MCP_MIN},<{_MCP_MAX_EXCLUSIVE}"
+
+
+def _mcp_import_error_message(exc: ImportError) -> str:
+    """Build a diagnostic for a failed ``mcp.server.fastmcp`` import.
+
+    "Not installed" and "installed but incompatible" (in practice, mcp
+    2.x) are different problems with different fixes. The old single
+    message ("install with: pip install toolsconnector[mcp]") was wrong
+    for the second — it told a user who had just run that exact command
+    to run it again.
+
+    Args:
+        exc: The original ImportError raised by the failed import.
+
+    Returns:
+        A message naming the actual cause and its fix. The caller is
+        responsible for chaining ``exc`` via ``raise ... from exc`` so
+        mcp 2.x's own diagnostic (which names MCPServer and links the
+        migration guide) survives in the traceback.
+    """
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+
+        installed: Optional[str] = version("mcp")
+    except PackageNotFoundError:
+        installed = None
+    except Exception:  # pragma: no cover - metadata backend misbehaving
+        installed = None
+
+    if installed is not None:
+        # Installed but unusable — almost always a 2.x resolve from an
+        # environment that predates the ceiling. Surface the version,
+        # because "it's installed" is exactly what makes this confusing.
+        return (
+            f"The installed 'mcp' package (version {installed}) is not compatible "
+            f"with this MCP server. Required: {_MCP_SPECIFIER}. "
+            f'Fix with: pip install "{_MCP_SPECIFIER}". '
+            f"Original import error: {exc}"
+        )
+
+    return (
+        f"MCP server requires the 'mcp' package. "
+        f'Install with: pip install "toolsconnector[mcp]" '
+        f"(resolves to {_MCP_SPECIFIER}). "
+        f"Original import error: {exc}"
+    )
+
+
 def create_and_run_mcp_server(
     toolkit: ToolKit,
     *,
@@ -168,11 +256,12 @@ def create_and_run_mcp_server(
     """
     try:
         from mcp.server.fastmcp import FastMCP
-    except ImportError:
-        raise ImportError(
-            "MCP server requires the 'mcp' package. "
-            'Install with: pip install "toolsconnector[mcp]"'
-        )
+        from mcp.types import ToolAnnotations
+    except ImportError as e:
+        # ``from e`` is load-bearing: mcp 2.x's tombstone module raises a
+        # ModuleNotFoundError whose message names MCPServer and links the
+        # migration guide. Swallowing it cost users the only useful clue.
+        raise ImportError(_mcp_import_error_message(e)) from e
 
     # Validate transport up-front so we don't construct the server
     # (or bind a port) for an unknown value.
@@ -207,11 +296,24 @@ def create_and_run_mcp_server(
         handler.__name__ = tool_name
         handler.__doc__ = description
 
-        server.tool(name=tool_name, description=description)(handler)
+        hints = _tool_annotation_hints(entry_dict)
+        server.tool(
+            name=tool_name,
+            description=description,
+            # None, not an empty model: the client then applies the spec's
+            # worst-case defaults for every undeclared hint.
+            annotations=ToolAnnotations.model_validate(hints) if hints else None,
+            # Without this FastMCP derives ``{"result": string}`` from the
+            # handler's ``-> str`` return type and advertises it as every
+            # tool's outputSchema — about a fifth of tools/list, no information.
+            structured_output=False,
+        )(handler)
 
     if transport == "stdio":
         logger.info("Starting MCP server (transport=stdio)")
         server.run(transport="stdio")
     else:
         logger.info(f"Starting MCP server (transport={transport}, bind={host}:{port})")
-        server.run(transport=transport)
+        # Validated against the supported set above; mypy can't narrow ``str``
+        # to the Literal that FastMCP.run() declares.
+        server.run(transport=cast("Literal['sse', 'streamable-http']", transport))

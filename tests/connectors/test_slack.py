@@ -36,7 +36,12 @@ import pytest_asyncio
 import respx
 
 from toolsconnector.connectors.slack import Slack
-from toolsconnector.errors import APIError, NotFoundError, RateLimitError
+from toolsconnector.errors import (
+    APIError,
+    NotFoundError,
+    PaginationNotWiredError,
+    RateLimitError,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -230,6 +235,110 @@ async def test_list_channels_pagination(slack: Slack) -> None:
         assert result2.items[0].name == "dev"
         assert result2.page_state.has_more is False
         assert result2.page_state.cursor is None
+
+
+# ---------------------------------------------------------------------------
+# 3b. Pagination — the connector must walk itself, not just hand back a cursor
+# ---------------------------------------------------------------------------
+#
+# `test_list_channels_pagination` above pages MANUALLY: it reads
+# `result1.page_state.cursor` and feeds it to a second `alist_channels(cursor=...)`
+# call. That proves the cursor is parsed, and it passed for months while
+# `anext_page()` was broken — the connector never assigned `_fetch_next`, so the
+# built-in walk returned None and `collect()` stopped at page one.
+#
+# These tests exercise the walk the caller (or an agent) actually uses.
+
+
+_CHANNELS_PAGE_1 = {
+    "ok": True,
+    "channels": [{"id": "C001", "name": "general", "is_archived": False, "num_members": 5}],
+    "response_metadata": {"next_cursor": "CURSOR_2"},
+}
+_CHANNELS_PAGE_2 = {
+    "ok": True,
+    "channels": [{"id": "C003", "name": "dev", "is_archived": False, "num_members": 8}],
+    "response_metadata": {"next_cursor": ""},
+}
+
+
+@pytest.mark.asyncio
+async def test_list_channels_anext_page_fetches_page_two(slack: Slack) -> None:
+    """anext_page() must return page two, not None.
+
+    Fails without the `_fetch_next` wiring: anext_page() returns None while
+    has_more is True, so the caller sees one channel and believes that is all.
+    """
+    with respx.mock(base_url="https://slack.com/api") as respx_mock:
+        route = respx_mock.get("/conversations.list").mock(
+            side_effect=[
+                httpx.Response(200, json=_CHANNELS_PAGE_1),
+                httpx.Response(200, json=_CHANNELS_PAGE_2),
+            ]
+        )
+
+        page1 = await slack.alist_channels(limit=1, exclude_archived=True)
+        assert page1.has_more is True
+
+        page2 = await page1.anext_page()
+
+        assert page2 is not None, "anext_page() returned None despite has_more=True"
+        assert [c.name for c in page2.items] == ["dev"]
+        assert page2.has_more is False
+        assert await page2.anext_page() is None
+
+        # The follow-up call must carry the cursor AND preserve the original
+        # filters — a fetcher that drops them silently changes the result set.
+        second = route.calls[1].request.url
+        assert "cursor=CURSOR_2" in str(second)
+        assert "limit=1" in str(second)
+        assert "exclude_archived=true" in str(second).lower()
+
+
+@pytest.mark.asyncio
+async def test_list_channels_collect_returns_every_page(slack: Slack) -> None:
+    """collect() is the agent-facing path; it must span both pages.
+
+    Fails without the wiring: returns 1 item and looks complete.
+    """
+    with respx.mock(base_url="https://slack.com/api") as respx_mock:
+        respx_mock.get("/conversations.list").mock(
+            side_effect=[
+                httpx.Response(200, json=_CHANNELS_PAGE_1),
+                httpx.Response(200, json=_CHANNELS_PAGE_2),
+            ]
+        )
+
+        page1 = await slack.alist_channels(limit=1)
+        assert [c.name for c in await page1.collect()] == ["general", "dev"]
+
+
+@pytest.mark.asyncio
+async def test_list_messages_has_more_without_cursor_stays_loud(slack: Slack) -> None:
+    """conversations.history can claim has_more=True and give no next_cursor.
+
+    That page genuinely cannot be walked. It must raise rather than re-request
+    page one forever (an unguarded `_fetch_next` would loop) or quietly stop.
+    """
+    with respx.mock(base_url="https://slack.com/api") as respx_mock:
+        respx_mock.get("/conversations.history").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "messages": [{"ts": "1.0", "text": "hi", "user": "U1"}],
+                    "has_more": True,
+                    "response_metadata": {"next_cursor": ""},
+                },
+            )
+        )
+
+        page = await slack.alist_messages(channel="C001", limit=1)
+        assert page.has_more is True
+        assert page.page_state.cursor is None
+
+        with pytest.raises(PaginationNotWiredError):
+            await page.anext_page()
 
 
 # ---------------------------------------------------------------------------

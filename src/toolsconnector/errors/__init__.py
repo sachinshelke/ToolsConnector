@@ -27,6 +27,7 @@ ToolsConnectorError
         ConnectorNotConfiguredError
         ConnectorInitError
         ActionNotFoundError
+        PaginationNotWiredError
     ConfigError
         InvalidConfigError
         MissingConfigError
@@ -55,6 +56,7 @@ from .connector import (
     ConnectorError,
     ConnectorInitError,
     ConnectorNotConfiguredError,
+    PaginationNotWiredError,
 )
 from .transport import ConnectionError, DNSError, TimeoutError, TransportError
 
@@ -85,6 +87,7 @@ __all__ = [
     "ConnectorNotConfiguredError",
     "ConnectorInitError",
     "ActionNotFoundError",
+    "PaginationNotWiredError",
     # Config
     "ConfigError",
     "InvalidConfigError",

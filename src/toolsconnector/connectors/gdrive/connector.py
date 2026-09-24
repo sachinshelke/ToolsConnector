@@ -286,13 +286,20 @@ class GoogleDrive(BaseConnector):
         files = [_parse_file(f) for f in data.get("files", [])]
         next_token = data.get("nextPageToken")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=files,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        # Drive omits nextPageToken on the last page. Guard on the token so an
+        # empty-string token raises instead of refetching page one.
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_files(
+                page_size=page_size, order_by=order_by, page_token=t, folder_id=folder_id
+            )
+        return result
 
     @action("Get file metadata by ID", requires_scope="read", access="read")
     async def get_file(self, file_id: str) -> DriveFile:
@@ -582,13 +589,18 @@ class GoogleDrive(BaseConnector):
         files = [_parse_file(f) for f in data.get("files", [])]
         next_token = data.get("nextPageToken")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=files,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.asearch_files(
+                query=query, page_size=page_size, page_token=t
+            )
+        return result
 
     @action("Share a file with a user or group", requires_scope="write", dangerous=True)
     async def share_file(
@@ -919,13 +931,18 @@ class GoogleDrive(BaseConnector):
             )
 
         next_token = data.get("nextPageToken")
-        return PaginatedList(
+        result = PaginatedList(
             items=comments,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_comments(
+                file_id=file_id, page_size=page_size, page_token=t
+            )
+        return result
 
     @action("Create a comment on a file", requires_scope="write", dangerous=True)
     async def create_comment(
@@ -1054,13 +1071,18 @@ class GoogleDrive(BaseConnector):
             )
 
         next_token = data.get("nextPageToken")
-        return PaginatedList(
+        result = PaginatedList(
             items=revisions,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_revisions(
+                file_id=file_id, page_size=page_size, page_token=t
+            )
+        return result
 
     @action("Get a specific revision of a file", requires_scope="read", access="read")
     async def get_revision(

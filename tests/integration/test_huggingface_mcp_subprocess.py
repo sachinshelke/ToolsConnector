@@ -124,6 +124,19 @@ def test_huggingface_mcp_server_end_to_end_handshake() -> None:
     repo_root = Path(__file__).resolve().parent.parent.parent
     server_src = _server_script(repo_root)
 
+    # Expected tools come from the connector's action registry, not a hardcoded
+    # count. The subprocess puts src/ first on sys.path, so this process must
+    # read the same copy or the comparison is meaningless.
+    import toolsconnector
+    from toolsconnector.connectors.huggingface import HuggingFace
+
+    assert Path(toolsconnector.__file__).resolve().is_relative_to(repo_root / "src"), (
+        f"test imported {toolsconnector.__file__}, not {repo_root / 'src'}; "
+        "run with PYTHONPATH=src or an editable install"
+    )
+    spec = HuggingFace.get_spec()
+    expected_tools = sorted(f"{spec.name}_{action}" for action in spec.actions)
+
     with tempfile.TemporaryDirectory() as tmpdir:
         server_path = Path(tmpdir) / "huggingface_mcp_server.py"
         server_path.write_text(server_src)
@@ -167,12 +180,12 @@ def test_huggingface_mcp_server_end_to_end_handshake() -> None:
 
             _send(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
 
-            # 2. tools/list — all 27 huggingface tools
+            # 2. tools/list — exactly the connector's registered actions
             _send(proc, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
             listed = _recv(proc, expected_id=2)
             tools = listed["result"]["tools"]
             hf_tools = [t for t in tools if t["name"].startswith("huggingface_")]
-            assert len(hf_tools) == 27, f"expected 27 tools, got {len(hf_tools)}"
+            assert sorted(t["name"] for t in hf_tools) == expected_tools
 
             # feature_extraction inputSchema must advertise the union (string or array)
             fe = next(t for t in hf_tools if t["name"] == "huggingface_feature_extraction")

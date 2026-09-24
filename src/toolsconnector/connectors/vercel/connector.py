@@ -246,13 +246,17 @@ class Vercel(BaseConnector):
         items = [_parse_deployment(d) for d in body.get("deployments", [])]
 
         pagination = body.get("pagination", {})
-        has_more = pagination.get("count", 0) >= capped_limit
-        next_cursor = str(pagination.get("next")) if has_more else None
+        # Vercel sends pagination.next = null on the last page. Deriving has_more
+        # from `count >= limit` instead meant a full final page stringified that
+        # null into the cursor "None" and requested ?until=None.
+        next_ts = pagination.get("next")
+        has_more = next_ts is not None
+        next_cursor = str(next_ts) if has_more else None
         ps = PageState(has_more=has_more, cursor=next_cursor)
 
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
-            result._fetch_next = lambda c=ps.cursor: self.list_deployments(
+            result._fetch_next = lambda c=ps.cursor: self.alist_deployments(
                 project_id=project_id,
                 limit=capped_limit,
                 page=c,
@@ -304,13 +308,14 @@ class Vercel(BaseConnector):
         items = [_parse_project(p) for p in body.get("projects", [])]
 
         pagination = body.get("pagination", {})
-        has_more = pagination.get("count", 0) >= capped_limit
-        next_cursor = str(pagination.get("next")) if has_more else None
+        next_ts = pagination.get("next")
+        has_more = next_ts is not None
+        next_cursor = str(next_ts) if has_more else None
         ps = PageState(has_more=has_more, cursor=next_cursor)
 
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
-            result._fetch_next = lambda c=ps.cursor: self.list_projects(
+            result._fetch_next = lambda c=ps.cursor: self.alist_projects(
                 limit=capped_limit,
                 page=c,
             )

@@ -784,7 +784,7 @@ class GitLab(BaseConnector):
         )
         if ps.has_more and ps.page_number is not None:
             np = ps.page_number
-            result._fetch_next = lambda pg=np: self.list_project_members(
+            result._fetch_next = lambda pg=np: self.alist_project_members(
                 project_id=project_id,
                 query=query,
                 limit=limit,

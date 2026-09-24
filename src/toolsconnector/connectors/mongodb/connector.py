@@ -153,6 +153,7 @@ class MongoDB(BaseConnector):
         filter: Optional[dict[str, Any]] = None,
         sort: Optional[dict[str, int]] = None,
         limit: int = 100,
+        skip: int = 0,
     ) -> PaginatedList[MongoDocument]:
         """Find documents matching a filter.
 
@@ -162,6 +163,8 @@ class MongoDB(BaseConnector):
             filter: MongoDB query filter document.
             sort: Sort specification (e.g. ``{"created": -1}``).
             limit: Maximum number of documents to return.
+            skip: Number of documents to skip. ``anext_page()`` advances it for
+                you; pass a ``sort`` so pages are stable.
 
         Returns:
             Paginated list of MongoDocument objects.
@@ -172,7 +175,9 @@ class MongoDB(BaseConnector):
         if sort:
             body["sort"] = sort
         body["limit"] = limit
-
+        # Without this the action reported has_more with no way to get past page one.
+        if skip > 0:
+            body["skip"] = skip
         resp = await self._request("/action/find", body)
         data = resp.json()
 
@@ -180,9 +185,21 @@ class MongoDB(BaseConnector):
         items = [MongoDocument(document=doc) for doc in docs]
 
         has_more = len(docs) == limit
-        page_state = PageState(has_more=has_more)
-
-        return PaginatedList(items=items, page_state=page_state)
+        next_skip = skip + len(docs)
+        page_state = PageState(has_more=has_more, offset=next_skip)
+        result = PaginatedList(items=items, page_state=page_state)
+        # has_more is a full-page guess; the page after a final full page is empty
+        # and collect() stops there. Pass a `sort` for stable skip-based paging.
+        if has_more and docs:
+            result._fetch_next = lambda k=next_skip: self.afind(
+                collection=collection,
+                database=database,
+                filter=filter,
+                sort=sort,
+                limit=limit,
+                skip=k,
+            )
+        return result
 
     @action("Find a single document in a MongoDB collection")
     async def find_one(

@@ -17,6 +17,8 @@ real package so the test:
 
 from __future__ import annotations
 
+import builtins
+import inspect
 import sys
 import types
 from typing import Any
@@ -46,10 +48,16 @@ def _install_fake_fastmcp(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, M
     fake_fastmcp_mod.FastMCP = fastmcp_class  # type: ignore[attr-defined]
     fake_server_mod = types.ModuleType("mcp.server")
     fake_root_mod = types.ModuleType("mcp")
+    # create_and_run_mcp_server imports ToolAnnotations next to FastMCP.
+    # Without this, the fake root (not a package) can't supply mcp.types,
+    # and the test passes only if an earlier test loaded the real module.
+    fake_types_mod = types.ModuleType("mcp.types")
+    fake_types_mod.ToolAnnotations = MagicMock(name="ToolAnnotations")  # type: ignore[attr-defined]
 
     monkeypatch.setitem(sys.modules, "mcp", fake_root_mod)
     monkeypatch.setitem(sys.modules, "mcp.server", fake_server_mod)
     monkeypatch.setitem(sys.modules, "mcp.server.fastmcp", fake_fastmcp_mod)
+    monkeypatch.setitem(sys.modules, "mcp.types", fake_types_mod)
 
     return fastmcp_class, server_instance
 
@@ -284,3 +292,178 @@ def test_json_type_typed_array_preserves_item_type() -> None:
     assert _json_type_to_python({"type": "array", "items": {"type": "integer"}}, True) == list[int]
     # Bare array (no item type) stays plain ``list`` — unchanged behaviour.
     assert _json_type_to_python({"type": "array"}, True) is list
+
+
+# ---------------------------------------------------------------------------
+# ImportError handling for the ``mcp`` package
+#
+# mcp 2.x removed ``mcp.server.fastmcp``; the module is a tombstone that
+# raises ModuleNotFoundError with a genuinely useful message (it names
+# MCPServer, links the migration guide, and suggests pinning 'mcp<2').
+# The old handler caught ImportError and re-raised WITHOUT ``from e``,
+# discarding all of that and substituting "install with: pip install
+# toolsconnector[mcp]" — advice the user had already followed.
+# ---------------------------------------------------------------------------
+
+_TOMBSTONE_MESSAGE = (
+    "No module named 'mcp.server.fastmcp'. This is mcp 2.x, where FastMCP was "
+    "renamed to MCPServer (from mcp.server.mcpserver import MCPServer) and other "
+    "APIs changed; see the migration guide at "
+    "https://py.sdk.modelcontextprotocol.io/v2/migration/#fastmcp-renamed-to-mcpserver "
+    "or pin 'mcp<2' to keep running v1 code."
+)
+
+
+def _break_fastmcp_import(monkeypatch: pytest.MonkeyPatch, exc: ImportError) -> None:
+    """Make ``from mcp.server.fastmcp import FastMCP`` raise ``exc``.
+
+    Mirrors how mcp 2.x actually fails: the parent packages import fine,
+    and only the ``mcp.server.fastmcp`` submodule blows up.
+    """
+    monkeypatch.setitem(sys.modules, "mcp", types.ModuleType("mcp"))
+    monkeypatch.setitem(sys.modules, "mcp.server", types.ModuleType("mcp.server"))
+    monkeypatch.delitem(sys.modules, "mcp.server.fastmcp", raising=False)
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "mcp.server.fastmcp":
+            raise exc
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+
+def _set_installed_mcp_version(monkeypatch: pytest.MonkeyPatch, version: str | None) -> None:
+    """Pretend ``mcp`` is installed at ``version`` (or absent when None)."""
+    import importlib.metadata as md
+
+    real_version = md.version
+
+    def fake_version(name: str) -> str:
+        if name == "mcp":
+            if version is None:
+                raise md.PackageNotFoundError("mcp")
+            return version
+        return real_version(name)
+
+    monkeypatch.setattr(md, "version", fake_version)
+
+
+def test_import_error_chains_the_original_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``raise ... from e`` — mcp 2.x's own diagnostic must survive.
+
+    Without the chain, the migration guide URL and the ``pin 'mcp<2'``
+    hint are destroyed and the user is left with a message that tells
+    them to re-run the install they already ran.
+    """
+    from toolsconnector.serve.mcp import create_and_run_mcp_server
+
+    original = ModuleNotFoundError(_TOMBSTONE_MESSAGE, name="mcp.server.fastmcp")
+    _break_fastmcp_import(monkeypatch, original)
+    _set_installed_mcp_version(monkeypatch, "2.2.0")
+
+    with pytest.raises(ImportError) as excinfo:
+        create_and_run_mcp_server(_make_toolkit_stub())
+
+    assert excinfo.value.__cause__ is original, (
+        "the ImportError handler dropped the original exception — re-raise "
+        "with `from e` so mcp 2.x's migration guidance survives the traceback"
+    )
+    # The upstream hint must be reachable from the raised error.
+    assert "MCPServer" in str(excinfo.value.__cause__)
+    assert "migration" in str(excinfo.value.__cause__)
+
+
+def test_import_error_message_differs_when_mcp_is_installed_but_incompatible(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ "Not installed" and "installed but wrong major" need different advice."""
+    from toolsconnector.serve.mcp import create_and_run_mcp_server
+
+    def _message(installed: str | None) -> str:
+        with monkeypatch.context() as m:
+            _break_fastmcp_import(m, ModuleNotFoundError(_TOMBSTONE_MESSAGE))
+            _set_installed_mcp_version(m, installed)
+            with pytest.raises(ImportError) as excinfo:
+                create_and_run_mcp_server(_make_toolkit_stub())
+            return str(excinfo.value)
+
+    incompatible = _message("2.2.0")
+    missing = _message(None)
+
+    assert incompatible != missing, (
+        "the handler gives identical advice whether 'mcp' is missing or "
+        "installed-but-incompatible; the 2.x case must not tell the user to "
+        "re-run the install that produced it"
+    )
+    # The incompatible case must name the offending version and the fix.
+    assert "2.2.0" in incompatible
+    assert "mcp>=1.10,<2" in incompatible
+    # The missing case is the only one that should recommend the extra.
+    assert "toolsconnector[mcp]" in missing
+
+
+# ---------------------------------------------------------------------------
+# Integration: exercise the real ``mcp`` package when it is installed.
+#
+# NOTE: CI installs only ``.[dev]``, which does not include ``[mcp]``, so
+# this SKIPS on CI today. It runs in any env where the extra is present.
+# ---------------------------------------------------------------------------
+
+
+def test_real_mcp_package_serves_tools(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With the pinned extra installed, the real server path must work.
+
+    This is the test that would have caught the 2.x breakage: it runs
+    ``create_and_run_mcp_server`` against the REAL ``FastMCP`` (not the
+    mock used above) — import, construction, and tool registration
+    through the ``__signature__``-rewriting handler — stopping only at
+    ``run()`` so no stdio loop or socket is started.
+    """
+    pytest.importorskip(
+        "mcp.server.fastmcp",
+        reason="requires the [mcp] extra (mcp>=1.10,<2)",
+    )
+    import asyncio
+
+    from mcp.server.fastmcp import FastMCP
+
+    from toolsconnector.serve.mcp import create_and_run_mcp_server
+
+    # The pinned floor exists for these two kwargs — assert they are real.
+    tool_params = inspect.signature(FastMCP.tool).parameters
+    assert "annotations" in tool_params, "mcp too old: FastMCP.tool() lacks annotations="
+    assert "structured_output" in tool_params, (
+        "mcp too old: FastMCP.tool() lacks structured_output= (needs >=1.10)"
+    )
+
+    captured: list[Any] = []
+    monkeypatch.setattr(FastMCP, "run", lambda self, *a, **kw: captured.append((self, a, kw)))
+
+    toolkit = _make_toolkit_stub()
+    toolkit.list_tools.return_value = [
+        {
+            "name": "echo",
+            "description": "Echo a message back.",
+            "input_schema": {
+                "type": "object",
+                "properties": {"message": {"type": "string"}},
+                "required": ["message"],
+            },
+        }
+    ]
+
+    create_and_run_mcp_server(toolkit, transport="stdio")
+
+    assert len(captured) == 1, "run() was not reached"
+    server, _, run_kwargs = captured[0]
+    assert run_kwargs == {"transport": "stdio"}
+
+    tools = {t.name: t for t in asyncio.run(server.list_tools())}
+    assert set(tools) == {"echo"}
+    # The rewritten signature must surface as a real input schema, not **kwargs.
+    assert tools["echo"].inputSchema["properties"].keys() == {"message"}
+    assert tools["echo"].inputSchema.get("required") == ["message"]
