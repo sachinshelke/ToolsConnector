@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 
 import pytest
 import respx
@@ -123,7 +124,10 @@ class TestToolKitCredentialPreflight:
         message = str(exc_info.value)
         assert "<account_sid>:<auth_token>" in message
         assert "your-token" not in message
-        assert "https://console.twilio.com/" in message
+        # Exact match on the extracted URLs, not a substring check (CodeQL
+        # py/incomplete-url-substring-sanitization).
+        urls = re.findall(r"https://[^\s)'\"]+", message)
+        assert any(url == "https://console.twilio.com/" for url in urls), urls
 
     @pytest.mark.asyncio
     async def test_blank_credential_counts_as_missing(self) -> None:
