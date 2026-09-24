@@ -183,6 +183,7 @@ websocket = ["websockets>=12.0"]
 # --- KeyStore extras ---
 vault = ["hvac>=1.0"]
 aws-keystore = ["boto3>=1.28"]
+local-keystore = ["cryptography>=42.0"]  # LocalFileKeyStore (Fernet)
 
 # --- Storage extras ---
 s3-storage = ["boto3>=1.28"]
@@ -233,6 +234,9 @@ dev = [
     "pytest-xdist>=3.0",
     "respx>=0.20",
     "vcrpy>=6.0",
+    # LocalFileKeyStore tests need real Fernet. Declared, not left to arrive
+    # transitively (mcp -> pyjwt[crypto]), so they can't silently lose it.
+    "toolsconnector[local-keystore]",
     "ruff>=0.15.11,<0.16",  # keep aligned with .pre-commit-config.yaml rev
     "mypy>=1.5",
     "bandit>=1.7",

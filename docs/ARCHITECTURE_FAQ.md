@@ -520,3 +520,20 @@ A platform embedding our tools often needs to run some agents read-only. `danger
 So `access` is set **explicitly and grounded in each action's real side effect**, not its verb — a POST that only searches / reveals / computes / runs inference (`notion.search`, `lusha.enrich_contacts`, `gemini.generate_content`, a GraphQL query, `odoo.search_read`) is `read`, because it persists nothing vendor-side. `dangerous` auto-derives `access="destructive"`, and a conformance ratchet (`tests/conformance/test_access_classification.py`) enforces that the two always agree and that **every Tier-1 (live) action is classified** (read 233 / write 74 / destructive 132 at introduction). Non-Tier-1 actions stay `None` until classified; a read-only consumer treats `None` as "not provably read" and fails closed. `access` and `idempotent` are both surfaced in `list_tools()` / `ToolEntry.to_dict()`.
 
 **References:** `spec/action.py` (`AccessKind`, `ActionSpec.access`), `runtime/action.py` (`@action(access=...)` + destructive auto-derive), `serve/_filtering.py` (`ToolEntry.to_dict`), `tests/conformance/test_access_classification.py`.
+
+## 25. Why does `LocalFileKeyStore` need the `[local-keystore]` extra, with no unencrypted fallback?
+
+**Decision: `LocalFileKeyStore` requires `cryptography`, shipped as the optional `local-keystore` extra, and raises `ImportError` at construction when it is missing. It never degrades to an unencrypted format, and there is no opt-in "insecure" mode. Key files written by the old fallback raise `LegacyKeyFileError` until the caller opts in to re-encrypting them with `migrate_legacy=True`.**
+
+From its first commit through 0.3.25, the class caught that `ImportError` and silently wrote `base64(json)` instead, while its docstring promised Fernet. `cryptography` wasn't declared anywhere, so a plain `pip install toolsconnector` always took the fallback, leaving OAuth tokens on disk in cleartext-equivalent form. The `mcp` extra pulled `cryptography` in transitively (`pyjwt[crypto]`), so test environments never exercised the fallback. The two formats couldn't read each other either. The loader treated the other format as a corrupt file and opened an empty store, and the next `set()` overwrote the file, which lost every stored credential in both directions. Both directions were reproduced against 0.3.25 before the fix.
+
+**Why an extra, not a core dependency:** the core install stays `pydantic` + `httpx` + `docstring-parser`. Under BYOK (FAQ #9), most users supply credentials from env vars or their own secret manager and never touch a local key file, so they shouldn't pay for a compiled crypto wheel. The extra mirrors `vault` / `aws-keystore`. `dev` depends on it explicitly, so the keystore tests always run against real Fernet instead of relying on a transitive install.
+
+**Why fail loudly:** a store documented as encrypted must either encrypt or refuse to run. A security property that quietly disappears depending on what else happens to be installed is worse than none, because nobody knows to compensate for it.
+
+**What we rejected:**
+- *Keep the fallback and warn.* Warnings get filtered or lost, and the tokens still land on disk.
+- *An explicit `insecure=True` mode.* `InMemoryKeyStore`, `EnvironmentKeyStore` or a user-supplied `KeyStore` already covers every no-dependency use case, and an insecure flag is one copy-paste away from production.
+- *Silently auto-migrating legacy files.* That would hide the fact that those credentials sat on disk unencrypted. The error tells the user to rotate them, and `migrate_legacy=True` is the deliberate re-encrypt step.
+
+**References:** `keystore/local.py` (`LocalFileKeyStore`, `LegacyKeyFileError`), `pyproject.toml` (`local-keystore`), `tests/unit/test_keystore.py`.
