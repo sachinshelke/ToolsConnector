@@ -21,7 +21,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Optional, cast
+from typing import Optional
 
 # Default location for the encrypted key file
 _DEFAULT_PATH = Path.home() / ".toolsconnector" / "keys.enc"
@@ -105,8 +105,11 @@ class LocalFileKeyStore:
             return base64.b64encode(plaintext.encode("utf-8"))
 
         f = Fernet(self._key)
-        # cryptography ships without type stubs; cast for the strict checker.
-        return cast("bytes", f.encrypt(plaintext.encode("utf-8")))
+        # Annotated local, not cast(): cryptography is typed when installed
+        # (a cast is then redundant) but Any when it isn't (mcp pulls it in
+        # via pyjwt[crypto]); the annotation type-checks cleanly both ways.
+        token: bytes = f.encrypt(plaintext.encode("utf-8"))
+        return token
 
     def _decrypt(self, ciphertext: bytes) -> str:
         """Decrypt bytes using Fernet.
@@ -124,7 +127,8 @@ class LocalFileKeyStore:
             return base64.b64decode(ciphertext).decode("utf-8")
 
         f = Fernet(self._key)
-        return cast("str", f.decrypt(ciphertext).decode("utf-8"))
+        plaintext: str = f.decrypt(ciphertext).decode("utf-8")
+        return plaintext
 
     def _load(self) -> None:
         """Load and decrypt the key file."""

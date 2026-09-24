@@ -37,6 +37,7 @@ else:  # pragma: no cover - pre-3.11 interpreters (tomli ships with pytest there
         reason="needs tomllib (3.11+) or tomli to parse pyproject.toml",
     )
 
+from packaging.requirements import Requirement
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 
@@ -123,4 +124,26 @@ def test_subpackage_floor_matches_mcp_requirement() -> None:
     assert not SpecifierSet(requires_python).contains(Version("3.9")), (
         f"toolsconnector-mcp declares requires-python={requires_python!r}, but "
         "its mandatory 'mcp' dependency requires Python >=3.10. Raise the floor."
+    )
+
+
+def test_dev_extra_installs_the_mcp_extra() -> None:
+    """CI installs only ``.[dev]``, so ``dev`` must pull in the ``mcp`` extra.
+
+    Without it, every MCP integration test (tests/integration/*_mcp_subprocess.py
+    and the real-FastMCP test in tests/unit/test_mcp_server_transports.py)
+    skips silently. That is how the Hugging Face handshake test asserted a
+    stale tool count (27 vs 30) for months without ever failing. Requiring the
+    extra by self-reference keeps the version pin in exactly one place.
+    """
+    dev = _load(_ROOT / "pyproject.toml")["project"]["optional-dependencies"]["dev"]
+    pulls_mcp = [
+        r
+        for r in map(Requirement, dev)
+        if r.name == "toolsconnector" and "mcp" in r.extras and r.marker is None
+    ]
+    assert pulls_mcp, (
+        f"the dev extra {dev!r} does not install 'toolsconnector[mcp]' "
+        "(unconditionally), so CI's `pip install -e .[dev]` leaves mcp out and "
+        "every MCP integration test silently skips."
     )

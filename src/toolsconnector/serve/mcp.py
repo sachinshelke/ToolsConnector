@@ -9,7 +9,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 if TYPE_CHECKING:
     from toolsconnector.serve.toolkit import ToolKit
@@ -269,4 +269,6 @@ def create_and_run_mcp_server(
         server.run(transport="stdio")
     else:
         logger.info(f"Starting MCP server (transport={transport}, bind={host}:{port})")
-        server.run(transport=transport)
+        # Validated against the supported set above; mypy can't narrow ``str``
+        # to the Literal that FastMCP.run() declares.
+        server.run(transport=cast("Literal['sse', 'streamable-http']", transport))

@@ -199,9 +199,8 @@ gcs-storage = ["google-cloud-storage>=2.0"]
 #                 1.10.0 (and ``annotations=`` in 1.7.0). Both are needed to
 #                 emit tool annotations and to suppress the auto-generated
 #                 outputSchema. Verified by inspecting the wheels.
-# No python_version marker: ``mcp`` needs Python >=3.10, the floor set by
-# decision D00000G. Until ``requires-python`` above is raised to match, the
-# extra does not resolve on 3.9 — unchanged from the old ``mcp>=1.0``.
+# No python_version marker needed: ``mcp`` needs Python >=3.10, which is the
+# package floor (decision D00000G).
 mcp = ["mcp>=1.10,<2"]
 rest = ["starlette>=0.27", "uvicorn>=0.23"]
 
@@ -239,6 +238,10 @@ dev = [
     "bandit>=1.7",
     "pip-audit>=2.6",
     "pre-commit>=3.5",
+    # CI installs only ``.[dev]``. Without mcp here, every MCP integration test
+    # skips silently — which hid a stale Hugging Face tool count (27 vs 30) for
+    # months. Self-reference, so the pin lives only in the ``mcp`` extra.
+    "toolsconnector[mcp]",
 ]
 
 # --- Everything ---
