@@ -467,7 +467,7 @@ class Notion(BaseConnector):
     # Actions -- Search & Pages
     # ------------------------------------------------------------------
 
-    @action("Search pages and databases in the workspace", access="read")
+    @action("Search pages in the workspace", access="read")
     async def search(
         self,
         query: str = "",
@@ -475,34 +475,49 @@ class Notion(BaseConnector):
         limit: int = 20,
         cursor: Optional[str] = None,
     ) -> PaginatedList[NotionPage]:
-        """Search across all pages and databases the integration can access.
+        """Search across all pages the integration can access.
 
         Args:
             query: Text to search for in page titles and content.
-            filter_type: Restrict to ``"page"`` or ``"database"``.
+            filter_type: Only ``"page"`` is accepted (the default). Any
+                other value raises ``ValidationError`` — to work with
+                databases, use ``get_database`` / ``query_database``.
             limit: Maximum number of results per page.
             cursor: Pagination cursor from a previous response.
 
         Returns:
             Paginated list of matching Notion pages.
+
+        Raises:
+            ValidationError: ``filter_type`` is set to anything but ``"page"``.
         """
-        body: dict[str, Any] = {"query": query, "page_size": _clamp_limit(limit, default=20)}
-        if filter_type:
-            body["filter"] = {"value": filter_type, "property": "object"}
+        if filter_type and filter_type != "page":
+            raise ValidationError(
+                f"filter_type={filter_type!r} is not supported; search returns pages only",
+                connector="notion",
+                suggestion=(
+                    "Omit filter_type (or pass 'page'). For databases, use "
+                    "get_database or query_database with a known database_id."
+                ),
+                details={"filter_type": filter_type},
+            )
+        # Always filter server-side. Unfiltered, /search mixes in databases;
+        # dropping them locally can empty a whole page while has_more=True,
+        # which PaginatedList.collect()'s stall guard treats as the end.
+        body: dict[str, Any] = {
+            "query": query,
+            "page_size": _clamp_limit(limit, default=20),
+            "filter": {"value": "page", "property": "object"},
+        }
         if cursor:
             body["start_cursor"] = cursor
 
         data = await self._request("POST", "/search", json=body)
 
-        # Notion's /search returns mixed pages + databases. The action's
-        # declared return type is PaginatedList[NotionPage], so we
-        # enforce that contract here by filtering to results whose
-        # ``object == "page"``. Callers who want databases should pass
-        # ``filter_type="database"`` (which returns database objects
-        # the server-side filter ensures we never see here) and inspect
-        # via a separate code path — or use `query_database` directly.
-        # Server-side filtering is best-effort; this filter is the
-        # defensive guard against an unfiltered search.
+        # Defensive guard for the PaginatedList[NotionPage] contract: parse
+        # only ``object == "page"`` results even though the server-side
+        # filter above should already guarantee that — database property
+        # *schemas* crash parse_page.
         page_results = [r for r in data.get("results", []) if r.get("object") == "page"]
         pages = [parse_page(r) for r in page_results]
         has_more = data.get("has_more", False)
@@ -510,7 +525,7 @@ class Notion(BaseConnector):
 
         # Notion pairs has_more with next_cursor; guard on both so a malformed
         # page raises instead of a fetcher re-requesting page one forever.
-        result = PaginatedList(
+        result: PaginatedList[NotionPage] = PaginatedList(
             items=pages,
             page_state=PageState(
                 cursor=next_cursor,
@@ -519,7 +534,7 @@ class Notion(BaseConnector):
             total_count=None,
         )
         if has_more and next_cursor:
-            result._fetch_next = lambda c=next_cursor: self.asearch(
+            result._fetch_next = lambda c=next_cursor: self.asearch(  # type: ignore[attr-defined]
                 query=query, filter_type=filter_type, limit=limit, cursor=c
             )
         return result
@@ -666,7 +681,7 @@ class Notion(BaseConnector):
         has_more = data.get("has_more", False)
         next_cursor = data.get("next_cursor")
 
-        result = PaginatedList(
+        result: PaginatedList[NotionPage] = PaginatedList(
             items=pages,
             page_state=PageState(
                 cursor=next_cursor,
@@ -675,7 +690,7 @@ class Notion(BaseConnector):
             total_count=None,
         )
         if has_more and next_cursor:
-            result._fetch_next = lambda c=next_cursor: self.aquery_database(
+            result._fetch_next = lambda c=next_cursor: self.aquery_database(  # type: ignore[attr-defined]
                 database_id=database_id, filter=filter, sorts=sorts, limit=limit, cursor=c
             )
         return result
@@ -737,7 +752,7 @@ class Notion(BaseConnector):
         has_more = data.get("has_more", False)
         next_cursor = data.get("next_cursor")
 
-        result = PaginatedList(
+        result: PaginatedList[NotionBlock] = PaginatedList(
             items=blocks,
             page_state=PageState(
                 cursor=next_cursor,
@@ -746,7 +761,7 @@ class Notion(BaseConnector):
             total_count=None,
         )
         if has_more and next_cursor:
-            result._fetch_next = lambda c=next_cursor: self.aget_block_children(
+            result._fetch_next = lambda c=next_cursor: self.aget_block_children(  # type: ignore[attr-defined]
                 block_id=block_id, limit=limit, cursor=c
             )
         return result
@@ -907,7 +922,7 @@ class Notion(BaseConnector):
         has_more = data.get("has_more", False)
         next_cursor = data.get("next_cursor")
 
-        result = PaginatedList(
+        result: PaginatedList[NotionComment] = PaginatedList(
             items=comments,
             page_state=PageState(
                 cursor=next_cursor,
@@ -916,7 +931,7 @@ class Notion(BaseConnector):
             total_count=None,
         )
         if has_more and next_cursor:
-            result._fetch_next = lambda c=next_cursor: self.alist_comments(
+            result._fetch_next = lambda c=next_cursor: self.alist_comments(  # type: ignore[attr-defined]
                 block_id=block_id, limit=limit, cursor=c
             )
         return result

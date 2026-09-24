@@ -8,10 +8,14 @@ These tests pin that the connector walks those pages itself through
 ``anext_page()`` / ``collect()`` and keeps the caller's filters on every page.
 They also cover ``list_webhooks``, which used to return a token without
 accepting one, so it could never page.
+
+The last test pins that ``cancel_event`` awaits ``get_event``'s async entry
+point (the sync wrapper used to raise ``TypeError`` after the cancel landed).
 """
 
 from __future__ import annotations
 
+import json
 from typing import Optional
 
 import httpx
@@ -140,3 +144,25 @@ async def test_list_webhooks_accepts_page_token_for_manual_paging(calendly: Cale
         await calendly.alist_webhooks(organization_uri=_ORG, page_token="TOK2")
 
         assert route.calls[0].request.url.params["page_token"] == "TOK2"
+
+
+@pytest.mark.asyncio
+async def test_cancel_event_cancels_once_then_returns_refetched_event(calendly: Calendly) -> None:
+    uri = "https://api.calendly.com/scheduled_events/ev-1"
+    with respx.mock(base_url="https://api.calendly.com", assert_all_called=True) as respx_mock:
+        cancel = respx_mock.post("/scheduled_events/ev-1/cancellation").mock(
+            return_value=httpx.Response(201, json={"resource": {"reason": "conflict"}})
+        )
+        refetch = respx_mock.get("/scheduled_events/ev-1").mock(
+            return_value=httpx.Response(
+                200, json={"resource": {"uri": uri, "name": "Intro", "status": "canceled"}}
+            )
+        )
+
+        event = await calendly.acancel_event(event_uuid="ev-1", reason="conflict")
+
+    assert cancel.call_count == 1
+    assert json.loads(cancel.calls[0].request.read()) == {"reason": "conflict"}
+    assert refetch.call_count == 1
+    assert event.uri == uri
+    assert event.status == "canceled"

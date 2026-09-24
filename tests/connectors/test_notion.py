@@ -3349,3 +3349,172 @@ async def test_search_second_page_keeps_query_and_filter(notion: Notion) -> None
         assert body["start_cursor"] == "CUR2"
         assert body["query"] == "roadmap"
         assert body["filter"] == {"value": "page", "property": "object"}
+
+
+# ---------------------------------------------------------------------------
+# 20. collect() walks every page — _fetch_next wiring + search page filter
+# ---------------------------------------------------------------------------
+#
+# Pre-fix, no Notion list action set ``PaginatedList._fetch_next``, so
+# ``collect()`` silently returned page 1 only. ``search`` additionally dropped
+# non-pages locally, so an all-database upstream page became ``items=[]`` with
+# ``has_more=True`` — which ``collect()``'s stall guard treats as terminal.
+
+
+def _fake_search(corpus: list[dict]):
+    """A /search stand-in that honours filter, page_size and start_cursor."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.read())
+        flt = body.get("filter")
+        rows = [r for r in corpus if not flt or r["object"] == flt["value"]]
+        start = int(body.get("start_cursor") or 0)
+        end = start + body["page_size"]
+        has_more = end < len(rows)
+        return httpx.Response(
+            200,
+            json={
+                "object": "list",
+                "results": rows[start:end],
+                "has_more": has_more,
+                "next_cursor": str(end) if has_more else None,
+            },
+        )
+
+    return respond
+
+
+@pytest.mark.asyncio
+async def test_search_collect_walks_past_database_only_pages(notion: Notion) -> None:
+    """search().collect() returns every page even when databases sit between them."""
+    corpus = [
+        {"object": "page", "id": "p1", "properties": {}, "parent": {}},
+        {"object": "database", "id": "d1", "title": [], "properties": {}},
+        {"object": "page", "id": "p3", "properties": {}, "parent": {}},
+    ]
+    with respx.mock(base_url="https://api.notion.com/v1") as respx_mock:
+        route = respx_mock.post("/search").mock(side_effect=_fake_search(corpus))
+
+        first = await notion.asearch(query="x", limit=1)
+        ids = [p.id for p in await first.collect()]
+
+    assert ids == ["p1", "p3"]
+    for call in route.calls:
+        body = json.loads(call.request.read())
+        assert body["filter"] == {"value": "page", "property": "object"}
+        assert body["query"] == "x"
+        assert body["page_size"] == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("filter_type", ["database", "block"])
+async def test_search_rejects_non_page_filter_type(notion: Notion, filter_type: str) -> None:
+    """filter_type="database" used to silently return [] (server sent databases,
+    the local page filter dropped them all). It now fails fast, before any HTTP."""
+    with respx.mock(base_url="https://api.notion.com/v1", assert_all_called=False) as respx_mock:
+        route = respx_mock.post("/search")
+        with pytest.raises(ValidationError):
+            await notion.asearch(query="x", filter_type=filter_type)
+        assert not route.called
+
+
+@pytest.mark.asyncio
+async def test_query_database_collect_follows_cursor(notion: Notion) -> None:
+    """query_database().collect() fetches page 2 with the same filter/sorts/limit."""
+    flt = {"property": "Done", "checkbox": {"equals": True}}
+    sorts = [{"property": "Name", "direction": "ascending"}]
+    with respx.mock(base_url="https://api.notion.com/v1") as respx_mock:
+        route = respx_mock.post("/databases/db-uuid/query").mock(
+            side_effect=[
+                httpx.Response(
+                    200,
+                    json={
+                        "results": [{"object": "page", "id": "r1", "properties": {}}],
+                        "has_more": True,
+                        "next_cursor": "cur-2",
+                    },
+                ),
+                httpx.Response(
+                    200,
+                    json={
+                        "results": [{"object": "page", "id": "r2", "properties": {}}],
+                        "has_more": False,
+                        "next_cursor": None,
+                    },
+                ),
+            ]
+        )
+
+        first = await notion.aquery_database(
+            database_id="db-uuid", filter=flt, sorts=sorts, limit=1
+        )
+        ids = [p.id for p in await first.collect()]
+
+    assert ids == ["r1", "r2"]
+    body2 = json.loads(route.calls[1].request.read())
+    assert body2["start_cursor"] == "cur-2"
+    assert body2["filter"] == flt
+    assert body2["sorts"] == sorts
+    assert body2["page_size"] == 1
+
+
+@pytest.mark.asyncio
+async def test_get_block_children_collect_follows_cursor(notion: Notion) -> None:
+    """get_block_children().collect() fetches page 2 via the query-string cursor."""
+
+    def block(block_id: str) -> dict:
+        return {
+            "object": "block",
+            "id": block_id,
+            "type": "paragraph",
+            "paragraph": {"rich_text": []},
+        }
+
+    with respx.mock(base_url="https://api.notion.com/v1") as respx_mock:
+        route = respx_mock.get("/blocks/block-uuid/children").mock(
+            side_effect=[
+                httpx.Response(
+                    200, json={"results": [block("b1")], "has_more": True, "next_cursor": "cur-2"}
+                ),
+                httpx.Response(
+                    200, json={"results": [block("b2")], "has_more": False, "next_cursor": None}
+                ),
+            ]
+        )
+
+        first = await notion.aget_block_children(block_id="block-uuid", limit=1)
+        ids = [b.id for b in await first.collect()]
+
+    assert ids == ["b1", "b2"]
+    params = route.calls[1].request.url.params
+    assert params["start_cursor"] == "cur-2"
+    assert params["page_size"] == "1"
+
+
+@pytest.mark.asyncio
+async def test_list_comments_collect_follows_cursor(notion: Notion) -> None:
+    """list_comments().collect() fetches page 2 for the same block_id."""
+
+    def comment(comment_id: str) -> dict:
+        return {"object": "comment", "id": comment_id, "discussion_id": "disc", "rich_text": []}
+
+    with respx.mock(base_url="https://api.notion.com/v1") as respx_mock:
+        route = respx_mock.get("/comments").mock(
+            side_effect=[
+                httpx.Response(
+                    200, json={"results": [comment("c1")], "has_more": True, "next_cursor": "cur-2"}
+                ),
+                httpx.Response(
+                    200, json={"results": [comment("c2")], "has_more": False, "next_cursor": None}
+                ),
+            ]
+        )
+
+        first = await notion.alist_comments(block_id="page-uuid", limit=1)
+        ids = [c.id for c in await first.collect()]
+
+    assert ids == ["c1", "c2"]
+    params = route.calls[1].request.url.params
+    assert params["block_id"] == "page-uuid"
+    assert params["start_cursor"] == "cur-2"
+    assert params["page_size"] == "1"

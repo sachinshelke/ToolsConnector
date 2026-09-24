@@ -439,7 +439,9 @@ class Salesforce(BaseConnector):
         if phone is not None:
             fields["Phone"] = phone
 
-        return await self.create_record("Lead", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Lead", fields
+        )
 
     @action("Create a new Contact", dangerous=True)
     async def create_contact(
@@ -468,7 +470,9 @@ class Salesforce(BaseConnector):
         if first_name is not None:
             fields["FirstName"] = first_name
 
-        return await self.create_record("Contact", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Contact", fields
+        )
 
     @action("Create a new Opportunity", dangerous=True)
     async def create_opportunity(
@@ -501,7 +505,9 @@ class Salesforce(BaseConnector):
         if account_id is not None:
             fields["AccountId"] = account_id
 
-        return await self.create_record("Opportunity", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Opportunity", fields
+        )
 
     @action("Create a new Account", dangerous=True)
     async def create_account(
@@ -530,7 +536,9 @@ class Salesforce(BaseConnector):
         if phone is not None:
             fields["Phone"] = phone
 
-        return await self.create_record("Account", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Account", fields
+        )
 
     @action("Create a new Case", dangerous=True)
     async def create_case(
@@ -559,7 +567,9 @@ class Salesforce(BaseConnector):
         if priority is not None:
             fields["Priority"] = priority
 
-        return await self.create_record("Case", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Case", fields
+        )
 
     @action("Create a new Task", dangerous=True)
     async def create_task(
@@ -592,7 +602,9 @@ class Salesforce(BaseConnector):
         if priority is not None:
             fields["Priority"] = priority
 
-        return await self.create_record("Task", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Task", fields
+        )
 
     @action("List recently viewed records for an sObject")
     async def list_recent(
@@ -619,7 +631,7 @@ class Salesforce(BaseConnector):
             f"ORDER BY LastViewedDate DESC "
             f"LIMIT {capped_limit}"
         )
-        return await self.query(soql)
+        return await self.aquery(soql)  # type: ignore[attr-defined]
 
     # ------------------------------------------------------------------
     # Actions -- Events
@@ -652,7 +664,9 @@ class Salesforce(BaseConnector):
         if who_id is not None:
             fields["WhoId"] = who_id
 
-        return await self.create_record("Event", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Event", fields
+        )
 
     # ------------------------------------------------------------------
     # Actions -- Reports

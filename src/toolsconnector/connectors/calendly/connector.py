@@ -389,7 +389,7 @@ class Calendly(BaseConnector):
             f"/scheduled_events/{event_uuid}/cancellation",
             json=body,
         )
-        return await self.get_event(event_uuid)
+        return await self.aget_event(event_uuid)  # type: ignore[attr-defined]
 
     # ------------------------------------------------------------------
     # Actions -- Invitees
