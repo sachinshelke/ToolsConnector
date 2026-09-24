@@ -204,7 +204,7 @@ class Outlook(BaseConnector):
         messages = [_parse_message(m) for m in data.get("value", [])]
         next_link = data.get("@odata.nextLink")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=messages,
             page_state=PageState(
                 cursor=next_link,
@@ -212,6 +212,11 @@ class Outlook(BaseConnector):
             ),
             total_count=data.get("@odata.count"),
         )
+        # Graph's @odata.nextLink is a complete URL that already carries the
+        # folder, $top, $orderby and skip token, so page_url is all the next call needs.
+        if next_link:
+            result._fetch_next = lambda u=next_link: self.alist_messages(page_url=u)
+        return result
 
     @action("Get a single email message by ID")
     async def get_message(self, message_id: str) -> OutlookMessage:
@@ -307,13 +312,16 @@ class Outlook(BaseConnector):
         messages = [_parse_message(m) for m in data.get("value", [])]
         next_link = data.get("@odata.nextLink")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=messages,
             page_state=PageState(
                 cursor=next_link,
                 has_more=next_link is not None,
             ),
         )
+        if next_link:
+            result._fetch_next = lambda u=next_link: self.asearch_messages(query=query, page_url=u)
+        return result
 
     @action("Delete an email message", dangerous=True)
     async def delete_message(self, message_id: str) -> None:
@@ -418,13 +426,16 @@ class Outlook(BaseConnector):
         contacts = [_parse_contact(c) for c in data.get("value", [])]
         next_link = data.get("@odata.nextLink")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=contacts,
             page_state=PageState(
                 cursor=next_link,
                 has_more=next_link is not None,
             ),
         )
+        if next_link:
+            result._fetch_next = lambda u=next_link: self.alist_contacts(page_url=u)
+        return result
 
     @action("Get a single contact by ID")
     async def get_contact(self, contact_id: str) -> OutlookContact:
@@ -523,13 +534,16 @@ class Outlook(BaseConnector):
         events = [_parse_calendar_event(e) for e in data.get("value", [])]
         next_link = data.get("@odata.nextLink")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=events,
             page_state=PageState(
                 cursor=next_link,
                 has_more=next_link is not None,
             ),
         )
+        if next_link:
+            result._fetch_next = lambda u=next_link: self.alist_calendar_events(page_url=u)
+        return result
 
     @action("Create a calendar event", dangerous=True)
     async def create_calendar_event(

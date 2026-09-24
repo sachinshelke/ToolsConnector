@@ -332,7 +332,7 @@ class DockerHub(BaseConnector):
             total_count=body.get("count"),
         )
         if ps.has_more:
-            result._fetch_next = lambda c=ps.cursor: self.search_repos(
+            result._fetch_next = lambda c=ps.cursor: self.asearch_repos(
                 query=query,
                 limit=capped_limit,
                 page=c,
@@ -399,7 +399,7 @@ class DockerHub(BaseConnector):
             total_count=body.get("count"),
         )
         if ps.has_more:
-            result._fetch_next = lambda c=ps.cursor: self.list_repos(
+            result._fetch_next = lambda c=ps.cursor: self.alist_repos(
                 namespace=namespace,
                 limit=capped_limit,
                 page=c,
@@ -447,7 +447,7 @@ class DockerHub(BaseConnector):
             total_count=body.get("count"),
         )
         if ps.has_more:
-            result._fetch_next = lambda c=ps.cursor: self.list_tags(
+            result._fetch_next = lambda c=ps.cursor: self.alist_tags(
                 namespace=namespace,
                 repo=repo,
                 limit=capped_limit,

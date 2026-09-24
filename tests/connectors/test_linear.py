@@ -52,6 +52,7 @@ from toolsconnector.connectors.linear import Linear
 from toolsconnector.errors import (
     InvalidCredentialsError,
     NotFoundError,
+    PaginationNotWiredError,
     RateLimitError,
 )
 
@@ -2309,3 +2310,109 @@ def test_get_spec_exposes_all_19_actions_with_descriptions() -> None:
     assert len(spec.actions) == 19
     for action_name, action in spec.actions.items():
         assert action.description, f"action {action_name} has empty description"
+
+
+# ---------------------------------------------------------------------------
+# Pagination — the connector must walk itself, not just expose a cursor
+# ---------------------------------------------------------------------------
+#
+# list_issues sets has_more from pageInfo.hasNextPage. Until it also assigned
+# `_fetch_next`, anext_page() returned None while has_more was True — so a
+# `while page:` loop or a collect() stopped at page one and looked complete.
+
+
+def _issues_page(node_id: str, *, has_next: bool, end_cursor: Optional[str]) -> dict:
+    """One Relay-shaped issues page."""
+    return {
+        "data": {
+            "issues": {
+                "nodes": [
+                    {
+                        "id": node_id,
+                        "identifier": f"ENG-{node_id[-1]}",
+                        "title": node_id,
+                        "priority": 0,
+                        "priorityLabel": "No priority",
+                        "team": {"id": "team-abc"},
+                        "labels": {"nodes": []},
+                    }
+                ],
+                "pageInfo": {"hasNextPage": has_next, "endCursor": end_cursor},
+            }
+        }
+    }
+
+
+@pytest.mark.asyncio
+async def test_list_issues_anext_page_fetches_page_two(linear: Linear) -> None:
+    """anext_page() must return page two, not None.
+
+    Fails without the `_fetch_next` wiring: returns None despite hasNextPage.
+    """
+    with respx.mock(base_url="https://api.linear.app") as mock:
+        route = mock.post("/graphql").mock(
+            side_effect=[
+                httpx.Response(200, json=_issues_page("issue-1", has_next=True, end_cursor="CUR2")),
+                httpx.Response(200, json=_issues_page("issue-2", has_next=False, end_cursor=None)),
+            ]
+        )
+
+        page1 = await linear.alist_issues(team_id="team-abc", state="Todo", limit=1)
+        assert page1.has_more is True
+        assert page1.page_state.cursor == "CUR2"
+
+        page2 = await page1.anext_page()
+
+        assert page2 is not None, "anext_page() returned None despite hasNextPage"
+        assert [i.id for i in page2.items] == ["issue-2"]
+        assert page2.has_more is False
+        assert await page2.anext_page() is None
+
+        # The follow-up must send `after` AND keep the original filters —
+        # a fetcher that drops them silently queries a different issue set.
+        variables = _body_of(route.calls[1])["variables"]
+        assert variables["after"] == "CUR2"
+        assert variables["first"] == 1
+        assert variables["filter"] == {
+            "team": {"id": {"eq": "team-abc"}},
+            "state": {"name": {"eq": "Todo"}},
+        }
+
+
+@pytest.mark.asyncio
+async def test_list_issues_collect_returns_every_page(linear: Linear) -> None:
+    """collect() is the agent-facing path; it must span both pages.
+
+    Fails without the wiring: returns 1 item and looks complete.
+    """
+    with respx.mock(base_url="https://api.linear.app") as mock:
+        mock.post("/graphql").mock(
+            side_effect=[
+                httpx.Response(200, json=_issues_page("issue-1", has_next=True, end_cursor="CUR2")),
+                httpx.Response(200, json=_issues_page("issue-2", has_next=False, end_cursor=None)),
+            ]
+        )
+
+        page1 = await linear.alist_issues(limit=1)
+        assert [i.id for i in await page1.collect()] == ["issue-1", "issue-2"]
+
+
+@pytest.mark.asyncio
+async def test_list_issues_has_next_without_cursor_stays_loud(linear: Linear) -> None:
+    """hasNextPage=True with a null endCursor is unpageable — it must raise.
+
+    Relay should never send this, but wiring a fetcher with a null cursor would
+    re-request page one forever, so the guard leaves it unwired on purpose.
+    """
+    with respx.mock(base_url="https://api.linear.app") as mock:
+        mock.post("/graphql").mock(
+            return_value=httpx.Response(
+                200, json=_issues_page("issue-1", has_next=True, end_cursor=None)
+            )
+        )
+
+        page = await linear.alist_issues(limit=1)
+        assert page.has_more is True
+
+        with pytest.raises(PaginationNotWiredError):
+            await page.anext_page()

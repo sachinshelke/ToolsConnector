@@ -225,7 +225,7 @@ class Cloudflare(BaseConnector):
 
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
-            result._fetch_next = lambda c=ps.cursor: self.list_zones(
+            result._fetch_next = lambda c=ps.cursor: self.alist_zones(
                 limit=capped_limit,
                 page=c,
             )
@@ -285,7 +285,7 @@ class Cloudflare(BaseConnector):
 
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
-            result._fetch_next = lambda c=ps.cursor: self.list_dns_records(
+            result._fetch_next = lambda c=ps.cursor: self.alist_dns_records(
                 zone_id=zone_id,
                 type=type,
                 name=name,

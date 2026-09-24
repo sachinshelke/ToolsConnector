@@ -508,7 +508,9 @@ class Notion(BaseConnector):
         has_more = data.get("has_more", False)
         next_cursor = data.get("next_cursor")
 
-        return PaginatedList(
+        # Notion pairs has_more with next_cursor; guard on both so a malformed
+        # page raises instead of a fetcher re-requesting page one forever.
+        result = PaginatedList(
             items=pages,
             page_state=PageState(
                 cursor=next_cursor,
@@ -516,6 +518,11 @@ class Notion(BaseConnector):
             ),
             total_count=None,
         )
+        if has_more and next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.asearch(
+                query=query, filter_type=filter_type, limit=limit, cursor=c
+            )
+        return result
 
     @action("Get a single page by ID", access="read")
     async def get_page(self, page_id: str) -> NotionPage:
@@ -659,7 +666,7 @@ class Notion(BaseConnector):
         has_more = data.get("has_more", False)
         next_cursor = data.get("next_cursor")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=pages,
             page_state=PageState(
                 cursor=next_cursor,
@@ -667,6 +674,11 @@ class Notion(BaseConnector):
             ),
             total_count=None,
         )
+        if has_more and next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.aquery_database(
+                database_id=database_id, filter=filter, sorts=sorts, limit=limit, cursor=c
+            )
+        return result
 
     @action("Create a new database", dangerous=True)
     async def create_database(
@@ -725,7 +737,7 @@ class Notion(BaseConnector):
         has_more = data.get("has_more", False)
         next_cursor = data.get("next_cursor")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=blocks,
             page_state=PageState(
                 cursor=next_cursor,
@@ -733,6 +745,11 @@ class Notion(BaseConnector):
             ),
             total_count=None,
         )
+        if has_more and next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.aget_block_children(
+                block_id=block_id, limit=limit, cursor=c
+            )
+        return result
 
     @action("Append child blocks to a page or block", dangerous=True)
     async def append_block_children(
@@ -890,7 +907,7 @@ class Notion(BaseConnector):
         has_more = data.get("has_more", False)
         next_cursor = data.get("next_cursor")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=comments,
             page_state=PageState(
                 cursor=next_cursor,
@@ -898,6 +915,11 @@ class Notion(BaseConnector):
             ),
             total_count=None,
         )
+        if has_more and next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_comments(
+                block_id=block_id, limit=limit, cursor=c
+            )
+        return result
 
     @action("Add a comment to a page or discussion thread", dangerous=True)
     async def add_comment(

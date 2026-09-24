@@ -345,13 +345,19 @@ class Teams(BaseConnector):
         messages = [_parse_message(m) for m in data.get("value", [])]
         next_link = data.get("@odata.nextLink")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=messages,
             page_state=PageState(
                 cursor=next_link,
                 has_more=next_link is not None,
             ),
         )
+        # @odata.nextLink is a complete Graph URL; page_url follows it as-is.
+        if next_link:
+            result._fetch_next = lambda u=next_link: self.alist_messages(
+                team_id=team_id, channel_id=channel_id, page_url=u
+            )
+        return result
 
     @action("List members of a team")
     async def list_members(self, team_id: str) -> list[TeamsMember]:
@@ -573,13 +579,18 @@ class Teams(BaseConnector):
         messages = [_parse_message(m) for m in data.get("value", [])]
         next_link = data.get("@odata.nextLink")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=messages,
             page_state=PageState(
                 cursor=next_link,
                 has_more=next_link is not None,
             ),
         )
+        if next_link:
+            result._fetch_next = lambda u=next_link: self.alist_chat_messages(
+                chat_id=chat_id, page_url=u
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions -- Channel management

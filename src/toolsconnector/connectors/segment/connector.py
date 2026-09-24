@@ -353,6 +353,7 @@ class Segment(BaseConnector):
     async def list_sources(
         self,
         limit: Optional[int] = None,
+        cursor: Optional[str] = None,
     ) -> PaginatedList[SegmentSource]:
         """List all sources in the Segment workspace.
 
@@ -360,6 +361,7 @@ class Segment(BaseConnector):
 
         Args:
             limit: Maximum number of sources to return.
+            cursor: Cursor from a previous response's ``page_state.cursor``.
 
         Returns:
             Paginated list of SegmentSource objects.
@@ -367,7 +369,9 @@ class Segment(BaseConnector):
         params: dict[str, Any] = {}
         if limit is not None:
             params["pagination.count"] = limit
-
+        # Without this the action returned a next cursor it had no way to send back.
+        if cursor:
+            params["pagination.cursor"] = cursor
         data = await self._config_request("GET", "/sources", params=params)
 
         sources = [
@@ -388,7 +392,7 @@ class Segment(BaseConnector):
         pagination = data.get("data", {}).get("pagination", {})
         next_cursor = pagination.get("next")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=sources,
             page_state=PageState(
                 cursor=next_cursor,
@@ -396,6 +400,9 @@ class Segment(BaseConnector):
             ),
             total_count=pagination.get("totalEntries"),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_sources(limit=limit, cursor=c)
+        return result
 
     @action("Get a specific source by ID", idempotent=True)
     async def get_source(

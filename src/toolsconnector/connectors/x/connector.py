@@ -544,7 +544,7 @@ class X(BaseConnector):
         items = [Tweet.model_validate(t) for t in body.get("data", [])]
         meta = body.get("meta", {}) or {}
         next_token = meta.get("next_token")
-        return PaginatedList(
+        result = PaginatedList(
             items=items,
             page_state=PageState(
                 cursor=next_token,
@@ -552,6 +552,11 @@ class X(BaseConnector):
                 total_count=meta.get("result_count"),
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_mentions(
+                user_id=user_id, max_results=max_results, pagination_token=t
+            )
+        return result
 
     # ======================================================================
     # DMs — write (Basic tier required)

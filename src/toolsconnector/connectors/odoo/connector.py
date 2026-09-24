@@ -503,13 +503,22 @@ class Odoo(BaseConnector):
 
         records = await self._call(model, "search_read", [search_domain], call_kwargs)
         records = records or []
-        return PaginatedList(
+        result = PaginatedList(
             items=records,
             page_state=PageState(
                 offset=start + len(records),
                 has_more=len(records) == page_limit,
             ),
         )
+        # has_more is a full-page guess, so the page after a final full page is empty
+        # and collect() stops there. Forward domain/fields/order so every page reads the
+        # same record set.
+        next_offset = start + len(records)
+        if records and len(records) == page_limit:
+            result._fetch_next = lambda o=next_offset: self.asearch_read(
+                model=model, domain=domain, fields=fields, limit=limit, offset=o, order=order
+            )
+        return result
 
     @action("Count records of an Odoo model matching a domain filter", access="read")
     async def search_count(self, model: str, domain: Optional[list[Any]] = None) -> int:

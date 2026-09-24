@@ -7,6 +7,7 @@ import asyncio
 import pytest
 from pydantic import BaseModel
 
+from toolsconnector.errors import PaginationNotWiredError
 from toolsconnector.spec.auth import AuthType
 from toolsconnector.types import CredentialSet, FileRef, PageState, PaginatedList
 from toolsconnector.types.file import InMemoryStorageBackend
@@ -92,6 +93,44 @@ class TestPaginatedList:
         pl._fetch_next = fetch_one
         collected = await asyncio.wait_for(pl.collect(max_items=10**9, max_pages=5), timeout=5.0)
         assert len(collected) == 6  # 1 initial + 5 fetched pages * 1 item
+
+    @pytest.mark.asyncio
+    async def test_anext_page_raises_when_has_more_but_unwired(self):
+        """has_more=True with no _fetch_next is a connector bug — it must be loud.
+
+        Returning None here (the old behavior) is indistinguishable from
+        "no more results", so the caller silently acts on a truncated set.
+        """
+        pl = PaginatedList[Item](
+            items=[Item(id="1", name="A")],
+            page_state=PageState(has_more=True, cursor="CURSOR_2"),
+        )
+
+        with pytest.raises(PaginationNotWiredError) as exc:
+            await pl.anext_page()
+
+        assert exc.value.code == "CONNECTOR_PAGINATION_NOT_WIRED"
+        # The stranded cursor must reach the caller so manual paging stays possible.
+        assert exc.value.details["page_state"]["cursor"] == "CURSOR_2"
+
+    @pytest.mark.asyncio
+    async def test_collect_raises_when_has_more_but_unwired(self):
+        """collect() must not quietly return page one for an unwired page."""
+        pl = PaginatedList[Item](
+            items=[Item(id="1", name="A")],
+            page_state=PageState(has_more=True, cursor="CURSOR_2"),
+        )
+
+        with pytest.raises(PaginationNotWiredError):
+            await pl.collect()
+
+    @pytest.mark.asyncio
+    async def test_anext_page_returns_none_at_end_of_results(self):
+        """has_more=False still returns None even with no fetcher — not an error."""
+        pl = PaginatedList[Item](items=[Item(id="1", name="A")])
+
+        assert await pl.anext_page() is None
+        assert len(await pl.collect()) == 1
 
     def test_collect_sync_stall_guard(self):
         """The sync wrapper inherits the stall guard (no hang)."""
