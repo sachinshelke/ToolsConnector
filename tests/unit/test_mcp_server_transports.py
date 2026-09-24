@@ -48,10 +48,16 @@ def _install_fake_fastmcp(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, M
     fake_fastmcp_mod.FastMCP = fastmcp_class  # type: ignore[attr-defined]
     fake_server_mod = types.ModuleType("mcp.server")
     fake_root_mod = types.ModuleType("mcp")
+    # create_and_run_mcp_server imports ToolAnnotations next to FastMCP.
+    # Without this, the fake root (not a package) can't supply mcp.types,
+    # and the test passes only if an earlier test loaded the real module.
+    fake_types_mod = types.ModuleType("mcp.types")
+    fake_types_mod.ToolAnnotations = MagicMock(name="ToolAnnotations")  # type: ignore[attr-defined]
 
     monkeypatch.setitem(sys.modules, "mcp", fake_root_mod)
     monkeypatch.setitem(sys.modules, "mcp.server", fake_server_mod)
     monkeypatch.setitem(sys.modules, "mcp.server.fastmcp", fake_fastmcp_mod)
+    monkeypatch.setitem(sys.modules, "mcp.types", fake_types_mod)
 
     return fastmcp_class, server_instance
 

@@ -70,6 +70,39 @@ def _json_type_to_python(param_schema: dict[str, Any], required: bool) -> Any:
     return py_type if required else Optional[py_type]
 
 
+def _tool_annotation_hints(entry: dict[str, Any]) -> dict[str, bool]:
+    """Map a tool's declared safety metadata to MCP ``ToolAnnotations`` hints.
+
+    Only declared facts become hints. Anything undeclared is omitted, so the
+    client falls back to the MCP spec defaults, which are the worst case
+    (not read-only, destructive, not idempotent). In particular, an action
+    with no declared ``access`` surfaces the library's fail-safe ``"write"``
+    in :class:`ToolEntry`; stating that as ``destructiveHint: false`` would
+    publish a guess as fact, so it is not emitted.
+
+    ``openWorldHint`` is never emitted: every connector calls a remote API,
+    which is the spec default.
+
+    Args:
+        entry: A tool dict from ``ToolKit.list_tools()``.
+
+    Returns:
+        Keyword arguments for ``mcp.types.ToolAnnotations`` (possibly empty).
+    """
+    hints: dict[str, bool] = {}
+    access = entry.get("access")
+    if entry.get("access_classified"):
+        if access == "read":
+            hints["readOnlyHint"] = True
+        else:
+            hints["readOnlyHint"] = False
+            hints["destructiveHint"] = access == "destructive"
+    # The spec defines idempotentHint only for tools that are not read-only.
+    if entry.get("idempotent") and not hints.get("readOnlyHint"):
+        hints["idempotentHint"] = True
+    return hints
+
+
 def _make_tool_handler(
     toolkit: ToolKit,
     tool_name: str,
@@ -223,6 +256,7 @@ def create_and_run_mcp_server(
     """
     try:
         from mcp.server.fastmcp import FastMCP
+        from mcp.types import ToolAnnotations
     except ImportError as e:
         # ``from e`` is load-bearing: mcp 2.x's tombstone module raises a
         # ModuleNotFoundError whose message names MCPServer and links the
@@ -262,7 +296,18 @@ def create_and_run_mcp_server(
         handler.__name__ = tool_name
         handler.__doc__ = description
 
-        server.tool(name=tool_name, description=description)(handler)
+        hints = _tool_annotation_hints(entry_dict)
+        server.tool(
+            name=tool_name,
+            description=description,
+            # None, not an empty model: the client then applies the spec's
+            # worst-case defaults for every undeclared hint.
+            annotations=ToolAnnotations.model_validate(hints) if hints else None,
+            # Without this FastMCP derives ``{"result": string}`` from the
+            # handler's ``-> str`` return type and advertises it as every
+            # tool's outputSchema — about a fifth of tools/list, no information.
+            structured_output=False,
+        )(handler)
 
     if transport == "stdio":
         logger.info("Starting MCP server (transport=stdio)")
