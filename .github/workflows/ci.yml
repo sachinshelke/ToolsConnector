@@ -88,7 +88,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[dev]"
-          pip install eval_type_backport
       # Ruff covers src/ (the published library), tests/ (which we ship in
       # the sdist), and webapp/ (the UI that drives toolsconnector.github.io).
       # scripts/ and .agents/ are deliberately excluded — they're developer-
@@ -112,11 +111,13 @@ jobs:
     strategy:
       matrix:
         # PRs run ONLY 3.11 (the required status check) for fast feedback; the
-        # full 3.9–3.12 matrix runs on push-to-main (the pre-release gate) and
+        # full 3.10–3.12 matrix runs on push-to-main (the pre-release gate) and
         # workflow_dispatch, so any version-specific break still surfaces on the
-        # merge-to-main run before a release is ever cut. 3.9/3.10/3.12 are not
+        # merge-to-main run before a release is ever cut. 3.10/3.12 are not
         # required checks, so dropping them on PRs never blocks a PR.
-        python-version: ${{ (github.event_name == 'pull_request') && fromJSON('["3.11"]') || fromJSON('["3.9", "3.10", "3.11", "3.12"]') }}
+        # The full list must match pyproject's classifiers and requires-python
+        # (enforced by tests/conformance/test_python_floor.py).
+        python-version: ${{ (github.event_name == 'pull_request') && fromJSON('["3.11"]') || fromJSON('["3.10", "3.11", "3.12"]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -343,7 +344,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pydantic docstring-parser eval_type_backport httpx
+          pip install pydantic docstring-parser httpx
           pip install -e .
 
       - name: Build site/data.json

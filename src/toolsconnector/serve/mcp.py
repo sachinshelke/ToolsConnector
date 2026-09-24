@@ -9,7 +9,7 @@ from __future__ import annotations
 import inspect
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 if TYPE_CHECKING:
     from toolsconnector.serve.toolkit import ToolKit
@@ -137,6 +137,61 @@ def _make_tool_handler(
     return _handler
 
 
+# Minimum ``mcp`` version whose ``FastMCP.tool()`` accepts BOTH
+# ``annotations=`` (added 1.7.0) and ``structured_output=`` (added 1.10.0).
+# Kept in sync with the ``[mcp]`` extra in pyproject.toml.
+_MCP_MIN = "1.10"
+# Exclusive ceiling: mcp 2.x removed ``mcp.server.fastmcp`` entirely.
+_MCP_MAX_EXCLUSIVE = "2"
+_MCP_SPECIFIER = f"mcp>={_MCP_MIN},<{_MCP_MAX_EXCLUSIVE}"
+
+
+def _mcp_import_error_message(exc: ImportError) -> str:
+    """Build a diagnostic for a failed ``mcp.server.fastmcp`` import.
+
+    "Not installed" and "installed but incompatible" (in practice, mcp
+    2.x) are different problems with different fixes. The old single
+    message ("install with: pip install toolsconnector[mcp]") was wrong
+    for the second — it told a user who had just run that exact command
+    to run it again.
+
+    Args:
+        exc: The original ImportError raised by the failed import.
+
+    Returns:
+        A message naming the actual cause and its fix. The caller is
+        responsible for chaining ``exc`` via ``raise ... from exc`` so
+        mcp 2.x's own diagnostic (which names MCPServer and links the
+        migration guide) survives in the traceback.
+    """
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+
+        installed: Optional[str] = version("mcp")
+    except PackageNotFoundError:
+        installed = None
+    except Exception:  # pragma: no cover - metadata backend misbehaving
+        installed = None
+
+    if installed is not None:
+        # Installed but unusable — almost always a 2.x resolve from an
+        # environment that predates the ceiling. Surface the version,
+        # because "it's installed" is exactly what makes this confusing.
+        return (
+            f"The installed 'mcp' package (version {installed}) is not compatible "
+            f"with this MCP server. Required: {_MCP_SPECIFIER}. "
+            f'Fix with: pip install "{_MCP_SPECIFIER}". '
+            f"Original import error: {exc}"
+        )
+
+    return (
+        f"MCP server requires the 'mcp' package. "
+        f'Install with: pip install "toolsconnector[mcp]" '
+        f"(resolves to {_MCP_SPECIFIER}). "
+        f"Original import error: {exc}"
+    )
+
+
 def create_and_run_mcp_server(
     toolkit: ToolKit,
     *,
@@ -168,11 +223,11 @@ def create_and_run_mcp_server(
     """
     try:
         from mcp.server.fastmcp import FastMCP
-    except ImportError:
-        raise ImportError(
-            "MCP server requires the 'mcp' package. "
-            'Install with: pip install "toolsconnector[mcp]"'
-        )
+    except ImportError as e:
+        # ``from e`` is load-bearing: mcp 2.x's tombstone module raises a
+        # ModuleNotFoundError whose message names MCPServer and links the
+        # migration guide. Swallowing it cost users the only useful clue.
+        raise ImportError(_mcp_import_error_message(e)) from e
 
     # Validate transport up-front so we don't construct the server
     # (or bind a port) for an unknown value.
@@ -214,4 +269,6 @@ def create_and_run_mcp_server(
         server.run(transport="stdio")
     else:
         logger.info(f"Starting MCP server (transport={transport}, bind={host}:{port})")
-        server.run(transport=transport)
+        # Validated against the supported set above; mypy can't narrow ``str``
+        # to the Literal that FastMCP.run() declares.
+        server.run(transport=cast("Literal['sse', 'streamable-http']", transport))
