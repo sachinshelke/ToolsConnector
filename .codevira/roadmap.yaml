@@ -1,0 +1,13 @@
+project: ToolsConnector
+version: '1.0'
+current_phase:
+  number: 1
+  name: Getting Started
+  status: pending
+  next_action: 'Define your first phase: use add_phase() to queue upcoming work, or
+    update_next_action() to describe what needs doing next.'
+  description: Auto-generated stub — update this to reflect your project.
+  goal: Auto-generated stub — update this to reflect your project.
+upcoming_phases: []
+deferred: []
+completed_phases: []

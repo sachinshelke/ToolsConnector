@@ -15,6 +15,8 @@
 - **D000009** Chaos/resilience-hardened contactout + lusha: found 13 real defects via an adversarial chaos sweep (probe harness + 8-d…  ·  `src/toolsconnector/connectors/_helpers/sanitize.py`  ·  _chaos-testing, contactout, credential-leak, lusha, people-data, resilience, security_
 - **D00000A** Added a universal stall guard + max_pages ceiling to the SHARED PaginatedList.collect()/collect_sync() (src/toolsconnec…  ·  `src/toolsconnector/types/paginated.py`  ·  _chaos-testing, hang-guard, pagination, resilience, types_
 - **D00000E** Lusha live-verified against the production API + promoted Tier 2 (doc) → Tier 1 (live) on 2026-06-24 (commit 7b96ab1, p…  ·  `src/toolsconnector/connectors/lusha/connector.py`  ·  _live-verification, lusha, people-data, verification-tier_
+- **D00000G** Raise the minimum supported Python to 3.10 (requires-python >=3.10); drop 3.9 from CI and remove 3.9-only shims.  ·  `pyproject.toml`  ·  _mcp, owner-decision, packaging, python_
+- **D00000H** ToolsConnector is always open-source (Apache-2.0) and self-hosted: no hosted service, no credential custody, no paid or…  ·  _byok, license, owner-decision, strategy_
 
 ### Active conventions
 
@@ -24,6 +26,9 @@
 - **D00000C** ContactOut deeper live field-audit (2026-06-24, commit 910ee9c): captured the real wire envelope for all 19 endpoints v…  ·  `src/toolsconnector/connectors/contactout/connector.py`  ·  _contactout, false-green, live-verification, people-data_
 - **D00000D** ContactOut promoted Tier 2 (doc) → Tier 1 (live) on a CONTRACT-SCOPED basis (commit d0c5802, 2026-06-24). Rationale: th…  ·  `src/toolsconnector/connectors/contactout/connector.py`  ·  _contactout, live, people-data, verification-tier_
 - **D00000F** Add `toolsconnector.auth` module in two layers: (1) request-signing providers (BearerToken, ApiKey, BasicAuth, HMACSign…  ·  `src/toolsconnector/auth/`  ·  _architecture, auth, backlog, byok_
+- **D00000I** Stay on the official `mcp` Python SDK, pinned to >=1.10,<2; port to mcp 2.x (MCPServer) later as a separately sized tas…  ·  `src/toolsconnector/serve/mcp.py`  ·  _delegated-decision, dependencies, mcp_
+
+_+1 more decision(s) — full log in `.codevira/decisions.jsonl`._
 
 
 For the full decision log, use `search_decisions` / `list_decisions` (or the `codevira` CLI) — don't read `.codevira/*.jsonl` directly.

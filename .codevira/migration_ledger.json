@@ -1,0 +1,8 @@
+{
+  "applied": [
+    "v370_repair_collisions",
+    "v370_merge_driver",
+    "v370_dedupe_registration",
+    "v401_rebuild_import_edges"
+  ]
+}

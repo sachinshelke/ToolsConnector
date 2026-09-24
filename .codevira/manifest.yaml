@@ -1,7 +1,7 @@
 schema_version: 1
-generated_at: '2026-07-20T09:41:46.164218+00:00'
-total_decisions: 40
-active_decisions: 40
+generated_at: '2026-09-23T15:58:20.946386+00:00'
+total_decisions: 44
+active_decisions: 44
 tags:
   architecture:
   - D000005
@@ -11,6 +11,7 @@ tags:
   - D000006
   auth:
   - D00000F
+  - D00000J
   backlog:
   - D00000F
   bugfix:
@@ -19,6 +20,8 @@ tags:
   - D000007
   - D00000B
   - D00000F
+  - D00000H
+  - D00000J
   chaos-testing:
   - D000009
   - D00000A
@@ -106,6 +109,7 @@ tags:
   security:
   - D000006
   - D000009
+  - D00000J
   survey:
   - D000004
   tier-1:
@@ -117,6 +121,25 @@ tags:
   verification-tier:
   - D00000D
   - D00000E
+  mcp:
+  - D00000G
+  - D00000I
+  owner-decision:
+  - D00000G
+  - D00000H
+  packaging:
+  - D00000G
+  python:
+  - D00000G
+  license:
+  - D00000H
+  strategy:
+  - D00000H
+  delegated-decision:
+  - D00000I
+  - D00000J
+  dependencies:
+  - D00000I
 files:
   src/toolsconnector/auth/:
   - D00000F
@@ -138,6 +161,10 @@ files:
   - D00000E
   src/toolsconnector/types/paginated.py:
   - D00000A
+  pyproject.toml:
+  - D00000G
+  src/toolsconnector/serve/mcp.py:
+  - D00000I
 do_not_revert_ids:
 - D000001
 - D000002
@@ -148,3 +175,5 @@ do_not_revert_ids:
 - D000009
 - D00000A
 - D00000E
+- D00000G
+- D00000H

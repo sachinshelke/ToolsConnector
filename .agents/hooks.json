@@ -1,0 +1,16 @@
+{
+  "codevira-enforcement": {
+    "PreToolUse": [
+      {
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content|edit_file|create_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/sachin/.local/bin/codevira\" engine handle --ide antigravity PreToolUse",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
