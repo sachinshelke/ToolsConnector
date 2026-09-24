@@ -554,3 +554,18 @@ Through 0.3.25, `_load()` caught every exception and opened an empty store ("sta
 **Permissions:** new key files are created `0600`, and a parent directory the store creates is `0700`. Existing files and directories keep their permissions. Before this change they got the umask default (typically `0644` / `0755`), so any local user could read them. A store opened without a password is protected only by the machine-default password, which is derived from the hostname and username.
 
 **References:** `keystore/local.py` (`UnreadableKeyFileError`, `LocalFileKeyStore._load` / `_save`), `tests/unit/test_keystore.py`.
+
+## 27. Why may connectors import `connectors/_aws` and `connectors/_helpers`, but not each other?
+
+**Decision: the cross-connector import rule exempts exactly two shared packages, listed by name in `SHARED_CONNECTOR_PACKAGES = frozenset({"_aws", "_helpers"})`. Any other `toolsconnector.connectors.<name>` import from a different connector fails the conformance test. The exemption is not a blanket rule for `_`-prefixed names.**
+
+Until 2026-09-24, `tests/conformance/test_import_boundaries.py` pointed `TC_ROOT` at `toolsconnector/`, but the package lives in `src/toolsconnector/`, and the helpers returned early on a missing directory. All three boundary tests passed without scanning a single file. With the root fixed, the cross-connector check reported only imports of `_helpers` and `_aws`, and none of another connector. Those two are shared code, not connectors: the `serve/_discovery.py` registry leaves them out, and `CONTRIBUTING.md` tells connector authors to import `raise_typed_for_status` from `_helpers`. The rule exists to stop one connector depending on another, which these imports never do.
+
+**Why name them instead of exempting every `_` package:** adding a package to the list widens a boundary every connector relies on, so it should be a reviewed one-line change, not a side effect of how a new directory is named.
+
+**What we rejected:**
+- *Exempting every `_`-prefixed package.* It is shorter, but any new `_foo/` would quietly become importable from every connector.
+- *Moving the shared code out of `connectors/`.* It rewrites every connector's imports for no behavior change.
+- *Keeping the early return on a missing directory.* That is what hid the broken root. The scanner now fails when a directory is missing or empty, and `TestScannerCoverage` asserts that the `spec/` and `connectors/` scans find files.
+
+**References:** `tests/conformance/test_import_boundaries.py` (`SHARED_CONNECTOR_PACKAGES`, `_py_files`, `TestScannerCoverage`), `serve/_discovery.py`, `CONTRIBUTING.md`.
