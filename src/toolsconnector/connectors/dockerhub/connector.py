@@ -13,7 +13,7 @@ from typing import Any, Optional
 
 import httpx
 
-from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.connectors._helpers import raise_typed_for_status, require_same_origin
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import (
@@ -270,7 +270,15 @@ class DockerHub(BaseConnector):
             httpx.Response for the requested page.
         """
         if cursor:
-            resp = await self._client.get(cursor)
+            # The cursor is caller-supplied and this client carries the bearer
+            # token, so only Docker Hub's own https origin may receive it.
+            next_url = require_same_origin(
+                cursor,
+                self._base_url or self.__class__.base_url,
+                "page",
+                connector=self.name,
+            )
+            resp = await self._client.get(next_url)
             raise_typed_for_status(resp, connector=self.name)
             return resp
         return await self._request("GET", path, params=params)
