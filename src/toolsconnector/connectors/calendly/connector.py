@@ -268,13 +268,20 @@ class Calendly(BaseConnector):
         pagination = data.get("pagination", {})
         next_token = self._extract_page_token(pagination)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=event_types,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        # Calendly sends next_page_token: null on the last page; guard on the token
+        # itself so an empty-string token raises rather than refetching page one.
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_event_types(
+                user_uri=user_uri, limit=limit, page_token=t
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions -- Scheduled Events
@@ -323,13 +330,23 @@ class Calendly(BaseConnector):
         pagination = data.get("pagination", {})
         next_token = self._extract_page_token(pagination)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=events,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_scheduled_events(
+                user_uri=user_uri,
+                status=status,
+                min_start_time=min_start_time,
+                max_start_time=max_start_time,
+                limit=limit,
+                page_token=t,
+            )
+        return result
 
     @action("Get a single scheduled event")
     async def get_event(self, event_uuid: str) -> CalendlyEvent:
@@ -372,7 +389,7 @@ class Calendly(BaseConnector):
             f"/scheduled_events/{event_uuid}/cancellation",
             json=body,
         )
-        return await self.get_event(event_uuid)
+        return await self.aget_event(event_uuid)  # type: ignore[attr-defined]
 
     # ------------------------------------------------------------------
     # Actions -- Invitees
@@ -412,13 +429,18 @@ class Calendly(BaseConnector):
         pagination = data.get("pagination", {})
         next_token = self._extract_page_token(pagination)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=invitees,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_invitees(
+                event_uuid=event_uuid, limit=limit, page_token=t
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions -- Webhooks
@@ -429,12 +451,15 @@ class Calendly(BaseConnector):
         self,
         organization_uri: str,
         scope: str = "organization",
+        page_token: Optional[str] = None,
     ) -> PaginatedList[CalendlyWebhook]:
         """List webhook subscriptions for an organization.
 
         Args:
             organization_uri: The Calendly organization URI.
             scope: Webhook scope (``"organization"`` or ``"user"``).
+            page_token: Pagination token from a previous response's
+                ``page_state.cursor``.
 
         Returns:
             Paginated list of CalendlyWebhook objects.
@@ -443,6 +468,9 @@ class Calendly(BaseConnector):
             "organization": organization_uri,
             "scope": scope,
         }
+        # Without this the action returned a next-page token no caller could send back.
+        if page_token:
+            params["page_token"] = page_token
         data = await self._request("GET", "/webhook_subscriptions", params=params)
 
         collection = data.get("collection", [])
@@ -450,13 +478,18 @@ class Calendly(BaseConnector):
         pagination = data.get("pagination", {})
         next_token = self._extract_page_token(pagination)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=webhooks,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_webhooks(
+                organization_uri=organization_uri, scope=scope, page_token=t
+            )
+        return result
 
     @action("Create a webhook subscription", dangerous=True)
     async def create_webhook(
@@ -699,13 +732,18 @@ class Calendly(BaseConnector):
         pagination = data.get("pagination", {})
         next_token = self._extract_page_token(pagination)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=members,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_organization_members(
+                organization_uri=organization_uri, limit=limit, page_token=t
+            )
+        return result
 
     @action("Delete a webhook subscription", dangerous=True)
     async def delete_webhook(
@@ -851,10 +889,15 @@ class Calendly(BaseConnector):
         entries = data.get("collection", [])
         pagination = data.get("pagination", {})
         next_token = pagination.get("next_page_token")
-        return PaginatedList(
+        result = PaginatedList(
             items=entries,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_activity_log(
+                organization_uri=organization_uri, limit=limit, cursor=t
+            )
+        return result

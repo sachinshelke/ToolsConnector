@@ -15,7 +15,7 @@ from urllib.parse import quote as _url_quote
 
 import httpx
 
-from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.connectors._helpers import raise_typed_for_status, require_same_origin
 from toolsconnector.errors import (
     ConnectionError as ToolsConnectorConnectionError,
 )
@@ -298,8 +298,16 @@ class GitHub(BaseConnector):
         errors regardless of which branch executes.
         """
         if cursor:
+            # cursor is caller-supplied (page) and the client carries the bearer
+            # token, so only follow URLs on the configured API host.
+            url = require_same_origin(
+                cursor,
+                self._base_url or self.__class__.base_url,
+                "page",
+                connector=self.name,
+            )
             try:
-                resp = await self._client.get(cursor)
+                resp = await self._client.get(url)
             except httpx.TimeoutException as e:
                 raise ToolsConnectorTimeoutError(
                     f"GitHub API request timed out after {self._timeout}s",

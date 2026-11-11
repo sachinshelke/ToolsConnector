@@ -42,6 +42,10 @@ class ToolEntry:
         requires_scope: OAuth scope required, if any.
         tags: Categorization tags.
         rate_limit_weight: How many rate limit tokens this action costs.
+        access_classified: ``True`` when the author declared ``access``;
+            ``False`` when :attr:`access` is only the fail-safe default.
+            Lets consumers that publish hints (e.g. MCP annotations) omit
+            a guess rather than state it as fact.
     """
 
     connector_name: str
@@ -57,6 +61,7 @@ class ToolEntry:
     requires_scope: Optional[str] = None
     tags: list[str] = field(default_factory=list)
     rate_limit_weight: int = 1
+    access_classified: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dict for API responses."""
@@ -69,6 +74,7 @@ class ToolEntry:
             "input_schema": self.input_schema,
             "dangerous": self.dangerous,
             "access": self.access,
+            "access_classified": self.access_classified,
             "idempotent": self.idempotent,
             "requires_scope": self.requires_scope,
         }
@@ -195,6 +201,7 @@ def build_tool_list(
                     requires_scope=action_spec.requires_scope,
                     tags=action_spec.tags,
                     rate_limit_weight=action_spec.rate_limit_weight,
+                    access_classified=action_spec.access is not None,
                 )
             )
 

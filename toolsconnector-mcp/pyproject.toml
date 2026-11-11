@@ -8,10 +8,13 @@ version = "0.1.0"
 description = "Enhanced MCP server for ToolsConnector — smart tool selection, multi-tenant serving, and schema optimization."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.9"
+# ``mcp`` itself requires >=3.10 (and 3.10 is the project floor, D00000G).
+requires-python = ">=3.10"
 dependencies = [
     "toolsconnector>=0.1.0",
-    "mcp>=1.0",
+    # Must match the parent's ``[mcp]`` extra. See pyproject.toml for why
+    # both ends of this range are load-bearing.
+    "mcp>=1.10,<2",
 ]
 
 [project.scripts]

@@ -300,13 +300,27 @@ class GoogleCalendar(BaseConnector):
         events = [_parse_event(e) for e in data.get("items", [])]
         next_token = data.get("nextPageToken")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=events,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        # Forward every filter: Google requires the same query on every page, and
+        # dropping time_min/time_max would quietly widen the result set.
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_events(
+                calendar_id=calendar_id,
+                time_min=time_min,
+                time_max=time_max,
+                query=query,
+                max_results=max_results,
+                single_events=single_events,
+                order_by=order_by,
+                page_token=t,
+            )
+        return result
 
     @action("Get a single event by ID", requires_scope="read", access="read")
     async def get_event(
@@ -517,13 +531,18 @@ class GoogleCalendar(BaseConnector):
             )
 
         next_token = data.get("nextPageToken")
-        return PaginatedList(
+        result = PaginatedList(
             items=calendars,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_calendars(
+                page_token=t, max_results=max_results
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions — Free/busy and advanced event operations

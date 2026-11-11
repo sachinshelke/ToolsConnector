@@ -616,7 +616,7 @@ class LinkedIn(BaseConnector):
         # page-full heuristic only when it's absent, so a full final page that
         # exactly exhausts `total` doesn't over-report has_more (wasted fetch).
         has_more = (start + len(items)) < total if total is not None else len(items) >= count
-        return PaginatedList(
+        result = PaginatedList(
             items=items,
             page_state=PageState(
                 offset=start + len(items) if has_more else None,
@@ -624,6 +624,14 @@ class LinkedIn(BaseConnector):
                 total_count=total,
             ),
         )
+        # Offset paging: advance only past a non-empty page, so an empty page that
+        # still reports more raises instead of re-requesting the same start forever.
+        next_start = start + len(items)
+        if has_more and items:
+            result._fetch_next = lambda s=next_start: self.alist_my_posts(
+                author=author, count=count, start=s
+            )
+        return result
 
     # ======================================================================
     # COMMENTS  (uses /rest/socialActions/{urn}/comments — Versioned API)
@@ -714,7 +722,7 @@ class LinkedIn(BaseConnector):
         # page-full heuristic only when it's absent, so a full final page that
         # exactly exhausts `total` doesn't over-report has_more (wasted fetch).
         has_more = (start + len(items)) < total if total is not None else len(items) >= count
-        return PaginatedList(
+        result = PaginatedList(
             items=items,
             page_state=PageState(
                 offset=start + len(items) if has_more else None,
@@ -722,6 +730,12 @@ class LinkedIn(BaseConnector):
                 total_count=total,
             ),
         )
+        next_start = start + len(items)
+        if has_more and items:
+            result._fetch_next = lambda s=next_start: self.alist_comments(
+                post_urn=post_urn, count=count, start=s
+            )
+        return result
 
     # ======================================================================
     # REACTIONS  (uses /rest/reactions — Versioned API)

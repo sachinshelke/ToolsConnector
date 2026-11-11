@@ -10,9 +10,9 @@ Coverage: 21 of 24 actions are fully declarative. The 3 escape hatches stay
 imperative because their request *shape branches on argument values* — not
 something a finite, serializable binding should encode:
 
-- ``search``       — ``filter_type`` becomes a two-field object
-  ``{"value": ..., "property": "object"}`` AND results are post-filtered to
-  ``object == "page"``.
+- ``search``       — ``filter_type`` is validated (anything but ``"page"``
+  raises), the body always carries ``{"value": "page", "property": "object"}``,
+  AND results are post-filtered to ``object == "page"``.
 - ``create_page``  — the ``parent`` envelope flips between ``{"page_id": ...}``
   and ``{"database_id": ...}`` and a title property is conditionally injected,
   depending on whether ``properties`` was supplied.

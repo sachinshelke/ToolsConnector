@@ -14,7 +14,7 @@ Connect to Notion to manage pages, databases, blocks, comments, and users. Searc
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
-| search | Search pages and databases in the workspace | No |
+| search | Search pages in the workspace | No |
 | get_page | Get a single page by ID | No |
 | create_page | Create a new page | Yes |
 | update_page | Update page properties | No |

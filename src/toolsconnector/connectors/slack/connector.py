@@ -366,13 +366,21 @@ class Slack(BaseConnector):
         ]
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
         has_more = bool(next_cursor)
-        return PaginatedList(
+        result = PaginatedList(
             items=items,
             page_state=PageState(
                 cursor=next_cursor if has_more else None,
                 has_more=has_more,
             ),
         )
+        # Guard on the cursor, not on has_more: without a cursor there is nothing
+        # to page with, and a fetcher would re-request page one forever. Leaving
+        # _fetch_next unset makes anext_page() raise instead of looping.
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_scheduled_messages(
+                channel=channel, cursor=c, limit=limit
+            )
+        return result
 
     @action("Delete a scheduled message", dangerous=True)
     async def delete_scheduled_message(
@@ -442,13 +450,18 @@ class Slack(BaseConnector):
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
         has_more = bool(next_cursor)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=channels,
             page_state=PageState(
                 cursor=next_cursor if has_more else None,
                 has_more=has_more,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_channels(
+                limit=limit, cursor=c, exclude_archived=exclude_archived
+            )
+        return result
 
     @action("Get a single channel by ID")
     async def get_channel(self, channel_id: str) -> Channel:
@@ -645,13 +658,18 @@ class Slack(BaseConnector):
         members = body.get("members", [])
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
         has_more = bool(next_cursor)
-        return PaginatedList(
+        result = PaginatedList(
             items=members,
             page_state=PageState(
                 cursor=next_cursor if has_more else None,
                 has_more=has_more,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_channel_members(
+                channel=channel, limit=limit, cursor=c
+            )
+        return result
 
     # ======================================================================
     # MESSAGES (history & threads)
@@ -693,13 +711,23 @@ class Slack(BaseConnector):
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
         has_more = body.get("has_more", False) or bool(next_cursor)
 
-        return PaginatedList(
+        # conversations.history can report has_more=True with no next_cursor. That
+        # page is unpageable, so it stays unwired and anext_page() raises rather
+        # than silently returning page one again. `or None` (not `if has_more`)
+        # because has_more is True here while there is no cursor to hand back —
+        # an empty-string cursor would be a lie.
+        result = PaginatedList(
             items=messages,
             page_state=PageState(
-                cursor=next_cursor if has_more else None,
+                cursor=next_cursor or None,
                 has_more=has_more,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_messages(
+                channel=channel, limit=limit, cursor=c, oldest=oldest, latest=latest
+            )
+        return result
 
     @action("List replies in a message thread")
     async def list_thread_replies(
@@ -727,13 +755,20 @@ class Slack(BaseConnector):
         messages = [Message(**{**msg, "channel": channel}) for msg in body.get("messages", [])]
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
         has_more = body.get("has_more", False) or bool(next_cursor)
-        return PaginatedList(
+        # See list_messages: has_more can be True with no cursor, so `or None`
+        # rather than `if has_more` keeps cursor honest.
+        result = PaginatedList(
             items=messages,
             page_state=PageState(
-                cursor=next_cursor if has_more else None,
+                cursor=next_cursor or None,
                 has_more=has_more,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_thread_replies(
+                channel=channel, thread_ts=thread_ts, limit=limit, cursor=c
+            )
+        return result
 
     # ======================================================================
     # REACTIONS
@@ -953,13 +988,16 @@ class Slack(BaseConnector):
         next_cursor = body.get("response_metadata", {}).get("next_cursor", "")
         has_more = bool(next_cursor)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=users,
             page_state=PageState(
                 cursor=next_cursor if has_more else None,
                 has_more=has_more,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_users(limit=limit, cursor=c)
+        return result
 
     @action("Get a single user by ID")
     async def get_user(self, user_id: str) -> SlackUser:

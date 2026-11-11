@@ -17,13 +17,15 @@ body-flag-based auth (Slack-style).
 
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 import pytest
 import pytest_asyncio
 import respx
 
 from toolsconnector.connectors.github import GitHub
-from toolsconnector.errors import InvalidCredentialsError, NotFoundError
+from toolsconnector.errors import InvalidCredentialsError, NotFoundError, ValidationError
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -1960,3 +1962,123 @@ def test_credentials_accepts_string() -> None:
 
     conn = GitHub(credentials="ghp_realworld_pat")
     assert conn._credentials == "ghp_realworld_pat"
+
+
+# ---------------------------------------------------------------------------
+# `page` cursor origin validation
+#
+# `page` is a caller-supplied absolute URL sent through the client that
+# carries `Authorization: Bearer <token>`. A prompt-injected agent could
+# pass an attacker URL and the connector would deliver the token there.
+# Only https URLs on the configured base_url's host may be followed.
+# ---------------------------------------------------------------------------
+
+# (action, required kwargs) for every action that accepts `page`.
+_PAGE_ACTIONS: list[tuple[str, dict[str, Any]]] = [
+    ("alist_branches", {"owner": "o", "repo": "r"}),
+    ("alist_comments", {"owner": "o", "repo": "r", "issue_number": 1}),
+    ("alist_commits", {"owner": "o", "repo": "r"}),
+    ("alist_gists", {}),
+    ("alist_issues", {"owner": "o", "repo": "r"}),
+    ("alist_pull_requests", {"owner": "o", "repo": "r"}),
+    ("alist_releases", {"owner": "o", "repo": "r"}),
+    ("alist_repos", {}),
+    ("alist_workflow_runs", {"owner": "o", "repo": "r"}),
+    ("alist_workflows", {"owner": "o", "repo": "r"}),
+    ("asearch_code", {"query": "q"}),
+    ("asearch_issues", {"query": "q"}),
+    ("asearch_repos", {"query": "q"}),
+]
+
+
+async def _assert_page_blocked(connector: GitHub, action: str, kwargs: dict[str, Any]) -> None:
+    """Call ``action`` and assert it raised ValidationError before any request."""
+    with respx.mock(assert_all_called=False) as mock:
+        catch_all = mock.route().mock(return_value=httpx.Response(200, json=[]))
+        raised: Exception | None = None
+        try:
+            await getattr(connector, action)(**kwargs)
+        except Exception as exc:  # recorded; the leak check below runs first
+            raised = exc
+
+    leaked = [
+        (str(call.request.url), call.request.headers.get("authorization"))
+        for call in catch_all.calls
+    ]
+    assert leaked == [], f"request sent before validation (url, Authorization): {leaked}"
+    assert isinstance(raised, ValidationError), f"expected ValidationError, got {raised!r}"
+    assert raised.connector == "github"
+
+
+@pytest.mark.asyncio
+async def test_list_repos_rejects_attacker_page_url(github: GitHub) -> None:
+    await _assert_page_blocked(github, "alist_repos", {"page": "https://attacker.example/x"})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "page",
+    [
+        "http://api.github.com/user/repos?page=2",
+        "https://api.github.com.attacker.example/user/repos",
+        "https://api.github.com@attacker.example/user/repos",
+        "https://api.github.com:8443/user/repos",
+        "//attacker.example/x",
+    ],
+)
+async def test_list_repos_rejects_foreign_origins(github: GitHub, page: str) -> None:
+    await _assert_page_blocked(github, "alist_repos", {"page": page})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("action", "kwargs"), _PAGE_ACTIONS)
+async def test_every_page_action_rejects_attacker(
+    github: GitHub, action: str, kwargs: dict[str, Any]
+) -> None:
+    await _assert_page_blocked(github, action, {**kwargs, "page": "https://attacker.example/x"})
+
+
+@pytest.mark.asyncio
+async def test_real_link_header_next_url_still_pages(github: GitHub) -> None:
+    # Shape of a live api.github.com Link header: the next URL can change the
+    # path (/repositories/<id>/...) and carry an opaque `after` cursor.
+    next_url = "https://api.github.com/repositories/81598961/repos?per_page=1&after=Y3Vy&page=2"
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get("https://api.github.com/user/repos").mock(
+            return_value=httpx.Response(
+                200, json=[_REPO_MIN], headers={"Link": f'<{next_url}>; rel="next"'}
+            )
+        )
+        page2_route = mock.get("https://api.github.com/repositories/81598961/repos").mock(
+            return_value=httpx.Response(200, json=[{**_REPO_MIN, "id": 2}])
+        )
+        page1 = await github.alist_repos()
+        assert page1.page_state.cursor == next_url
+
+        page2 = await github.alist_repos(page=page1.page_state.cursor)
+
+    assert [r.id for r in page2.items] == [2]
+    sent = page2_route.calls.last.request
+    assert sent.url == httpx.URL(next_url)
+    assert sent.headers["authorization"] == "Bearer ghp_fake_test_token"
+
+
+@pytest.mark.asyncio
+async def test_enterprise_base_url_host_is_the_allowed_one() -> None:
+    conn = GitHub(credentials="ghp_fake_test_token", base_url="https://ghe.example.com/api/v3")
+    await conn._setup()
+    try:
+        next_url = "https://ghe.example.com/api/v3/user/repos?page=2"
+        with respx.mock() as mock:
+            mock.get("https://ghe.example.com/api/v3/user/repos").mock(
+                return_value=httpx.Response(200, json=[_REPO_MIN])
+            )
+            page = await conn.alist_repos(page=next_url)
+        assert len(page.items) == 1
+
+        # api.github.com is not the configured host, so it is refused.
+        await _assert_page_blocked(
+            conn, "alist_repos", {"page": "https://api.github.com/user/repos?page=2"}
+        )
+    finally:
+        await conn._teardown()

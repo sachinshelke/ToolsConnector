@@ -415,7 +415,7 @@ class X(BaseConnector):
         Returns:
             The reply tweet.
         """
-        return await self.create_tweet(text=text, reply_to_tweet_id=tweet_id)
+        return await self.acreate_tweet(text=text, reply_to_tweet_id=tweet_id)  # type: ignore[attr-defined]
 
     @action(
         "Post a thread of tweets sequentially",
@@ -456,7 +456,7 @@ class X(BaseConnector):
         reply_to: Optional[str] = None
         for text in texts:
             try:
-                tw = await self.create_tweet(text=text, reply_to_tweet_id=reply_to)
+                tw = await self.acreate_tweet(text=text, reply_to_tweet_id=reply_to)  # type: ignore[attr-defined]
             except Exception as e:
                 # Attach partial result so the caller can recover.
                 if hasattr(e, "details") and isinstance(e.details, dict):
@@ -544,7 +544,7 @@ class X(BaseConnector):
         items = [Tweet.model_validate(t) for t in body.get("data", [])]
         meta = body.get("meta", {}) or {}
         next_token = meta.get("next_token")
-        return PaginatedList(
+        result = PaginatedList(
             items=items,
             page_state=PageState(
                 cursor=next_token,
@@ -552,6 +552,11 @@ class X(BaseConnector):
                 total_count=meta.get("result_count"),
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_mentions(
+                user_id=user_id, max_results=max_results, pagination_token=t
+            )
+        return result
 
     # ======================================================================
     # DMs — write (Basic tier required)

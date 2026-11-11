@@ -152,6 +152,19 @@ def test_notion_mcp_server_end_to_end_handshake() -> None:
     repo_root = Path(__file__).resolve().parent.parent.parent
     server_src = _server_script(repo_root)
 
+    # Expected tools come from the connector's action registry, not a hardcoded
+    # count. The subprocess puts src/ first on sys.path, so this process must
+    # read the same copy or the comparison is meaningless.
+    import toolsconnector
+    from toolsconnector.connectors.notion import Notion
+
+    assert Path(toolsconnector.__file__).resolve().is_relative_to(repo_root / "src"), (
+        f"test imported {toolsconnector.__file__}, not {repo_root / 'src'}; "
+        "run with PYTHONPATH=src or an editable install"
+    )
+    spec = Notion.get_spec()
+    expected_tools = sorted(f"{spec.name}_{action}" for action in spec.actions)
+
     with tempfile.TemporaryDirectory() as tmpdir:
         server_path = Path(tmpdir) / "notion_mcp_server.py"
         server_path.write_text(server_src)
@@ -197,12 +210,12 @@ def test_notion_mcp_server_end_to_end_handshake() -> None:
 
             _send(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
 
-            # 2. tools/list
+            # 2. tools/list — exactly the connector's registered actions
             _send(proc, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
             listed = _recv(proc, expected_id=2)
             tools = listed["result"]["tools"]
             notion_tools = [t for t in tools if t["name"].startswith("notion_")]
-            assert len(notion_tools) == 24, f"expected 24 tools, got {len(notion_tools)}"
+            assert sorted(t["name"] for t in notion_tools) == expected_tools
 
             # Spot-check a tool's inputSchema
             get_page = next(t for t in notion_tools if t["name"] == "notion_get_page")

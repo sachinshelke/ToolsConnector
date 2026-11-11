@@ -424,3 +424,48 @@ def test_spec_metadata() -> None:
         "read_group",
         "call_method",
     }
+
+
+# ---------------------------------------------------------------------------
+# Pagination — search_read must walk itself
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_search_read_anext_page_walks_by_offset(odoo: Odoo) -> None:
+    """anext_page() must fetch the next offset with the same domain/fields/order.
+
+    Fails without the `_fetch_next` wiring: returns None while has_more is True.
+    """
+    rows = [{"id": i, "name": f"Partner {i}"} for i in range(1, 4)]
+
+    def page(args: list[Any]) -> list[dict[str, Any]]:
+        kwargs = args[6]
+        start, size = kwargs["offset"], kwargs["limit"]
+        return rows[start : start + size]
+
+    with respx.mock(base_url=BASE) as mock:
+        route = mock.post("/jsonrpc").mock(side_effect=make_handler(execute_result=page))
+
+        page1 = await odoo.asearch_read(
+            model="res.partner",
+            domain=[["is_company", "=", True]],
+            fields=["name"],
+            limit=2,
+            order="name asc",
+        )
+        assert [r["id"] for r in page1.items] == [1, 2]
+        assert page1.has_more is True
+
+        page2 = await page1.anext_page()
+
+        assert page2 is not None, "anext_page() returned None despite has_more=True"
+        assert [r["id"] for r in page2.items] == [3]
+        assert page2.has_more is False
+        assert await page2.anext_page() is None
+
+        execute_calls = [_params(c) for c in route.calls if _params(c)["method"] == "execute_kw"]
+        second = execute_calls[1]["args"]
+        assert second[3] == "res.partner"
+        assert second[5] == [[["is_company", "=", True]]]
+        assert second[6] == {"limit": 2, "offset": 2, "fields": ["name"], "order": "name asc"}

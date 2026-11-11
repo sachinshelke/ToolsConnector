@@ -256,7 +256,7 @@ class Auth0(BaseConnector):
         fetched_so_far = (page + 1) * min(limit, 100)
         has_more = fetched_so_far < total
 
-        return PaginatedList(
+        result = PaginatedList(
             items=users,
             total_count=total,
             page_state=PageState(
@@ -265,6 +265,13 @@ class Auth0(BaseConnector):
                 has_more=has_more,
             ),
         )
+        # 0-based page numbers. Auth0 caps user search at 1000 results; paging past
+        # that is an API error, which surfaces loudly rather than truncating.
+        if has_more and users:
+            result._fetch_next = lambda p=page + 1: self.alist_users(
+                search=search, limit=limit, page=p
+            )
+        return result
 
     @action("Get a single user by ID")
     async def get_user(self, user_id: str) -> Auth0User:

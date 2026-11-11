@@ -208,7 +208,7 @@ class Zendesk(BaseConnector):
         )
         result._fetch_next = (
             (
-                lambda: self.list_tickets(
+                lambda: self.alist_tickets(
                     status=status,
                     limit=limit,
                     page=(page or 1) + 1,
@@ -373,7 +373,7 @@ class Zendesk(BaseConnector):
         )
         result._fetch_next = (
             (
-                lambda: self.list_users(
+                lambda: self.alist_users(
                     limit=limit,
                     page=(page or 1) + 1,
                 )
@@ -405,6 +405,7 @@ class Zendesk(BaseConnector):
         self,
         query: str,
         limit: int = 25,
+        page: Optional[int] = None,
     ) -> PaginatedList[ZendeskSearchResult]:
         """Search across tickets, users, and organizations.
 
@@ -414,6 +415,8 @@ class Zendesk(BaseConnector):
         Args:
             query: Zendesk search query string.
             limit: Maximum number of results per page.
+            page: Page number to fetch (1-based). ``anext_page()`` advances it
+                for you.
 
         Returns:
             Paginated list of ZendeskSearchResult objects.
@@ -422,6 +425,9 @@ class Zendesk(BaseConnector):
             "query": query,
             "per_page": min(limit, 100),
         }
+        # Without this the action returned a next_page it had no way to request.
+        if page is not None:
+            params["page"] = page
 
         resp = await self._request("GET", "/search.json", params=params)
         body = resp.json()
@@ -437,6 +443,12 @@ class Zendesk(BaseConnector):
             page_state=page_state,
             total_count=body.get("count"),
         )
+        # Page-number paging: advance only past a non-empty page, so an empty page
+        # that still reports next_page raises instead of requesting forever.
+        if has_more and items:
+            result._fetch_next = lambda p=(page or 1) + 1: self.asearch(
+                query=query, limit=limit, page=p
+            )
         return result
 
     # ------------------------------------------------------------------
@@ -679,8 +691,13 @@ class Zendesk(BaseConnector):
         next_page = body.get("next_page")
         has_more = next_page is not None
 
-        return PaginatedList(
+        result = PaginatedList(
             items=items,
             page_state=PageState(has_more=has_more, cursor=next_page),
             total_count=body.get("count"),
         )
+        if has_more and items:
+            result._fetch_next = lambda p=(page or 1) + 1: self.alist_organizations(
+                limit=limit, page=p
+            )
+        return result

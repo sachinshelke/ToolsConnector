@@ -8,7 +8,10 @@ version = "0.3.25"
 description = "A foundational primitive for standardizing external API tool connections — for both traditional applications and AI agents."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.9"
+# Floor raised from 3.9 by decision D00000G (3.9 is EOL; every `mcp` release
+# needs 3.10+). tests/conformance/test_python_floor.py keeps the classifiers,
+# CI matrix and tool targets consistent with this line.
+requires-python = ">=3.10"
 authors = [{ name = "Sachin Shelke", email = "sachin.worldnet@gmail.com" }]
 maintainers = [{ name = "Sachin Shelke", email = "sachin.worldnet@gmail.com" }]
 keywords = [
@@ -28,7 +31,6 @@ classifiers = [
     # with the top-level `license = "Apache-2.0"` expression at line 10.
     # Having both triggers a PyPI warning (duplicate metadata).
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -43,7 +45,6 @@ dependencies = [
     "pydantic>=2.0,<3.0",
     "httpx>=0.25.0,<1.0",
     "docstring-parser>=0.15,<1.0",
-    "eval_type_backport>=0.2.0; python_version < '3.10'",
 ]
 
 [project.urls]
@@ -182,13 +183,26 @@ websocket = ["websockets>=12.0"]
 # --- KeyStore extras ---
 vault = ["hvac>=1.0"]
 aws-keystore = ["boto3>=1.28"]
+local-keystore = ["cryptography>=42.0"]  # LocalFileKeyStore (Fernet)
 
 # --- Storage extras ---
 s3-storage = ["boto3>=1.28"]
 gcs-storage = ["google-cloud-storage>=2.0"]
 
 # --- Serve layer ---
-mcp = ["mcp>=1.0"]
+# Pinned range, not ``>=1.0``. Both ends are load-bearing:
+#   * ``<2``    — mcp 2.x removed ``mcp.server.fastmcp``; the module is a
+#                 tombstone that raises ModuleNotFoundError. FastMCP became
+#                 ``mcp.server.mcpserver.MCPServer``. ``serve/mcp.py`` still
+#                 imports FastMCP, so an unpinned resolve to 2.x breaks every
+#                 fresh ``pip install "toolsconnector[mcp]"``.
+#   * ``>=1.10`` — ``FastMCP.tool()`` only grew ``structured_output=`` in
+#                 1.10.0 (and ``annotations=`` in 1.7.0). Both are needed to
+#                 emit tool annotations and to suppress the auto-generated
+#                 outputSchema. Verified by inspecting the wheels.
+# No python_version marker needed: ``mcp`` needs Python >=3.10, which is the
+# package floor (decision D00000G).
+mcp = ["mcp>=1.10,<2"]
 rest = ["starlette>=0.27", "uvicorn>=0.23"]
 
 # --- Category bundles ---
@@ -220,11 +234,18 @@ dev = [
     "pytest-xdist>=3.0",
     "respx>=0.20",
     "vcrpy>=6.0",
+    # LocalFileKeyStore tests need real Fernet. Declared, not left to arrive
+    # transitively (mcp -> pyjwt[crypto]), so they can't silently lose it.
+    "toolsconnector[local-keystore]",
     "ruff>=0.15.11,<0.16",  # keep aligned with .pre-commit-config.yaml rev
     "mypy>=1.5",
     "bandit>=1.7",
     "pip-audit>=2.6",
     "pre-commit>=3.5",
+    # CI installs only ``.[dev]``. Without mcp here, every MCP integration test
+    # skips silently — which hid a stale Hugging Face tool count (27 vs 30) for
+    # months. Self-reference, so the pin lives only in the ``mcp`` extra.
+    "toolsconnector[mcp]",
 ]
 
 # --- Everything ---
@@ -266,6 +287,9 @@ include = [
 [tool.ruff]
 src = ["src"]
 line-length = 100
+# Deliberately still py39 after the 3.10 floor (D00000G): moving to py310
+# enables UP035/B905 findings across src/ and tests/, which ships with the
+# PEP 604 codemod (UP007/UP045 below) as its own change.
 target-version = "py39"
 
 [tool.ruff.lint]
@@ -346,7 +370,7 @@ ignore = [
 "webapp/docs_agent.py"     = ["E402"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 strict = true
 warn_return_any = true
 warn_unused_configs = true

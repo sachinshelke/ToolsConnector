@@ -308,7 +308,7 @@ class Webhook(BaseConnector):
         failed = 0
 
         for payload in payloads:
-            result = await self.send_webhook(url, payload)
+            result = await self.asend_webhook(url, payload)  # type: ignore[attr-defined]
             results.append(result)
             if result.success:
                 succeeded += 1
@@ -448,7 +448,7 @@ class Webhook(BaseConnector):
 
         last_result: Optional[WebhookResponse] = None
         for attempt in range(retries + 1):
-            result = await self.send_webhook(url, payload)
+            result = await self.asend_webhook(url, payload)  # type: ignore[attr-defined]
             last_result = result
             if result.success:
                 return result

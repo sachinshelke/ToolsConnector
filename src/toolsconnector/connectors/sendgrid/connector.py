@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Optional
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 
@@ -263,16 +264,30 @@ class SendGrid(BaseConnector):
         body = resp.json()
 
         all_contacts = body.get("result", [])
-        items = [_parse_contact(c) for c in all_contacts[:limit]]
+        total = body.get("contact_count")
+        page_size = max(1, limit)
 
-        has_more = len(all_contacts) > limit
-        page_state = PageState(has_more=has_more)
+        # This endpoint returns its whole (capped) result in one response and has
+        # no cursor, so "later pages" are the rest of that response, already in
+        # memory. They used to be discarded, leaving has_more=True with no way to
+        # reach them. Each page now hands out the next slice with no new request.
+        def page_at(offset: int) -> PaginatedList[SendGridContact]:
+            chunk = all_contacts[offset : offset + page_size]
+            more = len(all_contacts) > offset + page_size
+            page: PaginatedList[SendGridContact] = PaginatedList(
+                items=[_parse_contact(c) for c in chunk],
+                page_state=PageState(has_more=more, offset=offset + len(chunk)),
+                total_count=total,
+            )
+            if more:
 
-        return PaginatedList(
-            items=items,
-            page_state=page_state,
-            total_count=body.get("contact_count"),
-        )
+                async def next_slice(o: int = offset + page_size) -> PaginatedList[Any]:
+                    return page_at(o)
+
+                page._fetch_next = next_slice
+            return page
+
+        return page_at(0)
 
     @action("Add or update marketing contacts in SendGrid", dangerous=True)
     async def add_contacts(
@@ -402,12 +417,13 @@ class SendGrid(BaseConnector):
     async def list_templates(
         self,
         limit: int = 50,
+        page_token: Optional[str] = None,
     ) -> PaginatedList[SendGridTemplate]:
         """List transactional templates.
 
         Args:
             limit: Maximum number of templates to return.
-
+            page_token: Token from a previous response's ``page_state.cursor``.
         Returns:
             Paginated list of SendGridTemplate objects.
         """
@@ -415,6 +431,8 @@ class SendGrid(BaseConnector):
             "generations": "dynamic",
             "page_size": min(limit, 200),
         }
+        if page_token:
+            params["page_token"] = page_token
         resp = await self._request("GET", "/templates", params=params)
         body = resp.json()
 
@@ -423,13 +441,26 @@ class SendGrid(BaseConnector):
 
         # SendGrid template pagination uses metadata
         metadata = body.get("_metadata", {})
-        has_more = metadata.get("count", 0) > len(items)
-
-        return PaginatedList(
+        # Follow _metadata.next. The old check (total count > this page's size)
+        # stayed True on every page after the first, so it could never end.
+        next_link = metadata.get("next")
+        next_token = None
+        if next_link:
+            values = parse_qs(urlparse(next_link).query).get("page_token")
+            next_token = values[0] if values else None
+        # With no next link, fall back to the count only on the first page; if it
+        # still says more, has_more stays True unwired and anext_page() raises.
+        has_more = bool(next_link) or (page_token is None and metadata.get("count", 0) > len(items))
+        result = PaginatedList(
             items=items,
-            page_state=PageState(has_more=has_more),
+            page_state=PageState(has_more=has_more, cursor=next_token),
             total_count=metadata.get("count"),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_templates(
+                limit=limit, page_token=t
+            )
+        return result
 
     @action("Retrieve a single SendGrid template by ID")
     async def get_template(self, template_id: str) -> SendGridTemplate:

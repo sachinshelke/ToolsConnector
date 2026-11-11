@@ -187,13 +187,18 @@ class GoogleTasks(BaseConnector):
         items = [_parse_task_list(tl) for tl in data.get("items", [])]
         next_token = data.get("nextPageToken")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=items,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_task_lists(
+                limit=limit, page_token=t
+            )
+        return result
 
     @action("Get a task list by ID", requires_scope="read", access="read")
     async def get_task_list(self, task_list_id: str) -> TaskList:
@@ -307,13 +312,23 @@ class GoogleTasks(BaseConnector):
         items = [_parse_task(t) for t in data.get("items", [])]
         next_token = data.get("nextPageToken")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=items,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_tasks(
+                task_list_id=task_list_id,
+                completed=completed,
+                due_min=due_min,
+                due_max=due_max,
+                show_hidden=show_hidden,
+                page_token=t,
+            )
+        return result
 
     @action("Get a task by ID", requires_scope="read", access="read")
     async def get_task(self, task_list_id: str, task_id: str) -> GoogleTask:

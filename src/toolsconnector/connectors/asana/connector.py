@@ -242,13 +242,20 @@ class Asana(BaseConnector):
         next_page = data.get("next_page")
         next_offset = next_page.get("offset") if next_page else None
 
-        return PaginatedList(
+        result = PaginatedList(
             items=tasks,
             page_state=PageState(
                 cursor=next_offset,
                 has_more=next_offset is not None,
             ),
         )
+        # Asana's next_page.offset is an opaque token; guard on it so a
+        # next_page without one raises instead of refetching page one.
+        if next_offset:
+            result._fetch_next = lambda o=next_offset: self.alist_tasks(
+                project_gid=project_gid, limit=limit, offset=o
+            )
+        return result
 
     @action("Get a single task by GID")
     async def get_task(self, task_gid: str) -> AsanaTask:
@@ -377,13 +384,18 @@ class Asana(BaseConnector):
         next_page = data.get("next_page")
         next_offset = next_page.get("offset") if next_page else None
 
-        return PaginatedList(
+        result = PaginatedList(
             items=projects,
             page_state=PageState(
                 cursor=next_offset,
                 has_more=next_offset is not None,
             ),
         )
+        if next_offset:
+            result._fetch_next = lambda o=next_offset: self.alist_projects(
+                workspace_gid=workspace_gid, limit=limit, offset=o
+            )
+        return result
 
     @action("Get a single project by GID")
     async def get_project(self, project_gid: str) -> AsanaProject:
@@ -853,13 +865,19 @@ class Asana(BaseConnector):
         )
         users = data.get("data", [])
         next_page = data.get("next_page")
-        return PaginatedList(
+        next_offset = next_page.get("offset") if next_page else None
+        result = PaginatedList(
             items=users,
             page_state=PageState(
-                cursor=next_page.get("offset") if next_page else None,
+                cursor=next_offset,
                 has_more=next_page is not None,
             ),
         )
+        if next_offset:
+            result._fetch_next = lambda o=next_offset: self.alist_users(
+                workspace_gid=workspace_gid, limit=limit, offset=o
+            )
+        return result
 
     @action("Get a user by ID")
     async def get_user(self, user_gid: str) -> dict[str, Any]:

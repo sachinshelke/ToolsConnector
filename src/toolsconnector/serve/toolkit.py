@@ -48,7 +48,11 @@ from toolsconnector.errors import TimeoutError as TCTimeoutError
 from toolsconnector.runtime._sync import run_sync
 from toolsconnector.runtime.base import BaseConnector
 from toolsconnector.serve._circuit_breaker import CircuitBreaker
-from toolsconnector.serve._credentials import resolve_credentials
+from toolsconnector.serve._credentials import (
+    credential_contract,
+    require_credentials,
+    resolve_credentials,
+)
 from toolsconnector.serve._discovery import resolve_connectors
 from toolsconnector.serve._filtering import ToolEntry, build_tool_list
 from toolsconnector.serve._serialization import serialize_result
@@ -640,7 +644,14 @@ class ToolKit:
                     connector=connector_name,
                 )
 
-            cred = resolve_credentials(connector_name, self._credentials)
+            # A connector that declares a credential contract is never built
+            # without one — otherwise it sends ``Bearer None`` upstream and
+            # the user gets a 401 indistinguishable from a revoked token.
+            contract = credential_contract(cls)
+            if contract is None:
+                cred = resolve_credentials(connector_name, self._credentials)
+            else:
+                cred = require_credentials(connector_name, self._credentials, contract=contract)
             instance = cls(
                 credentials=cred,
                 tenant_id=self._tenant_id,

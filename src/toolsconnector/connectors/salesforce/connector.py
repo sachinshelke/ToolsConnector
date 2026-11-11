@@ -8,6 +8,7 @@ from typing import Any, Optional
 import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.errors import ValidationError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import (
@@ -182,13 +183,16 @@ class Salesforce(BaseConnector):
         self,
         soql: str,
         limit: Optional[int] = None,
+        next_records_url: Optional[str] = None,
     ) -> PaginatedList[SalesforceRecord]:
         """Execute a SOQL query against Salesforce.
 
         Args:
             soql: SOQL query string (e.g., ``"SELECT Id, Name FROM Account"``).
             limit: Optional LIMIT clause override.
-
+            next_records_url: ``page_state.cursor`` from a previous response
+                (Salesforce's ``nextRecordsUrl``). When set, fetches that batch
+                and ignores ``soql``. Must be a ``/services/data/`` path.
         Returns:
             Paginated list of SalesforceRecord objects.
         """
@@ -196,15 +200,27 @@ class Salesforce(BaseConnector):
         if limit and "LIMIT" not in soql.upper():
             query_str = f"{soql} LIMIT {limit}"
 
-        params: dict[str, Any] = {"q": query_str}
-        data = await self._request("GET", "/query", params=params)
-
+        if next_records_url:
+            # Salesforce pages with a server-relative nextRecordsUrl. It is sent to
+            # the instance origin with the bearer token, so accept only a
+            # /services/data/ path: anything else (e.g. "@evil.example/x") could
+            # retarget the request and leak the token.
+            if not next_records_url.startswith("/services/data/"):
+                raise ValidationError(
+                    "next_records_url must be a Salesforce '/services/data/...' path",
+                    connector=self.name,
+                    action="query",
+                )
+            data = await self._request("GET", next_records_url, absolute=True)
+        else:
+            params: dict[str, Any] = {"q": query_str}
+            data = await self._request("GET", "/query", params=params)
         records = [parse_record(r) for r in data.get("records", [])]
         next_url = data.get("nextRecordsUrl")
         total_size = data.get("totalSize", len(records))
         done = data.get("done", True)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=records,
             page_state=PageState(
                 cursor=next_url,
@@ -213,6 +229,11 @@ class Salesforce(BaseConnector):
             ),
             total_count=total_size,
         )
+        if not done and next_url:
+            result._fetch_next = lambda u=next_url: self.aquery(
+                soql=soql, limit=limit, next_records_url=u
+            )
+        return result
 
     @action("Run a SOSL search")
     async def search(self, sosl: str) -> list[SalesforceRecord]:
@@ -418,7 +439,9 @@ class Salesforce(BaseConnector):
         if phone is not None:
             fields["Phone"] = phone
 
-        return await self.create_record("Lead", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Lead", fields
+        )
 
     @action("Create a new Contact", dangerous=True)
     async def create_contact(
@@ -447,7 +470,9 @@ class Salesforce(BaseConnector):
         if first_name is not None:
             fields["FirstName"] = first_name
 
-        return await self.create_record("Contact", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Contact", fields
+        )
 
     @action("Create a new Opportunity", dangerous=True)
     async def create_opportunity(
@@ -480,7 +505,9 @@ class Salesforce(BaseConnector):
         if account_id is not None:
             fields["AccountId"] = account_id
 
-        return await self.create_record("Opportunity", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Opportunity", fields
+        )
 
     @action("Create a new Account", dangerous=True)
     async def create_account(
@@ -509,7 +536,9 @@ class Salesforce(BaseConnector):
         if phone is not None:
             fields["Phone"] = phone
 
-        return await self.create_record("Account", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Account", fields
+        )
 
     @action("Create a new Case", dangerous=True)
     async def create_case(
@@ -538,7 +567,9 @@ class Salesforce(BaseConnector):
         if priority is not None:
             fields["Priority"] = priority
 
-        return await self.create_record("Case", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Case", fields
+        )
 
     @action("Create a new Task", dangerous=True)
     async def create_task(
@@ -571,7 +602,9 @@ class Salesforce(BaseConnector):
         if priority is not None:
             fields["Priority"] = priority
 
-        return await self.create_record("Task", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Task", fields
+        )
 
     @action("List recently viewed records for an sObject")
     async def list_recent(
@@ -598,7 +631,7 @@ class Salesforce(BaseConnector):
             f"ORDER BY LastViewedDate DESC "
             f"LIMIT {capped_limit}"
         )
-        return await self.query(soql)
+        return await self.aquery(soql)  # type: ignore[attr-defined]
 
     # ------------------------------------------------------------------
     # Actions -- Events
@@ -631,7 +664,9 @@ class Salesforce(BaseConnector):
         if who_id is not None:
             fields["WhoId"] = who_id
 
-        return await self.create_record("Event", fields)
+        return await self.acreate_record(  # type: ignore[attr-defined]
+            "Event", fields
+        )
 
     # ------------------------------------------------------------------
     # Actions -- Reports

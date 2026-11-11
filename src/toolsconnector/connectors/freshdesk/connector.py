@@ -231,13 +231,21 @@ class Freshdesk(BaseConnector):
         # Freshdesk returns fewer results when no more pages
         has_more = len(tickets) >= min(limit, 100)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=tickets,
             page_state=PageState(
                 page_number=page,
                 has_more=has_more,
             ),
         )
+        # has_more is a full-page guess, so the page after a final full page is
+        # empty; collect() stops there. Requiring items also keeps limit=0 (an empty
+        # page that still "has more") from requesting page after page forever.
+        if has_more and tickets:
+            result._fetch_next = lambda p=page + 1: self.alist_tickets(
+                status=status, priority=priority, limit=limit, page=p
+            )
+        return result
 
     @action("Get a single ticket by ID")
     async def get_ticket(self, ticket_id: int) -> FreshdeskTicket:
@@ -356,13 +364,16 @@ class Freshdesk(BaseConnector):
         contacts = [self._parse_contact(c) for c in (data if isinstance(data, list) else [])]
         has_more = len(contacts) >= min(limit, 100)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=contacts,
             page_state=PageState(
                 page_number=page,
                 has_more=has_more,
             ),
         )
+        if has_more and contacts:
+            result._fetch_next = lambda p=page + 1: self.alist_contacts(limit=limit, page=p)
+        return result
 
     @action("Get a single contact by ID")
     async def get_contact(self, contact_id: int) -> FreshdeskContact:
@@ -668,13 +679,16 @@ class Freshdesk(BaseConnector):
         companies = [self._parse_company(c) for c in (data if isinstance(data, list) else [])]
         has_more = len(companies) >= min(limit, 100)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=companies,
             page_state=PageState(
                 page_number=page,
                 has_more=has_more,
             ),
         )
+        if has_more and companies:
+            result._fetch_next = lambda p=page + 1: self.alist_companies(limit=limit, page=p)
+        return result
 
     @action("Get a single company by ID")
     async def get_company(self, company_id: int) -> FreshdeskCompany:
@@ -779,13 +793,18 @@ class Freshdesk(BaseConnector):
         ratings = data if isinstance(data, list) else []
         has_more = len(ratings) >= min(limit, 100)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=ratings,
             page_state=PageState(
                 page_number=page,
                 has_more=has_more,
             ),
         )
+        if has_more and ratings:
+            result._fetch_next = lambda p=page + 1: self.alist_satisfaction_ratings(
+                limit=limit, page=p
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions -- Canned Responses
