@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
+import json
 
-from toolsconnector.errors import ConnectorNotConfiguredError
+import pytest
+import respx
+
+from toolsconnector.errors import ConnectorNotConfiguredError, ValidationError
+from toolsconnector.serve import list_connectors
 from toolsconnector.serve.toolkit import ToolKit, ToolKitFactory
 
 
@@ -229,3 +233,60 @@ class TestToolKitFactory:
         await factory.close_all()
         assert stale_instance.torn_down
         assert factory.active_tenants == []
+
+
+class TestDryRun:
+    """``dry_run=True`` never reaches the network for anything but a declared read."""
+
+    @staticmethod
+    async def _dry_run(tool: str, arguments: dict, connector: str) -> tuple[dict, int]:
+        kit = ToolKit([connector], credentials={connector: "test-token"})
+        # No routes: any outbound request is recorded and auto-answered 200.
+        with respx.mock(assert_all_mocked=False, assert_all_called=False) as router:
+            result = await kit.aexecute(tool, arguments, dry_run=True)
+            # Read inside the block: respx clears its call log on exit.
+            calls = router.calls.call_count
+        return json.loads(result), calls
+
+    @pytest.mark.asyncio
+    async def test_destructive_action_is_previewed(self) -> None:
+        preview, calls = await self._dry_run("gmail_batch_delete", {"email_ids": ["m1"]}, "gmail")
+        assert preview["dry_run"] is True
+        assert calls == 0
+
+    @pytest.mark.asyncio
+    async def test_non_dangerous_write_is_previewed(self) -> None:
+        preview, calls = await self._dry_run("gmail_mark_as_read", {"email_id": "m1"}, "gmail")
+        assert preview["dry_run"] is True
+        assert preview["access"] == "write"
+        assert calls == 0
+
+    @pytest.mark.asyncio
+    async def test_unclassified_action_is_previewed(self) -> None:
+        """No declared access means the action might write, so it must not run."""
+        preview, calls = await self._dry_run("slack_leave_channel", {"channel": "C1"}, "slack")
+        assert preview["dry_run"] is True
+        assert calls == 0
+
+    @pytest.mark.asyncio
+    async def test_declared_read_still_executes(self) -> None:
+        kit = ToolKit(["gmail"], credentials={"gmail": "test-token"})
+        with respx.mock(assert_all_mocked=False, assert_all_called=False) as router:
+            router.get(path__regex=r".*/labels$").respond(json={"labels": []})
+            await kit.aexecute("gmail_list_labels", {}, dry_run=True)
+            assert router.calls.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_arguments_are_validated(self) -> None:
+        """A preview of a call that could never succeed is a false green."""
+        kit = ToolKit(["gmail"], credentials={"gmail": "test-token"})
+        with pytest.raises(ValidationError):
+            await kit.aexecute("gmail_batch_delete", {}, dry_run=True)
+
+    def test_every_non_read_tool_is_previewed(self) -> None:
+        """Catalog-wide: only a declared read may run under dry_run."""
+        kit = ToolKit(list_connectors())
+        runs = [e for e in kit._tool_entries_list if not kit._previews_in_dry_run(e)]
+        assert runs
+        assert {e.access for e in runs} == {"read"}
+        assert not any(e.dangerous for e in runs)

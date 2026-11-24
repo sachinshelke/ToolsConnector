@@ -16,14 +16,18 @@ from toolsconnector.serve import ToolKit
 
 ```python
 ToolKit(
-    connectors: list[str],
+    connectors: list[type[BaseConnector] | str],
+    *,
     credentials: dict[str, str] | None = None,
-    keystore: KeyStore | None = None,
-    timeout: float = 30.0,
-    max_retries: int = 3,
-    dry_run: bool = False,
-    circuit_breaker: dict | None = None,
-    retry: dict | None = None,
+    tenant_id: str | None = None,
+    include_actions: list[str] | None = None,
+    exclude_actions: list[str] | None = None,
+    exclude_dangerous: bool = False,
+    timeout_budget: float = 25.0,
+    action_timeout: float = 15.0,
+    verify_on_init: bool = False,
+    circuit_breaker_threshold: int = 5,
+    circuit_breaker_recovery: float = 60.0,
 )
 ```
 
@@ -31,8 +35,8 @@ ToolKit(
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `execute` | `(action: str, params: dict) -> Any` | Execute an action synchronously |
-| `aexecute` | `async (action: str, params: dict) -> Any` | Execute an action asynchronously |
+| `execute` | `(tool_name: str, arguments: dict, *, dry_run: bool = False) -> Any` | Execute an action synchronously |
+| `aexecute` | `async (tool_name: str, arguments: dict, *, dry_run: bool = False) -> Any` | Execute an action asynchronously |
 | `list_tools` | `() -> list[ActionSpec]` | List all available actions across connectors |
 | `get_spec` | `(connector: str) -> ConnectorSpec` | Get the full spec for a connector |
 | `to_openai_tools` | `() -> list[dict]` | Generate OpenAI function-calling schemas |
@@ -40,7 +44,7 @@ ToolKit(
 | `to_gemini_tools` | `() -> list[dict]` | Generate Google Gemini function declarations |
 | `to_langchain_tools` | `() -> list[Tool]` | Convert actions to LangChain tools |
 | `to_crewai_tools` | `() -> list[Tool]` | Convert actions to CrewAI tools |
-| `serve_mcp` | `(transport: str = "stdio", port: int = 8080, ...) -> None` | Start an MCP server |
+| `serve_mcp` | `(*, transport: str = "stdio", name: str = "toolsconnector", host: str = "127.0.0.1", port: int = 3000) -> None` | Start an MCP server |
 | `create_rest_app` | `(prefix: str = "/api/v1") -> ASGIApp` | Create a Starlette/ASGI REST app |
 | `health_check` | `() -> dict[str, HealthStatus]` | Check health of all connectors |
 

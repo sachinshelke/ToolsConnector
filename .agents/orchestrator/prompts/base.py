@@ -36,7 +36,7 @@ external API tool connections for both traditional applications and AI agents.
 5. FULL CAPABILITY — don't dumb down tools, make complex features safe
 
 ## Code Standards
-- Python 3.9+ with full type hints everywhere
+- Python 3.10+ with full type hints everywhere
 - Pydantic V2 for all data models
 - Google-style docstrings (Args, Returns, Raises)
 - Lines under 100 characters

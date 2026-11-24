@@ -8,6 +8,7 @@ from typing import Any, Callable, Generic, TypeVar, cast
 
 from pydantic import BaseModel, Field, PrivateAttr
 
+from toolsconnector.errors import PaginationNotWiredError
 from toolsconnector.types.common import PageState
 
 T = TypeVar("T")
@@ -112,12 +113,29 @@ class PaginatedList(BaseModel, Generic[T]):
     async def anext_page(self) -> PaginatedList[Any] | None:
         """Fetch the next page asynchronously.
 
+        ``None`` means one thing only: **there are no more results**. A page
+        that advertises more results but cannot fetch them raises instead of
+        returning ``None`` — see :class:`PaginationNotWiredError`. Collapsing
+        those two cases into ``None`` is what let a connector hand back page
+        one while the caller believed it had everything.
+
         Returns:
-            The next :class:`PaginatedList` page, or ``None`` if there are
-            no more pages or no fetch callback was configured.
+            The next :class:`PaginatedList` page, or ``None`` if
+            :attr:`has_more` is ``False``.
+
+        Raises:
+            PaginationNotWiredError: If :attr:`has_more` is ``True`` but the
+                connector never assigned ``_fetch_next``. This is a connector
+                bug; the result set is incomplete and the caller must be told.
         """
-        if not self.has_more or self._fetch_next is None:
+        if not self.has_more:
             return None
+        if self._fetch_next is None:
+            # Carry the page_state so the caller can still page manually
+            # (and so the bug report names the cursor that was stranded).
+            raise PaginationNotWiredError(
+                details={"page_state": self.page_state.model_dump(mode="json")},
+            )
         # _fetch_next is Callable[..., Awaitable[PaginatedList[Any]]];
         # mypy loses the precise return type through the Callable->await
         # combo, so cast it back.

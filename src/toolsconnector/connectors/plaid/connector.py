@@ -285,7 +285,7 @@ class Plaid(BaseConnector):
         total = data.get("total_transactions", 0)
         fetched = offset + len(transactions)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=transactions,
             page_state=PageState(
                 offset=fetched,
@@ -293,6 +293,17 @@ class Plaid(BaseConnector):
             ),
             total_count=total,
         )
+        # Offset paging: advance only past a non-empty page, so a short upstream page
+        # that still reports more raises instead of re-requesting the same offset.
+        if fetched < total and transactions:
+            result._fetch_next = lambda o=fetched: self.aget_transactions(
+                access_token=access_token,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
+                offset=o,
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions -- Balances
@@ -760,7 +771,7 @@ class Plaid(BaseConnector):
         total = data.get("total_investment_transactions", 0)
         fetched = offset + len(txns)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=txns,
             page_state=PageState(
                 offset=fetched,
@@ -768,6 +779,15 @@ class Plaid(BaseConnector):
             ),
             total_count=total,
         )
+        if fetched < total and txns:
+            result._fetch_next = lambda o=fetched: self.aget_investment_transactions(
+                access_token=access_token,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
+                offset=o,
+            )
+        return result
 
     @action("Refresh investment data for an Item")
     async def refresh_investments(

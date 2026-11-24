@@ -281,7 +281,7 @@ class PagerDuty(BaseConnector):
 
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
-            result._fetch_next = lambda c=ps.cursor: self.list_incidents(
+            result._fetch_next = lambda c=ps.cursor: self.alist_incidents(
                 status=status,
                 limit=capped_limit,
                 page=c,
@@ -381,7 +381,7 @@ class PagerDuty(BaseConnector):
         Returns:
             The acknowledged PDIncident object.
         """
-        return await self.update_incident(incident_id, "acknowledged")
+        return await self.aupdate_incident(incident_id, "acknowledged")  # type: ignore[attr-defined]
 
     # ------------------------------------------------------------------
     # Actions -- Services
@@ -413,7 +413,7 @@ class PagerDuty(BaseConnector):
 
         result = PaginatedList(items=items, page_state=ps)
         if ps.has_more:
-            result._fetch_next = lambda c=ps.cursor: self.list_services(
+            result._fetch_next = lambda c=ps.cursor: self.alist_services(
                 limit=capped_limit,
                 page=c,
             )

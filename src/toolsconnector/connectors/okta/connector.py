@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Optional
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 
@@ -49,6 +50,27 @@ def _parse_link_header(link_header: str) -> Optional[str]:
             url_end = part.index(">")
             return part[url_start:url_end]
     return None
+
+
+def _after_from_next_url(next_url: Optional[str]) -> Optional[str]:
+    """Extract Okta's ``after`` cursor from a ``Link: rel="next"`` URL.
+
+    Okta pages via the Link header, whose next URL carries the original query
+    plus an opaque ``after`` token. The list actions accept ``after`` directly,
+    so this is the value a caller (or ``_fetch_next``) sends back.
+
+    Args:
+        next_url: The absolute next-page URL, or ``None`` on the last page.
+
+    Returns:
+        The ``after`` token, or ``None`` if there is no next URL or it carries no
+        ``after``. The caller keeps ``has_more`` True in that last case so the
+        unpageable page raises instead of looking complete.
+    """
+    if not next_url:
+        return None
+    values = parse_qs(urlparse(next_url).query).get("after")
+    return values[0] if values else None
 
 
 class Okta(BaseConnector):
@@ -210,6 +232,7 @@ class Okta(BaseConnector):
         search: Optional[str] = None,
         filter: Optional[str] = None,
         limit: int = 200,
+        after: Optional[str] = None,
     ) -> PaginatedList[OktaUser]:
         """List users in the Okta organization.
 
@@ -217,11 +240,15 @@ class Okta(BaseConnector):
             search: Search expression (e.g. ``profile.email eq "user@example.com"``).
             filter: Filter expression using Okta filter syntax.
             limit: Maximum number of users to return (max 200).
+            after: Pagination cursor from a previous response's
+                ``page_state.cursor`` (Okta's ``after`` token).
 
         Returns:
             Paginated list of OktaUser objects.
         """
         params: dict[str, Any] = {"limit": min(limit, 200)}
+        if after:
+            params["after"] = after
         if search:
             params["search"] = search
         if filter:
@@ -258,13 +285,20 @@ class Okta(BaseConnector):
             )
 
         has_more = next_url is not None
-        return PaginatedList(
+        after_token = _after_from_next_url(next_url)
+        result = PaginatedList(
             items=users,
             page_state=PageState(
-                cursor=next_url if has_more else None,
+                cursor=after_token,
                 has_more=has_more,
+                extra={"next_url": next_url} if next_url else {},
             ),
         )
+        if after_token:
+            result._fetch_next = lambda a=after_token: self.alist_users(
+                search=search, filter=filter, limit=limit, after=a
+            )
+        return result
 
     @action("Get a single user by ID")
     async def get_user(self, user_id: str) -> OktaUser:
@@ -398,17 +432,22 @@ class Okta(BaseConnector):
         self,
         search: Optional[str] = None,
         limit: int = 200,
+        after: Optional[str] = None,
     ) -> PaginatedList[OktaGroup]:
         """List groups in the Okta organization.
 
         Args:
             search: Search query to filter groups by name.
             limit: Maximum number of groups to return (max 200).
+            after: Pagination cursor from a previous response's
+                ``page_state.cursor`` (Okta's ``after`` token).
 
         Returns:
             Paginated list of OktaGroup objects.
         """
         params: dict[str, Any] = {"limit": min(limit, 200)}
+        if after:
+            params["after"] = after
         if search:
             params["q"] = search
 
@@ -435,13 +474,20 @@ class Okta(BaseConnector):
             )
 
         has_more = next_url is not None
-        return PaginatedList(
+        after_token = _after_from_next_url(next_url)
+        result = PaginatedList(
             items=groups,
             page_state=PageState(
-                cursor=next_url if has_more else None,
+                cursor=after_token,
                 has_more=has_more,
+                extra={"next_url": next_url} if next_url else {},
             ),
         )
+        if after_token:
+            result._fetch_next = lambda a=after_token: self.alist_groups(
+                search=search, limit=limit, after=a
+            )
+        return result
 
     @action("Add a user to an Okta group")
     async def add_user_to_group(
@@ -464,16 +510,21 @@ class Okta(BaseConnector):
     async def list_applications(
         self,
         limit: int = 200,
+        after: Optional[str] = None,
     ) -> PaginatedList[OktaApplication]:
         """List application integrations in the Okta organization.
 
         Args:
             limit: Maximum number of applications to return (max 200).
+            after: Pagination cursor from a previous response's
+                ``page_state.cursor`` (Okta's ``after`` token).
 
         Returns:
             Paginated list of OktaApplication objects.
         """
         params: dict[str, Any] = {"limit": min(limit, 200)}
+        if after:
+            params["after"] = after
 
         data, next_url = await self._request(
             "GET",
@@ -497,13 +548,18 @@ class Okta(BaseConnector):
         ]
 
         has_more = next_url is not None
-        return PaginatedList(
+        after_token = _after_from_next_url(next_url)
+        result = PaginatedList(
             items=apps,
             page_state=PageState(
-                cursor=next_url if has_more else None,
+                cursor=after_token,
                 has_more=has_more,
+                extra={"next_url": next_url} if next_url else {},
             ),
         )
+        if after_token:
+            result._fetch_next = lambda a=after_token: self.alist_applications(limit=limit, after=a)
+        return result
 
     # ------------------------------------------------------------------
     # Actions -- User lifecycle (extended)
@@ -705,17 +761,22 @@ class Okta(BaseConnector):
         self,
         group_id: str,
         limit: int = 200,
+        after: Optional[str] = None,
     ) -> PaginatedList[OktaUser]:
         """List all users that are members of a group.
 
         Args:
             group_id: The group's Okta ID.
             limit: Maximum number of members to return (max 200).
+            after: Pagination cursor from a previous response's
+                ``page_state.cursor`` (Okta's ``after`` token).
 
         Returns:
             Paginated list of OktaUser objects in the group.
         """
         params: dict[str, Any] = {"limit": min(limit, 200)}
+        if after:
+            params["after"] = after
         data, next_url = await self._request(
             "GET",
             f"/groups/{group_id}/users",
@@ -751,13 +812,20 @@ class Okta(BaseConnector):
             )
 
         has_more = next_url is not None
-        return PaginatedList(
+        after_token = _after_from_next_url(next_url)
+        result = PaginatedList(
             items=users,
             page_state=PageState(
-                cursor=next_url if has_more else None,
+                cursor=after_token,
                 has_more=has_more,
+                extra={"next_url": next_url} if next_url else {},
             ),
         )
+        if after_token:
+            result._fetch_next = lambda a=after_token: self.alist_group_members(
+                group_id=group_id, limit=limit, after=a
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions -- Group CRUD
@@ -863,6 +931,7 @@ class Okta(BaseConnector):
         filter: Optional[str] = None,
         q: Optional[str] = None,
         limit: int = 100,
+        after: Optional[str] = None,
     ) -> PaginatedList[OktaLogEvent]:
         """Query the Okta System Log for audit events.
 
@@ -877,11 +946,15 @@ class Okta(BaseConnector):
                 ``eventType eq "user.session.start"``).
             q: Free-text search query across log event fields.
             limit: Maximum events to return (max 1000, default 100).
+            after: Pagination cursor from a previous response's
+                ``page_state.cursor`` (Okta's ``after`` token).
 
         Returns:
             Paginated list of OktaLogEvent objects.
         """
         params: dict[str, Any] = {"limit": min(limit, 1000)}
+        if after:
+            params["after"] = after
         if since:
             params["since"] = since
         if until:
@@ -917,10 +990,17 @@ class Okta(BaseConnector):
             )
 
         has_more = next_url is not None
-        return PaginatedList(
+        after_token = _after_from_next_url(next_url)
+        result = PaginatedList(
             items=events,
             page_state=PageState(
-                cursor=next_url if has_more else None,
+                cursor=after_token,
                 has_more=has_more,
+                extra={"next_url": next_url} if next_url else {},
             ),
         )
+        if after_token:
+            result._fetch_next = lambda a=after_token: self.alist_system_logs(
+                since=since, until=until, filter=filter, q=q, limit=limit, after=a
+            )
+        return result

@@ -8,7 +8,7 @@ Configured container that ties together:
 - **Circuit breakers** per connector to avoid hammering dead APIs
 - **Pre-validation** of arguments against JSON Schema before execution
 - **Timeout budgets** with per-action and per-request deadlines
-- **Dry-run mode** for dangerous actions (validate without executing)
+- **Dry-run mode** for anything that isn't a declared read (validate without executing)
 - **Graceful degradation** — unhealthy connectors don't block healthy ones
 - **Structured logging** with request IDs for observability
 
@@ -48,7 +48,11 @@ from toolsconnector.errors import TimeoutError as TCTimeoutError
 from toolsconnector.runtime._sync import run_sync
 from toolsconnector.runtime.base import BaseConnector
 from toolsconnector.serve._circuit_breaker import CircuitBreaker
-from toolsconnector.serve._credentials import resolve_credentials
+from toolsconnector.serve._credentials import (
+    credential_contract,
+    require_credentials,
+    resolve_credentials,
+)
 from toolsconnector.serve._discovery import resolve_connectors
 from toolsconnector.serve._filtering import ToolEntry, build_tool_list
 from toolsconnector.serve._serialization import serialize_result
@@ -300,6 +304,16 @@ class ToolKit:
 
         return to_crewai_tools(self)
 
+    @staticmethod
+    def _previews_in_dry_run(entry: ToolEntry) -> bool:
+        """Whether ``dry_run=True`` previews this tool instead of running it.
+
+        Gating on ``dangerous`` alone let every non-destructive write run for
+        real. Only a declared read is safe to run, so anything else (including
+        an undeclared access, which surfaces as ``"write"``) is previewed.
+        """
+        return entry.dangerous or entry.access != "read"
+
     # ------------------------------------------------------------------
     # Execution — async
     # ------------------------------------------------------------------
@@ -316,16 +330,18 @@ class ToolKit:
         This is the primary execution entry point.  It performs:
 
         1. Tool lookup and validation
-        2. Dry-run check for dangerous actions
-        3. Argument pre-validation against JSON Schema
+        2. Argument pre-validation against JSON Schema
+        3. Dry-run check (anything but a declared read)
         4. Circuit breaker gating
         5. Budgeted execution with auto-retry on transient failures
 
         Args:
             tool_name: Tool name in ``"{connector}_{action}"`` format.
             arguments: Arguments dict matching the tool's input schema.
-            dry_run: If ``True`` and action is dangerous, validate
-                without executing.
+            dry_run: If ``True``, validate the arguments and return a preview
+                instead of executing. Only actions declared
+                ``access="read"`` still execute; an action with no declared
+                access might write, so it is previewed too.
 
         Returns:
             Serialized result string (JSON).
@@ -375,19 +391,7 @@ class ToolKit:
             },
         )
 
-        # 2. Dry-run check for dangerous actions
-        if dry_run and entry.dangerous:
-            return serialize_result(
-                {
-                    "dry_run": True,
-                    "tool": tool_name,
-                    "would_execute": entry.description,
-                    "arguments": arguments,
-                    "warning": ("Destructive action. Set dry_run=False to execute."),
-                }
-            )
-
-        # 3. Pre-validate arguments
+        # 2. Pre-validate arguments
         errors = validate_arguments(entry.input_schema, arguments)
         if errors:
             raise ValidationError(
@@ -398,6 +402,19 @@ class ToolKit:
                     f"Expected parameters: {list(entry.input_schema.get('properties', {}).keys())}"
                 ),
                 details={"validation_errors": errors},
+            )
+
+        # 3. Dry run: preview everything that could change something
+        if dry_run and self._previews_in_dry_run(entry):
+            return serialize_result(
+                {
+                    "dry_run": True,
+                    "tool": tool_name,
+                    "access": entry.access if entry.access_classified else "undeclared",
+                    "would_execute": entry.description,
+                    "arguments": arguments,
+                    "warning": "Not executed. Set dry_run=False to execute.",
+                }
             )
 
         # 4. Circuit breaker gating
@@ -476,8 +493,8 @@ class ToolKit:
         Args:
             tool_name: Tool name in ``"{connector}_{action}"`` format.
             arguments: Arguments dict matching the tool's input schema.
-            dry_run: If ``True`` and action is dangerous, validate
-                without executing.
+            dry_run: If ``True``, preview instead of executing anything but
+                a declared read. See :meth:`aexecute`.
 
         Returns:
             Serialized result string (JSON).
@@ -640,7 +657,14 @@ class ToolKit:
                     connector=connector_name,
                 )
 
-            cred = resolve_credentials(connector_name, self._credentials)
+            # A connector that declares a credential contract is never built
+            # without one — otherwise it sends ``Bearer None`` upstream and
+            # the user gets a 401 indistinguishable from a revoked token.
+            contract = credential_contract(cls)
+            if contract is None:
+                cred = resolve_credentials(connector_name, self._credentials)
+            else:
+                cred = require_credentials(connector_name, self._credentials, contract=contract)
             instance = cls(
                 credentials=cred,
                 tenant_id=self._tenant_id,

@@ -148,13 +148,18 @@ class HubSpot(BaseConnector):
         contacts = [parse_contact(c) for c in data.get("results", [])]
         next_cursor = extract_cursor(data)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=contacts,
             page_state=PageState(
                 cursor=next_cursor,
                 has_more=next_cursor is not None,
             ),
         )
+        # extract_cursor() can hand back "" for a malformed paging block, which
+        # still reads as has_more; guard on truthiness so that raises instead.
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_contacts(limit=limit, after=c)
+        return result
 
     @action("Get a single contact by ID")
     async def get_contact(self, contact_id: str) -> HubSpotContact:
@@ -240,12 +245,14 @@ class HubSpot(BaseConnector):
         self,
         query: str,
         limit: int = 10,
+        after: Optional[str] = None,
     ) -> PaginatedList[HubSpotContact]:
         """Search CRM contacts using a full-text query.
 
         Args:
             query: Search query string.
             limit: Maximum results to return (max 100).
+            after: Paging cursor from a previous response's ``page_state.cursor``.
 
         Returns:
             Paginated list of matching HubSpotContact objects.
@@ -254,12 +261,17 @@ class HubSpot(BaseConnector):
             "query": query,
             "limit": min(limit, 100),
         }
+        # The search endpoint pages via `after` in the POST body, not the query
+        # string. Without this parameter the action returned a cursor that no
+        # caller could ever send back.
+        if after:
+            body["after"] = after
         data = await self._request("POST", "/crm/v3/objects/contacts/search", json=body)
 
         contacts = [parse_contact(c) for c in data.get("results", [])]
         next_cursor = extract_cursor(data)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=contacts,
             page_state=PageState(
                 cursor=next_cursor,
@@ -267,6 +279,11 @@ class HubSpot(BaseConnector):
             ),
             total_count=data.get("total"),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.asearch_contacts(
+                query=query, limit=limit, after=c
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions -- Deals
@@ -296,13 +313,16 @@ class HubSpot(BaseConnector):
         deals = [parse_deal(d) for d in data.get("results", [])]
         next_cursor = extract_cursor(data)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=deals,
             page_state=PageState(
                 cursor=next_cursor,
                 has_more=next_cursor is not None,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_deals(limit=limit, after=c)
+        return result
 
     @action("Get a single deal by ID")
     async def get_deal(self, deal_id: str) -> HubSpotDeal:
@@ -376,13 +396,16 @@ class HubSpot(BaseConnector):
         companies = [parse_company(c) for c in data.get("results", [])]
         next_cursor = extract_cursor(data)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=companies,
             page_state=PageState(
                 cursor=next_cursor,
                 has_more=next_cursor is not None,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_companies(limit=limit, after=c)
+        return result
 
     @action("Get a single company by ID")
     async def get_company(self, company_id: str) -> HubSpotCompany:
@@ -452,13 +475,16 @@ class HubSpot(BaseConnector):
         tickets = [parse_ticket(t) for t in data.get("results", [])]
         next_cursor = extract_cursor(data)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=tickets,
             page_state=PageState(
                 cursor=next_cursor,
                 has_more=next_cursor is not None,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_tickets(limit=limit, after=c)
+        return result
 
     @action("Create a new ticket", dangerous=True)
     async def create_ticket(

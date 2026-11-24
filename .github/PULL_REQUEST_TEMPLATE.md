@@ -19,7 +19,7 @@ Brief description of what this PR does.
 - [ ] `connector.py` under 500 lines
 - [ ] Types use `ConfigDict(frozen=True)`
 - [ ] Uses `from __future__ import annotations`
-- [ ] Uses `Optional[X]` for Pydantic fields (Python 3.9 compat)
+- [ ] Uses `Optional[X]` for Pydantic fields (project convention)
 - [ ] Dangerous actions marked with `dangerous=True`
 - [ ] Rate limits declared
 - [ ] No credentials hardcoded

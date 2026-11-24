@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from typing import Any, Optional, TypeVar
 
+import httpx
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 
@@ -110,6 +111,43 @@ def require_dict(
             action=action,
         )
     return value
+
+
+def require_same_origin(
+    url: str,
+    base_url: str,
+    field: str,
+    *,
+    connector: str,
+    action: Optional[str] = None,
+) -> httpx.URL:
+    """Return ``url`` parsed if it is https on ``base_url``'s host and port; else raise.
+
+    Guards caller-supplied absolute pagination URLs (e.g. ``page_url``) that are
+    sent through a client carrying the user's ``Authorization`` header. Without
+    it a prompt-injected agent can pass an attacker's URL and the connector
+    delivers the token there. Parsed with httpx — the same parser that sends the
+    request — so the check and the request cannot disagree about the host;
+    callers should send the returned ``httpx.URL``.
+    """
+    try:
+        parsed = httpx.URL(url)
+    except (httpx.InvalidURL, TypeError) as exc:
+        raise ValidationError(
+            f"{field} is not a valid URL",
+            connector=connector,
+            action=action,
+        ) from exc
+    expected = httpx.URL(base_url)
+    if (parsed.scheme, parsed.host, parsed.port) != ("https", expected.host, expected.port):
+        raise ValidationError(
+            f"{field} must be an https URL on {expected.host}; "
+            f"refusing to send credentials to {parsed.scheme or '?'}://{parsed.host or '?'}",
+            connector=connector,
+            action=action,
+            suggestion=f"Pass the unmodified next-page URL returned by {connector}.",
+        )
+    return parsed
 
 
 def scrub_secret(error: Any, secret: Any) -> None:

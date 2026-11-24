@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Optional
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 
@@ -47,6 +48,43 @@ from .types import (
 )
 
 logger = logging.getLogger("toolsconnector.figma")
+
+
+def _team_library_next_cursor(body: dict[str, Any]) -> Optional[str]:
+    """Return the ``after`` cursor for the next team-library page, if any.
+
+    Figma documents team component/style paging as ``meta.cursor.after`` (an id
+    sent back as ``?after=``). This connector previously read
+    ``pagination.next_page``; that is kept as a fallback so behaviour is
+    unchanged when ``meta.cursor`` is absent. A ``next_page`` URL has its
+    ``after`` query parameter extracted rather than being sent back whole.
+    """
+    meta_cursor = (body.get("meta") or {}).get("cursor") or {}
+    after = meta_cursor.get("after")
+    if after is not None:
+        return str(after)
+    next_page = (body.get("pagination") or {}).get("next_page")
+    if not next_page:
+        return None
+    query = urlparse(str(next_page)).query
+    if not query:
+        return str(next_page)
+    values = parse_qs(query).get("after")
+    return values[0] if values else None
+
+
+def _versions_before_cursor(next_page: Optional[str]) -> Optional[str]:
+    """Extract the ``before`` version id from a versions ``pagination.next_page`` URL.
+
+    Versions come newest first, so the next page is older versions, requested
+    with ``?before=<id>``. Returns ``None`` when the URL carries no ``before``;
+    the caller keeps ``has_more`` True in that case so the page raises rather
+    than looking complete.
+    """
+    if not next_page:
+        return None
+    values = parse_qs(urlparse(next_page).query).get("before")
+    return values[0] if values else None
 
 
 class Figma(BaseConnector):
@@ -159,12 +197,15 @@ class Figma(BaseConnector):
         self,
         file_key: str,
         limit: Optional[int] = None,
+        before: Optional[str] = None,
     ) -> PaginatedList[FigmaVersion]:
         """List the version history of a Figma file.
 
         Args:
             file_key: The file key from the Figma URL.
             limit: Maximum number of versions to return.
+            before: Version id from a previous response's ``page_state.cursor``;
+                returns versions older than it.
 
         Returns:
             Paginated list of FigmaVersion objects.
@@ -172,6 +213,9 @@ class Figma(BaseConnector):
         params: dict[str, Any] = {}
         if limit is not None:
             params["page_size"] = limit
+        # Without this the action returned a next page it had no way to request.
+        if before:
+            params["before"] = before
 
         resp = await self._request(
             "GET",
@@ -184,13 +228,22 @@ class Figma(BaseConnector):
 
         # Figma versions use cursor pagination via pagination field
         pagination = body.get("pagination") or {}
-        next_cursor = pagination.get("next_page")
-        has_more = bool(next_cursor)
+        next_page = pagination.get("next_page")
+        before_id = _versions_before_cursor(next_page)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=items,
-            page_state=PageState(has_more=has_more, cursor=next_cursor),
+            page_state=PageState(
+                has_more=bool(next_page),
+                cursor=before_id,
+                extra={"next_page": next_page} if next_page else {},
+            ),
         )
+        if before_id:
+            result._fetch_next = lambda b=before_id: self.alist_file_versions(
+                file_key=file_key, limit=limit, before=b
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions -- Comments
@@ -578,14 +631,20 @@ class Figma(BaseConnector):
         components_raw = meta.get("components", [])
         items = [parse_component(c) for c in components_raw]
 
-        pagination = body.get("pagination", {})
-        next_cursor = pagination.get("next_page")
-        has_more = bool(next_cursor)
+        next_cursor = _team_library_next_cursor(body)
+        # Id-cursor paging with no filters cannot have more after an empty page,
+        # so an empty page is the end even if a cursor comes back with it.
+        has_more = next_cursor is not None and bool(items)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=items,
             page_state=PageState(has_more=has_more, cursor=next_cursor),
         )
+        if has_more:
+            result._fetch_next = lambda c=next_cursor: self.aget_team_components(
+                team_id=team_id, page_size=page_size, cursor=c
+            )
+        return result
 
     @action("List published styles in a team library")
     async def get_team_styles(
@@ -623,14 +682,18 @@ class Figma(BaseConnector):
         styles_raw = meta.get("styles", [])
         items = [parse_style(s) for s in styles_raw]
 
-        pagination = body.get("pagination", {})
-        next_cursor = pagination.get("next_page")
-        has_more = bool(next_cursor)
+        next_cursor = _team_library_next_cursor(body)
+        has_more = next_cursor is not None and bool(items)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=items,
             page_state=PageState(has_more=has_more, cursor=next_cursor),
         )
+        if has_more:
+            result._fetch_next = lambda c=next_cursor: self.aget_team_styles(
+                team_id=team_id, page_size=page_size, cursor=c
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions -- Component sets

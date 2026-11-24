@@ -465,7 +465,7 @@ class Gmail(BaseConnector):
         raw_messages = await self._batch_get_messages(ids, message_format=format)
         emails = [_parse_message(m) for m in raw_messages]
 
-        return PaginatedList(
+        result = PaginatedList(
             items=emails,
             page_state=PageState(
                 cursor=next_page_token,
@@ -473,6 +473,14 @@ class Gmail(BaseConnector):
             ),
             total_count=data.get("resultSizeEstimate"),
         )
+        # Gmail omits nextPageToken on the last page, so a present token always
+        # means a real next page. Forward every filter, not just the token —
+        # dropping `query`/`labels` would quietly widen the result set.
+        if next_page_token:
+            result._fetch_next = lambda t=next_page_token: self.alist_emails(
+                query=query, limit=limit, labels=labels, page_token=t, format=format
+            )
+        return result
 
     @action(
         "List email headers only (metadata, batched — cheap)",
@@ -522,7 +530,7 @@ class Gmail(BaseConnector):
         raw_messages = await self._batch_get_messages(ids, message_format="metadata")
         headers = [_parse_email_header(m) for m in raw_messages]
 
-        return PaginatedList(
+        result = PaginatedList(
             items=headers,
             page_state=PageState(
                 cursor=next_page_token,
@@ -530,6 +538,11 @@ class Gmail(BaseConnector):
             ),
             total_count=data.get("resultSizeEstimate"),
         )
+        if next_page_token:
+            result._fetch_next = lambda t=next_page_token: self.alist_email_headers(
+                query=query, limit=limit, labels=labels, page_token=t
+            )
+        return result
 
     @action("Get a single email by ID", requires_scope="read", access="read")
     async def get_email(
@@ -867,7 +880,7 @@ class Gmail(BaseConnector):
         threads_meta = data.get("threads", [])
         next_page_token = data.get("nextPageToken")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=[_parse_thread(meta) for meta in threads_meta],
             page_state=PageState(
                 cursor=next_page_token,
@@ -875,6 +888,11 @@ class Gmail(BaseConnector):
             ),
             total_count=data.get("resultSizeEstimate"),
         )
+        if next_page_token:
+            result._fetch_next = lambda t=next_page_token: self.alist_threads(
+                query=query, limit=limit, page_token=t
+            )
+        return result
 
     @action("Get a single thread by ID", requires_scope="read", access="read")
     async def get_thread(
@@ -1191,7 +1209,7 @@ class Gmail(BaseConnector):
         drafts_meta = data.get("drafts", [])
         next_page_token = data.get("nextPageToken")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=[_parse_draft(meta) for meta in drafts_meta],
             page_state=PageState(
                 cursor=next_page_token,
@@ -1199,6 +1217,11 @@ class Gmail(BaseConnector):
             ),
             total_count=data.get("resultSizeEstimate"),
         )
+        if next_page_token:
+            result._fetch_next = lambda t=next_page_token: self.alist_drafts(
+                limit=limit, page_token=t
+            )
+        return result
 
     @action("Get a single draft by ID", requires_scope="read", access="read")
     async def get_draft(
@@ -1540,13 +1563,22 @@ class Gmail(BaseConnector):
         raw_history = data.get("history", [])
         next_page_token = data.get("nextPageToken")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=[_parse_history_record(entry) for entry in raw_history],
             page_state=PageState(
                 cursor=next_page_token,
                 has_more=next_page_token is not None,
             ),
         )
+        if next_page_token:
+            result._fetch_next = lambda t=next_page_token: self.alist_history(
+                start_history_id=start_history_id,
+                label_id=label_id,
+                history_types=history_types,
+                limit=limit,
+                page_token=t,
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions — Settings (vacation auto-reply)

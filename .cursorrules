@@ -2,7 +2,7 @@
 
 Always follow these rules when developing in this workspace:
 
-1. Use Python 3.9+ conventions.
+1. Use Python 3.10+ conventions.
 2. Every class and function MUST have full type hints. No typing `Any` unless absolutely unavoidable.
 3. Use Pydantic models for request/response serialization.
 4. Auto-generate docstrings using Google Style. Ensure `Args:`, `Returns:`, and `Raises:` clauses are always populated.

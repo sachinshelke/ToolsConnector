@@ -228,7 +228,7 @@ Before submitting a PR, verify:
 - [ ] `connector.py` is under 500 lines
 - [ ] Types use `ConfigDict(frozen=True)` for response models
 - [ ] Uses `from __future__ import annotations`
-- [ ] Uses `Optional[X]` for Pydantic fields (Python 3.9 compat)
+- [ ] Uses `Optional[X]` for Pydantic fields (project convention)
 - [ ] Dangerous actions marked with `dangerous=True`
 - [ ] Rate limits declared via `_rate_limit_config`
 - [ ] No credentials hardcoded
@@ -245,7 +245,7 @@ Before submitting a PR, verify:
 
 ## Code Style
 
-- Python 3.9+ compatible
+- Python 3.10+ compatible
 - Lines under 100 characters
 - Google-style docstrings with Args, Returns, Raises
 - Ruff for linting: `ruff check src/`

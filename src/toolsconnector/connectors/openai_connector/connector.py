@@ -352,11 +352,14 @@ class OpenAI(BaseConnector):
     async def list_assistants(
         self,
         limit: Optional[int] = None,
+        after: Optional[str] = None,
     ) -> PaginatedList[Assistant]:
         """List all assistants associated with the account.
 
         Args:
             limit: Maximum number of assistants to return (1-100).
+            after: Assistant id from a previous response's ``page_state.cursor``;
+                returns the page after it.
 
         Returns:
             Paginated list of Assistant objects.
@@ -364,7 +367,9 @@ class OpenAI(BaseConnector):
         params: dict[str, Any] = {}
         if limit is not None:
             params["limit"] = limit
-
+        # Without this the action returned has_more with no way to request page two.
+        if after:
+            params["after"] = after
         headers = self._get_headers()
         headers["OpenAI-Beta"] = "assistants=v2"
 
@@ -392,13 +397,15 @@ class OpenAI(BaseConnector):
             for a in data.get("data", [])
         ]
 
-        return PaginatedList(
+        last_id = data.get("last_id")
+        has_more = data.get("has_more", False)
+        result = PaginatedList(
             items=assistants,
-            page_state=PageState(
-                cursor=data.get("last_id"),
-                has_more=data.get("has_more", False),
-            ),
+            page_state=PageState(cursor=last_id, has_more=has_more),
         )
+        if has_more and last_id:
+            result._fetch_next = lambda a=last_id: self.alist_assistants(limit=limit, after=a)
+        return result
 
     @action("Create an assistant")
     async def create_assistant(

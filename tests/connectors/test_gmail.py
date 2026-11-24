@@ -887,3 +887,97 @@ async def test_list_emails_is_batched_not_n_plus_1(gmail: Gmail) -> None:
         assert "/messages/m2?format=metadata" in sent
         assert [e.id for e in result.items] == ["m1", "m2"]
         assert result.items[0].subject == "S1"
+
+
+# ---------------------------------------------------------------------------
+# Pagination: the connector must walk itself
+# ---------------------------------------------------------------------------
+#
+# `list_threads` sets `has_more=nextPageToken is not None`. Until it also
+# assigned `_fetch_next`, `anext_page()` returned None — indistinguishable from
+# "you have everything" — so a caller looping `while page:` or calling
+# `collect()` got page one and believed it was the whole result set. That is the
+# worst failure mode for an agent tool: a confidently wrong answer, no signal.
+#
+# The type-level contract (has_more=True + no fetcher must raise) lives in
+# tests/unit/test_types.py; these tests cover Gmail's actual wiring.
+
+_THREADS_PAGE_ONE = {
+    "threads": [{"id": "t1", "snippet": "first", "historyId": "1"}],
+    "nextPageToken": "PAGE_TWO_TOKEN",
+    "resultSizeEstimate": 2,
+}
+_THREADS_PAGE_TWO = {
+    "threads": [{"id": "t2", "snippet": "second", "historyId": "2"}],
+    "resultSizeEstimate": 2,
+}
+
+
+@pytest.mark.asyncio
+async def test_list_threads_anext_page_fetches_page_two(gmail: Gmail) -> None:
+    """anext_page() must return page two, not None.
+
+    Fails without the `_fetch_next` wiring: returns None while has_more is True.
+    """
+    with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
+        route = respx_mock.get("/users/me/threads").mock(
+            side_effect=[
+                httpx.Response(200, json=_THREADS_PAGE_ONE),
+                httpx.Response(200, json=_THREADS_PAGE_TWO),
+            ]
+        )
+
+        page1 = await gmail.alist_threads(query="is:unread", limit=1)
+        assert page1.has_more is True
+        assert page1.page_state.cursor == "PAGE_TWO_TOKEN"
+
+        page2 = await page1.anext_page()
+
+        assert page2 is not None, "anext_page() returned None despite has_more=True"
+        assert [t.id for t in page2.items] == ["t2"]
+        assert page2.has_more is False
+        assert await page2.anext_page() is None
+
+        # The follow-up must carry the token AND keep the original query —
+        # a fetcher that drops the filter silently returns a different mailbox.
+        second = str(route.calls[1].request.url)
+        assert "pageToken=PAGE_TWO_TOKEN" in second
+        assert "q=is%3Aunread" in second
+        assert "maxResults=1" in second
+
+
+@pytest.mark.asyncio
+async def test_list_threads_collect_returns_every_page(gmail: Gmail) -> None:
+    """collect() is the agent-facing path; it must span both pages.
+
+    Fails without the wiring: returns 1 item and looks complete.
+    """
+    with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
+        respx_mock.get("/users/me/threads").mock(
+            side_effect=[
+                httpx.Response(200, json=_THREADS_PAGE_ONE),
+                httpx.Response(200, json=_THREADS_PAGE_TWO),
+            ]
+        )
+
+        page1 = await gmail.alist_threads(limit=1)
+        assert [t.id for t in await page1.collect()] == ["t1", "t2"]
+
+
+@pytest.mark.asyncio
+async def test_list_threads_last_page_returns_none(gmail: Gmail) -> None:
+    """No nextPageToken → has_more False → anext_page() returns None.
+
+    Guards against the loud-failure contract turning a legitimate
+    end-of-results into an error.
+    """
+    with respx.mock(base_url="https://gmail.googleapis.com/gmail/v1") as respx_mock:
+        respx_mock.get("/users/me/threads").mock(
+            return_value=httpx.Response(200, json=_THREADS_PAGE_TWO)
+        )
+
+        page = await gmail.alist_threads(limit=1)
+
+        assert page.has_more is False
+        assert await page.anext_page() is None
+        assert len(await page.collect()) == 1

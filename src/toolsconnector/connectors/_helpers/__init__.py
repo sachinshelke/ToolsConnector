@@ -19,6 +19,7 @@ from .sanitize import (
     coerce_optional_int,
     dict_list,
     require_dict,
+    require_same_origin,
     safe_int,
     safe_validate,
     scrub_secret,
@@ -35,5 +36,6 @@ __all__ = [
     "safe_validate",
     "validate_list",
     "require_dict",
+    "require_same_origin",
     "scrub_secret",
 ]

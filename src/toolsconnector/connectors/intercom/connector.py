@@ -207,7 +207,7 @@ class Intercom(BaseConnector):
         if isinstance(next_info, dict):
             next_cursor = next_info.get("starting_after")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=contacts,
             page_state=PageState(
                 cursor=next_cursor,
@@ -215,6 +215,11 @@ class Intercom(BaseConnector):
             ),
             total_count=data.get("total_count"),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_contacts(
+                limit=limit, starting_after=c
+            )
+        return result
 
     @action("Get a single contact by ID")
     async def get_contact(self, contact_id: str) -> IntercomContact:
@@ -265,6 +270,7 @@ class Intercom(BaseConnector):
         query: str,
         field: str = "email",
         operator: str = "=",
+        starting_after: Optional[str] = None,
     ) -> PaginatedList[IntercomContact]:
         """Search contacts using Intercom's search API.
 
@@ -274,6 +280,8 @@ class Intercom(BaseConnector):
                 ``"name"``, ``"phone"``).
             operator: Comparison operator (``"="``, ``"!="``, ``"~"``,
                 ``"contains"``, ``"starts_with"``).
+            starting_after: Cursor from a previous response's
+                ``page_state.cursor``.
 
         Returns:
             Paginated list of matching IntercomContact objects.
@@ -285,6 +293,10 @@ class Intercom(BaseConnector):
                 "value": query,
             },
         }
+        # Search pages via `pagination.starting_after` in the POST body. Without
+        # this the action returned a cursor that no caller could send back.
+        if starting_after:
+            body["pagination"] = {"starting_after": starting_after}
         data = await self._request("POST", "/contacts/search", json=body)
 
         contacts_data = data.get("data", [])
@@ -296,7 +308,7 @@ class Intercom(BaseConnector):
         if isinstance(next_info, dict):
             next_cursor = next_info.get("starting_after")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=contacts,
             page_state=PageState(
                 cursor=next_cursor,
@@ -304,6 +316,11 @@ class Intercom(BaseConnector):
             ),
             total_count=data.get("total_count"),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.asearch_contacts(
+                query=query, field=field, operator=operator, starting_after=c
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions -- Conversations
@@ -341,7 +358,7 @@ class Intercom(BaseConnector):
         if isinstance(next_info, dict):
             next_cursor = next_info.get("starting_after")
 
-        return PaginatedList(
+        result = PaginatedList(
             items=conversations,
             page_state=PageState(
                 cursor=next_cursor,
@@ -349,6 +366,11 @@ class Intercom(BaseConnector):
             ),
             total_count=data.get("total_count"),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_conversations(
+                limit=limit, starting_after=c
+            )
+        return result
 
     @action("Get a single conversation by ID")
     async def get_conversation(

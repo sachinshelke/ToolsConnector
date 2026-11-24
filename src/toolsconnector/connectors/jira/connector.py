@@ -238,7 +238,10 @@ class Jira(BaseConnector):
         returned = len(issues)
         next_offset = start_at + returned
 
-        return PaginatedList(
+        # Offset paging: advance only if this page returned items. An empty page
+        # that still claims more would leave next_offset == start_at, and the
+        # fetcher would re-request this same page forever. Unwired, it raises.
+        result = PaginatedList(
             items=issues,
             page_state=PageState(
                 offset=next_offset,
@@ -247,6 +250,11 @@ class Jira(BaseConnector):
             ),
             total_count=total,
         )
+        if result.has_more and returned > 0:
+            result._fetch_next = lambda o=next_offset: self.asearch_issues(
+                jql=jql, limit=limit, start_at=o
+            )
+        return result
 
     @action("Get a single issue by key")
     async def get_issue(self, issue_key: str) -> JiraIssue:
@@ -409,7 +417,7 @@ class Jira(BaseConnector):
         returned = len(projects)
         next_offset = start_at + returned
 
-        return PaginatedList(
+        result = PaginatedList(
             items=projects,
             page_state=PageState(
                 offset=next_offset,
@@ -418,6 +426,9 @@ class Jira(BaseConnector):
             ),
             total_count=total,
         )
+        if result.has_more and returned > 0:
+            result._fetch_next = lambda o=next_offset: self.alist_projects(limit=limit, start_at=o)
+        return result
 
     @action("Get available transitions for an issue")
     async def get_transitions(
@@ -590,7 +601,7 @@ class Jira(BaseConnector):
         returned = len(sprints)
         next_offset = start_at + returned
 
-        return PaginatedList(
+        result = PaginatedList(
             items=sprints,
             page_state=PageState(
                 offset=next_offset,
@@ -599,6 +610,11 @@ class Jira(BaseConnector):
             ),
             total_count=total,
         )
+        if result.has_more and returned > 0:
+            result._fetch_next = lambda o=next_offset: self.alist_sprints(
+                board_id=board_id, state=state, limit=limit, start_at=o
+            )
+        return result
 
     @action("Get an Agile board by ID")
     async def get_board(self, board_id: int) -> JiraBoard:
@@ -667,7 +683,7 @@ class Jira(BaseConnector):
         returned = len(boards)
         next_offset = start_at + returned
 
-        return PaginatedList(
+        result = PaginatedList(
             items=boards,
             page_state=PageState(
                 offset=next_offset,
@@ -676,6 +692,11 @@ class Jira(BaseConnector):
             ),
             total_count=total,
         )
+        if result.has_more and returned > 0:
+            result._fetch_next = lambda o=next_offset: self.alist_boards(
+                project_key=project_key, limit=limit, start_at=o
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions — Attachments

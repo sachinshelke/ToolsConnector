@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import logging
 from typing import Any, Optional
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 
@@ -33,6 +34,33 @@ logger = logging.getLogger("toolsconnector.confluence")
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _cursor_from_next_link(next_link: Optional[str]) -> Optional[str]:
+    """Extract the opaque cursor from a v2 ``_links.next`` value.
+
+    Confluence Cloud v2 does not return a bare cursor. ``_links.next`` is a
+    relative URL such as ``/wiki/api/v2/pages?cursor=eyJ...&limit=25``, and the
+    ``cursor`` query parameter is what the next request needs. Passing the whole
+    URL back as ``cursor`` (what this connector used to do) sends
+    ``?cursor=/wiki/api/v2/pages?cursor=...``.
+
+    Args:
+        next_link: The raw ``_links.next`` value, or ``None`` on the last page.
+
+    Returns:
+        The cursor token. A value with no query string is treated as an already
+        bare cursor. ``None`` when there is no next link, or when the link has a
+        query string but no ``cursor``. The caller keeps ``has_more`` True in
+        that last case so the unpageable page raises instead of looking complete.
+    """
+    if not next_link:
+        return None
+    query = urlparse(next_link).query
+    if not query:
+        return next_link
+    values = parse_qs(query).get("cursor")
+    return values[0] if values else None
 
 
 def _parse_page(data: dict[str, Any]) -> ConfluencePage:
@@ -252,15 +280,21 @@ class Confluence(BaseConnector):
 
         pages = [_parse_page(p) for p in data.get("results", [])]
         links = data.get("_links", {})
-        next_cursor = links.get("next")
+        next_link = links.get("next")
+        next_cursor = _cursor_from_next_link(next_link)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=pages,
             page_state=PageState(
                 cursor=next_cursor,
-                has_more=next_cursor is not None,
+                has_more=next_link is not None,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_pages(
+                space_id=space_id, limit=limit, cursor=c
+            )
+        return result
 
     @action("Get a single page by ID")
     async def get_page(self, page_id: str) -> ConfluencePage:
@@ -408,15 +442,21 @@ class Confluence(BaseConnector):
             pages.append(_parse_page(page_data))
 
         links = data.get("_links", {})
-        next_cursor = links.get("next")
+        next_link = links.get("next")
+        next_cursor = _cursor_from_next_link(next_link)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=pages,
             page_state=PageState(
                 cursor=next_cursor,
-                has_more=next_cursor is not None,
+                has_more=next_link is not None,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.asearch(
+                query=query, limit=limit, cursor=c
+            )
+        return result
 
     @action("List all spaces")
     async def list_spaces(
@@ -441,15 +481,19 @@ class Confluence(BaseConnector):
 
         spaces = [_parse_space(s) for s in data.get("results", [])]
         links = data.get("_links", {})
-        next_cursor = links.get("next")
+        next_link = links.get("next")
+        next_cursor = _cursor_from_next_link(next_link)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=spaces,
             page_state=PageState(
                 cursor=next_cursor,
-                has_more=next_cursor is not None,
+                has_more=next_link is not None,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_spaces(limit=limit, cursor=c)
+        return result
 
     @action("Get a single space by ID")
     async def get_space(self, space_id: str) -> ConfluenceSpace:
@@ -687,15 +731,21 @@ class Confluence(BaseConnector):
 
         pages = [_parse_page(p) for p in data.get("results", [])]
         links = data.get("_links", {})
-        next_cursor = links.get("next")
+        next_link = links.get("next")
+        next_cursor = _cursor_from_next_link(next_link)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=pages,
             page_state=PageState(
                 cursor=next_cursor,
-                has_more=next_cursor is not None,
+                has_more=next_link is not None,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_page_children(
+                page_id=page_id, limit=limit, cursor=c
+            )
+        return result
 
     @action("List ancestor pages of a page")
     async def list_page_ancestors(
@@ -812,15 +862,21 @@ class Confluence(BaseConnector):
 
         pages = [_parse_page(p) for p in data.get("results", [])]
         links = data.get("_links", {})
-        next_cursor = links.get("next")
+        next_link = links.get("next")
+        next_cursor = _cursor_from_next_link(next_link)
 
-        return PaginatedList(
+        result = PaginatedList(
             items=pages,
             page_state=PageState(
                 cursor=next_cursor,
-                has_more=next_cursor is not None,
+                has_more=next_link is not None,
             ),
         )
+        if next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_space_pages(
+                space_id=space_id, limit=limit, cursor=c
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions — Attachments

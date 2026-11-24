@@ -11,8 +11,16 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-TC_ROOT = PROJECT_ROOT / "toolsconnector"
+TC_ROOT = PROJECT_ROOT / "src" / "toolsconnector"
+
+# Shared packages under connectors/ that any connector may import. They are
+# not connectors (the serve/_discovery.py registry omits them), and
+# CONTRIBUTING.md tells connector authors to import _helpers. Adding a name
+# here widens the cross-connector rule, so do it deliberately.
+SHARED_CONNECTOR_PACKAGES = frozenset({"_aws", "_helpers"})
 
 
 def _get_imports(filepath: Path) -> list[str]:
@@ -33,6 +41,18 @@ def _get_imports(filepath: Path) -> list[str]:
     return imports
 
 
+def _py_files(directory: Path) -> list[Path]:
+    """Return every .py file under directory, failing if there are none.
+
+    A missing or empty directory would let a boundary check pass without
+    scanning a single file, so it is an error, not an empty result.
+    """
+    assert directory.is_dir(), f"{directory} does not exist; is TC_ROOT right?"
+    files = list(directory.rglob("*.py"))
+    assert files, f"no .py files under {directory}; the check would pass vacuously"
+    return files
+
+
 def _check_forbidden_imports(
     source_dir: str,
     forbidden_prefixes: list[str],
@@ -42,11 +62,7 @@ def _check_forbidden_imports(
     Returns list of (file, import) violations.
     """
     violations: list[tuple[str, str]] = []
-    src_path = TC_ROOT / source_dir
-    if not src_path.exists():
-        return violations
-
-    for py_file in src_path.rglob("*.py"):
+    for py_file in _py_files(TC_ROOT / source_dir):
         imports = _get_imports(py_file)
         rel_file = str(py_file.relative_to(PROJECT_ROOT))
         for imp in imports:
@@ -54,6 +70,14 @@ def _check_forbidden_imports(
                 if imp.startswith(forbidden):
                     violations.append((rel_file, imp))
     return violations
+
+
+class TestScannerCoverage:
+    """The boundary checks must scan real files, or they pass vacuously."""
+
+    @pytest.mark.parametrize("source_dir", ["spec", "connectors"])
+    def test_scanner_finds_python_files(self, source_dir: str) -> None:
+        assert len(_py_files(TC_ROOT / source_dir)) > 0
 
 
 class TestSpecImportBoundary:
@@ -93,8 +117,7 @@ class TestConnectorImportBoundary:
     def test_connectors_dont_cross_import(self):
         """Each connector should only import from its own directory."""
         connectors_dir = TC_ROOT / "connectors"
-        if not connectors_dir.exists():
-            return
+        assert connectors_dir.is_dir(), f"{connectors_dir} does not exist; is TC_ROOT right?"
 
         violations: list[tuple[str, str]] = []
         for connector_dir in connectors_dir.iterdir():
@@ -109,7 +132,10 @@ class TestConnectorImportBoundary:
                         parts = imp.split(".")
                         if len(parts) >= 3:
                             imported_connector = parts[2]
-                            if imported_connector != connector_dir.name:
+                            if (
+                                imported_connector != connector_dir.name
+                                and imported_connector not in SHARED_CONNECTOR_PACKAGES
+                            ):
                                 violations.append((rel_file, imp))
 
         assert violations == [], "Cross-connector imports found:\n" + "\n".join(

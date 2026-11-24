@@ -400,6 +400,7 @@ class Pinecone(BaseConnector):
         prefix: Optional[str] = None,
         namespace: Optional[str] = None,
         limit: Optional[int] = None,
+        pagination_token: Optional[str] = None,
     ) -> PaginatedList[PineconeVectorListItem]:
         """List vector IDs in the index, optionally filtered by prefix.
 
@@ -407,6 +408,8 @@ class Pinecone(BaseConnector):
             prefix: ID prefix to filter vectors by.
             namespace: Namespace to list vectors from.
             limit: Maximum number of IDs to return.
+            pagination_token: Token from a previous response's
+                ``page_state.cursor``.
 
         Returns:
             Paginated list of PineconeVectorListItem objects.
@@ -418,7 +421,9 @@ class Pinecone(BaseConnector):
             params["namespace"] = namespace
         if limit is not None:
             params["limit"] = limit
-
+        # Without this the action returned a next token it had no way to send back.
+        if pagination_token:
+            params["paginationToken"] = pagination_token
         data = await self._data_request("GET", "/vectors/list", params=params)
 
         vectors = [PineconeVectorListItem(id=v.get("id", "")) for v in data.get("vectors", [])]
@@ -426,13 +431,18 @@ class Pinecone(BaseConnector):
         pagination = data.get("pagination")
         next_token = pagination.get("next") if pagination else None
 
-        return PaginatedList(
+        result = PaginatedList(
             items=vectors,
             page_state=PageState(
                 cursor=next_token,
                 has_more=next_token is not None,
             ),
         )
+        if next_token:
+            result._fetch_next = lambda t=next_token: self.alist_vectors(
+                prefix=prefix, namespace=namespace, limit=limit, pagination_token=t
+            )
+        return result
 
     @action("List all indexes in the account", idempotent=True)
     async def list_indexes(self) -> list[PineconeIndex]:

@@ -459,13 +459,22 @@ class Linear(BaseConnector):
         nodes = issues_data.get("nodes", [])
         page_info = issues_data.get("pageInfo", {})
 
-        return PaginatedList(
+        # Relay always sends endCursor alongside hasNextPage, but guard on the
+        # cursor anyway: a malformed page then raises instead of a fetcher
+        # re-requesting page one forever.
+        result = PaginatedList(
             items=[self._parse_issue(n) for n in nodes],
             page_state=PageState(
                 cursor=page_info.get("endCursor"),
                 has_more=page_info.get("hasNextPage", False),
             ),
         )
+        next_cursor = page_info.get("endCursor")
+        if page_info.get("hasNextPage", False) and next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_issues(
+                team_id=team_id, state=state, limit=limit, cursor=c
+            )
+        return result
 
     @action("Get a single issue by ID", access="read")
     async def get_issue(self, issue_id: str) -> LinearIssue:
@@ -653,13 +662,17 @@ class Linear(BaseConnector):
         proj_data = data.get("projects", {})
         page_info = proj_data.get("pageInfo", {})
 
-        return PaginatedList(
+        result = PaginatedList(
             items=[self._parse_project(n) for n in proj_data.get("nodes", [])],
             page_state=PageState(
                 cursor=page_info.get("endCursor"),
                 has_more=page_info.get("hasNextPage", False),
             ),
         )
+        next_cursor = page_info.get("endCursor")
+        if page_info.get("hasNextPage", False) and next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_projects(limit=limit, cursor=c)
+        return result
 
     @action("Add a comment to an issue", dangerous=True)
     async def add_comment(self, issue_id: str, body: str) -> LinearComment:
@@ -732,13 +745,19 @@ class Linear(BaseConnector):
         search_data = data.get("searchIssues", {})
         page_info = search_data.get("pageInfo", {})
 
-        return PaginatedList(
+        result = PaginatedList(
             items=[self._parse_issue(n) for n in search_data.get("nodes", [])],
             page_state=PageState(
                 cursor=page_info.get("endCursor"),
                 has_more=page_info.get("hasNextPage", False),
             ),
         )
+        next_cursor = page_info.get("endCursor")
+        if page_info.get("hasNextPage", False) and next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.asearch_issues(
+                query=query, limit=limit, cursor=c
+            )
+        return result
 
     # ------------------------------------------------------------------
     # Actions — Issue management (extended)
@@ -934,13 +953,19 @@ class Linear(BaseConnector):
         cycles_data = data.get("cycles", {})
         page_info = cycles_data.get("pageInfo", {})
 
-        return PaginatedList(
+        result = PaginatedList(
             items=[self._parse_cycle(n) for n in cycles_data.get("nodes", [])],
             page_state=PageState(
                 cursor=page_info.get("endCursor"),
                 has_more=page_info.get("hasNextPage", False),
             ),
         )
+        next_cursor = page_info.get("endCursor")
+        if page_info.get("hasNextPage", False) and next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_cycles(
+                team_id=team_id, limit=limit, cursor=c
+            )
+        return result
 
     @action("Get a single cycle by ID", access="read")
     async def get_cycle(self, cycle_id: str) -> LinearCycle:
@@ -1089,13 +1114,17 @@ class Linear(BaseConnector):
         users_data = data.get("users", {})
         page_info = users_data.get("pageInfo", {})
 
-        return PaginatedList(
+        result = PaginatedList(
             items=[self._parse_user(n) for n in users_data.get("nodes", []) if n is not None],
             page_state=PageState(
                 cursor=page_info.get("endCursor"),
                 has_more=page_info.get("hasNextPage", False),
             ),
         )
+        next_cursor = page_info.get("endCursor")
+        if page_info.get("hasNextPage", False) and next_cursor:
+            result._fetch_next = lambda c=next_cursor: self.alist_users(limit=limit, cursor=c)
+        return result
 
     @action("Get a single user by ID", access="read")
     async def get_user(self, user_id: str) -> LinearUser:

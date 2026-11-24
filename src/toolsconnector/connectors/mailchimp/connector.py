@@ -219,7 +219,7 @@ class Mailchimp(BaseConnector):
         )
         result._fetch_next = (
             (
-                lambda next_off=offset + limit: self.list_lists(
+                lambda next_off=offset + limit: self.alist_lists(
                     limit=limit,
                     offset=next_off,
                 )
@@ -289,7 +289,7 @@ class Mailchimp(BaseConnector):
         )
         result._fetch_next = (
             (
-                lambda next_off=offset + limit: self.list_members(
+                lambda next_off=offset + limit: self.alist_members(
                     list_id=list_id,
                     status=status,
                     limit=limit,
@@ -413,7 +413,7 @@ class Mailchimp(BaseConnector):
         )
         result._fetch_next = (
             (
-                lambda next_off=offset + limit: self.list_campaigns(
+                lambda next_off=offset + limit: self.alist_campaigns(
                     status=status,
                     limit=limit,
                     offset=next_off,
@@ -890,7 +890,7 @@ class Mailchimp(BaseConnector):
         )
         result._fetch_next = (
             (
-                lambda next_off=offset + limit: self.list_templates(
+                lambda next_off=offset + limit: self.alist_templates(
                     limit=limit,
                     offset=next_off,
                 )

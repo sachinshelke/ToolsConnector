@@ -1,9 +1,9 @@
 # ToolsConnector
 
-**One interface, every tool. Connect 68+ APIs to your Python app or AI agent in minutes.**
+**One interface, every tool. Connect 79 APIs to your Python app or AI agent in minutes.**
 
 [![PyPI version](https://img.shields.io/pypi/v/toolsconnector.svg?color=blue)](https://pypi.org/project/toolsconnector/)
-[![Python 3.9+](https://img.shields.io/pypi/pyversions/toolsconnector.svg)](https://pypi.org/project/toolsconnector/)
+[![Python 3.10+](https://img.shields.io/pypi/pyversions/toolsconnector.svg)](https://pypi.org/project/toolsconnector/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/sachinshelke/ToolsConnector/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sachinshelke/ToolsConnector/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/sachinshelke/ToolsConnector/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/sachinshelke/ToolsConnector/security/code-scanning)
@@ -99,7 +99,7 @@ See [`examples/README.md`](examples/README.md) for the full table with required 
 - **Async-first, sync-friendly** -- every action has both `await kit.aexecute()` and `kit.execute()` paths
 - **Circuit breakers** -- per-connector failure isolation so one dead API doesn't take down your agent
 - **Timeout budgets** -- per-action and per-request deadlines with automatic retry on transient failures
-- **Dry-run mode** -- validate destructive actions without executing them
+- **Dry-run mode** -- validate any write without executing it; only declared reads run
 - **BYOK auth** -- bring your own API keys and tokens; no OAuth server required in the library
 - **Minimal dependencies** -- core requires only `pydantic`, `httpx`, and `docstring-parser`
 
@@ -149,8 +149,9 @@ tc serve mcp gmail slack github --transport streamable-http --port 9000
 ```
 
 The HTTP transport (`streamable-http`) accepts many concurrent client
-sessions on the same port — one daemon serves N agents. Per-tool
-circuit breakers and timeout budgets apply fairly across all clients.
+sessions on the same port — one daemon serves N agents, and **every
+session uses the credentials the daemon was started with**. Per-tool
+circuit breakers and timeout budgets apply across all clients.
 There's no built-in auth on the HTTP transport; put it behind a reverse
 proxy before exposing it publicly.
 
@@ -295,22 +296,30 @@ match more granular cases (e.g. `ConflictError` for 409).
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Gmail | `gmail` | 66 |
-| Slack | `slack` | 51 |
 | Discord | `discord` | 25 |
+| Gmail | `gmail` | 67 |
 | Microsoft Outlook | `outlook` | 23 |
 | Microsoft Teams | `teams` | 17 |
-| Twilio | `twilio` | 20 |
+| Slack | `slack` | 51 |
 | Telegram | `telegram` | 26 |
-| WhatsApp Business | `whatsapp_business` | 64 |
+| Twilio | `twilio` | 20 |
 | WhatsApp (links/QR) | `whatsapp` | 7 |
+| WhatsApp Business | `whatsapp_business` | 64 |
+
+### Social (3)
+
+| Connector | Install Extra | Actions |
+|-----------|---------------|---------|
+| LinkedIn | `linkedin` | 12 |
+| Medium | `medium` | 4 |
+| X (Twitter) | `x` | 9 |
 
 ### Project Management (4)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Jira | `jira` | 28 |
 | Asana | `asana` | 38 |
+| Jira | `jira` | 28 |
 | Linear | `linear` | 19 |
 | Trello | `trello` | 25 |
 
@@ -318,12 +327,12 @@ match more granular cases (e.g. `ConflictError` for 409).
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| HubSpot | `hubspot` | 19 |
-| Salesforce | `salesforce` | 21 |
-| Zendesk | `zendesk` | 16 |
 | Freshdesk | `freshdesk` | 23 |
+| HubSpot | `hubspot` | 19 |
 | Intercom | `intercom` | 16 |
 | Odoo | `odoo` | 11 |
+| Salesforce | `salesforce` | 21 |
+| Zendesk | `zendesk` | 16 |
 
 ### Code Platforms (2)
 
@@ -336,56 +345,83 @@ match more granular cases (e.g. `ConflictError` for 409).
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Notion | `notion` | 24 |
 | Confluence | `confluence` | 25 |
+| Notion | `notion` | 24 |
 
 ### Storage (2)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Google Drive | `gdrive` | 22 |
 | AWS S3 | `s3` | 20 |
+| Google Drive | `gdrive` | 22 |
 
-### Database (5)
+### Database (6)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
 | Airtable | `airtable` | 26 |
+| AWS RDS | `rds` | 25 |
 | Firebase Firestore | `firestore` | 17 |
 | MongoDB Atlas | `mongodb` | 16 |
 | Redis (Upstash) | `redis` | 18 |
 | Supabase | `supabase` | 16 |
 
-### DevOps (5)
+### DevOps (7)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
+| AWS CloudWatch | `cloudwatch` | 20 |
+| AWS ECR | `ecr` | 12 |
 | Cloudflare | `cloudflare` | 23 |
 | Datadog | `datadog` | 22 |
 | Docker Hub | `dockerhub` | 14 |
 | PagerDuty | `pagerduty` | 16 |
 | Vercel | `vercel` | 16 |
 
+### Compute (3)
+
+| Connector | Install Extra | Actions |
+|-----------|---------------|---------|
+| AWS EC2 | `ec2` | 30 |
+| AWS ECS | `ecs` | 25 |
+| AWS Lambda | `lambda_connector` | 15 |
+
+### Networking (3)
+
+| Connector | Install Extra | Actions |
+|-----------|---------------|---------|
+| AWS ALB | `alb` | 18 |
+| AWS CloudFront | `cloudfront` | 10 |
+| AWS Route 53 | `route53` | 15 |
+
 ### Finance (2)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Stripe | `stripe` | 40 |
 | Plaid | `plaid` | 17 |
+| Stripe | `stripe` | 40 |
 
-### Marketing (2)
+### Marketing (5)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
+| ContactOut | `contactout` | 19 |
+| LinkedIn Lead Sync | `linkedin_leads` | 5 |
+| Lusha | `lusha` | 20 |
 | Mailchimp | `mailchimp` | 23 |
 | SendGrid | `sendgrid` | 20 |
 
-### AI / ML (3)
+### AI / ML (8)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| OpenAI | `openai` | 26 |
 | Anthropic | `anthropic` | 14 |
+| Cohere | `cohere` | 22 |
+| Google Gemini | `gemini` | 20 |
+| Groq | `groq` | 15 |
+| Hugging Face | `huggingface` | 30 |
+| Mistral | `mistral` | 30 |
+| OpenAI | `openai` | 26 |
 | Pinecone | `pinecone` | 15 |
 
 ### Analytics (2)
@@ -402,23 +438,26 @@ match more granular cases (e.g. `ConflictError` for 409).
 | AWS SQS | `sqs` | 16 |
 | RabbitMQ | `rabbitmq` | 21 |
 
-### Security (2)
+### Security (5)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
-| Okta | `okta` | 21 |
 | Auth0 | `auth0` | 27 |
+| AWS ACM | `acm` | 10 |
+| AWS IAM | `iam` | 20 |
+| AWS Secrets Manager | `secrets_manager` | 12 |
+| Okta | `okta` | 21 |
 
 ### Productivity (6)
 
 | Connector | Install Extra | Actions |
 |-----------|---------------|---------|
+| Calendly | `calendly` | 20 |
+| Figma | `figma` | 22 |
 | Google Calendar | `gcalendar` | 20 |
 | Google Docs | `gdocs` | 5 |
 | Google Sheets | `gsheets` | 16 |
 | Google Tasks | `gtasks` | 13 |
-| Calendly | `calendly` | 20 |
-| Figma | `figma` | 22 |
 
 ### E-Commerce (1)
 
@@ -444,7 +483,7 @@ ToolsConnector is structured as four layers, each with a single responsibility:
 +------------------------------------------------------------------+
 |  Runtime Engine    BaseConnector, @action, Middleware, Auth       |
 +------------------------------------------------------------------+
-|  Connectors        Gmail, Slack, GitHub, Stripe, ... (68)        |
+|  Connectors        Gmail, Slack, GitHub, Stripe, ... (79)        |
 +------------------------------------------------------------------+
 |  Spec Types        Pydantic V2 models, JSON Schema, Contracts    |
 +------------------------------------------------------------------+
@@ -502,7 +541,7 @@ See the existing connectors (e.g., `src/toolsconnector/connectors/slack/`) for r
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.10+
 - Core dependencies: `pydantic>=2.0`, `httpx>=0.25`, `docstring-parser>=0.15`
 - Connector-specific dependencies installed via extras (e.g., `gmail` extra installs `google-api-python-client`)
 

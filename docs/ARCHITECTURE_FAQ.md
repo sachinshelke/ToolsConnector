@@ -90,7 +90,7 @@ All of these are: Bearer token + JSON REST + one pagination pattern. Our httpx c
 **Decision:** All connector methods are `async def`. The `@action` decorator auto-generates synchronous wrappers.
 
 **Why:**
-- Modern Python (3.9+) has mature async support. AI agent frameworks (LangChain, CrewAI) are increasingly async.
+- Modern Python (3.10+) has mature async support. AI agent frameworks (LangChain, CrewAI) are increasingly async.
 - Writing async code and generating sync wrappers is easy (`asyncio.run()` or background thread). Writing sync code and making it async is impossible without rewriting.
 - One implementation, two entry points, zero code duplication.
 
@@ -292,19 +292,14 @@ TypeScript SDK:  1.0.0, 1.0.1, 1.1.0
 
 ## 15. What's the minimum Python version and why?
 
-**Decision:** Python 3.9+
+**Decision:** Python 3.10+ (raised from 3.9 on 2026-09-23, decision D00000G)
 
 **Why:**
-- 3.9 introduced `dict[str, Any]` and `list[str]` syntax (no more `Dict`, `List` imports needed)
-- 3.8 reached EOL in October 2024 — no security patches
-- 3.9 is the oldest version still receiving security updates (until October 2025)
-- Pydantic V2 requires 3.8+ but performs best on 3.9+
-- We use `from __future__ import annotations` for forward-compatible type hint syntax
+- 3.9 reached end of life in October 2025 — no more security patches
+- Every release of the `mcp` SDK requires 3.10+, so on 3.9 the `[mcp]` extra could not install and CI skipped the real MCP tests
+- pip on 3.9 keeps resolving 0.3.25, so existing 3.9 users are not broken
 
-**What we can't use (requires 3.10+):**
-- `match` statements (structural pattern matching)
-- `X | Y` union syntax at runtime in Pydantic fields (we use `Optional[X]` instead)
-- `ParamSpec` for advanced decorator typing
+**What stays the same:** the code style still targets py39 in ruff (`Optional[X]`, not `X | Y`), because switching it is a repo-wide reformat with no behavior change.
 
 ---
 
@@ -520,3 +515,84 @@ A platform embedding our tools often needs to run some agents read-only. `danger
 So `access` is set **explicitly and grounded in each action's real side effect**, not its verb — a POST that only searches / reveals / computes / runs inference (`notion.search`, `lusha.enrich_contacts`, `gemini.generate_content`, a GraphQL query, `odoo.search_read`) is `read`, because it persists nothing vendor-side. `dangerous` auto-derives `access="destructive"`, and a conformance ratchet (`tests/conformance/test_access_classification.py`) enforces that the two always agree and that **every Tier-1 (live) action is classified** (read 233 / write 74 / destructive 132 at introduction). Non-Tier-1 actions stay `None` until classified; a read-only consumer treats `None` as "not provably read" and fails closed. `access` and `idempotent` are both surfaced in `list_tools()` / `ToolEntry.to_dict()`.
 
 **References:** `spec/action.py` (`AccessKind`, `ActionSpec.access`), `runtime/action.py` (`@action(access=...)` + destructive auto-derive), `serve/_filtering.py` (`ToolEntry.to_dict`), `tests/conformance/test_access_classification.py`.
+
+## 25. Why does `LocalFileKeyStore` need the `[local-keystore]` extra, with no unencrypted fallback?
+
+**Decision: `LocalFileKeyStore` requires `cryptography`, shipped as the optional `local-keystore` extra, and raises `ImportError` at construction when it is missing. It never degrades to an unencrypted format, and there is no opt-in "insecure" mode. Key files written by the old fallback raise `LegacyKeyFileError` until the caller opts in to re-encrypting them with `migrate_legacy=True`.**
+
+From its first commit through 0.3.25, the class caught that `ImportError` and silently wrote `base64(json)` instead, while its docstring promised Fernet. `cryptography` wasn't declared anywhere, so a plain `pip install toolsconnector` always took the fallback, leaving OAuth tokens on disk in cleartext-equivalent form. The `mcp` extra pulled `cryptography` in transitively (`pyjwt[crypto]`), so test environments never exercised the fallback. The two formats couldn't read each other either. The loader treated the other format as a corrupt file and opened an empty store, and the next `set()` overwrote the file, which lost every stored credential in both directions. Both directions were reproduced against 0.3.25 before the fix.
+
+**Why an extra, not a core dependency:** the core install stays `pydantic` + `httpx` + `docstring-parser`. Under BYOK (FAQ #9), most users supply credentials from env vars or their own secret manager and never touch a local key file, so they shouldn't pay for a compiled crypto wheel. The extra mirrors `vault` / `aws-keystore`. `dev` depends on it explicitly, so the keystore tests always run against real Fernet instead of relying on a transitive install.
+
+**Why fail loudly:** a store documented as encrypted must either encrypt or refuse to run. A security property that quietly disappears depending on what else happens to be installed is worse than none, because nobody knows to compensate for it.
+
+**What we rejected:**
+- *Keep the fallback and warn.* Warnings get filtered or lost, and the tokens still land on disk.
+- *An explicit `insecure=True` mode.* `InMemoryKeyStore`, `EnvironmentKeyStore` or a user-supplied `KeyStore` already covers every no-dependency use case, and an insecure flag is one copy-paste away from production.
+- *Silently auto-migrating legacy files.* That would hide the fact that those credentials sat on disk unencrypted. The error tells the user to rotate them, and `migrate_legacy=True` is the deliberate re-encrypt step.
+
+**References:** `keystore/local.py` (`LocalFileKeyStore`, `LegacyKeyFileError`), `pyproject.toml` (`local-keystore`), `tests/unit/test_keystore.py`.
+
+## 26. Why does `LocalFileKeyStore` refuse a key file it can't read, instead of starting fresh?
+
+**Decision: an existing key file must decrypt, with the given password, to a JSON object. Otherwise the constructor raises `UnreadableKeyFileError` and leaves the file untouched. That covers a wrong password, a corrupted or truncated file, and an empty one. Only a missing file opens as a new, empty store.**
+
+Through 0.3.25, `_load()` caught every exception and opened an empty store ("start fresh"). The next `set()` or `delete()` then saved that empty store over the file, which destroyed every credential in it. The usual trigger was a wrong password, most often the machine-default one, which is used silently whenever `TC_KEYSTORE_PASSWORD` isn't set. This was reproduced on 2026-09-24. Fernet raises the same `InvalidToken` for a wrong key and for damaged bytes, so the error says "the password is wrong or the file is corrupted" rather than guessing. It also names `TC_KEYSTORE_PASSWORD` when the machine default was tried.
+
+**Why an empty file raises too:** `_save()` only leaves a file empty when a write is cut short, because it truncates the file before writing. An empty file holds nothing, but opening it as a new store would hide that its credentials are gone. Deleting it is a cheap, explicit way to start over.
+
+**What we rejected:**
+- *Start fresh but back up the old file first.* A wrong password would still go unnoticed until a credential went missing, and every mistyped password would leave another copy of the ciphertext behind.
+- *Open an empty, read-only store.* Callers would see every credential as missing without knowing why.
+- *Treat an empty file as a new store.* Nothing would be lost, but an interrupted write would go unnoticed.
+
+**Permissions:** new key files are created `0600`, and a parent directory the store creates is `0700`. Existing files and directories keep their permissions. Before this change they got the umask default (typically `0644` / `0755`), so any local user could read them. A store opened without a password is protected only by the machine-default password, which is derived from the hostname and username.
+
+**References:** `keystore/local.py` (`UnreadableKeyFileError`, `LocalFileKeyStore._load` / `_save`), `tests/unit/test_keystore.py`.
+
+## 27. Why may connectors import `connectors/_aws` and `connectors/_helpers`, but not each other?
+
+**Decision: the cross-connector import rule exempts exactly two shared packages, listed by name in `SHARED_CONNECTOR_PACKAGES = frozenset({"_aws", "_helpers"})`. Any other `toolsconnector.connectors.<name>` import from a different connector fails the conformance test. The exemption is not a blanket rule for `_`-prefixed names.**
+
+Until 2026-09-24, `tests/conformance/test_import_boundaries.py` pointed `TC_ROOT` at `toolsconnector/`, but the package lives in `src/toolsconnector/`, and the helpers returned early on a missing directory. All three boundary tests passed without scanning a single file. With the root fixed, the cross-connector check reported only imports of `_helpers` and `_aws`, and none of another connector. Those two are shared code, not connectors: the `serve/_discovery.py` registry leaves them out, and `CONTRIBUTING.md` tells connector authors to import `raise_typed_for_status` from `_helpers`. The rule exists to stop one connector depending on another, which these imports never do.
+
+**Why name them instead of exempting every `_` package:** adding a package to the list widens a boundary every connector relies on, so it should be a reviewed one-line change, not a side effect of how a new directory is named.
+
+**What we rejected:**
+- *Exempting every `_`-prefixed package.* It is shorter, but any new `_foo/` would quietly become importable from every connector.
+- *Moving the shared code out of `connectors/`.* It rewrites every connector's imports for no behavior change.
+- *Keeping the early return on a missing directory.* That is what hid the broken root. The scanner now fails when a directory is missing or empty, and `TestScannerCoverage` asserts that the `spec/` and `connectors/` scans find files.
+
+**References:** `tests/conformance/test_import_boundaries.py` (`SHARED_CONNECTOR_PACKAGES`, `_py_files`, `TestScannerCoverage`), `serve/_discovery.py`, `CONTRIBUTING.md`.
+
+## 28. Why is there no hosted service, token vault or paid tier?
+
+**Decision (owner, 2026-09-23, D00000H): ToolsConnector is always open source (Apache-2.0) and self-hosted. It never holds a user's credentials, and no feature is gated.**
+
+**Why:** hosted integration platforms hold end-user tokens and gate features by plan. Not doing that is the advantage they can't copy: no third party ever holds the token, the whole catalog is open, and there is no infrastructure to run. Features must work on the user's machine with the user's keys.
+
+**What we rejected:** an open-core hosted tier, and an optional hosted MCP gateway. Both make the project a credential custodian.
+
+## 29. Why stay on the official `mcp` SDK, pinned to `>=1.10,<2`?
+
+**Decision (2026-09-23, D00000I): use the official SDK within `>=1.10,<2`. Moving to 2.x is a separate, sized task.**
+
+**Why:** the previous `mcp>=1.0` resolved to 2.x, which removed `mcp.server.fastmcp`, so every fresh install of the `[mcp]` extra failed. 1.10 is the first release whose `FastMCP.tool()` accepts both `annotations=` and `structured_output=`. The protocol is still changing, so tracking it in our own server would be a permanent cost; the SDK is an optional extra, so the core install stays light.
+
+**References:** `serve/mcp.py`, `tests/conformance/test_mcp_extra_pin.py`.
+
+## 30. Why will OAuth login helpers be a Python API only?
+
+**Decision (2026-09-23, D00000J): helpers that run an OAuth flow return the tokens to the calling code. There is no `tc` login command and no MCP tool for it.**
+
+**Why:** a command that prints a refresh token into a terminal an agent is driving puts that token into the model's context, and a credential file the server re-reads is token storage under another name. Returning the token leaves storage with the developer, which matches bring-your-own-key.
+
+## 31. What does `dry_run=True` execute?
+
+**Decision: only actions declared `access="read"`. Everything else is validated and previewed, including actions with no declared access.**
+
+Until 0.4.0 the check was `dry_run and dangerous`, so a non-destructive write such as marking an email as read ran for real. The preview also skipped argument validation, so it could report a call that would have failed.
+
+**Why preview undeclared actions:** they might write. Running one by mistake can't be undone; previewing a read by mistake can.
+
+**References:** `ToolKit._previews_in_dry_run`, `tests/unit/test_serve_toolkit.py::TestDryRun`.
