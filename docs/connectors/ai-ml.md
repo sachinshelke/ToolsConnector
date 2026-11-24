@@ -77,8 +77,8 @@ Connect to Pinecone to manage vector indexes, upsert vectors, query for nearest 
 **Quick start:**
 
 ```python
-kit = ToolKit(["pinecone"], credentials={"pinecone": {"api_key": "your-api-key", "environment": "us-east1-gcp"}})
-result = kit.execute("pinecone_query", {"index": "my-index", "vector": [0.1, 0.2, 0.3], "top_k": 5})
+kit = ToolKit(["pinecone"], credentials={"pinecone": "your-api-key:your-index-host"})
+result = kit.execute("pinecone_query", {"vector": [0.1, 0.2, 0.3], "top_k": 5})
 ```
 
 ---

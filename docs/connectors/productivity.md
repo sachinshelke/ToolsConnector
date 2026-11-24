@@ -136,7 +136,7 @@ import json
 kit = ToolKit(["gsheets"], credentials={"gsheets": "ya29.your-access-token"})
 sheet = json.loads(kit.execute(
     "gsheets_create_spreadsheet",
-    {"title": "Budget", "sheet_titles": ["Q1", "Q2"]},
+    {"title": "Budget", "sheet_names": ["Q1", "Q2"]},
 ))
 kit.execute(
     "gsheets_update_values",
@@ -213,7 +213,7 @@ import json
 
 kit = ToolKit(["calendly"], credentials={"calendly": "your-pat-or-oauth-token"})
 me = json.loads(kit.execute("calendly_get_current_user", {}))
-events = kit.execute("calendly_list_scheduled_events", {"user": me["uri"]})
+events = kit.execute("calendly_list_scheduled_events", {"user_uri": me["uri"]})
 ```
 
 **Extras required:** `pip install "toolsconnector[calendly]"`

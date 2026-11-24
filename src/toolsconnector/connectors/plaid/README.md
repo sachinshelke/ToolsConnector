@@ -36,7 +36,7 @@ pip install "toolsconnector[plaid]"
 Set your credentials:
 
 ```bash
-export TC_PLAID_CREDENTIALS=your-token
+export TC_PLAID_CREDENTIALS='your-client-id:your-secret'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_PLAID_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["plaid"], credentials={"plaid": "your-token"})
+kit = ToolKit(["plaid"], credentials={"plaid": "your-client-id:your-secret"})
 
 # Get accounts linked to an access token
 result = kit.execute("plaid_get_accounts", {"access_token": "your-access_token"})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["plaid"], credentials={"plaid": "your-token"})
+kit = ToolKit(["plaid"], credentials={"plaid": "your-client-id:your-secret"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["plaid"], credentials={"plaid": "your-token"})
+kit = ToolKit(["plaid"], credentials={"plaid": "your-client-id:your-secret"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

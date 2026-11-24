@@ -28,7 +28,7 @@ pip install "toolsconnector[secrets_manager]"
 Set your credentials:
 
 ```bash
-export TC_SECRETS_MANAGER_CREDENTIALS=your-token
+export TC_SECRETS_MANAGER_CREDENTIALS='your-access-key-id:your-secret-access-key:your-region'
 ```
 
 ## Quick Start
@@ -36,7 +36,7 @@ export TC_SECRETS_MANAGER_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["secrets_manager"], credentials={"secrets_manager": "your-token"})
+kit = ToolKit(["secrets_manager"], credentials={"secrets_manager": "your-access-key-id:your-secret-access-key:your-region"})
 
 # Generate a random password
 result = kit.execute("secrets_manager_get_random_password", {"password_length": 32, "exclude_characters": ""})
@@ -46,14 +46,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["secrets_manager"], credentials={"secrets_manager": "your-token"})
+kit = ToolKit(["secrets_manager"], credentials={"secrets_manager": "your-access-key-id:your-secret-access-key:your-region"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["secrets_manager"], credentials={"secrets_manager": "your-token"})
+kit = ToolKit(["secrets_manager"], credentials={"secrets_manager": "your-access-key-id:your-secret-access-key:your-region"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

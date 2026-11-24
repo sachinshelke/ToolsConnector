@@ -36,7 +36,7 @@ pip install "toolsconnector[s3]"
 Set your credentials:
 
 ```bash
-export TC_S3_CREDENTIALS=your-token
+export TC_S3_CREDENTIALS='your-access-key-id:your-secret-access-key:your-region'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_S3_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["s3"], credentials={"s3": "your-token"})
+kit = ToolKit(["s3"], credentials={"s3": "your-access-key-id:your-secret-access-key:your-region"})
 
 # Get the region (location) of an S3 bucket
 result = kit.execute("s3_get_bucket_location", {"bucket": "my-bucket"})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["s3"], credentials={"s3": "your-token"})
+kit = ToolKit(["s3"], credentials={"s3": "your-access-key-id:your-secret-access-key:your-region"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["s3"], credentials={"s3": "your-token"})
+kit = ToolKit(["s3"], credentials={"s3": "your-access-key-id:your-secret-access-key:your-region"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

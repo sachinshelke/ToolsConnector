@@ -28,7 +28,7 @@ kit = ToolKit(["gmail", "slack"], credentials={
     "gmail": "ya29.your-token",
     "slack": "xoxb-your-token",
 })
-result = kit.execute("gmail_list_emails", {"query": "is:unread", "max_results": 5})
+result = kit.execute("gmail_list_emails", {"query": "is:unread", "limit": 5})
 ```
 
 > **Credentials can be one value or several.** Most connectors take a **single** key/token string (above). Some need **multiple fields** — pass a JSON object instead. **Odoo**, for example, needs four together: `{"url", "db", "username", "api_key"}`. Each connector's page documents its exact shape; see the [quickstart](guides/quickstart.md#2-set-credentials) for the full list.

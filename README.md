@@ -37,6 +37,8 @@ Then open **http://localhost:5001** in your browser.
 pip install toolsconnector
 ```
 
+Upgrading from 0.3? See [Upgrading to 0.4](https://github.com/sachinshelke/ToolsConnector/blob/main/docs/guides/upgrading-to-0.4.md).
+
 Install only the connectors you need:
 
 ```bash
@@ -60,13 +62,15 @@ kit = ToolKit(
 )
 
 # List unread emails
-result = kit.execute("gmail_list_emails", {"query": "is:unread", "max_results": 5})
+result = kit.execute("gmail_list_emails", {"query": "is:unread", "limit": 5})
 
 # Send a Slack message
 kit.execute("slack_send_message", {"channel": "#general", "text": "Deployed v2.1"})
 ```
 
 That's it. Same `ToolKit`, same `.execute()`, every connector.
+
+Credentials can also come from the environment, e.g. `TC_GMAIL_CREDENTIALS`. If one is missing, the error names the variable and where to get the value. Jira, Confluence, Salesforce, Supabase, MongoDB and Redis also need [your own address](https://github.com/sachinshelke/ToolsConnector/blob/main/docs/guides/credentials.md#services-on-your-own-host).
 
 ## Try the Examples
 
@@ -225,7 +229,7 @@ tc list
 tc gmail actions
 
 # Execute an action
-tc gmail list_emails --query "is:unread" --max_results 5
+tc gmail list_emails --query "is:unread" --limit 5
 
 # Export the connector spec
 tc gmail spec --format json

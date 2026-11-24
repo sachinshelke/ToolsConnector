@@ -62,7 +62,7 @@ These are high-authority backlinks + targeted discovery. Submit once, benefit fo
 Do these once the docs + a couple of tutorials are polished. Each drives a traffic
 spike and (if it lands) durable backlinks.
 
-- [ ] **Show HN: "ToolsConnector – one open-source Python interface to 74 APIs for AI agents"**
+- [ ] **Show HN: "ToolsConnector – one open-source Python interface to 79 APIs for AI agents"**
       — Tuesday–Thursday, ~9am ET. Lead with the problem (fragmented SDKs), the
       primitive-not-platform angle, and a 6-line code sample. Be in the thread to answer.
 - [ ] **r/Python** ("I built…" — show, don't sell), **r/LocalLLaMA** and **r/LLMDevs**
@@ -110,7 +110,7 @@ they're in the sitemap.
 One message, repeated across PyPI / GitHub / posts / site, ranks and converts better
 than five clever ones:
 
-> **ToolsConnector — one open-source Python interface to 74 APIs, for AI agents and apps.**
+> **ToolsConnector — one open-source Python interface to 79 APIs, for AI agents and apps.**
 > A *primitive, not a platform*: runs in your process, BYOK, no vendor lock-in.
 > Works with OpenAI function calling, Anthropic tool use, Gemini, and MCP.
 

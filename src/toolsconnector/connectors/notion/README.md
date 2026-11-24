@@ -205,8 +205,8 @@ For AI agents using MCP (Claude Desktop, Cursor, custom clients), use `exclude_d
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["notion"], credentials={"notion": "your-token"})
-kit.serve_mcp(exclude_dangerous=True)
+kit = ToolKit(["notion"], credentials={"notion": "your-token"}, exclude_dangerous=True)
+kit.serve_mcp()
 ```
 
 This hides the 7 destructive actions (`create_page`, `create_database`, `append_block_children`, `delete_block`, `add_comment`, `delete_comment`, `archive_page`) — 17 read-only actions remain exposed to the agent. Re-enable explicitly when you trust the agent for writes.

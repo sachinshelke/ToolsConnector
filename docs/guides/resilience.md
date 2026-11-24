@@ -6,7 +6,7 @@ How ToolsConnector handles failures, retries, and degraded upstream services.
 
 External APIs fail. They return 429s, time out, rotate credentials, and go down entirely. ToolsConnector provides a layered resilience strategy so your application or AI agent stays operational even when individual connectors are degraded.
 
-The resilience features are implemented as middleware in the runtime pipeline. They execute in order around every action call: Auth -> Retry -> Rate Limit -> Logging -> Action Handler.
+These features live in `ToolKit.execute()` / `aexecute()`, so they apply to MCP, REST and the CLI too. Calling a connector class directly (without a `ToolKit`) bypasses them.
 
 ## Circuit Breaker
 
@@ -15,8 +15,8 @@ The circuit breaker prevents cascading failures by temporarily disabling a conne
 **How it works:**
 
 1. **Closed** (normal): Requests flow through. Failures are counted.
-2. **Open** (tripped): After `failure_threshold` consecutive failures, the circuit opens. All requests are immediately rejected with a `ConnectorError` -- no HTTP calls are made. This protects both your application and the upstream API.
-3. **Half-open** (probing): After `recovery_timeout` seconds, one test request is allowed through. If it succeeds, the circuit closes. If it fails, it reopens.
+2. **Open** (tripped): After `circuit_breaker_threshold` consecutive failures, the circuit opens. All requests are immediately rejected with a `ServerError` -- no HTTP calls are made. This protects both your application and the upstream API.
+3. **Half-open** (probing): After `circuit_breaker_recovery` seconds, one test request is allowed through. If it succeeds, the circuit closes. If it fails, it reopens.
 
 **Configuration:**
 
@@ -26,10 +26,8 @@ from toolsconnector.serve import ToolKit
 kit = ToolKit(
     ["gmail", "slack"],
     credentials={...},
-    circuit_breaker={
-        "failure_threshold": 5,    # Open after 5 consecutive failures
-        "recovery_timeout": 30,    # Try again after 30 seconds
-    },
+    circuit_breaker_threshold=5,   # Open after 5 consecutive failures
+    circuit_breaker_recovery=30,   # Try again after 30 seconds (default 60)
 )
 ```
 
@@ -37,28 +35,15 @@ kit = ToolKit(
 
 ## Auto-Retry with Exponential Backoff
 
-Transient failures (timeouts, 429s, 503s) are retried automatically with exponential backoff and jitter.
+Transient failures (timeouts, 429s, 5xx) are retried automatically until the timeout budget runs out.
 
 **How it works:**
 
-1. The first call fails with a retry-eligible error.
-2. Wait `base_delay * 2^(attempt-1)` seconds, plus random jitter.
-3. Retry up to `max_retries` times.
-4. If a `RateLimitError` includes a `Retry-After` header value, that value is used as the minimum delay.
+1. The call fails with a retry-eligible error.
+2. If the error carries a `Retry-After` value, wait that long. Otherwise wait 2, 4, 8… seconds.
+3. Retry while there is budget left (`timeout_budget`, 25 seconds by default). There is no separate retry count.
 
-**Configuration:**
-
-```python
-kit = ToolKit(
-    ["slack"],
-    credentials={...},
-    retry={
-        "max_retries": 3,       # Up to 3 retry attempts
-        "base_delay": 1.0,      # Initial delay: 1 second
-        "max_delay": 60.0,      # Cap delay at 60 seconds
-    },
-)
-```
+> **Writes are retried too.** The retry does not check whether an action is safe to repeat. If a write times out after the service already accepted it, the retry can perform it twice. For writes that must not repeat, use the service's own idempotency key where the action offers one.
 
 **Which errors are retried:**
 
@@ -70,61 +55,60 @@ kit = ToolKit(
 | `ServerError` (5xx) | Yes | Upstream instability |
 | `NotFoundError` | No | Resource does not exist |
 | `ValidationError` | No | Bad input, retrying won't help |
-| `AuthError` | No | Credentials are wrong |
+| `InvalidCredentialsError` | No | Credentials are wrong |
+| `TokenExpiredError` | Once | The connector is rebuilt and the credential re-read, in case it was replaced |
+| `MissingConfigError` | No | No credential is configured |
 
-Each error carries a `retry_eligible` boolean that the retry middleware checks.
+Each error carries a `retry_eligible` boolean that the retry loop checks.
 
 ## Timeout Budgets
 
-Every action call has a timeout budget. If the upstream API does not respond within the budget, a `TimeoutError` is raised.
+Two limits apply to every call:
 
 ```python
-# Global timeout (applies to all connectors)
-kit = ToolKit(["gmail"], credentials={...}, timeout=30.0)
-
-# Per-connector timeout (set in connector init)
-# Connectors default to 30 seconds
+kit = ToolKit(
+    ["gmail"],
+    credentials={...},
+    action_timeout=15.0,   # One attempt (default 15 seconds)
+    timeout_budget=25.0,   # The whole call, including retries (default 25 seconds)
+)
 ```
 
-Timeouts work together with retries: each retry attempt gets the full timeout budget. If you have `timeout=10` and `max_retries=3`, the worst-case wall time is ~40 seconds (10s * 3 retries + backoff delays).
+When the budget runs out, the last error is raised; if every attempt timed out, that is `TimeoutError`.
 
-## Token Auto-Refresh
+## Expired Tokens
 
-For OAuth2 connectors (Gmail, Google Drive, Google Calendar), access tokens are refreshed automatically before they expire.
-
-The `OAuth2Provider` checks token expiry before every request with a configurable buffer (default: 60 seconds). If the token is about to expire and a refresh token is available, it performs the token exchange transparently.
+ToolsConnector does not refresh OAuth tokens for you. When a service rejects an expired token, the call is retried once with the credential re-read, then `TokenExpiredError` is raised. Refresh the token in your own code and build a new `ToolKit` with it:
 
 ```python
-# No code needed -- refresh happens automatically.
-# If refresh fails, a RefreshFailedError is raised.
-# If no refresh token exists, a TokenExpiredError is raised.
+from toolsconnector.errors import TokenExpiredError
+
+try:
+    kit.execute("gmail_list_emails", {"query": "is:unread"})
+except TokenExpiredError:
+    ...  # refresh the token, then create a new ToolKit with it
 ```
 
-The refresh operation is thread-safe. Concurrent requests that detect an expiring token will not trigger duplicate refreshes.
+An MCP server reads its credentials when it starts, so restart it after replacing a token.
 
 ## Pre-Validation
 
-Action inputs are validated against the JSON Schema before the HTTP request is made. This catches common mistakes early:
+Inputs are checked before the HTTP request is made:
 
 - Missing required parameters
-- Wrong parameter types (string instead of integer)
-- Values outside allowed ranges
+- Wrong basic types (string instead of integer)
+- Values outside an enum
 
-Pre-validation errors raise `ValidationError` with a descriptive message indicating which parameter failed and why.
+A failed check raises `ValidationError` naming the parameter. Numeric ranges are left to the service. A parameter the action doesn't have raises `TypeError`.
 
 ## Graceful Degradation
 
-When a connector's circuit breaker is open, `ToolKit` can report which connectors are healthy and which are degraded:
+One failing connector does not affect the others. `ToolKit` reports the last known state of each:
 
 ```python
-status = kit.health_check()
-# {
-#     "gmail": {"healthy": True, "latency_ms": 45.2},
-#     "slack": {"healthy": False, "message": "Circuit open: 5 consecutive failures"},
-# }
+kit.get_connector_status()
+# {"gmail": "healthy", "slack": "degraded"}   # "unknown" until first used
 ```
-
-AI agents can use this information to route requests to healthy connectors or inform the user that a service is temporarily unavailable.
 
 ## Structured Error Messages
 
@@ -136,7 +120,7 @@ from toolsconnector.errors import ToolsConnectorError
 try:
     result = kit.execute("slack_send_message", {"channel": "#general", "text": "Hello"})
 except ToolsConnectorError as e:
-    print(e.code)                # "RATE_LIMITED"
+    print(e.code)                # "API_RATE_LIMITED"
     print(e.connector)           # "slack"
     print(e.action)              # "send_message"
     print(e.retry_eligible)      # True
@@ -162,3 +146,9 @@ result = kit.execute("slack_send_message", {
 ```
 
 `dry_run` is an argument of `execute()` / `aexecute()`. The arguments are validated first, so an invalid call raises `ValidationError`. Only actions declared `access="read"` execute; every other action, including one with no declared access, returns a preview.
+
+## Incomplete Pages
+
+`has_more` means another page exists. If a page says so but has no way to load it, `anext_page()`, `next_page()`, `collect()` and `collect_sync()` raise `PaginationNotWiredError` (`CONNECTOR_PAGINATION_NOT_WIRED`). Before 0.4.0 they stopped silently and returned partial results.
+
+Actions that take a next-page URL (Outlook, Teams, GitHub, Docker Hub) accept it only on the service's own host, because the request carries your token. Any other host raises `ValidationError`.

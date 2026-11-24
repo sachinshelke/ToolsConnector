@@ -36,7 +36,7 @@ pip install "toolsconnector[pinecone]"
 Set your credentials:
 
 ```bash
-export TC_PINECONE_CREDENTIALS=your-token
+export TC_PINECONE_CREDENTIALS='your-api-key:your-index-host'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_PINECONE_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["pinecone"], credentials={"pinecone": "your-token"})
+kit = ToolKit(["pinecone"], credentials={"pinecone": "your-api-key:your-index-host"})
 
 # List vector IDs in the index
 result = kit.execute("pinecone_list_vectors", {"prefix": "your-prefix", "namespace": "default"})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["pinecone"], credentials={"pinecone": "your-token"})
+kit = ToolKit(["pinecone"], credentials={"pinecone": "your-api-key:your-index-host"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["pinecone"], credentials={"pinecone": "your-token"})
+kit = ToolKit(["pinecone"], credentials={"pinecone": "your-api-key:your-index-host"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

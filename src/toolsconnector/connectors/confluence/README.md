@@ -36,7 +36,7 @@ pip install "toolsconnector[confluence]"
 Set your credentials:
 
 ```bash
-export TC_CONFLUENCE_CREDENTIALS=your-token
+export TC_CONFLUENCE_CREDENTIALS='your-email:your-api-token'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_CONFLUENCE_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["confluence"], credentials={"confluence": "your-token"})
+kit = ToolKit(["confluence"], credentials={"confluence": "your-email:your-api-token"})
 
 # List pages in a space or across all spaces
 result = kit.execute("confluence_list_pages", {"space_id": "space-123", "limit": 25})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["confluence"], credentials={"confluence": "your-token"})
+kit = ToolKit(["confluence"], credentials={"confluence": "your-email:your-api-token"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["confluence"], credentials={"confluence": "your-token"})
+kit = ToolKit(["confluence"], credentials={"confluence": "your-email:your-api-token"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

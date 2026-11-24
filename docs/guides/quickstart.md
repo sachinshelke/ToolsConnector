@@ -94,7 +94,7 @@ Call any action by its fully qualified name (`{connector}_{action}`) and a param
 
 ```python
 # List unread emails
-result = kit.execute("gmail_list_emails", {"query": "is:unread", "max_results": 5})
+result = kit.execute("gmail_list_emails", {"query": "is:unread", "limit": 5})
 print(result)
 
 # Send a Slack message

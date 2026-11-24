@@ -6,11 +6,11 @@ Connectors for monitoring, deployment, CDN, and container services. 5 connectors
 
 ### Datadog
 
-**Category:** DevOps & Cloud | **Auth:** API Key + Application Key | **Actions:** 8
+**Category:** DevOps & Cloud | **Auth:** API Key + Application Key | **Actions:** 22
 
 Connect to Datadog to manage monitors, query metrics, and work with events and dashboards.
 
-**Actions:**
+**Common actions** (all: `tc datadog actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -26,7 +26,7 @@ Connect to Datadog to manage monitors, query metrics, and work with events and d
 **Quick start:**
 
 ```python
-kit = ToolKit(["datadog"], credentials={"datadog": {"api_key": "your-api-key", "app_key": "your-app-key"}})
+kit = ToolKit(["datadog"], credentials={"datadog": "your-api-key:your-app-key"})
 result = kit.execute("datadog_list_monitors", {})
 ```
 
@@ -34,11 +34,11 @@ result = kit.execute("datadog_list_monitors", {})
 
 ### PagerDuty
 
-**Category:** DevOps & Cloud | **Auth:** API Token | **Actions:** 8
+**Category:** DevOps & Cloud | **Auth:** API Token | **Actions:** 16
 
 Connect to PagerDuty to manage incidents, services, and on-call schedules.
 
-**Actions:**
+**Common actions** (all: `tc pagerduty actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -55,18 +55,18 @@ Connect to PagerDuty to manage incidents, services, and on-call schedules.
 
 ```python
 kit = ToolKit(["pagerduty"], credentials={"pagerduty": "your-api-token"})
-result = kit.execute("pagerduty_list_incidents", {"statuses": ["triggered", "acknowledged"]})
+result = kit.execute("pagerduty_list_incidents", {"status": "triggered"})
 ```
 
 ---
 
 ### Vercel
 
-**Category:** DevOps & Cloud | **Auth:** Bearer Token | **Actions:** 8
+**Category:** DevOps & Cloud | **Auth:** Bearer Token | **Actions:** 16
 
 Connect to Vercel to manage deployments, projects, domains, and environment variables.
 
-**Actions:**
+**Common actions** (all: `tc vercel actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -83,18 +83,18 @@ Connect to Vercel to manage deployments, projects, domains, and environment vari
 
 ```python
 kit = ToolKit(["vercel"], credentials={"vercel": "your-bearer-token"})
-result = kit.execute("vercel_list_deployments", {"projectId": "prj_your-project-id", "limit": 5})
+result = kit.execute("vercel_list_deployments", {"project_id": "prj_your-project-id", "limit": 5})
 ```
 
 ---
 
 ### Cloudflare
 
-**Category:** DevOps & Cloud | **Auth:** API Token | **Actions:** 8
+**Category:** DevOps & Cloud | **Auth:** API Token | **Actions:** 23
 
 Connect to Cloudflare to manage DNS zones, DNS records, cache, and analytics.
 
-**Actions:**
+**Common actions** (all: `tc cloudflare actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -118,11 +118,11 @@ result = kit.execute("cloudflare_list_zones", {})
 
 ### Docker Hub
 
-**Category:** DevOps & Cloud | **Auth:** Access Token | **Actions:** 8
+**Category:** DevOps & Cloud | **Auth:** Access Token | **Actions:** 14
 
 Connect to Docker Hub to search repositories, list tags, and manage organizations.
 
-**Actions:**
+**Common actions** (all: `tc dockerhub actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|

@@ -28,7 +28,7 @@ pip install "toolsconnector[alb]"
 Set your credentials:
 
 ```bash
-export TC_ALB_CREDENTIALS=your-token
+export TC_ALB_CREDENTIALS='your-access-key-id:your-secret-access-key:your-region'
 ```
 
 ## Quick Start
@@ -36,7 +36,7 @@ export TC_ALB_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["alb"], credentials={"alb": "your-token"})
+kit = ToolKit(["alb"], credentials={"alb": "your-access-key-id:your-secret-access-key:your-region"})
 
 # Create a listener on a load balancer
 result = kit.execute("alb_create_listener", {"load_balancer_arn": "your-load_balancer_arn", "port": 80, "protocol": "HTTP"})
@@ -46,14 +46,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["alb"], credentials={"alb": "your-token"})
+kit = ToolKit(["alb"], credentials={"alb": "your-access-key-id:your-secret-access-key:your-region"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["alb"], credentials={"alb": "your-token"})
+kit = ToolKit(["alb"], credentials={"alb": "your-access-key-id:your-secret-access-key:your-region"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

@@ -647,6 +647,15 @@ def _protocol_label(proto: str) -> str:
     return proto.upper()
 
 
+def _sample_credential(sp: dict) -> str:
+    """Placeholder in the shape the connector declares, e.g. ``your-sid:your-token``."""
+    supported = (sp.get("auth") or {}).get("supported") or []
+    extra = supported[0].get("extra", {}) if supported else {}
+    if extra.get("credential_format") != "delimited":
+        return "your-token"
+    return extra.get("separator", ":").join(f"your-{o.replace('_', '-')}" for o in extra["order"])
+
+
 def _generate_readme(name: str, sp: dict, meta: dict) -> str:
     """Generate a complete README.md for a connector."""
     display = sp.get("display_name", name.title())
@@ -705,6 +714,8 @@ def _generate_readme(name: str, sp: dict, meta: dict) -> str:
             lines.append(f"- {uc}")
         lines.append("")
 
+    credential = _sample_credential(sp)
+
     # Installation
     lines.append("## Installation\n")
     lines.append("```bash")
@@ -712,14 +723,14 @@ def _generate_readme(name: str, sp: dict, meta: dict) -> str:
     lines.append("```\n")
     lines.append("Set your credentials:\n")
     lines.append("```bash")
-    lines.append(f"export TC_{name.upper()}_CREDENTIALS=your-token")
+    lines.append(f"export TC_{name.upper()}_CREDENTIALS='{credential}'")
     lines.append("```\n")
 
     # Quick Start
     lines.append("## Quick Start\n")
     lines.append("```python")
     lines.append("from toolsconnector.serve import ToolKit\n")
-    lines.append(f'kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})\n')
+    lines.append(f'kit = ToolKit(["{name}"], credentials={{"{name}": "{credential}"}})\n')
 
     # Generate a realistic quickstart example
     if first_action and first_action in actions:
@@ -743,13 +754,13 @@ def _generate_readme(name: str, sp: dict, meta: dict) -> str:
     # MCP + OpenAI
     lines.append("### MCP Server\n")
     lines.append("```python")
-    lines.append(f'kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})')
+    lines.append(f'kit = ToolKit(["{name}"], credentials={{"{name}": "{credential}"}})')
     lines.append("kit.serve_mcp()  # Claude Desktop / Cursor connects instantly")
     lines.append("```\n")
 
     lines.append("### OpenAI Function Calling\n")
     lines.append("```python")
-    lines.append(f'kit = ToolKit(["{name}"], credentials={{"{name}": "your-token"}})')
+    lines.append(f'kit = ToolKit(["{name}"], credentials={{"{name}": "{credential}"}})')
     lines.append("tools = kit.to_openai_tools()")
     lines.append("# Pass to: openai.chat.completions.create(tools=tools, ...)")
     lines.append("```\n")

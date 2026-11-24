@@ -36,7 +36,7 @@ pip install "toolsconnector[shopify]"
 Set your credentials:
 
 ```bash
-export TC_SHOPIFY_CREDENTIALS=your-token
+export TC_SHOPIFY_CREDENTIALS='your-access-token:your-store'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_SHOPIFY_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["shopify"], credentials={"shopify": "your-token"})
+kit = ToolKit(["shopify"], credentials={"shopify": "your-access-token:your-store"})
 
 # List products from your Shopify store
 result = kit.execute("shopify_list_products", {"limit": 50, "since_id": "your-since_id"})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["shopify"], credentials={"shopify": "your-token"})
+kit = ToolKit(["shopify"], credentials={"shopify": "your-access-token:your-store"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["shopify"], credentials={"shopify": "your-token"})
+kit = ToolKit(["shopify"], credentials={"shopify": "your-access-token:your-store"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

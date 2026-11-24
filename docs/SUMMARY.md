@@ -5,6 +5,7 @@
 * [Introduction](README.md)
 * [Quickstart](guides/quickstart.md)
 * [Installation](guides/installation.md)
+* [Upgrading to 0.4](guides/upgrading-to-0.4.md)
 * [Credentials & Auth](guides/credentials.md)
 
 ## Using ToolsConnector

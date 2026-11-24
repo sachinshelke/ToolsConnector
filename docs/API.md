@@ -37,16 +37,16 @@ ToolKit(
 |--------|-----------|-------------|
 | `execute` | `(tool_name: str, arguments: dict, *, dry_run: bool = False) -> Any` | Execute an action synchronously |
 | `aexecute` | `async (tool_name: str, arguments: dict, *, dry_run: bool = False) -> Any` | Execute an action asynchronously |
-| `list_tools` | `() -> list[ActionSpec]` | List all available actions across connectors |
-| `get_spec` | `(connector: str) -> ConnectorSpec` | Get the full spec for a connector |
+| `list_tools` | `() -> list[dict]` | All tools with description, input schema, `access`, `access_classified`, `dangerous` and status |
+| `get_tool_schema` | `(tool_name: str) -> dict` | Input JSON Schema of one tool |
 | `to_openai_tools` | `() -> list[dict]` | Generate OpenAI function-calling schemas |
 | `to_anthropic_tools` | `() -> list[dict]` | Generate Anthropic tool-use schemas |
 | `to_gemini_tools` | `() -> list[dict]` | Generate Google Gemini function declarations |
 | `to_langchain_tools` | `() -> list[Tool]` | Convert actions to LangChain tools |
 | `to_crewai_tools` | `() -> list[Tool]` | Convert actions to CrewAI tools |
 | `serve_mcp` | `(*, transport: str = "stdio", name: str = "toolsconnector", host: str = "127.0.0.1", port: int = 3000) -> None` | Start an MCP server |
-| `create_rest_app` | `(prefix: str = "/api/v1") -> ASGIApp` | Create a Starlette/ASGI REST app |
-| `health_check` | `() -> dict[str, HealthStatus]` | Check health of all connectors |
+| `create_rest_app` | `(*, prefix: str = "/api/v1") -> ASGIApp` | Create a Starlette/ASGI REST app |
+| `get_connector_status` | `() -> dict[str, str]` | Last known state per connector: `unknown`, `healthy` or `degraded` |
 
 ---
 
@@ -62,8 +62,14 @@ from toolsconnector.serve import ToolKitFactory
 
 ```python
 ToolKitFactory(
-    connectors: list[str],
-    keystore: KeyStore | None = None,
+    connectors: list[type[BaseConnector] | str],
+    *,
+    include_actions: list[str] | None = None,
+    exclude_actions: list[str] | None = None,
+    exclude_dangerous: bool = False,
+    timeout_budget: float = 25.0,
+    action_timeout: float = 15.0,
+    max_tenants: int | None = None,
 )
 ```
 
@@ -71,7 +77,9 @@ ToolKitFactory(
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `for_tenant` | `(tenant_id: str, credentials: dict) -> ToolKit` | Create a tenant-scoped ToolKit |
+| `for_tenant` | `(tenant_id: str, credentials: dict[str, str]) -> ToolKit` | Create a tenant-scoped ToolKit |
+| `active_tenants` | `property` | Tenants with a live ToolKit |
+| `close_tenant` / `close_all` | see docstrings | Release cached ToolKits |
 
 ---
 
@@ -99,12 +107,12 @@ from toolsconnector.runtime import BaseConnector
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `credentials` | `Any` | `None` | API key, token, or `CredentialSet` |
-| `keystore` | `KeyStore` | `None` | Credential storage backend |
-| `middleware` | `list` | `None` | Additional middleware |
+| `keystore` | `KeyStore` | `None` | Accepted but not used yet |
+| `middleware` | `list` | `None` | Accepted but not used yet |
 | `tenant_id` | `str` | `None` | Tenant identifier |
 | `base_url` | `str` | `None` | Override class-level base URL |
 | `timeout` | `float` | `30.0` | Request timeout in seconds |
-| `max_retries` | `int` | `3` | Max retry attempts |
+| `max_retries` | `int` | `3` | Accepted but not used; retries happen in `ToolKit` |
 
 **Methods:**
 
@@ -141,6 +149,8 @@ from toolsconnector.runtime import action
     pagination: PaginationSpec | None,
     tags: list[str] | None,
     rate_limit_weight: int = 1,
+    deprecated: bool = False,
+    deprecation_message: str | None = None,
 )
 ```
 
@@ -176,12 +186,14 @@ from toolsconnector.types import PaginatedList
 | Member | Signature | Description |
 |--------|-----------|-------------|
 | `has_more` | `@property -> bool` | Whether more pages exist |
-| `anext_page` | `async () -> PaginatedList | None` | Fetch the next page (async) |
+| `anext_page` | `async () -> PaginatedList | None` | Fetch the next page (async). `None` only when `has_more` is false |
 | `next_page` | `() -> PaginatedList | None` | Fetch the next page (sync) |
-| `collect` | `async (max_items: int = 1000) -> list` | Collect all pages (async) |
-| `collect_sync` | `(max_items: int = 1000) -> list` | Collect all pages (sync) |
+| `collect` | `async (max_items: int = 1000, max_pages: int = 10000) -> list` | Collect all pages (async) |
+| `collect_sync` | `(max_items: int = 1000, max_pages: int = 10000) -> list` | Collect all pages (sync) |
 | `__iter__` | `-> Iterator` | Iterate over current page items |
 | `__len__` | `-> int` | Number of items in current page |
+
+If `has_more` is true but the page has no fetcher, the four page methods raise `PaginationNotWiredError`.
 
 ---
 
@@ -215,6 +227,7 @@ ToolsConnectorError
         ConnectorNotConfiguredError
         ConnectorInitError
         ActionNotFoundError
+        PaginationNotWiredError
     ConfigError
         InvalidConfigError
         MissingConfigError
@@ -266,6 +279,7 @@ from toolsconnector.keystore.base import KeyStore
 |-------|--------|-------------|
 | `InMemoryKeyStore` | `toolsconnector.keystore.memory` | Dict-backed, with optional TTL |
 | `EnvironmentKeyStore` | `toolsconnector.keystore.env` | Read-only, maps to `TC_*` env vars |
+| `LocalFileKeyStore` | `toolsconnector.keystore.local` | Encrypted file; needs the `local-keystore` extra |
 
 ---
 

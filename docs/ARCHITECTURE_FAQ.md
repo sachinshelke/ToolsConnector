@@ -314,7 +314,7 @@ TypeScript SDK:  1.0.0, 1.0.1, 1.1.0
 | **Tier 3 — Pattern correct** | `"pattern"` | Code matches documented API patterns from public knowledge, but no active doc or live verification has happened |
 
 **Why:**
-- **Honest quality claims.** "Verified" has to mean something specific. Shipping 74 connectors and calling them all equally trustworthy would be dishonest — most are pattern-correct, a handful are live-verified. The tier makes the difference legible instead of implied.
+- **Honest quality claims.** "Verified" has to mean something specific. Shipping 79 connectors and calling them all equally trustworthy would be dishonest — most are pattern-correct, a handful are live-verified. The tier makes the difference legible instead of implied.
 - **Agent-consumable.** The status is a string enum on the spec, so an agent can `kit.list_tools()[0]["verification_status"]` and filter for production-ready connectors at runtime — not just a human-facing docs note.
 - **Drives the roadmap.** The progression Tier 3 → 2 → 1 is the unit of work for each connector-hardening pass. The CHANGELOG records which connectors moved tiers in each release.
 - **Default is honest, not flattering.** New connectors inherit `"pattern"` — the *weakest* claim — so a connector can only earn a stronger tier by explicit promotion, never by omission.
@@ -596,3 +596,11 @@ Until 0.4.0 the check was `dry_run and dangerous`, so a non-destructive write su
 **Why preview undeclared actions:** they might write. Running one by mistake can't be undone; previewing a read by mistake can.
 
 **References:** `ToolKit._previews_in_dry_run`, `tests/unit/test_serve_toolkit.py::TestDryRun`.
+
+## 32. Why are the documentation examples tested?
+
+**Decision: every fenced Python block and `tc` line in the README, `docs/` and the connector READMEs is checked against the code in CI: imports, constructor options, tool names, argument names and credential shapes. Nothing is executed.**
+
+The 0.4.0 README opened with a call that raised `TypeError`, the resilience guide configured options that don't exist, and 42 credential samples had a shape the connector rejects. Nobody noticed because nothing read the docs. The same run found `odoo.unlink` and `stripe.cancel_payment_intent` documented as dangerous but declared `access="write"`, so MCP clients received `destructiveHint: false` for a delete. `test_irreversible_verbs_are_destructive` now holds that line for Tier 1.
+
+**References:** `tests/conformance/test_docs_examples.py`, `tests/conformance/test_access_classification.py`.

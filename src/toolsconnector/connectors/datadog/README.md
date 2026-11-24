@@ -36,7 +36,7 @@ pip install "toolsconnector[datadog]"
 Set your credentials:
 
 ```bash
-export TC_DATADOG_CREDENTIALS=your-token
+export TC_DATADOG_CREDENTIALS='your-api-key:your-app-key'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_DATADOG_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["datadog"], credentials={"datadog": "your-token"})
+kit = ToolKit(["datadog"], credentials={"datadog": "your-api-key:your-app-key"})
 
 # List Datadog events
 result = kit.execute("datadog_list_events", {"start": 10, "end": 10, "priority": "your-priority"})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["datadog"], credentials={"datadog": "your-token"})
+kit = ToolKit(["datadog"], credentials={"datadog": "your-api-key:your-app-key"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["datadog"], credentials={"datadog": "your-token"})
+kit = ToolKit(["datadog"], credentials={"datadog": "your-api-key:your-app-key"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

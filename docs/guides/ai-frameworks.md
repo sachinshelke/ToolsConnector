@@ -58,7 +58,7 @@ from toolsconnector.serve import ToolKit
 client = anthropic.Anthropic()
 kit = ToolKit(
     ["jira", "slack"],
-    credentials={"jira": "jira-api-token", "slack": "xoxb-token"},
+    credentials={"jira": "you@company.com:your-api-token", "slack": "xoxb-token"},
 )
 
 messages = [{"role": "user", "content": "Create a bug ticket for the login timeout issue"}]
@@ -178,7 +178,7 @@ from toolsconnector.serve import ToolKit
 
 kit = ToolKit(
     ["github", "jira"],
-    credentials={"github": "ghp_token", "jira": "jira-token"},
+    credentials={"github": "ghp_token", "jira": "you@company.com:your-api-token"},
 )
 
 developer = Agent(
