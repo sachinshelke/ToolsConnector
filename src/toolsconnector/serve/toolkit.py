@@ -32,6 +32,7 @@ Configure once, use everywhere::
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 import uuid
@@ -305,6 +306,21 @@ class ToolKit:
         return to_crewai_tools(self)
 
     @staticmethod
+    def _parse_arguments(entry: ToolEntry, arguments: str) -> dict[str, Any]:
+        """Parse a JSON object string; an empty string means no arguments."""
+        try:
+            parsed = json.loads(arguments) if arguments.strip() else {}
+        except json.JSONDecodeError:
+            parsed = None
+        if not isinstance(parsed, dict):
+            raise ValidationError(
+                f"Arguments for {entry.tool_name} must be a dict or a JSON object string.",
+                connector=entry.connector_name,
+                action=entry.action_name,
+            )
+        return parsed
+
+    @staticmethod
     def _previews_in_dry_run(entry: ToolEntry) -> bool:
         """Whether ``dry_run=True`` previews this tool instead of running it.
 
@@ -321,7 +337,7 @@ class ToolKit:
     async def aexecute(
         self,
         tool_name: str,
-        arguments: dict[str, Any],
+        arguments: dict[str, Any] | str,
         *,
         dry_run: bool = False,
     ) -> Any:
@@ -337,7 +353,8 @@ class ToolKit:
 
         Args:
             tool_name: Tool name in ``"{connector}_{action}"`` format.
-            arguments: Arguments dict matching the tool's input schema.
+            arguments: Arguments matching the tool's input schema, as a dict or
+                as the JSON object string OpenAI tool calls carry.
             dry_run: If ``True``, validate the arguments and return a preview
                 instead of executing. Only actions declared
                 ``access="read"`` still execute; an action with no declared
@@ -366,6 +383,9 @@ class ToolKit:
 
         connector_name = entry.connector_name
         action_name = entry.action_name
+
+        if isinstance(arguments, str):
+            arguments = self._parse_arguments(entry, arguments)
 
         # Drop omitted-optional arguments that arrive as ``None``. Schema-driven
         # MCP frontends fill every omitted optional with its signature default of
@@ -481,7 +501,7 @@ class ToolKit:
     def execute(
         self,
         tool_name: str,
-        arguments: dict[str, Any],
+        arguments: dict[str, Any] | str,
         *,
         dry_run: bool = False,
     ) -> Any:
@@ -492,7 +512,8 @@ class ToolKit:
 
         Args:
             tool_name: Tool name in ``"{connector}_{action}"`` format.
-            arguments: Arguments dict matching the tool's input schema.
+            arguments: Arguments matching the tool's input schema, as a dict or
+                as the JSON object string OpenAI tool calls carry.
             dry_run: If ``True``, preview instead of executing anything but
                 a declared read. See :meth:`aexecute`.
 

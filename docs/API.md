@@ -35,8 +35,8 @@ ToolKit(
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `execute` | `(tool_name: str, arguments: dict, *, dry_run: bool = False) -> Any` | Execute an action synchronously |
-| `aexecute` | `async (tool_name: str, arguments: dict, *, dry_run: bool = False) -> Any` | Execute an action asynchronously |
+| `execute` | `(tool_name: str, arguments: dict | str, *, dry_run: bool = False) -> Any` | Execute an action; `arguments` may be a JSON object string |
+| `aexecute` | `async (tool_name: str, arguments: dict | str, *, dry_run: bool = False) -> Any` | Async version of `execute` |
 | `list_tools` | `() -> list[dict]` | All tools with description, input schema, `access`, `access_classified`, `dangerous` and status |
 | `get_tool_schema` | `(tool_name: str) -> dict` | Input JSON Schema of one tool |
 | `to_openai_tools` | `() -> list[dict]` | Generate OpenAI function-calling schemas |
