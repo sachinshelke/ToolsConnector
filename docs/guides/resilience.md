@@ -148,17 +148,17 @@ except ToolsConnectorError as e:
 
 ## Dry Run Mode
 
-Validate destructive actions without executing them. Useful for testing agent workflows and auditing what an AI agent would do.
+Validate a call without executing it. Useful for testing agent workflows and auditing what an AI agent would do.
 
 ```python
-kit = ToolKit(["slack"], credentials={...}, dry_run=True)
+kit = ToolKit(["slack"], credentials={...})
 
 # This validates the input and returns what WOULD happen,
 # but does not actually send the message.
 result = kit.execute("slack_send_message", {
     "channel": "#general",
     "text": "This will not actually be sent",
-})
+}, dry_run=True)
 ```
 
-In dry-run mode, actions marked `dangerous=True` return a preview of the operation instead of executing it. Read-only actions (`idempotent=True`) execute normally.
+`dry_run` is an argument of `execute()` / `aexecute()`. The arguments are validated first, so an invalid call raises `ValidationError`. Only actions declared `access="read"` execute; every other action, including one with no declared access, returns a preview.

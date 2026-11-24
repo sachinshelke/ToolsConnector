@@ -105,12 +105,11 @@ class TestToolKitCredentialPreflight:
         to get the key, and zero outbound requests (not ``Bearer None``)."""
         kit = ToolKit(["gmail"])
         # No routes: any outbound request is recorded and auto-answered 200.
-        with (
-            respx.mock(assert_all_mocked=False, assert_all_called=False) as router,
-            pytest.raises(MissingConfigError) as exc_info,
-        ):
-            await kit.aexecute("gmail_list_emails", {"query": "is:unread"})
-        assert router.calls.call_count == 0
+        with respx.mock(assert_all_mocked=False, assert_all_called=False) as router:
+            with pytest.raises(MissingConfigError) as exc_info:
+                await kit.aexecute("gmail_list_emails", {"query": "is:unread"})
+            # Read inside the block: respx clears its call log on exit.
+            assert router.calls.call_count == 0
         message = str(exc_info.value)
         assert "TC_GMAIL_CREDENTIALS" in message
         assert "https://console.cloud.google.com/apis/credentials" in message
