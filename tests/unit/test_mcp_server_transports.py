@@ -9,8 +9,7 @@ make sure that contract is preserved.
 
 We mock ``mcp.server.fastmcp.FastMCP`` rather than depending on the
 real package so the test:
-  - runs on every Python version the project supports (the real ``mcp``
-    package requires 3.10+; toolsconnector's floor is 3.9).
+  - runs without the optional ``mcp`` package installed.
   - doesn't actually bind a socket — pure call-record assertions.
   - stays fast (no I/O at all).
 """

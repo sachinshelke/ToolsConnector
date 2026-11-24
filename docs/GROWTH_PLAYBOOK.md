@@ -20,7 +20,7 @@ The PyPI page is where pip users land. Make it sell.
 - [ ] **`pyproject.toml` metadata** — confirm these are set:
   - `keywords = ["api", "connectors", "ai-agents", "mcp", "llm-tools", "openai-function-calling", "anthropic-tool-use", "integrations", "python"]`
   - `classifiers` — include `Development Status`, `Intended Audience :: Developers`,
-    `Topic :: Software Development :: Libraries`, `Programming Language :: Python :: 3.9/3.10/3.11/3.12`,
+    `Topic :: Software Development :: Libraries`, `Programming Language :: Python :: 3.10/3.11/3.12`,
     `License :: OSI Approved :: Apache Software License`.
   - `[project.urls]` — `Homepage = https://toolsconnector.github.io`,
     `Documentation`, `Repository`, `Changelog`, `Issues`. PyPI renders these as sidebar links.
@@ -33,7 +33,7 @@ The PyPI page is where pip users land. Make it sell.
       `connectors`, `integrations`, `function-calling`, `model-context-protocol`,
       `langchain`. Topics are GitHub-searchable and SEO-indexed.
 - [ ] **Social preview image** (Settings → Social preview, 1280×640): a branded
-      card with the logo + "74 connectors, one interface" + the 3 framework logos.
+      card with the logo + "79 connectors, one interface" + the 3 framework logos.
       This is what renders when the repo is shared on X/LinkedIn/Slack.
 - [ ] **README badges** (top of README): PyPI version, downloads, Python versions,
       license, CI status, **stars**. Same shields.io set now on the site hero.

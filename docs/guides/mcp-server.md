@@ -6,7 +6,7 @@ How to expose ToolsConnector actions to Claude Desktop, Cursor, and other MCP cl
 
 The Model Context Protocol (MCP) is an open standard for connecting AI models to external tools and data sources. An MCP server advertises a set of tools -- each with a name, description, and JSON Schema for inputs -- and the AI client calls them as needed during a conversation.
 
-ToolsConnector can serve any combination of its 74 connectors as an MCP server with a single line of code or CLI command.
+ToolsConnector can serve any combination of its 79 connectors as an MCP server with a single line of code or CLI command.
 
 ## Install
 
@@ -117,23 +117,27 @@ Add to `.cursor/mcp.json` in your project root:
 
 Use `stdio` for local desktop integrations. Use `sse` or `streamable-http` when the MCP server runs on a different machine or serves multiple clients.
 
-**Multi-agent daemon deployments.** Both `sse` and `streamable-http` support multiple concurrent client sessions on the same port — one running ToolsConnector daemon serves N agents. FastMCP handles per-connection sessions at the protocol level; per-tool circuit breakers and timeout budgets in the underlying `ToolKit` apply across all clients fairly, so one runaway agent can't starve the others of a connector.
+**Multi-agent daemon deployments.** Both `sse` and `streamable-http` support multiple concurrent client sessions on the same port — one running ToolsConnector daemon serves N agents, and **every session uses the credentials the daemon was started with**. Run one daemon per user if agents act for different people. FastMCP handles per-connection sessions at the protocol level; per-tool circuit breakers and timeout budgets in the underlying `ToolKit` apply across all clients fairly, so one runaway agent can't starve the others of a connector.
 
 Production note: the HTTP transports have **no built-in authentication**. Put the daemon behind a reverse proxy (nginx, Caddy, Cloudflare Access, etc.) that handles auth before exposing the port publicly. `streamable-http` is the MCP-spec's current recommended HTTP transport; `sse` is being deprecated upstream.
 
 ## Filtering Dangerous Actions
 
-Actions marked as `dangerous=True` (send, delete, create operations) can be excluded from the MCP server to prevent unintended side effects:
+Filters are set on the `ToolKit`. Exclude actions marked `dangerous=True` (destructive operations):
 
 ```python
-kit.serve_mcp(exclude_dangerous=True)
+kit = ToolKit(["gmail"], credentials={...}, exclude_dangerous=True)
+kit.serve_mcp()
 ```
 
-Or include only specific actions:
+Or include only specific actions. Patterns match the action name, without the connector prefix:
 
 ```python
-kit.serve_mcp(include_actions=["gmail_list_emails", "gmail_get_email"])
+kit = ToolKit(["gmail"], credentials={...}, include_actions=["list_*", "get_*"])
+kit.serve_mcp()
 ```
+
+`tc serve mcp` has no filter flags yet; use a short Python script as above. MCP clients also receive `readOnlyHint` / `destructiveHint` for every action whose access is declared.
 
 ## Troubleshooting
 
@@ -147,4 +151,4 @@ Check that environment variables are set correctly. Run `tc gmail actions` to ve
 Ensure the port is not in use. Check firewall rules if the client is on a different machine.
 
 **Timeout on large responses:**
-Increase the timeout budget: `kit.serve_mcp(timeout=60)`.
+Increase the timeouts on the ToolKit: `ToolKit([...], timeout_budget=60, action_timeout=45)`.

@@ -90,7 +90,7 @@ All of these are: Bearer token + JSON REST + one pagination pattern. Our httpx c
 **Decision:** All connector methods are `async def`. The `@action` decorator auto-generates synchronous wrappers.
 
 **Why:**
-- Modern Python (3.9+) has mature async support. AI agent frameworks (LangChain, CrewAI) are increasingly async.
+- Modern Python (3.10+) has mature async support. AI agent frameworks (LangChain, CrewAI) are increasingly async.
 - Writing async code and generating sync wrappers is easy (`asyncio.run()` or background thread). Writing sync code and making it async is impossible without rewriting.
 - One implementation, two entry points, zero code duplication.
 
@@ -292,19 +292,14 @@ TypeScript SDK:  1.0.0, 1.0.1, 1.1.0
 
 ## 15. What's the minimum Python version and why?
 
-**Decision:** Python 3.9+
+**Decision:** Python 3.10+ (raised from 3.9 on 2026-09-23, decision D00000G)
 
 **Why:**
-- 3.9 introduced `dict[str, Any]` and `list[str]` syntax (no more `Dict`, `List` imports needed)
-- 3.8 reached EOL in October 2024 — no security patches
-- 3.9 is the oldest version still receiving security updates (until October 2025)
-- Pydantic V2 requires 3.8+ but performs best on 3.9+
-- We use `from __future__ import annotations` for forward-compatible type hint syntax
+- 3.9 reached end of life in October 2025 — no more security patches
+- Every release of the `mcp` SDK requires 3.10+, so on 3.9 the `[mcp]` extra could not install and CI skipped the real MCP tests
+- pip on 3.9 keeps resolving 0.3.25, so existing 3.9 users are not broken
 
-**What we can't use (requires 3.10+):**
-- `match` statements (structural pattern matching)
-- `X | Y` union syntax at runtime in Pydantic fields (we use `Optional[X]` instead)
-- `ParamSpec` for advanced decorator typing
+**What stays the same:** the code style still targets py39 in ruff (`Optional[X]`, not `X | Y`), because switching it is a repo-wide reformat with no behavior change.
 
 ---
 
@@ -569,3 +564,35 @@ Until 2026-09-24, `tests/conformance/test_import_boundaries.py` pointed `TC_ROOT
 - *Keeping the early return on a missing directory.* That is what hid the broken root. The scanner now fails when a directory is missing or empty, and `TestScannerCoverage` asserts that the `spec/` and `connectors/` scans find files.
 
 **References:** `tests/conformance/test_import_boundaries.py` (`SHARED_CONNECTOR_PACKAGES`, `_py_files`, `TestScannerCoverage`), `serve/_discovery.py`, `CONTRIBUTING.md`.
+
+## 28. Why is there no hosted service, token vault or paid tier?
+
+**Decision (owner, 2026-09-23, D00000H): ToolsConnector is always open source (Apache-2.0) and self-hosted. It never holds a user's credentials, and no feature is gated.**
+
+**Why:** hosted integration platforms hold end-user tokens and gate features by plan. Not doing that is the advantage they can't copy: no third party ever holds the token, the whole catalog is open, and there is no infrastructure to run. Features must work on the user's machine with the user's keys.
+
+**What we rejected:** an open-core hosted tier, and an optional hosted MCP gateway. Both make the project a credential custodian.
+
+## 29. Why stay on the official `mcp` SDK, pinned to `>=1.10,<2`?
+
+**Decision (2026-09-23, D00000I): use the official SDK within `>=1.10,<2`. Moving to 2.x is a separate, sized task.**
+
+**Why:** the previous `mcp>=1.0` resolved to 2.x, which removed `mcp.server.fastmcp`, so every fresh install of the `[mcp]` extra failed. 1.10 is the first release whose `FastMCP.tool()` accepts both `annotations=` and `structured_output=`. The protocol is still changing, so tracking it in our own server would be a permanent cost; the SDK is an optional extra, so the core install stays light.
+
+**References:** `serve/mcp.py`, `tests/conformance/test_mcp_extra_pin.py`.
+
+## 30. Why will OAuth login helpers be a Python API only?
+
+**Decision (2026-09-23, D00000J): helpers that run an OAuth flow return the tokens to the calling code. There is no `tc` login command and no MCP tool for it.**
+
+**Why:** a command that prints a refresh token into a terminal an agent is driving puts that token into the model's context, and a credential file the server re-reads is token storage under another name. Returning the token leaves storage with the developer, which matches bring-your-own-key.
+
+## 31. What does `dry_run=True` execute?
+
+**Decision: only actions declared `access="read"`. Everything else is validated and previewed, including actions with no declared access.**
+
+Until 0.4.0 the check was `dry_run and dangerous`, so a non-destructive write such as marking an email as read ran for real. The preview also skipped argument validation, so it could report a call that would have failed.
+
+**Why preview undeclared actions:** they might write. Running one by mistake can't be undone; previewing a read by mistake can.
+
+**References:** `ToolKit._previews_in_dry_run`, `tests/unit/test_serve_toolkit.py::TestDryRun`.

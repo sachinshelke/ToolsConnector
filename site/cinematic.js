@@ -69,7 +69,7 @@
   var STAGES = [
     {sub:'01 — Install', cap:'Pick the tools you need.', title:'~/your-project — bash',
      desc:'One <code>pip install</code> — just the connectors you want. The core stays tiny (pydantic, httpx, docstring-parser); no vendor SDK ever lands in your environment.',
-     chips:['Python 3.9+','0 hosted deps','pip extras'],
+     chips:['Python 3.10+','0 hosted deps','pip extras'],
      code:`<span class="c"># one package, just the connectors you want</span>\n<span class="f">$</span> pip install <span class="s">"toolsconnector[slack,github,stripe]"</span>\n<span class="ok">✔</span> <span class="c">installed toolsconnector 0.3.11</span>`},
     {sub:'02 — Call', cap:'Use any API in one line.', title:'python',
      desc:'Every connector speaks the same shape — <code>kit.execute(name, params)</code>. Typed parameters in, structured results out, identical across all 68. Sync for your views, async for your workers.',

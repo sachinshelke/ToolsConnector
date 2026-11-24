@@ -165,7 +165,7 @@ def build_system_prompt() -> str:
 
     ## Statistics
     - {n_connectors} connectors, {n_actions} total actions
-    - Python 3.9+, Pydantic V2, httpx
+    - Python 3.10+, Pydantic V2, httpx
     - 1,090+ tests passing
 
     ## Categories

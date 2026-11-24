@@ -71,7 +71,7 @@ me = kit.execute("notion_get_me", {})
 
 **`update_block` succeeds in Notion's UI but fails via API** — Some block types (`column_list`, `synced_block` source-side, `child_page`) are read-only via the API regardless of capabilities. Notion returns 400 with `validation_error`; the connector surfaces the field-level reason via `e.details["notion_message"]`.
 
-**MCP tool exposure debug** — `tc serve mcp notion --transport stdio` starts the server on stdin; pipe a `tools/list` request to confirm what's exposed. With `--exclude-dangerous`, only the 17 read-only actions appear; without it, all 24.
+**MCP tool exposure debug** — `tc serve mcp notion --transport stdio` starts the server on stdin; pipe a `tools/list` request to confirm what's exposed. All 24 actions appear; to hide destructive ones, serve `ToolKit(["notion"], exclude_dangerous=True)` from Python.
 
 **Version-pin trap** — Do NOT bump `Notion-Version` past `2022-06-28` without a connector major-version release. The 2025-09-03 split of databases into `databases` + `data_sources` and the 2026-03-11 `archived` → `in_trash` rename are both breaking. See the connector's [Versioned API](../../src/toolsconnector/connectors/notion/README.md#versioned-api) section.
 

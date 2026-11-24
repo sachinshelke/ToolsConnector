@@ -1,6 +1,6 @@
 # Installation
 
-ToolsConnector requires Python 3.9 or later.
+ToolsConnector requires Python 3.10 or later.
 
 ## Basic Install
 
@@ -76,7 +76,7 @@ After installation, verify that the CLI is available and connectors are register
 tc list
 ```
 
-This prints a table of all 74 connectors with their category, action count, and whether they require extras.
+This prints a table of all 79 connectors with their category, action count, and whether they require extras.
 
 You can also verify from Python:
 
@@ -90,4 +90,4 @@ print(f"Registered {len(tools)} tools")
 
 ## Python Version Requirements
 
-ToolsConnector supports Python 3.9 and later. It uses modern typing features (`list[str]` instead of `List[str]`) and requires `asyncio` for async operations. Python 3.11+ is recommended for best async performance.
+ToolsConnector supports Python 3.10 and later. It uses modern typing features (`list[str]` instead of `List[str]`) and requires `asyncio` for async operations. Python 3.11+ is recommended for best async performance.

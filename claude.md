@@ -9,7 +9,7 @@ Your objective is to help the user build, debug, and maintain ToolsConnector wit
 - **Consistent Interface depth:** We do not dumb down tools. If Gmail has a complex filtering feature, expose it—but do it in our consistent, standardized `PaginatedList` / `@action` pattern.
 
 ## Code Quality Rules
-1. **Python Strategy:** Modern Python features (3.9+). Prefer `async`-compatible patterns but ensure `sync` paths are robust. Fully utilize Type Hints everywhere.
+1. **Python Strategy:** Modern Python features (3.10+). Prefer `async`-compatible patterns but ensure `sync` paths are robust. Fully utilize Type Hints everywhere.
 2. **Wrapper Tax philosophy:**
    - DO NOT automatically wrap Python SDKs for every new connector unless specifically requested or if it is a major tier-1 SDK (like AWS, Google).
    - Prefer writing clean abstractions over raw HTTP when there's no SDK.

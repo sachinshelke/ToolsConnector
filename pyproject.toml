@@ -296,7 +296,7 @@ target-version = "py39"
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH"]
 # Rules we deliberately opt out of:
 #
-# PEP 604 migration (Py 3.10+): blocked by our Python 3.9 target.
+# PEP 604 migration (Py 3.10+): blocked by ruff's py39 target (below the floor on purpose, see above).
 #   UP007 / UP045
 #
 # Style-only suggestions (not bugs; keep the rule set focused on correctness):
