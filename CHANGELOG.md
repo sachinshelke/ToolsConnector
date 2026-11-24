@@ -5,6 +5,38 @@ All notable changes to ToolsConnector are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.25...v0.4.0) (2026-11-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* Python 3.9 is no longer supported. pip on 3.9 keeps resolving the last compatible release (0.3.25).
+* **keystore:** LocalFileKeyStore requires cryptography (pip install "toolsconnector[local-keystore]") and raises ImportError without it. Key files written by the old unencrypted fallback raise LegacyKeyFileError until opened once with migrate_legacy=True.
+* **serve:** aexecute/execute with dry_run=True return a preview for every action not declared access="read" and raise ValidationError for invalid arguments. Previously only dangerous actions were previewed, unvalidated.
+* **pagination:** PaginatedList.anext_page(), and therefore collect(), next_page() and collect_sync(), raise PaginationNotWiredError when a page reports has_more=True but has no fetcher, instead of returning None. Okta and Confluence page_state.cursor now hold the bare cursor instead of a URL.
+
+### ✨ Features
+
+* **mcp:** publish declared safety metadata as MCP tool annotations ([fa0b751](https://github.com/sachinshelke/ToolsConnector/commit/fa0b7519fdde2c78e0c553e4473d3ef2e883b53a))
+
+
+### 🐛 Bug Fixes
+
+* **connectors:** await async entry points in pagerduty, salesforce, calendly, webhook and x composite actions ([fa0b751](https://github.com/sachinshelke/ToolsConnector/commit/fa0b7519fdde2c78e0c553e4473d3ef2e883b53a))
+* **connectors:** refuse off-origin page URLs in outlook, teams, github and dockerhub ([fa0b751](https://github.com/sachinshelke/ToolsConnector/commit/fa0b7519fdde2c78e0c553e4473d3ef2e883b53a))
+* **keystore:** never store credentials unencrypted ([fa0b751](https://github.com/sachinshelke/ToolsConnector/commit/fa0b7519fdde2c78e0c553e4473d3ef2e883b53a))
+* **keystore:** refuse to open a key file it can't read ([fa0b751](https://github.com/sachinshelke/ToolsConnector/commit/fa0b7519fdde2c78e0c553e4473d3ef2e883b53a))
+* **mcp:** pin mcp to &gt;=1.10,&lt;2 and chain the FastMCP ImportError ([fa0b751](https://github.com/sachinshelke/ToolsConnector/commit/fa0b7519fdde2c78e0c553e4473d3ef2e883b53a))
+* **notion:** make collect() walk every page; search returns pages only ([fa0b751](https://github.com/sachinshelke/ToolsConnector/commit/fa0b7519fdde2c78e0c553e4473d3ef2e883b53a))
+* **pagination:** make every paginated action walk its own pages ([fa0b751](https://github.com/sachinshelke/ToolsConnector/commit/fa0b7519fdde2c78e0c553e4473d3ef2e883b53a))
+* **serve:** make dry_run preview every action that isn't a declared read ([fa0b751](https://github.com/sachinshelke/ToolsConnector/commit/fa0b7519fdde2c78e0c553e4473d3ef2e883b53a))
+* **serve:** refuse to build a credentialed connector without credentials ([fa0b751](https://github.com/sachinshelke/ToolsConnector/commit/fa0b7519fdde2c78e0c553e4473d3ef2e883b53a))
+
+
+### 🛠 Build
+
+* require python &gt;=3.10 and drop 3.9 ([fa0b751](https://github.com/sachinshelke/ToolsConnector/commit/fa0b7519fdde2c78e0c553e4473d3ef2e883b53a))
+
 ## [0.3.25](https://github.com/sachinshelke/ToolsConnector/compare/v0.3.24...v0.3.25) (2026-08-20)
 
 
