@@ -14,6 +14,8 @@ line at 100% for the connectors consumers trust most.
 
 from __future__ import annotations
 
+import re
+
 from toolsconnector.serve import list_connectors
 from toolsconnector.serve._discovery import get_connector_class
 
@@ -61,3 +63,34 @@ def test_destructive_iff_dangerous_catalog_wide() -> None:
     assert not violations, "access=='destructive' must iff dangerous:\n  " + "\n  ".join(
         sorted(violations)
     )
+
+
+# Verbs whose effect can't be undone through the same API. ``trash``/``archive``
+# are left out: they are reversible wherever they appear in Tier 1.
+_IRREVERSIBLE = re.compile(
+    r"(^|_)(delete|unlink|purge|destroy|cancel|revoke|terminate|refund)(_|$)"
+)
+
+# Not irreversible despite the name, with the reason.
+_IRREVERSIBLE_EXEMPT: dict[str, str] = {}
+
+
+def test_irreversible_verbs_are_destructive() -> None:
+    """A delete declared ``access="write"`` is published to MCP clients as
+    ``destructiveHint: false``, so a client may run it without asking.
+    ``odoo.unlink`` and ``stripe.cancel_payment_intent`` shipped that way."""
+    bad = [
+        f"{c}.{a} access={s.access!r}"
+        for c, a, s in _tier1_actions()
+        if _IRREVERSIBLE.search(a)
+        and not s.dangerous
+        and s.access != "read"
+        and f"{c}.{a}" not in _IRREVERSIBLE_EXEMPT
+    ]
+    assert not bad, "irreversible action(s) not marked dangerous=True:\n  " + "\n  ".join(bad)
+
+
+def test_escape_hatch_is_destructive() -> None:
+    """``odoo.call_method`` runs any model method, including deletes."""
+    call = [s for c, a, s in _tier1_actions() if (c, a) == ("odoo", "call_method")]
+    assert call and call[0].access == "destructive"
