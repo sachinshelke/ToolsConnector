@@ -498,22 +498,33 @@ class Mixpanel(BaseConnector):
     async def delete_profile(
         self,
         distinct_id: str,
+        project_token: str,
     ) -> bool:
         """Delete a user profile from Mixpanel.
 
         Args:
             distinct_id: The user's distinct ID.
+            project_token: The Mixpanel project token. Profile updates are
+                addressed to a project by this token, not by the service
+                account.
 
         Returns:
-            True if the delete request was sent.
+            True if Mixpanel accepted the delete.
         """
         payload: dict[str, Any] = {
+            "$token": project_token,
             "$distinct_id": distinct_id,
             "$delete": "",
             "$ignore_alias": True,
         }
-        resp = await self._engage_request([payload])
-        return resp.status_code == 200
+        data = await self._query_request(
+            "POST",
+            f"{_TRACKING_URL}/engage#profile-delete",
+            params={"verbose": 1},
+            json=[payload],
+        )
+        # Mixpanel answers HTTP 200 even when it rejects the update.
+        return isinstance(data, dict) and data.get("status") == 1
 
     # ------------------------------------------------------------------
     # Actions -- Cohorts
@@ -526,8 +537,8 @@ class Mixpanel(BaseConnector):
         Returns:
             List of cohort dicts with id, name, count, etc.
         """
-        resp = await self._data_request("GET", "/cohorts/list")
-        return resp.json() if isinstance(resp.json(), list) else []
+        data = await self._query_request("POST", f"{_QUERY_URL}/query/cohorts/list")
+        return data if isinstance(data, list) else []
 
     # ------------------------------------------------------------------
     # Actions -- Segmentation
@@ -559,12 +570,11 @@ class Mixpanel(BaseConnector):
         }
         if segment_property:
             params["on"] = f'properties["{segment_property}"]'
-        resp = await self._data_request(
+        return await self._query_request(
             "GET",
-            "/segmentation",
+            f"{_QUERY_URL}/query/segmentation",
             params=params,
         )
-        return resp.json()
 
     # ------------------------------------------------------------------
     # Actions -- Property values

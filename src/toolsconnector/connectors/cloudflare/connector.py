@@ -12,6 +12,7 @@ from typing import Any, Optional
 import httpx
 
 from toolsconnector.connectors._helpers import raise_typed_for_status
+from toolsconnector.errors import NotFoundError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.auth import AuthType, bearer_auth
 from toolsconnector.spec.connector import (
@@ -478,7 +479,7 @@ class Cloudflare(BaseConnector):
         Returns:
             List of CFWorker objects.
         """
-        body = await self._cf_request(
+        body = await self._request(
             "GET",
             f"/accounts/{account_id}/workers/scripts",
         )
@@ -508,17 +509,22 @@ class Cloudflare(BaseConnector):
         Returns:
             CFWorker with script details.
         """
-        body = await self._cf_request(
-            "GET",
-            f"/accounts/{account_id}/workers/scripts/{script_name}",
-        )
-        result = body.get("result", {})
-        return CFWorker(
-            id=result.get("id", script_name),
-            etag=result.get("etag"),
-            created_on=result.get("created_on"),
-            modified_on=result.get("modified_on"),
-            size=result.get("size"),
+        # ``GET .../scripts/{name}`` returns the script source, not JSON. The
+        # list endpoint is the one that carries the metadata.
+        body = await self._request("GET", f"/accounts/{account_id}/workers/scripts")
+        for w in body.get("result") or []:
+            if w.get("id") == script_name:
+                return CFWorker(
+                    id=w.get("id"),
+                    etag=w.get("etag"),
+                    created_on=w.get("created_on"),
+                    modified_on=w.get("modified_on"),
+                    size=w.get("size"),
+                )
+        raise NotFoundError(
+            f"No Worker script named '{script_name}' in this account.",
+            connector=self.name,
+            action="get_worker",
         )
 
     # ------------------------------------------------------------------
@@ -547,10 +553,10 @@ class Cloudflare(BaseConnector):
             "actions": actions,
             "status": "active",
         }
-        body = await self._cf_request(
+        body = await self._request(
             "POST",
             f"/zones/{zone_id}/pagerules",
-            json_body=payload,
+            json=payload,
         )
         r = body.get("result", {})
         return CFPageRule(
@@ -577,7 +583,7 @@ class Cloudflare(BaseConnector):
         Returns:
             True if the zone was deleted.
         """
-        body = await self._cf_request(
+        body = await self._request(
             "DELETE",
             f"/zones/{zone_id}",
         )

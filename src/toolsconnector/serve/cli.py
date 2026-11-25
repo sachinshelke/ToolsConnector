@@ -57,6 +57,25 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     mcp_parser.add_argument("--port", type=int, default=3000, help="Port for HTTP transports")
     mcp_parser.add_argument("--name", default="toolsconnector", help="Server name")
+    mcp_parser.add_argument(
+        "--mode",
+        default="direct",
+        choices=["direct", "search", "auto"],
+        help=(
+            "direct: one MCP tool per action (default). search: a find tool plus one "
+            "runner per risk level. auto: search above 30 tools."
+        ),
+    )
+    mcp_parser.add_argument(
+        "--tools",
+        default=None,
+        help="Only serve these tools: comma-separated names or globs, e.g. 'gmail_list_*'",
+    )
+    mcp_parser.add_argument(
+        "--read-only",
+        action="store_true",
+        help="Only serve actions declared read-only (undeclared actions are left out)",
+    )
 
     # tc serve rest
     rest_parser = serve_sub.add_parser("rest", help="Start REST server")
@@ -146,14 +165,22 @@ def _cmd_serve_mcp(args: argparse.Namespace) -> int:
     from toolsconnector.serve.toolkit import ToolKit
 
     try:
-        kit = ToolKit(args.connectors)
+        patterns = [p.strip() for p in (args.tools or "").split(",") if p.strip()]
+        kit = ToolKit(
+            args.connectors,
+            include_tools=patterns or None,
+            read_only=args.read_only,
+        )
+        if not kit.tool_count:
+            print("Error: no tools match --tools/--read-only.", file=sys.stderr)
+            return 1
         # STDOUT is the JSON-RPC channel for transport=stdio (default for
         # the Claude Desktop / Cursor / VS Code MCP clients). Writing the
         # startup banner there corrupts the wire format — the client tries
         # to json.loads("Starting MCP server with...") and disconnects.
         # Route the informational banner to stderr unconditionally.
         print(
-            f"Starting MCP server with {len(kit.list_tools())} tools...",
+            f"Starting MCP server with {kit.tool_count} tools...",
             file=sys.stderr,
         )
         kit.serve_mcp(
@@ -161,6 +188,7 @@ def _cmd_serve_mcp(args: argparse.Namespace) -> int:
             name=args.name,
             host=args.host,
             port=args.port,
+            mode=args.mode,
         )
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -199,7 +227,7 @@ def _cmd_serve_rest(args: argparse.Namespace) -> int:
                 "an authenticating reverse proxy.",
                 file=sys.stderr,
             )
-        print(f"Starting REST server with {len(kit.list_tools())} tools on {host}:{args.port}...")
+        print(f"Starting REST server with {kit.tool_count} tools on {host}:{args.port}...")
         uvicorn.run(app, host=host, port=args.port)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
