@@ -1157,6 +1157,8 @@ class ToolKitFactory:
         include_actions: Optional[list[str]] = None,
         exclude_actions: Optional[list[str]] = None,
         exclude_dangerous: bool = False,
+        include_tools: Optional[list[str]] = None,
+        read_only: bool = False,
         timeout_budget: float = 25.0,
         action_timeout: float = 15.0,
         max_tenants: Optional[int] = None,
@@ -1167,6 +1169,8 @@ class ToolKitFactory:
         self._include_actions = include_actions
         self._exclude_actions = exclude_actions
         self._exclude_dangerous = exclude_dangerous
+        self._include_tools = include_tools
+        self._read_only = read_only
         self._timeout_budget = timeout_budget
         self._action_timeout = action_timeout
         self._max_tenants = max_tenants
@@ -1219,6 +1223,8 @@ class ToolKitFactory:
             include_actions=self._include_actions,
             exclude_actions=self._exclude_actions,
             exclude_dangerous=self._exclude_dangerous,
+            include_tools=self._include_tools,
+            read_only=self._read_only,
             timeout_budget=self._timeout_budget,
             action_timeout=self._action_timeout,
         )

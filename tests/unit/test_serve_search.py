@@ -121,6 +121,15 @@ class TestFilters:
         assert "slack_send_message" in names
         assert all(n.startswith("gmail_list_") for n in names - {"slack_send_message"})
 
+    def test_factory_applies_filters_to_every_tenant(self) -> None:
+        from toolsconnector.serve import ToolKitFactory
+
+        factory = ToolKitFactory(["gmail", "slack"], include_tools=["gmail_*"], read_only=True)
+        kit = factory.for_tenant("t1", {"gmail": "x", "slack": "y"})
+        tools = kit.list_tools()
+        assert tools
+        assert all(t["name"].startswith("gmail_") and t["access"] == "read" for t in tools)
+
 
 _CLI = "import sys; from toolsconnector.serve.cli import main; sys.exit(main())"
 
