@@ -29,7 +29,29 @@ DOCS = sorted(
     + list((ROOT / "docs").rglob("*.md"))
     + list((ROOT / "src/toolsconnector/connectors").glob("*/README.md"))
 )
-_SERVE_MCP_FLAGS = {"transport", "host", "port", "name", "help"}
+
+
+def _serve_mcp_flags() -> set[str]:
+    """The ``--`` options ``tc serve mcp`` really defines, read from cli.py."""
+    tree = ast.parse((ROOT / "src/toolsconnector/serve/cli.py").read_text(encoding="utf-8"))
+    flags = {"help"}
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "add_argument"
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "mcp_parser"
+        ):
+            flags |= {
+                a.value[2:]
+                for a in node.args
+                if isinstance(a, ast.Constant) and str(a.value).startswith("--")
+            }
+    return flags
+
+
+_SERVE_MCP_FLAGS = _serve_mcp_flags()
 
 
 @pytest.fixture(scope="module")
@@ -184,6 +206,7 @@ def test_credential_samples_have_the_declared_shape(kit: ToolKit) -> None:
 
 
 def test_cli_lines_match(kit: ToolKit) -> None:
+    assert {"transport", "host", "port", "name", "mode"} <= _SERVE_MCP_FLAGS
     problems = []
     for path in DOCS:
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
