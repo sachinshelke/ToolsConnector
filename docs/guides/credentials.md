@@ -30,7 +30,7 @@ The token never touches the process environment. The dict is consulted first; en
 
 ### 2. Environment Variables
 
-Set credentials as environment variables. The `EnvironmentKeyStore` reads them automatically using the naming convention `TC_{CONNECTOR}_{CREDENTIAL_TYPE}`.
+Set credentials as environment variables. `ToolKit` reads them automatically, using the name `TC_{CONNECTOR}_CREDENTIALS`.
 
 ```bash
 export TC_GMAIL_CREDENTIALS="ya29.your-access-token"
@@ -55,16 +55,15 @@ Every connector follows the same resolution order (first match wins):
 3. `TC_{CONNECTOR}_API_KEY` env var
 4. `TC_{CONNECTOR}_TOKEN` env var
 
-If none resolve, `MissingConfigError` is raised with an actionable suggestion listing all four sources. Implementation: [`src/toolsconnector/serve/_credentials.py`](../../src/toolsconnector/serve/_credentials.py).
+If none resolve, or the value is blank, the first call to that connector raises `MissingConfigError` before any request is sent. The message shows the exact shape the connector needs, the variable to set and where to get the value. Building the `ToolKit` and listing tools still work without credentials. Implementation: [`src/toolsconnector/serve/_credentials.py`](../../src/toolsconnector/serve/_credentials.py).
 
 ### 3. KeyStore
 
 Use a `KeyStore` implementation for programmatic credential management with features like TTL-based expiry.
 
 > **Note:** `ToolKit` does **not** take a `keystore=` argument today. A
-> KeyStore is used by the auth providers (for persisting refreshed OAuth2
-> tokens, see below) and by your own code as the place you read credentials
-> *from* before handing them to `ToolKit`. Wiring a KeyStore directly into
+> KeyStore is a place your own code reads credentials *from* before handing
+> them to `ToolKit`. Wiring a KeyStore directly into
 > `ToolKit`/`ToolKitFactory` as a credential *source* is tracked as part of
 > the `toolsconnector.auth` work (ARCHITECTURE_FAQ #20).
 
@@ -82,8 +81,7 @@ token = asyncio.run(store.get("gmail:default:access_token"))
 kit = ToolKit(["gmail"], credentials={"gmail": token})
 ```
 
-Keys follow the `{connector}:{tenant}:{credential_type}` convention, which is
-also what `OAuth2Provider` uses when it persists refreshed tokens.
+Keys follow the `{connector}:{tenant}:{credential_type}` convention.
 
 Built-in KeyStore implementations:
 
@@ -91,19 +89,41 @@ Built-in KeyStore implementations:
 |----------|----------|-------------|
 | `InMemoryKeyStore` | Development, testing, short-lived processes | None (lost on exit) |
 | `EnvironmentKeyStore` | Production, CI/CD, twelve-factor apps | Read-only from env |
+| `LocalFileKeyStore` | One user on one machine | Encrypted file, default `~/.toolsconnector/keys.enc` |
+
+`LocalFileKeyStore` needs the encryption package: `pip install "toolsconnector[local-keystore]"`. Without it the class raises `ImportError`; it never stores anything unencrypted. A wrong password raises an error and leaves the file untouched. A key file written unencrypted by an older release raises `LegacyKeyFileError` until you convert it once:
+
+```python
+from toolsconnector.keystore import LocalFileKeyStore
+
+store = LocalFileKeyStore(password="choose-a-password", migrate_legacy=True)
+```
+
+Treat credentials that were in an unencrypted file as exposed, and rotate them.
 
 The `KeyStore` protocol is simple -- any class with async `get()`, `set()`, `delete()`, and `exists()` methods satisfies it. You can implement your own backed by Redis, Vault, a database, or any other storage.
 
 ## OAuth2 Token Refresh
 
-For connectors that use OAuth2 (Gmail, Google Drive, Google Calendar), ToolsConnector handles token refresh automatically:
+ToolsConnector does not run OAuth logins or refresh tokens for a `ToolKit`. You pass an access token; when it expires, `TokenExpiredError` is raised and your code refreshes it and builds a new `ToolKit`. `OAuth2Provider` in `toolsconnector.runtime.auth` can exchange a refresh token if you call it yourself; no connector calls it for you.
 
-1. Before each request, the `OAuth2Provider` checks if the access token is expired or about to expire (within a 60-second buffer).
-2. If refresh is needed and a refresh token is available, it exchanges the refresh token for a new access token at the provider's token endpoint.
-3. The new tokens are persisted to the configured `KeyStore`.
-4. If no refresh token is available and the access token is expired, a `TokenExpiredError` is raised.
+## Services on your own host
 
-You provide the initial tokens; the library keeps them alive.
+Jira, Confluence, Salesforce, Supabase, MongoDB and Redis (Upstash) live at an address that is different for each customer. RabbitMQ defaults to `localhost`. `ToolKit` takes no address option, so subclass the connector with yours and pass the class:
+
+```python
+from toolsconnector.connectors.jira import Jira
+from toolsconnector.serve import ToolKit
+
+
+class MyJira(Jira):
+    base_url = "https://yourcompany.atlassian.net/rest/api/3"
+
+
+kit = ToolKit([MyJira], credentials={"jira": "you@company.com:your-api-token"})
+```
+
+> **Do not use these by name** (`ToolKit(["jira"])`, `tc serve mcp jira`). The built-in address is a placeholder, so your credential would be sent to a host that is not yours.
 
 ## Multiple instances of the same tool
 

@@ -28,7 +28,7 @@ pip install "toolsconnector[lambda_connector]"
 Set your credentials:
 
 ```bash
-export TC_LAMBDA_CONNECTOR_CREDENTIALS=your-token
+export TC_LAMBDA_CONNECTOR_CREDENTIALS='your-access-key-id:your-secret-access-key:your-region'
 ```
 
 ## Quick Start
@@ -36,7 +36,7 @@ export TC_LAMBDA_CONNECTOR_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["lambda_connector"], credentials={"lambda_connector": "your-token"})
+kit = ToolKit(["lambda_connector"], credentials={"lambda_connector": "your-access-key-id:your-secret-access-key:your-region"})
 
 # Get a function alias
 result = kit.execute("lambda_connector_get_alias", {"function_name": "your-function_name", "name": "my-name"})
@@ -46,14 +46,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["lambda_connector"], credentials={"lambda_connector": "your-token"})
+kit = ToolKit(["lambda_connector"], credentials={"lambda_connector": "your-access-key-id:your-secret-access-key:your-region"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["lambda_connector"], credentials={"lambda_connector": "your-token"})
+kit = ToolKit(["lambda_connector"], credentials={"lambda_connector": "your-access-key-id:your-secret-access-key:your-region"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

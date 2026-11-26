@@ -28,7 +28,7 @@ pip install "toolsconnector[route53]"
 Set your credentials:
 
 ```bash
-export TC_ROUTE53_CREDENTIALS=your-token
+export TC_ROUTE53_CREDENTIALS='your-access-key-id:your-secret-access-key:your-region'
 ```
 
 ## Quick Start
@@ -36,7 +36,7 @@ export TC_ROUTE53_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["route53"], credentials={"route53": "your-token"})
+kit = ToolKit(["route53"], credentials={"route53": "your-access-key-id:your-secret-access-key:your-region"})
 
 # Get a health check
 result = kit.execute("route53_get_health_check", {"health_check_id": "your-health_check_id"})
@@ -46,14 +46,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["route53"], credentials={"route53": "your-token"})
+kit = ToolKit(["route53"], credentials={"route53": "your-access-key-id:your-secret-access-key:your-region"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["route53"], credentials={"route53": "your-token"})
+kit = ToolKit(["route53"], credentials={"route53": "your-access-key-id:your-secret-access-key:your-region"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

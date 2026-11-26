@@ -36,7 +36,7 @@ pip install "toolsconnector[trello]"
 Set your credentials:
 
 ```bash
-export TC_TRELLO_CREDENTIALS=your-token
+export TC_TRELLO_CREDENTIALS='your-api-key:your-token'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_TRELLO_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["trello"], credentials={"trello": "your-token"})
+kit = ToolKit(["trello"], credentials={"trello": "your-api-key:your-token"})
 
 # List boards for a Trello member
 result = kit.execute("trello_list_boards", {"member": "me"})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["trello"], credentials={"trello": "your-token"})
+kit = ToolKit(["trello"], credentials={"trello": "your-api-key:your-token"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["trello"], credentials={"trello": "your-token"})
+kit = ToolKit(["trello"], credentials={"trello": "your-api-key:your-token"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

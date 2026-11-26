@@ -67,11 +67,11 @@ result = kit.execute("github_list_issues", {"owner": "anthropics", "repo": "tool
 
 ### GitLab
 
-**Category:** Code Platforms | **Auth:** Personal Access Token | **Actions:** 8
+**Category:** Code Platforms | **Auth:** Personal Access Token | **Actions:** 21
 
 Connect to GitLab to manage projects, issues, merge requests, and CI/CD pipelines.
 
-**Actions:**
+**Common actions** (all: `tc gitlab actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|

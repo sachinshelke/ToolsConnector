@@ -36,7 +36,7 @@ pip install "toolsconnector[zendesk]"
 Set your credentials:
 
 ```bash
-export TC_ZENDESK_CREDENTIALS=your-token
+export TC_ZENDESK_CREDENTIALS='your-email:your-api-token:your-subdomain'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_ZENDESK_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["zendesk"], credentials={"zendesk": "your-token"})
+kit = ToolKit(["zendesk"], credentials={"zendesk": "your-email:your-api-token:your-subdomain"})
 
 # List tickets from Zendesk
 result = kit.execute("zendesk_list_tickets", {"status": "active", "limit": 25})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["zendesk"], credentials={"zendesk": "your-token"})
+kit = ToolKit(["zendesk"], credentials={"zendesk": "your-email:your-api-token:your-subdomain"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["zendesk"], credentials={"zendesk": "your-token"})
+kit = ToolKit(["zendesk"], credentials={"zendesk": "your-email:your-api-token:your-subdomain"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

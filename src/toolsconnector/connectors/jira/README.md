@@ -36,7 +36,7 @@ pip install "toolsconnector[jira]"
 Set your credentials:
 
 ```bash
-export TC_JIRA_CREDENTIALS=your-token
+export TC_JIRA_CREDENTIALS='your-email:your-api-token'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_JIRA_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["jira"], credentials={"jira": "your-token"})
+kit = ToolKit(["jira"], credentials={"jira": "your-email:your-api-token"})
 
 # List projects accessible to the user
 result = kit.execute("jira_list_projects", {"limit": 50, "start_at": 0})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["jira"], credentials={"jira": "your-token"})
+kit = ToolKit(["jira"], credentials={"jira": "your-email:your-api-token"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["jira"], credentials={"jira": "your-token"})
+kit = ToolKit(["jira"], credentials={"jira": "your-email:your-api-token"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

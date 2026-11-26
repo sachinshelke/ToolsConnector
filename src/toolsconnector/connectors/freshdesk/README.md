@@ -36,7 +36,7 @@ pip install "toolsconnector[freshdesk]"
 Set your credentials:
 
 ```bash
-export TC_FRESHDESK_CREDENTIALS=your-token
+export TC_FRESHDESK_CREDENTIALS='your-api-key:your-domain'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_FRESHDESK_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["freshdesk"], credentials={"freshdesk": "your-token"})
+kit = ToolKit(["freshdesk"], credentials={"freshdesk": "your-api-key:your-domain"})
 
 # List contacts
 result = kit.execute("freshdesk_list_contacts", {"limit": 30, "page": 1})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["freshdesk"], credentials={"freshdesk": "your-token"})
+kit = ToolKit(["freshdesk"], credentials={"freshdesk": "your-api-key:your-domain"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["freshdesk"], credentials={"freshdesk": "your-token"})
+kit = ToolKit(["freshdesk"], credentials={"freshdesk": "your-api-key:your-domain"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

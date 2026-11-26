@@ -1213,7 +1213,7 @@ class Stripe(BaseConnector):
         )
         return parse_payment_intent(resp.json())
 
-    @action("Cancel a Stripe PaymentIntent", access="write")
+    @action("Cancel a Stripe PaymentIntent", dangerous=True)
     async def cancel_payment_intent(
         self,
         payment_intent_id: str,

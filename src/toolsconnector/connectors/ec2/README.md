@@ -28,7 +28,7 @@ pip install "toolsconnector[ec2]"
 Set your credentials:
 
 ```bash
-export TC_EC2_CREDENTIALS=your-token
+export TC_EC2_CREDENTIALS='your-access-key-id:your-secret-access-key:your-region'
 ```
 
 ## Quick Start
@@ -36,7 +36,7 @@ export TC_EC2_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["ec2"], credentials={"ec2": "your-token"})
+kit = ToolKit(["ec2"], credentials={"ec2": "your-access-key-id:your-secret-access-key:your-region"})
 
 # Get instance console output
 result = kit.execute("ec2_get_console_output", {"instance_id": "your-instance_id"})
@@ -46,14 +46,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["ec2"], credentials={"ec2": "your-token"})
+kit = ToolKit(["ec2"], credentials={"ec2": "your-access-key-id:your-secret-access-key:your-region"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["ec2"], credentials={"ec2": "your-token"})
+kit = ToolKit(["ec2"], credentials={"ec2": "your-access-key-id:your-secret-access-key:your-region"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```
