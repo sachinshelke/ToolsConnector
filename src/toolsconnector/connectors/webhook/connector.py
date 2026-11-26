@@ -25,6 +25,26 @@ from toolsconnector.spec.connector import (
 
 from .types import WebhookBatchResult, WebhookResponse
 
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+
+
+def _embedded_ipv4(
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address:
+    """Return the IPv4 address an IPv6 form carries, or the address itself.
+
+    Covers IPv4-mapped (``::ffff:a.b.c.d``), NAT64 (``64:ff9b::a.b.c.d``) and
+    IPv4-compatible (``::a.b.c.d``) forms, which Python reports as global even
+    when the embedded address is private.
+    """
+    if not isinstance(address, ipaddress.IPv6Address):
+        return address
+    if address.ipv4_mapped is not None:
+        return address.ipv4_mapped
+    if address in _NAT64 or int(address) >> 32 == 0:
+        return ipaddress.IPv4Address(int(address) & 0xFFFFFFFF)
+    return address
+
 
 class Webhook(BaseConnector):
     """Generic connector for sending webhooks and HTTP requests to any endpoint.
@@ -107,8 +127,8 @@ class Webhook(BaseConnector):
                 return  # unresolvable: the request itself reports the DNS failure
             addresses = [ipaddress.ip_address(str(i[4][0]).split("%")[0]) for i in infos]
         for address in addresses:
-            mapped = getattr(address, "ipv4_mapped", None) or address
-            if not mapped.is_global or mapped.is_multicast:
+            mapped = _embedded_ipv4(address)
+            if not address.is_global or not mapped.is_global or mapped.is_multicast:
                 raise ValidationError(
                     f"Refusing to send to non-public address {address} (host {host}).",
                     connector=self.name,
@@ -484,6 +504,10 @@ class Webhook(BaseConnector):
         delay: Optional[float] = None,
     ) -> WebhookResponse:
         """Send a webhook with exponential backoff retries on failure.
+
+        Any unsuccessful attempt is resent, including a timeout or 5xx after
+        which the receiver may already have acted, so delivery is at least
+        once. Use ``send_webhook`` when the receiver cannot drop duplicates.
 
         Args:
             url: The target URL.

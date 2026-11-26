@@ -65,6 +65,9 @@ async def test_send_with_retry_posts_once_on_first_success(webhook: Webhook) -> 
         "http://[::ffff:127.0.0.1]/",
         "http://0.0.0.0/",
         "http://100.64.0.1/",
+        "http://[64:ff9b::a9fe:a9fe]/",
+        "http://[::127.0.0.1]/",
+        "http://[::]/",
     ],
 )
 async def test_non_public_destinations_are_refused(webhook: Webhook, url: str) -> None:
