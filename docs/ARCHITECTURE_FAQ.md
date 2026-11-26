@@ -581,11 +581,13 @@ Until 2026-09-24, `tests/conformance/test_import_boundaries.py` pointed `TC_ROOT
 
 **References:** `serve/mcp.py`, `tests/conformance/test_mcp_extra_pin.py`.
 
-## 30. Why will OAuth login helpers be a Python API only?
+## 30. Can `tc` run an OAuth login?
 
-**Decision (2026-09-23, D00000J): helpers that run an OAuth flow return the tokens to the calling code. There is no `tc` login command and no MCP tool for it.**
+**Decision (2026-11-25, D00000L, replaces D00000J): yes. `tc auth login`, `status` and `logout` may run an OAuth flow and write the tokens only to the operating-system keychain on the user's machine. Tokens are never printed and never pass through MCP. The Python helpers still return tokens to the calling code. Not built yet.**
 
-**Why:** a command that prints a refresh token into a terminal an agent is driving puts that token into the model's context, and a credential file the server re-reads is token storage under another name. Returning the token leaves storage with the developer, which matches bring-your-own-key.
+**Why it changed:** D00000J (2026-09-23) allowed only the Python API, for two reasons: a command that prints a refresh token into a terminal an agent is driving puts that token into the model's context, and a credential file the server re-reads is token storage under another name. Writing only to the keychain, never to the terminal, removes both. The token stays on the user's machine under the user's own account, so there is still no custody and no hosted service (#28).
+
+**Still ruled out:** printing a token, writing it anywhere except the keychain, and passing it through MCP.
 
 ## 31. What does `dry_run=True` execute?
 
