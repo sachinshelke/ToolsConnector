@@ -225,6 +225,48 @@ def _mcp_import_error_message(exc: ImportError) -> str:
     )
 
 
+# Above this many tools ``mode="auto"`` switches to search. Anthropic reports
+# tool selection degrading past 30-50 tools.
+AUTO_SEARCH_THRESHOLD = 30
+
+
+def _register_search_tools(server: Any, toolkit: ToolKit) -> None:
+    """Register the find tool and one runner per risk level that is present."""
+    from mcp.types import ToolAnnotations
+
+    from toolsconnector.serve.search import FIND_TOOL, search_tool_definitions
+
+    async def _find(query: str, connector: Optional[str] = None, limit: int = 5) -> str:
+        matches = toolkit.search_tools(query, connector=connector, limit=limit)
+        # Compact: this text goes straight into the model's context.
+        return json.dumps({"matches": matches}, separators=(",", ":"), default=str)
+
+    def _runner(risk: str) -> Any:
+        async def _run(tool: str, arguments: Optional[dict[str, Any]] = None) -> str:
+            try:
+                result = await toolkit.arun_tool(risk, tool, arguments or {})
+                return result if isinstance(result, str) else json.dumps(result, default=str)
+            except Exception as e:
+                logger.error(f"Tool {tool} failed: {e}")
+                raise
+
+        return _run
+
+    # list_tools() is the public view; the risk split needs the entries.
+    for definition in search_tool_definitions(toolkit._tool_entries_list):
+        risk = definition["risk"]
+        is_find = definition["name"] == FIND_TOOL
+        hints: dict[str, Any] = {"readOnlyHint": risk == "read"}
+        if risk != "read":
+            hints["destructiveHint"] = risk == "destructive"
+        server.tool(
+            name=definition["name"],
+            description=definition["description"],
+            annotations=ToolAnnotations.model_validate(hints),
+            structured_output=False,
+        )(_find if is_find else _runner(risk))
+
+
 def create_and_run_mcp_server(
     toolkit: ToolKit,
     *,
@@ -232,6 +274,7 @@ def create_and_run_mcp_server(
     name: str = "toolsconnector",
     host: str = "127.0.0.1",
     port: int = 3000,
+    mode: str = "direct",
 ) -> None:
     """Create and run an MCP server from a ToolKit.
 
@@ -249,10 +292,12 @@ def create_and_run_mcp_server(
             required for LAN/external exposure since the HTTP transports
             ship without built-in auth. Ignored for stdio.
         port: Port for HTTP transports. Ignored for stdio.
+        mode: ``"direct"``, ``"search"`` or ``"auto"``. See
+            :meth:`ToolKit.serve_mcp`.
 
     Raises:
         ImportError: If the ``mcp`` package is not installed.
-        ValueError: If an unknown transport is specified.
+        ValueError: If an unknown transport or mode is specified.
     """
     try:
         from mcp.server.fastmcp import FastMCP
@@ -270,6 +315,9 @@ def create_and_run_mcp_server(
             f"Unknown transport '{transport}'. Supported: 'stdio', 'sse', 'streamable-http'"
         )
 
+    if mode not in ("direct", "search", "auto"):
+        raise ValueError(f"Unknown mode '{mode}'. Supported: 'direct', 'search', 'auto'")
+
     # FastMCP requires host/port at construction time — its ``run()``
     # method does not accept them as kwargs (signature is just
     # ``run(transport=..., mount_path=...)``). Passing them to ``run()``
@@ -284,6 +332,15 @@ def create_and_run_mcp_server(
         server = FastMCP(name)
 
     tool_entries = toolkit.list_tools()
+    if mode == "search" or (mode == "auto" and len(tool_entries) > AUTO_SEARCH_THRESHOLD):
+        _register_search_tools(server, toolkit)
+        tool_entries = []
+    elif mode == "direct" and len(tool_entries) > AUTO_SEARCH_THRESHOLD:
+        logger.info(
+            "Serving %d tools directly. If your client does not search tools itself, "
+            "mode='search' sends far fewer definitions to the model.",
+            len(tool_entries),
+        )
 
     logger.info(f"Registering {len(tool_entries)} tools with MCP server '{name}'")
 

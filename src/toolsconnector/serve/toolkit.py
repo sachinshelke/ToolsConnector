@@ -36,13 +36,15 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from toolsconnector.errors import (
     ConnectorNotConfiguredError,
+    RateLimitError,
     ServerError,
     TokenExpiredError,
     ToolsConnectorError,
+    TransportError,
     ValidationError,
 )
 from toolsconnector.errors import TimeoutError as TCTimeoutError
@@ -58,6 +60,14 @@ from toolsconnector.serve._discovery import resolve_connectors
 from toolsconnector.serve._filtering import ToolEntry, build_tool_list
 from toolsconnector.serve._serialization import serialize_result
 from toolsconnector.serve._validation import validate_arguments
+
+if TYPE_CHECKING:
+    from toolsconnector.serve.search import ToolIndex
+
+_UNKNOWN_OUTCOME = (
+    "The action may already have taken effect. Check before sending it again; "
+    "it was not retried automatically."
+)
 
 # ---------------------------------------------------------------------------
 # Schema format helpers
@@ -188,6 +198,8 @@ class ToolKit:
         include_actions: Optional[list[str]] = None,
         exclude_actions: Optional[list[str]] = None,
         exclude_dangerous: bool = False,
+        include_tools: Optional[list[str]] = None,
+        read_only: bool = False,
         timeout_budget: float = 25.0,
         action_timeout: float = 15.0,
         verify_on_init: bool = False,
@@ -212,7 +224,10 @@ class ToolKit:
             include_actions=include_actions,
             exclude_actions=exclude_actions,
             exclude_dangerous=exclude_dangerous,
+            include_tools=include_tools,
+            read_only=read_only,
         )
+        self._search_index: Optional[ToolIndex] = None
 
         # Index by tool_name for O(1) lookup during execution
         self._tool_entries: dict[str, ToolEntry] = {e.tool_name: e for e in self._tool_entries_list}
@@ -261,6 +276,51 @@ class ToolKit:
             return [to_openai_schema(e) for e in self._tool_entries_list]
         except ImportError:
             return [_to_openai_schema(e) for e in self._tool_entries_list]
+
+    def to_openai_search_tools(self) -> list[dict[str, Any]]:
+        """Generate OpenAI Responses API tools that load on demand.
+
+        Every function is deferred inside one namespace per connector, next to
+        OpenAI's hosted ``tool_search``. Responses API only: Chat Completions
+        does not accept these, use :meth:`to_openai_tools` there.
+
+        Returns:
+            List for the ``tools`` param of ``responses.create``.
+        """
+        groups: dict[str, dict[str, Any]] = {}
+        for e in self._tool_entries_list:
+            group = groups.setdefault(
+                e.connector_name,
+                {
+                    "type": "namespace",
+                    "name": e.connector_name,
+                    "description": f"{e.connector_display_name} actions.",
+                    "tools": [],
+                },
+            )
+            group["tools"].append(
+                {
+                    "type": "function",
+                    "name": e.tool_name,
+                    "description": e.description,
+                    "parameters": e.input_schema or {"type": "object", "properties": {}},
+                    "defer_loading": True,
+                }
+            )
+        return [*groups.values(), {"type": "tool_search"}]
+
+    def to_anthropic_search_tools(self) -> list[dict[str, Any]]:
+        """Generate Anthropic tools that load on demand.
+
+        Adds Anthropic's hosted BM25 tool search and defers every tool, so only
+        the tools Claude finds enter its context. The definitions are still
+        sent with each request; the API limit is 10,000 deferred tools.
+
+        Returns:
+            List for the ``tools`` param of ``messages.create``.
+        """
+        search = {"type": "tool_search_tool_bm25_20251119", "name": "tool_search_tool_bm25"}
+        return [search, *({**t, "defer_loading": True} for t in self.to_anthropic_tools())]
 
     def to_anthropic_tools(self) -> list[dict[str, Any]]:
         """Generate Anthropic tool-use definitions.
@@ -329,6 +389,15 @@ class ToolKit:
         an undeclared access, which surfaces as ``"write"``) is previewed.
         """
         return entry.dangerous or entry.access != "read"
+
+    @staticmethod
+    def _is_replay_safe(entry: ToolEntry) -> bool:
+        """Whether running this tool twice cannot change anything twice.
+
+        Only declared facts count: an action with no declared access might
+        write, so it is not replayed.
+        """
+        return entry.idempotent or (entry.access_classified and entry.access == "read")
 
     # ------------------------------------------------------------------
     # Execution — async
@@ -460,6 +529,7 @@ class ToolKit:
                 action_name,
                 arguments,
                 request_id,
+                replay_safe=self._is_replay_safe(entry),
             )
 
             # Record success on the circuit breaker
@@ -479,7 +549,9 @@ class ToolKit:
             return serialize_result(result)
 
         except ToolsConnectorError as exc:
-            if cb and exc.retry_eligible:
+            # A write that may have landed is not retry_eligible, but it is
+            # still a sign that the vendor is failing.
+            if cb and (exc.retry_eligible or isinstance(exc, (ServerError, TransportError))):
                 cb.record_failure(exc)
 
             duration = time.monotonic() - start
@@ -532,6 +604,8 @@ class ToolKit:
         action_name: str,
         arguments: dict[str, Any],
         request_id: str,
+        *,
+        replay_safe: bool = False,
     ) -> Any:
         """Execute an action within the timeout budget with auto-retry.
 
@@ -541,11 +615,18 @@ class ToolKit:
         - Token refresh on ``TokenExpiredError``
         - Exponential backoff on transient failures
 
+        A timeout, connection failure or 5xx leaves the outcome unknown: the
+        vendor may already have charged the card or posted the message. Those
+        are retried only when ``replay_safe``. A rate limit or expired token
+        means the call was refused, so any action may retry.
+
         Args:
             connector_name: Name of the connector.
             action_name: Name of the action method.
             arguments: Validated arguments dict.
             request_id: Correlation ID for logging.
+            replay_safe: Whether the action may be sent again when the outcome
+                of an attempt is unknown.
 
         Returns:
             Raw action result (not yet serialized).
@@ -593,6 +674,11 @@ class ToolKit:
 
             except ToolsConnectorError as exc:
                 last_error = exc
+                if not replay_safe and not isinstance(exc, RateLimitError):
+                    if exc.retry_eligible:
+                        exc.retry_eligible = False
+                        exc.suggestion = _UNKNOWN_OUTCOME
+                    raise
                 if not exc.retry_eligible or time.monotonic() >= deadline:
                     raise
                 wait = min(
@@ -617,8 +703,12 @@ class ToolKit:
                     f"Action '{action_name}' timed out after {self._action_timeout}s",
                     connector=connector_name,
                     action=action_name,
+                    retry_eligible=replay_safe,
+                    suggestion="Increase the timeout or retry."
+                    if replay_safe
+                    else _UNKNOWN_OUTCOME,
                 )
-                if time.monotonic() >= deadline:
+                if not replay_safe or time.monotonic() >= deadline:
                     raise last_error
                 self._logger.warning(
                     "tool.timeout",
@@ -749,6 +839,71 @@ class ToolKit:
             )
         return entry.input_schema
 
+    def search_tools(
+        self,
+        query: str,
+        *,
+        connector: Optional[str] = None,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
+        """Find the tools that best match a plain-language request.
+
+        Searches only this ToolKit's own tools. No network, no model.
+
+        Args:
+            query: What you want to do, e.g. ``"refund a stripe charge"``.
+            connector: Only search this connector.
+            limit: Maximum results, between 1 and 20.
+
+        Returns:
+            Matches, best first: ``tool``, ``description``, ``risk``,
+            ``run_with`` and ``input_schema``. Empty when nothing matches.
+
+        Raises:
+            ConnectorNotConfiguredError: ``connector`` is not in this ToolKit.
+        """
+        from toolsconnector.serve.search import ToolIndex, describe_match
+
+        if connector is not None and connector not in self._connector_classes:
+            raise ConnectorNotConfiguredError(
+                f"Connector '{connector}' is not enabled.",
+                connector=connector,
+                suggestion=f"Enabled connectors: {', '.join(self.connector_names)}.",
+            )
+        if self._search_index is None:
+            self._search_index = ToolIndex(self._tool_entries_list)
+        matches = self._search_index.search(query, connector=connector, limit=limit)
+        return [describe_match(e) for e in matches]
+
+    async def arun_tool(self, risk: str, tool: str, arguments: dict[str, Any]) -> Any:
+        """Run a tool only if its risk is exactly ``risk``.
+
+        The exact match is what makes per-runner approval meaningful: allowing
+        the read runner can never run a write.
+
+        Args:
+            risk: ``"read"``, ``"write"`` or ``"destructive"``. Tools with no
+                declared access count as destructive.
+            tool: Tool name.
+            arguments: Arguments matching the tool's input schema.
+
+        Returns:
+            Serialized result string (JSON).
+
+        Raises:
+            ValidationError: The tool has a different risk.
+        """
+        from toolsconnector.serve.search import RUN_TOOLS, risk_of
+
+        entry = self._tool_entries.get(tool)
+        if entry is not None and risk_of(entry) != risk:
+            raise ValidationError(
+                f"'{tool}' cannot be run as {risk}; use {RUN_TOOLS[risk_of(entry)]}.",
+                connector=entry.connector_name,
+                action=entry.action_name,
+            )
+        return await self.aexecute(tool, arguments)
+
     def get_connector_status(self) -> dict[str, str]:
         """Get the health status of all configured connectors.
 
@@ -779,6 +934,7 @@ class ToolKit:
         name: str = "toolsconnector",
         host: str = "127.0.0.1",
         port: int = 3000,
+        mode: str = "direct",
     ) -> None:
         """Start an MCP server exposing all configured tools.
 
@@ -812,6 +968,12 @@ class ToolKit:
                 transports ship without built-in auth. Ignored for stdio.
             port: Port number for HTTP transports (sse / streamable-http).
                 Ignored for stdio.
+            mode: ``"direct"`` registers one MCP tool per action. ``"search"``
+                registers ``tc_find_tools`` plus one runner per risk level, so
+                the size of ``tools/list`` does not grow with the catalog.
+                ``"auto"`` uses search above 30 tools. Keep ``"direct"`` for
+                clients with their own tool search, such as Claude Code: they
+                keep per-action approval.
         """
         from toolsconnector.serve.mcp import create_and_run_mcp_server
 
@@ -821,6 +983,7 @@ class ToolKit:
             name=name,
             host=host,
             port=port,
+            mode=mode,
         )
 
     def create_rest_app(self, *, prefix: str = "/api/v1") -> Any:
@@ -994,6 +1157,8 @@ class ToolKitFactory:
         include_actions: Optional[list[str]] = None,
         exclude_actions: Optional[list[str]] = None,
         exclude_dangerous: bool = False,
+        include_tools: Optional[list[str]] = None,
+        read_only: bool = False,
         timeout_budget: float = 25.0,
         action_timeout: float = 15.0,
         max_tenants: Optional[int] = None,
@@ -1004,6 +1169,8 @@ class ToolKitFactory:
         self._include_actions = include_actions
         self._exclude_actions = exclude_actions
         self._exclude_dangerous = exclude_dangerous
+        self._include_tools = include_tools
+        self._read_only = read_only
         self._timeout_budget = timeout_budget
         self._action_timeout = action_timeout
         self._max_tenants = max_tenants
@@ -1056,6 +1223,8 @@ class ToolKitFactory:
             include_actions=self._include_actions,
             exclude_actions=self._exclude_actions,
             exclude_dangerous=self._exclude_dangerous,
+            include_tools=self._include_tools,
+            read_only=self._read_only,
             timeout_budget=self._timeout_budget,
             action_timeout=self._action_timeout,
         )

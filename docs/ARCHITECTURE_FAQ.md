@@ -581,11 +581,13 @@ Until 2026-09-24, `tests/conformance/test_import_boundaries.py` pointed `TC_ROOT
 
 **References:** `serve/mcp.py`, `tests/conformance/test_mcp_extra_pin.py`.
 
-## 30. Why will OAuth login helpers be a Python API only?
+## 30. Can `tc` run an OAuth login?
 
-**Decision (2026-09-23, D00000J): helpers that run an OAuth flow return the tokens to the calling code. There is no `tc` login command and no MCP tool for it.**
+**Decision (2026-11-25, D00000L, replaces D00000J): yes. `tc auth login`, `status` and `logout` may run an OAuth flow and write the tokens only to the operating-system keychain on the user's machine. Tokens are never printed and never pass through MCP. The Python helpers still return tokens to the calling code. Not built yet.**
 
-**Why:** a command that prints a refresh token into a terminal an agent is driving puts that token into the model's context, and a credential file the server re-reads is token storage under another name. Returning the token leaves storage with the developer, which matches bring-your-own-key.
+**Why it changed:** D00000J (2026-09-23) allowed only the Python API, for two reasons: a command that prints a refresh token into a terminal an agent is driving puts that token into the model's context, and a credential file the server re-reads is token storage under another name. Writing only to the keychain, never to the terminal, removes both. The token stays on the user's machine under the user's own account, so there is still no custody and no hosted service (#28).
+
+**Still ruled out:** printing a token, writing it anywhere except the keychain, and passing it through MCP.
 
 ## 31. What does `dry_run=True` execute?
 
@@ -604,3 +606,31 @@ Until 0.4.0 the check was `dry_run and dangerous`, so a non-destructive write su
 The 0.4.0 README opened with a call that raised `TypeError`, the resilience guide configured options that don't exist, and 42 credential samples had a shape the connector rejects. Nobody noticed because nothing read the docs. The same run found `odoo.unlink` and `stripe.cancel_payment_intent` documented as dangerous but declared `access="write"`, so MCP clients received `destructiveHint: false` for a delete. `test_irreversible_verbs_are_destructive` now holds that line for Tier 1.
 
 **References:** `tests/conformance/test_docs_examples.py`, `tests/conformance/test_access_classification.py`.
+
+## 33. How do thousands of tools not reach the model?
+
+**Decision (2026-11-25): one search over the enabled tools, then a runner chosen by risk.** `tc serve mcp --mode search` exposes `tc_find_tools` plus `tc_run_read`, `tc_run_write` and `tc_run_destructive`, whatever the catalog size. All 79 connectors go from 808,840 bytes of `tools/list` to 1,776.
+
+**Why one search, not connector then tool:** a second search costs a turn every time, and a wrong first pick hides the right tool. `connector` is an optional filter instead.
+
+**Why three runners, not one:** a single "run anything" tool removes the host's ability to approve by risk. Each runner accepts only its exact risk. An action with no declared `access` counts as destructive.
+
+**Why `direct` stays the default:** clients with their own tool search (Claude Code) already defer schemas, and keep per-action approval. Changing the default would also rename every tool users have approved. `auto` switches above 30 tools.
+
+**Why BM25 in the standard library:** no model, no network, no dependency, and deterministic results.
+
+**References:** `serve/search.py`, `serve/mcp.py`, `tests/unit/test_serve_search.py`.
+
+## 34. Which failed calls are retried?
+
+**Decision (2026-11-25): a timeout, connection failure or 5xx is retried only for declared reads and `idempotent` actions.** The vendor may already have acted, so resending a payment or message can do it twice. Until now every action was resent. A 429 or expired token means the call was refused, so any action may retry.
+
+The error on a write carries `retry_eligible=False` and says to check first.
+
+**References:** `ToolKit._is_replay_safe`, `tests/unit/test_replay_safety.py`.
+
+## 35. Why does the webhook connector refuse private addresses and redirects?
+
+**Decision (2026-11-25):** the URL can come from a model. Private, loopback and link-local destinations are refused unless `TC_WEBHOOK_ALLOW_PRIVATE=1`. Redirects are returned, not followed: httpx strips only `Authorization` across hosts, so custom key headers and the payload went to the new host.
+
+**Known limit:** a hostname that resolves differently between the check and the connection is not covered.

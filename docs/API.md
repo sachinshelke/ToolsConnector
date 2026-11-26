@@ -23,6 +23,8 @@ ToolKit(
     include_actions: list[str] | None = None,
     exclude_actions: list[str] | None = None,
     exclude_dangerous: bool = False,
+    include_tools: list[str] | None = None,
+    read_only: bool = False,
     timeout_budget: float = 25.0,
     action_timeout: float = 15.0,
     verify_on_init: bool = False,
@@ -42,9 +44,13 @@ ToolKit(
 | `to_openai_tools` | `() -> list[dict]` | Generate OpenAI function-calling schemas |
 | `to_anthropic_tools` | `() -> list[dict]` | Generate Anthropic tool-use schemas |
 | `to_gemini_tools` | `() -> list[dict]` | Generate Google Gemini function declarations |
+| `to_anthropic_search_tools` | `() -> list[dict]` | Anthropic's tool search plus every tool with `defer_loading`, so only matches are loaded |
+| `to_openai_search_tools` | `() -> list[dict]` | OpenAI tool search plus one deferred namespace per connector |
+| `search_tools` | `(query: str, *, connector: str \| None = None, limit: int = 5) -> list[dict]` | Best-matching tools for a plain-language request: `tool`, `description`, `risk`, `run_with`, `input_schema`. Local, no network |
+| `arun_tool` | `async (risk: str, tool: str, arguments: dict) -> Any` | Run a tool only if its risk is exactly `read`, `write` or `destructive` (undeclared counts as destructive) |
 | `to_langchain_tools` | `() -> list[Tool]` | Convert actions to LangChain tools |
 | `to_crewai_tools` | `() -> list[Tool]` | Convert actions to CrewAI tools |
-| `serve_mcp` | `(*, transport: str = "stdio", name: str = "toolsconnector", host: str = "127.0.0.1", port: int = 3000) -> None` | Start an MCP server |
+| `serve_mcp` | `(*, transport: str = "stdio", name: str = "toolsconnector", host: str = "127.0.0.1", port: int = 3000, mode: str = "direct") -> None` | Start an MCP server; `mode` is `direct`, `search` or `auto` (see the CLI guide) |
 | `create_rest_app` | `(*, prefix: str = "/api/v1") -> ASGIApp` | Create a Starlette/ASGI REST app |
 | `get_connector_status` | `() -> dict[str, str]` | Last known state per connector: `unknown`, `healthy` or `degraded` |
 
@@ -67,6 +73,8 @@ ToolKitFactory(
     include_actions: list[str] | None = None,
     exclude_actions: list[str] | None = None,
     exclude_dangerous: bool = False,
+    include_tools: list[str] | None = None,
+    read_only: bool = False,
     timeout_budget: float = 25.0,
     action_timeout: float = 15.0,
     max_tenants: int | None = None,
@@ -324,8 +332,7 @@ from toolsconnector.spec.action import ActionSpec
 | `return_type` | `str` | Python return type as string |
 | `dangerous` | `bool` | Has destructive side effects |
 | `access` | `str \| null` | Read/write classification: `read` \| `write` \| `destructive`, or `null` if unclassified (read-only consumers fail closed on `null`) |
-| `idempotent` | `bool` | Safe to retry |
-| `idempotent` | `bool` | Safe to retry |
+| `idempotent` | `bool` | Safe to retry after a timeout or 5xx |
 | `deprecated` | `bool` | Whether deprecated |
 
 ---

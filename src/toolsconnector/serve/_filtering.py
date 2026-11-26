@@ -151,6 +151,8 @@ def build_tool_list(
     include_actions: Optional[list[str]] = None,
     exclude_actions: Optional[list[str]] = None,
     exclude_dangerous: bool = False,
+    include_tools: Optional[list[str]] = None,
+    read_only: bool = False,
 ) -> list[ToolEntry]:
     """Build filtered list of ToolEntry from connector classes.
 
@@ -161,6 +163,10 @@ def build_tool_list(
         exclude_actions: Glob patterns -- matching actions excluded.
             E.g., ``["delete_*", "purge_*"]`` to block destructive ops.
         exclude_dangerous: If ``True``, exclude actions marked dangerous.
+        include_tools: Glob patterns on the full tool name. E.g.,
+            ``["gmail_list_*", "slack_send_message"]``.
+        read_only: If ``True``, keep only actions declared ``access="read"``.
+            Fails closed: an action with no declared access is excluded.
 
     Returns:
         Filtered list of ToolEntry objects.
@@ -183,7 +189,13 @@ def build_tool_list(
                 if any(fnmatch.fnmatch(action_name, p) for p in exclude_actions):
                     continue
 
+            if read_only and (action_spec.dangerous or action_spec.access != "read"):
+                continue
+
             tool_name = f"{spec.name}_{action_name}"
+            if include_tools and not any(fnmatch.fnmatch(tool_name, p) for p in include_tools):
+                continue
+
             description = _build_description(spec, action_spec)
 
             entries.append(

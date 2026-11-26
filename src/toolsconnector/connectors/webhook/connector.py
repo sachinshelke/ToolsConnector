@@ -5,12 +5,16 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import ipaddress
+import os
+import socket
 import time
 from typing import Any, Optional
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 import httpx
 
+from toolsconnector.errors import ValidationError
 from toolsconnector.runtime import BaseConnector, action
 from toolsconnector.spec.auth import AuthType, no_auth
 from toolsconnector.spec.connector import (
@@ -20,6 +24,26 @@ from toolsconnector.spec.connector import (
 )
 
 from .types import WebhookBatchResult, WebhookResponse
+
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+
+
+def _embedded_ipv4(
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address:
+    """Return the IPv4 address an IPv6 form carries, or the address itself.
+
+    Covers IPv4-mapped (``::ffff:a.b.c.d``), NAT64 (``64:ff9b::a.b.c.d``) and
+    IPv4-compatible (``::a.b.c.d``) forms, which Python reports as global even
+    when the embedded address is private.
+    """
+    if not isinstance(address, ipaddress.IPv6Address):
+        return address
+    if address.ipv4_mapped is not None:
+        return address.ipv4_mapped
+    if address in _NAT64 or int(address) >> 32 == 0:
+        return ipaddress.IPv4Address(int(address) & 0xFFFFFFFF)
+    return address
 
 
 class Webhook(BaseConnector):
@@ -66,7 +90,10 @@ class Webhook(BaseConnector):
         self._client = httpx.AsyncClient(
             headers=headers,
             timeout=self._timeout,
-            follow_redirects=True,
+            # A redirect would carry the payload and custom auth headers to a
+            # host the caller never named; httpx only strips Authorization.
+            follow_redirects=False,
+            event_hooks={"request": [self._guard_destination]},
         )
 
     async def _teardown(self) -> None:
@@ -77,6 +104,36 @@ class Webhook(BaseConnector):
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    async def _guard_destination(self, request: httpx.Request) -> None:
+        """Refuse loopback, private, link-local and other non-public addresses.
+
+        The URL can come from a model, so without this a prompt-injected agent
+        could read services on the host's own network (cloud metadata included).
+        Set ``TC_WEBHOOK_ALLOW_PRIVATE=1`` to reach internal endpoints. A name
+        that re-resolves between this check and the connection is not covered.
+        """
+        if os.environ.get("TC_WEBHOOK_ALLOW_PRIVATE") == "1":
+            return
+        host = request.url.host
+        try:
+            addresses = [ipaddress.ip_address(host)]
+        except ValueError:
+            try:
+                infos = await asyncio.get_running_loop().getaddrinfo(
+                    host, request.url.port or 443, type=socket.SOCK_STREAM
+                )
+            except OSError:
+                return  # unresolvable: the request itself reports the DNS failure
+            addresses = [ipaddress.ip_address(str(i[4][0]).split("%")[0]) for i in infos]
+        for address in addresses:
+            mapped = _embedded_ipv4(address)
+            if not address.is_global or not mapped.is_global or mapped.is_multicast:
+                raise ValidationError(
+                    f"Refusing to send to non-public address {address} (host {host}).",
+                    connector=self.name,
+                    suggestion="Set TC_WEBHOOK_ALLOW_PRIVATE=1 to allow internal endpoints.",
+                )
 
     @staticmethod
     def _build_response(
@@ -188,8 +245,10 @@ class Webhook(BaseConnector):
             )
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, method, response, elapsed)
+        except ValidationError:
+            raise
         except Exception as exc:
-            return self._error_response(url, method, str(exc))
+            return self._error_response(url, method, str(exc) or type(exc).__name__)
 
     @action("Send a JSON payload", dangerous=True)
     async def send_json(
@@ -215,8 +274,10 @@ class Webhook(BaseConnector):
             response = await self._client.post(url, json=data, headers=merged)
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
+        except ValidationError:
+            raise
         except Exception as exc:
-            return self._error_response(url, "POST", str(exc))
+            return self._error_response(url, "POST", str(exc) or type(exc).__name__)
 
     @action("Send form-encoded data", dangerous=True)
     async def send_form(
@@ -241,8 +302,10 @@ class Webhook(BaseConnector):
             response = await self._client.post(url, data=data, headers=merged)
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
+        except ValidationError:
+            raise
         except Exception as exc:
-            return self._error_response(url, "POST", str(exc))
+            return self._error_response(url, "POST", str(exc) or type(exc).__name__)
 
     @action("Send an HMAC-signed webhook", dangerous=True)
     async def send_with_hmac(
@@ -285,8 +348,10 @@ class Webhook(BaseConnector):
             response = await self._client.post(url, content=body_bytes, headers=headers)
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
+        except ValidationError:
+            raise
         except Exception as exc:
-            return self._error_response(url, "POST", str(exc))
+            return self._error_response(url, "POST", str(exc) or type(exc).__name__)
 
     @action("Send a batch of webhooks", dangerous=True)
     async def send_batch(
@@ -337,8 +402,10 @@ class Webhook(BaseConnector):
             response = await self._client.head(url)
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "HEAD", response, elapsed)
+        except ValidationError:
+            raise
         except Exception as exc:
-            return self._error_response(url, "HEAD", str(exc))
+            return self._error_response(url, "HEAD", str(exc) or type(exc).__name__)
 
     # ------------------------------------------------------------------
     # Actions -- XML
@@ -379,8 +446,10 @@ class Webhook(BaseConnector):
             response = await self._client.post(url, content=xml_payload.encode(), headers=merged)
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
+        except ValidationError:
+            raise
         except Exception as exc:
-            return self._error_response(url, "POST", str(exc))
+            return self._error_response(url, "POST", str(exc) or type(exc).__name__)
 
     # ------------------------------------------------------------------
     # Actions -- GraphQL
@@ -417,8 +486,10 @@ class Webhook(BaseConnector):
             response = await self._client.post(url, json=body, headers=merged)
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
+        except ValidationError:
+            raise
         except Exception as exc:
-            return self._error_response(url, "POST", str(exc))
+            return self._error_response(url, "POST", str(exc) or type(exc).__name__)
 
     # ------------------------------------------------------------------
     # Actions -- Retry and Multipart
@@ -433,6 +504,10 @@ class Webhook(BaseConnector):
         delay: Optional[float] = None,
     ) -> WebhookResponse:
         """Send a webhook with exponential backoff retries on failure.
+
+        Any unsuccessful attempt is resent, including a timeout or 5xx after
+        which the receiver may already have acted, so delivery is at least
+        once. Use ``send_webhook`` when the receiver cannot drop duplicates.
 
         Args:
             url: The target URL.
@@ -492,8 +567,10 @@ class Webhook(BaseConnector):
             )
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
+        except ValidationError:
+            raise
         except Exception as exc:
-            return self._error_response(url, "POST", str(exc))
+            return self._error_response(url, "POST", str(exc) or type(exc).__name__)
 
     @action("Send a webhook with API key authentication", dangerous=True)
     async def send_with_api_key(
@@ -529,8 +606,10 @@ class Webhook(BaseConnector):
             )
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
+        except ValidationError:
+            raise
         except Exception as exc:
-            return self._error_response(url, "POST", str(exc))
+            return self._error_response(url, "POST", str(exc) or type(exc).__name__)
 
     @action("Send a multipart form-data request", dangerous=True)
     async def send_multipart(
@@ -562,5 +641,7 @@ class Webhook(BaseConnector):
             )
             elapsed = (time.monotonic() - start) * 1000
             return self._build_response(url, "POST", response, elapsed)
+        except ValidationError:
+            raise
         except Exception as exc:
-            return self._error_response(url, "POST", str(exc))
+            return self._error_response(url, "POST", str(exc) or type(exc).__name__)

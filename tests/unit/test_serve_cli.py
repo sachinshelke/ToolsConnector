@@ -19,6 +19,9 @@ from toolsconnector.serve import cli
 def _build_args(connectors: list[str], transport: str = "stdio") -> argparse.Namespace:
     """Construct the argparse.Namespace shape `_cmd_serve_mcp` expects."""
     return argparse.Namespace(
+        mode="direct",
+        tools=None,
+        read_only=False,
         connectors=connectors,
         transport=transport,
         name=None,

@@ -152,6 +152,17 @@ tc serve mcp gmail gcalendar notion --transport stdio
 tc serve mcp gmail slack github --transport streamable-http --port 9000
 ```
 
+With many connectors, keep the tool list small:
+
+```bash
+# A find tool plus one runner per risk level, whatever the catalog size
+tc serve mcp gmail slack github --mode search
+
+# Or serve only what you need
+tc serve mcp gmail slack --tools "gmail_list_*,slack_send_message"
+tc serve mcp gmail slack --read-only
+```
+
 The HTTP transport (`streamable-http`) accepts many concurrent client
 sessions on the same port — one daemon serves N agents, and **every
 session uses the credentials the daemon was started with**. Per-tool
