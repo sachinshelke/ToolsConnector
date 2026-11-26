@@ -6,11 +6,11 @@ Connectors for database and data platform services. 5 connectors, 93 actions.
 
 ### Supabase
 
-**Category:** Database | **Auth:** API Key (anon or service_role) | **Actions:** 7
+**Category:** Database | **Auth:** API Key (anon or service_role) | **Actions:** 16
 
 Connect to Supabase to query, insert, update, and delete records in your PostgreSQL tables through the Supabase REST API.
 
-**Actions:**
+**Common actions** (all: `tc supabase actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -25,7 +25,14 @@ Connect to Supabase to query, insert, update, and delete records in your Postgre
 **Quick start:**
 
 ```python
-kit = ToolKit(["supabase"], credentials={"supabase": {"url": "https://your-project.supabase.co", "key": "your-anon-key"}})
+from toolsconnector.connectors.supabase import Supabase
+
+
+class MySupabase(Supabase):
+    base_url = "https://your-project.supabase.co/rest/v1"  # your instance
+
+
+kit = ToolKit([MySupabase], credentials={"supabase": "your-anon-key"})
 result = kit.execute("supabase_query_table", {"table": "users", "select": "*", "limit": 10})
 ```
 
@@ -33,11 +40,11 @@ result = kit.execute("supabase_query_table", {"table": "users", "select": "*", "
 
 ### MongoDB
 
-**Category:** Database | **Auth:** Connection String or API Key | **Actions:** 8
+**Category:** Database | **Auth:** Connection String or API Key | **Actions:** 16
 
 Connect to MongoDB to find, insert, update, and aggregate documents using the MongoDB Data API.
 
-**Actions:**
+**Common actions** (all: `tc mongodb actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -53,19 +60,26 @@ Connect to MongoDB to find, insert, update, and aggregate documents using the Mo
 **Quick start:**
 
 ```python
-kit = ToolKit(["mongodb"], credentials={"mongodb": {"api_key": "your-data-api-key", "cluster": "your-cluster", "database": "mydb"}})
-result = kit.execute("mongodb_find", {"collection": "users", "filter": {"active": True}})
+from toolsconnector.connectors.mongodb import MongoDB
+
+
+class MyMongoDB(MongoDB):
+    base_url = "https://data.mongodb-api.com/app/your-app-id/endpoint/data/v1"  # your instance
+
+
+kit = ToolKit([MyMongoDB], credentials={"mongodb": "your-data-api-key"})
+result = kit.execute("mongodb_find", {"database": "mydb", "collection": "users", "filter": {"active": True}})
 ```
 
 ---
 
 ### Airtable
 
-**Category:** Database | **Auth:** Personal Access Token | **Actions:** 8
+**Category:** Database | **Auth:** Personal Access Token | **Actions:** 26
 
 Connect to Airtable to manage bases, tables, and records.
 
-**Actions:**
+**Common actions** (all: `tc airtable actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -89,11 +103,11 @@ result = kit.execute("airtable_list_records", {"base_id": "appXXXXXX", "table_na
 
 ### Firestore
 
-**Category:** Database | **Auth:** Service Account JSON or Bearer Token | **Actions:** 8
+**Category:** Database | **Auth:** Service Account JSON or Bearer Token | **Actions:** 17
 
 Connect to Google Cloud Firestore to manage documents and collections.
 
-**Actions:**
+**Common actions** (all: `tc firestore actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -109,19 +123,19 @@ Connect to Google Cloud Firestore to manage documents and collections.
 **Quick start:**
 
 ```python
-kit = ToolKit(["firestore"], credentials={"firestore": {"project_id": "my-project", "token": "your-access-token"}})
-result = kit.execute("firestore_list_documents", {"collection": "users"})
+kit = ToolKit(["firestore"], credentials={"firestore": "your-access-token"})
+result = kit.execute("firestore_list_documents", {"project": "my-project", "collection": "users"})
 ```
 
 ---
 
 ### Redis
 
-**Category:** Database | **Auth:** Connection URL or API Token | **Actions:** 8
+**Category:** Database | **Auth:** Connection URL or API Token | **Actions:** 18
 
 Connect to Redis to get, set, delete keys, and work with hashes and lists.
 
-**Actions:**
+**Common actions** (all: `tc redis actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|

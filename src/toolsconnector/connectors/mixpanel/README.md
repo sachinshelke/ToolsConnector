@@ -36,7 +36,7 @@ pip install "toolsconnector[mixpanel]"
 Set your credentials:
 
 ```bash
-export TC_MIXPANEL_CREDENTIALS=your-token
+export TC_MIXPANEL_CREDENTIALS='your-username:your-secret'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_MIXPANEL_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["mixpanel"], credentials={"mixpanel": "your-token"})
+kit = ToolKit(["mixpanel"], credentials={"mixpanel": "your-username:your-secret"})
 
 # Get event count for a date range
 result = kit.execute("mixpanel_get_event_count", {"event": "your-event", "from_date": "your-from_date", "to_date": "your-to_date"})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["mixpanel"], credentials={"mixpanel": "your-token"})
+kit = ToolKit(["mixpanel"], credentials={"mixpanel": "your-username:your-secret"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["mixpanel"], credentials={"mixpanel": "your-token"})
+kit = ToolKit(["mixpanel"], credentials={"mixpanel": "your-username:your-secret"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

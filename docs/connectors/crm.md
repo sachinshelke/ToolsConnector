@@ -6,11 +6,11 @@ Connectors for customer relationship management and support platforms. 6 connect
 
 ### HubSpot
 
-**Category:** CRM & Support | **Auth:** Private App Access Token | **Actions:** 8
+**Category:** CRM & Support | **Auth:** Private App Access Token | **Actions:** 19
 
 Connect to HubSpot to manage contacts, deals, and CRM records.
 
-**Actions:**
+**Common actions** (all: `tc hubspot actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -34,11 +34,11 @@ result = kit.execute("hubspot_list_contacts", {"limit": 20})
 
 ### Salesforce
 
-**Category:** CRM & Support | **Auth:** OAuth2 Bearer Token | **Actions:** 8
+**Category:** CRM & Support | **Auth:** OAuth2 Bearer Token | **Actions:** 21
 
 Connect to Salesforce to query, create, and manage CRM records using SOQL and the REST API.
 
-**Actions:**
+**Common actions** (all: `tc salesforce actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -54,7 +54,14 @@ Connect to Salesforce to query, create, and manage CRM records using SOQL and th
 **Quick start:**
 
 ```python
-kit = ToolKit(["salesforce"], credentials={"salesforce": {"access_token": "...", "instance_url": "https://yourorg.salesforce.com"}})
+from toolsconnector.connectors.salesforce import Salesforce
+
+
+class MySalesforce(Salesforce):
+    base_url = "https://yourorg.my.salesforce.com/services/data/v59.0"  # your instance
+
+
+kit = ToolKit([MySalesforce], credentials={"salesforce": "your-access-token"})
 result = kit.execute("salesforce_query", {"soql": "SELECT Id, Name FROM Account LIMIT 10"})
 ```
 
@@ -62,11 +69,11 @@ result = kit.execute("salesforce_query", {"soql": "SELECT Id, Name FROM Account 
 
 ### Zendesk
 
-**Category:** CRM & Support | **Auth:** API Token (Basic Auth) | **Actions:** 8
+**Category:** CRM & Support | **Auth:** API Token (Basic Auth) | **Actions:** 16
 
 Connect to Zendesk to manage support tickets, users, and perform searches.
 
-**Actions:**
+**Common actions** (all: `tc zendesk actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -82,7 +89,7 @@ Connect to Zendesk to manage support tickets, users, and perform searches.
 **Quick start:**
 
 ```python
-kit = ToolKit(["zendesk"], credentials={"zendesk": {"email": "agent@company.com", "token": "your-api-token", "subdomain": "yourcompany"}})
+kit = ToolKit(["zendesk"], credentials={"zendesk": "agent@company.com:your-api-token:yourcompany"})
 result = kit.execute("zendesk_list_tickets", {"status": "open"})
 ```
 
@@ -90,11 +97,11 @@ result = kit.execute("zendesk_list_tickets", {"status": "open"})
 
 ### Freshdesk
 
-**Category:** CRM & Support | **Auth:** API Key | **Actions:** 8
+**Category:** CRM & Support | **Auth:** API Key | **Actions:** 23
 
 Connect to Freshdesk to manage support tickets and contacts.
 
-**Actions:**
+**Common actions** (all: `tc freshdesk actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -110,19 +117,19 @@ Connect to Freshdesk to manage support tickets and contacts.
 **Quick start:**
 
 ```python
-kit = ToolKit(["freshdesk"], credentials={"freshdesk": {"api_key": "your-api-key", "domain": "yourcompany.freshdesk.com"}})
-result = kit.execute("freshdesk_list_tickets", {"filter": "open"})
+kit = ToolKit(["freshdesk"], credentials={"freshdesk": "your-api-key:yourcompany"})
+result = kit.execute("freshdesk_list_tickets", {"status": 2})
 ```
 
 ---
 
 ### Intercom
 
-**Category:** CRM & Support | **Auth:** Access Token | **Actions:** 8
+**Category:** CRM & Support | **Auth:** Access Token | **Actions:** 16
 
 Connect to Intercom to manage contacts, conversations, and customer messaging.
 
-**Actions:**
+**Common actions** (all: `tc intercom actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -139,7 +146,7 @@ Connect to Intercom to manage contacts, conversations, and customer messaging.
 
 ```python
 kit = ToolKit(["intercom"], credentials={"intercom": "your-access-token"})
-result = kit.execute("intercom_list_contacts", {"per_page": 20})
+result = kit.execute("intercom_list_contacts", {"limit": 20})
 ```
 
 ---
@@ -162,8 +169,8 @@ Odoo is a full ERP — a single connector spanning CRM, Sales, Inventory, Accoun
 | search_read | Search records and read fields in a single call | No |
 | search_count | Count records matching a domain | No |
 | read | Read fields for records by ID | No |
-| create | Create a new record | Yes |
-| write | Update fields on existing records | Yes |
+| create | Create a new record | No |
+| write | Update fields on existing records | No |
 | unlink | Delete records by ID | Yes |
 | name_search | Search records by display name | No |
 | fields_get | Get field metadata for a model | No |

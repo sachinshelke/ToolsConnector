@@ -28,7 +28,7 @@ pip install "toolsconnector[ecr]"
 Set your credentials:
 
 ```bash
-export TC_ECR_CREDENTIALS=your-token
+export TC_ECR_CREDENTIALS='your-access-key-id:your-secret-access-key:your-region'
 ```
 
 ## Quick Start
@@ -36,7 +36,7 @@ export TC_ECR_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["ecr"], credentials={"ecr": "your-token"})
+kit = ToolKit(["ecr"], credentials={"ecr": "your-access-key-id:your-secret-access-key:your-region"})
 
 # Get an authorization token for Docker login
 result = kit.execute("ecr_get_authorization_token", {})
@@ -46,14 +46,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["ecr"], credentials={"ecr": "your-token"})
+kit = ToolKit(["ecr"], credentials={"ecr": "your-access-key-id:your-secret-access-key:your-region"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["ecr"], credentials={"ecr": "your-token"})
+kit = ToolKit(["ecr"], credentials={"ecr": "your-access-key-id:your-secret-access-key:your-region"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

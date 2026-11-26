@@ -36,7 +36,7 @@ pip install "toolsconnector[twilio]"
 Set your credentials:
 
 ```bash
-export TC_TWILIO_CREDENTIALS=your-token
+export TC_TWILIO_CREDENTIALS='your-account-sid:your-auth-token'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_TWILIO_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["twilio"], credentials={"twilio": "your-token"})
+kit = ToolKit(["twilio"], credentials={"twilio": "your-account-sid:your-auth-token"})
 
 # List SMS/MMS messages from your Twilio account
 result = kit.execute("twilio_list_messages", {"to": "recipient@example.com", "from_": "your-from_"})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["twilio"], credentials={"twilio": "your-token"})
+kit = ToolKit(["twilio"], credentials={"twilio": "your-account-sid:your-auth-token"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["twilio"], credentials={"twilio": "your-token"})
+kit = ToolKit(["twilio"], credentials={"twilio": "your-account-sid:your-auth-token"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

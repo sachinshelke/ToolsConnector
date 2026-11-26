@@ -28,7 +28,7 @@ pip install "toolsconnector[cloudwatch]"
 Set your credentials:
 
 ```bash
-export TC_CLOUDWATCH_CREDENTIALS=your-token
+export TC_CLOUDWATCH_CREDENTIALS='your-access-key-id:your-secret-access-key:your-region'
 ```
 
 ## Quick Start
@@ -36,7 +36,7 @@ export TC_CLOUDWATCH_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["cloudwatch"], credentials={"cloudwatch": "your-token"})
+kit = ToolKit(["cloudwatch"], credentials={"cloudwatch": "your-access-key-id:your-secret-access-key:your-region"})
 
 # Get a CloudWatch dashboard
 result = kit.execute("cloudwatch_get_dashboard", {"dashboard_name": "your-dashboard_name"})
@@ -46,14 +46,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["cloudwatch"], credentials={"cloudwatch": "your-token"})
+kit = ToolKit(["cloudwatch"], credentials={"cloudwatch": "your-access-key-id:your-secret-access-key:your-region"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["cloudwatch"], credentials={"cloudwatch": "your-token"})
+kit = ToolKit(["cloudwatch"], credentials={"cloudwatch": "your-access-key-id:your-secret-access-key:your-region"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

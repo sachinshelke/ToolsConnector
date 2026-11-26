@@ -45,7 +45,7 @@ pip install "toolsconnector[stripe]"
 Set your credentials:
 
 ```bash
-export TC_STRIPE_CREDENTIALS=your-token
+export TC_STRIPE_CREDENTIALS='your-api-key'
 ```
 
 ## Quick Start
@@ -53,7 +53,7 @@ export TC_STRIPE_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["stripe"], credentials={"stripe": "your-token"})
+kit = ToolKit(["stripe"], credentials={"stripe": "your-api-key"})
 
 # List events from your Stripe account
 result = kit.execute("stripe_list_events", {"type": "your-type", "limit": 10})
@@ -63,14 +63,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["stripe"], credentials={"stripe": "your-token"})
+kit = ToolKit(["stripe"], credentials={"stripe": "your-api-key"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["stripe"], credentials={"stripe": "your-token"})
+kit = ToolKit(["stripe"], credentials={"stripe": "your-api-key"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

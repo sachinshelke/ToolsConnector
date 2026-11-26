@@ -290,3 +290,25 @@ class TestDryRun:
         assert runs
         assert {e.access for e in runs} == {"read"}
         assert not any(e.dangerous for e in runs)
+
+
+class TestJsonStringArguments:
+    """OpenAI hands tool arguments over as a JSON string; the README passes
+    ``tool_call.function.arguments`` straight to ``execute``."""
+
+    def test_json_string_is_parsed(self) -> None:
+        kit = ToolKit(["gmail"], credentials={"gmail": "test-token"})
+        preview = kit.execute("gmail_batch_delete", '{"email_ids": ["m1"]}', dry_run=True)
+        assert json.loads(preview)["arguments"] == {"email_ids": ["m1"]}
+
+    @pytest.mark.parametrize("bad", ["{not json", "[1, 2]", "null"])
+    def test_anything_but_a_json_object_is_rejected(self, bad: str) -> None:
+        kit = ToolKit(["gmail"], credentials={"gmail": "test-token"})
+        with pytest.raises(ValidationError, match="JSON object"):
+            kit.execute("gmail_batch_delete", bad, dry_run=True)
+
+    def test_empty_string_means_no_arguments(self) -> None:
+        """Some models send ``""`` for a tool that takes no arguments."""
+        kit = ToolKit(["gmail"], credentials={"gmail": "test-token"})
+        with pytest.raises(ValidationError, match="Missing required parameter"):
+            kit.execute("gmail_batch_delete", "", dry_run=True)

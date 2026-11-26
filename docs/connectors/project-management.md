@@ -6,11 +6,11 @@ Connectors for issue tracking and project management platforms. 4 connectors, 12
 
 ### Jira
 
-**Category:** Project Management | **Auth:** API Token (Basic Auth) | **Actions:** 8
+**Category:** Project Management | **Auth:** API Token (Basic Auth) | **Actions:** 28
 
 Connect to Jira to search, create, and manage issues, transitions, and projects.
 
-**Actions:**
+**Common actions** (all: `tc jira actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -26,7 +26,14 @@ Connect to Jira to search, create, and manage issues, transitions, and projects.
 **Quick start:**
 
 ```python
-kit = ToolKit(["jira"], credentials={"jira": {"email": "you@company.com", "token": "your-api-token", "domain": "yourcompany.atlassian.net"}})
+from toolsconnector.connectors.jira import Jira
+
+
+class MyJira(Jira):
+    base_url = "https://yourcompany.atlassian.net/rest/api/3"  # your instance
+
+
+kit = ToolKit([MyJira], credentials={"jira": "you@company.com:your-api-token"})
 result = kit.execute("jira_search_issues", {"jql": "project = PROJ AND status = 'In Progress'"})
 ```
 
@@ -34,11 +41,11 @@ result = kit.execute("jira_search_issues", {"jql": "project = PROJ AND status = 
 
 ### Asana
 
-**Category:** Project Management | **Auth:** Personal Access Token | **Actions:** 8
+**Category:** Project Management | **Auth:** Personal Access Token | **Actions:** 38
 
 Connect to Asana to manage tasks, projects, and workspaces.
 
-**Actions:**
+**Common actions** (all: `tc asana actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -55,7 +62,7 @@ Connect to Asana to manage tasks, projects, and workspaces.
 
 ```python
 kit = ToolKit(["asana"], credentials={"asana": "your-personal-access-token"})
-result = kit.execute("asana_list_tasks", {"project": "1234567890"})
+result = kit.execute("asana_list_tasks", {"project_gid": "1234567890"})
 ```
 
 ---
@@ -103,11 +110,11 @@ result = kit.execute("linear_list_issues", {"team_id": "TEAM-ID", "state": "In P
 
 ### Trello
 
-**Category:** Project Management | **Auth:** API Key + Token | **Actions:** 8
+**Category:** Project Management | **Auth:** API Key + Token | **Actions:** 25
 
 Connect to Trello to manage boards, lists, and cards.
 
-**Actions:**
+**Common actions** (all: `tc trello actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -123,6 +130,6 @@ Connect to Trello to manage boards, lists, and cards.
 **Quick start:**
 
 ```python
-kit = ToolKit(["trello"], credentials={"trello": {"api_key": "your-key", "token": "your-token"}})
+kit = ToolKit(["trello"], credentials={"trello": "your-key:your-token"})
 result = kit.execute("trello_list_boards", {})
 ```

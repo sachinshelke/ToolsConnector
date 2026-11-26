@@ -87,12 +87,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PRS_JSON: ${{ steps.release.outputs.prs }}
+          # Via env, never inline: the JSON holds the changelog, so an apostrophe
+          # in a commit subject broke the script (0.4.0) and crafted text could
+          # run commands with this job's write token.
+          PR_JSON: ${{ steps.release.outputs.pr }}
         run: |
           # `prs` is a JSON array; older releases set the singleton `pr`
           # output. Handle both for forward-compat.
           NUMS=$(echo "$PRS_JSON" | jq -r '.[]?.number' 2>/dev/null || true)
           if [ -z "$NUMS" ]; then
-            PR_JSON='${{ steps.release.outputs.pr }}'
             NUMS=$(echo "$PR_JSON" | jq -r '.number' 2>/dev/null || true)
           fi
           if [ -z "$NUMS" ] || [ "$NUMS" = "null" ]; then

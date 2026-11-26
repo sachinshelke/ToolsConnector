@@ -36,7 +36,7 @@ pip install "toolsconnector[okta]"
 Set your credentials:
 
 ```bash
-export TC_OKTA_CREDENTIALS=your-token
+export TC_OKTA_CREDENTIALS='your-api-token:your-domain'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_OKTA_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["okta"], credentials={"okta": "your-token"})
+kit = ToolKit(["okta"], credentials={"okta": "your-api-token:your-domain"})
 
 # List users in the Okta organization
 result = kit.execute("okta_list_users", {"search": "your-search", "filter": "your-filter"})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["okta"], credentials={"okta": "your-token"})
+kit = ToolKit(["okta"], credentials={"okta": "your-api-token:your-domain"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["okta"], credentials={"okta": "your-token"})
+kit = ToolKit(["okta"], credentials={"okta": "your-api-token:your-domain"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

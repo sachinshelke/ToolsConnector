@@ -55,7 +55,7 @@ Execute a single action from the command line. Parameters are passed as `--key v
 ```bash
 export TC_GITHUB_CREDENTIALS="ghp_your_token_here"
 
-tc github list_repos --per_page 5
+tc github list_repos --limit 5
 tc github get_repo --owner anthropics --repo toolsconnector
 tc slack send_message --channel "#general" --text "Hello from tc"
 ```
@@ -65,7 +65,7 @@ Output is printed as formatted JSON.
 For actions that take nested or complex parameters, pass JSON strings:
 
 ```bash
-tc jira create_issue --project "PROJ" --summary "Bug report" --issue_type "Bug"
+tc jira create_issue --project_key "PROJ" --summary "Bug report" --issue_type "Bug"
 ```
 
 ### `tc <connector> spec`
@@ -75,7 +75,7 @@ Export the full action schema for a connector. Useful for inspecting available p
 ```bash
 tc github spec
 tc github spec --format json
-tc github spec --format yaml
+tc github spec --format yaml   # needs: pip install pyyaml
 ```
 
 The default format is JSON. The schema includes every action with its parameter definitions, types, required flags, and descriptions.
@@ -95,6 +95,7 @@ Options:
 | Flag | Default | Description |
 |---|---|---|
 | `--transport` | `stdio` | Transport protocol: `stdio`, `sse`, or `streamable-http` |
+| `--host` | `127.0.0.1` | Bind address for HTTP-based transports (loopback only by default) |
 | `--port` | `3000` | Port for HTTP-based transports |
 | `--name` | `toolsconnector` | Server name reported to MCP clients |
 
@@ -113,6 +114,7 @@ Options:
 
 | Flag | Default | Description |
 |---|---|---|
+| `--host` | `127.0.0.1` | Bind address (loopback only by default; the server has no built-in auth) |
 | `--port` | `8000` | Port to listen on |
 | `--prefix` | `/api/v1` | URL path prefix for all endpoints |
 
@@ -128,8 +130,8 @@ export TC_SLACK_CREDENTIALS="xoxb-your-slack-bot-token"
 export TC_GITHUB_CREDENTIALS="ghp_your_github_pat"
 ```
 
-For connectors that require multiple credential fields (e.g., Datadog requires both API key and app key), pass a JSON string:
+For connectors that need several values (e.g. Datadog needs an API key and an app key), join them in the order the connector declares. Run any action without credentials and the error shows the exact shape and where to get the values:
 
 ```bash
-export TC_DATADOG_CREDENTIALS='{"api_key": "...", "app_key": "..."}'
+export TC_DATADOG_CREDENTIALS='your-api-key:your-app-key'
 ```

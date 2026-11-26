@@ -6,11 +6,11 @@ Connectors for cloud file storage services. 2 connectors, 42 actions.
 
 ### Google Drive
 
-**Category:** Storage | **Auth:** OAuth2 Bearer Token | **Actions:** 8
+**Category:** Storage | **Auth:** OAuth2 Bearer Token | **Actions:** 22
 
 Connect to Google Drive to list, upload, download, search, and manage files and folders.
 
-**Actions:**
+**Common actions** (all: `tc gdrive actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -36,11 +36,11 @@ result = kit.execute("gdrive_list_files", {"page_size": 10})
 
 ### S3
 
-**Category:** Storage | **Auth:** AWS Access Key ID + Secret Access Key | **Actions:** 8
+**Category:** Storage | **Auth:** AWS Access Key ID + Secret Access Key | **Actions:** 20
 
 Connect to Amazon S3 to manage buckets and objects -- list, upload, download, copy, and delete.
 
-**Actions:**
+**Common actions** (all: `tc s3 actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -56,7 +56,7 @@ Connect to Amazon S3 to manage buckets and objects -- list, upload, download, co
 **Quick start:**
 
 ```python
-kit = ToolKit(["s3"], credentials={"s3": {"aws_access_key_id": "AKIA...", "aws_secret_access_key": "..."}})
+kit = ToolKit(["s3"], credentials={"s3": "AKIA...:your-secret-key:us-east-1"})
 result = kit.execute("s3_list_buckets", {})
 ```
 

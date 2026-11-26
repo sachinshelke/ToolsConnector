@@ -36,7 +36,7 @@ pip install "toolsconnector[mailchimp]"
 Set your credentials:
 
 ```bash
-export TC_MAILCHIMP_CREDENTIALS=your-token
+export TC_MAILCHIMP_CREDENTIALS='your-api-key'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_MAILCHIMP_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["mailchimp"], credentials={"mailchimp": "your-token"})
+kit = ToolKit(["mailchimp"], credentials={"mailchimp": "your-api-key"})
 
 # Get a single Mailchimp campaign by ID
 result = kit.execute("mailchimp_get_campaign", {"campaign_id": "campaign-123"})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["mailchimp"], credentials={"mailchimp": "your-token"})
+kit = ToolKit(["mailchimp"], credentials={"mailchimp": "your-api-key"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["mailchimp"], credentials={"mailchimp": "your-token"})
+kit = ToolKit(["mailchimp"], credentials={"mailchimp": "your-api-key"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

@@ -609,7 +609,7 @@ class Odoo(BaseConnector):
         ok = await self._call(model, "write", [ids, values])
         return bool(ok)
 
-    @action("Delete records of an Odoo model by their IDs", access="write")
+    @action("Delete records of an Odoo model by their IDs", dangerous=True)
     async def unlink(self, model: str, ids: list[int]) -> bool:
         """Permanently delete records.
 
@@ -754,7 +754,7 @@ class Odoo(BaseConnector):
         )
         return result or []
 
-    @action("Call any method on any Odoo model (advanced escape hatch)", access="write")
+    @action("Call any method on any Odoo model (advanced escape hatch)", dangerous=True)
     async def call_method(
         self,
         model: str,

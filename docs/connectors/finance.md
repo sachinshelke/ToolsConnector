@@ -58,6 +58,6 @@ Connect to Plaid to access bank account data, transactions, balances, identity, 
 **Quick start:**
 
 ```python
-kit = ToolKit(["plaid"], credentials={"plaid": {"client_id": "your-client-id", "secret": "your-secret", "environment": "sandbox"}})
+kit = ToolKit(["plaid"], credentials={"plaid": "your-client-id:your-secret"})
 result = kit.execute("plaid_get_accounts", {"access_token": "access-sandbox-..."})
 ```

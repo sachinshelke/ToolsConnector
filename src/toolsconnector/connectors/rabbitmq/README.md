@@ -36,7 +36,7 @@ pip install "toolsconnector[rabbitmq]"
 Set your credentials:
 
 ```bash
-export TC_RABBITMQ_CREDENTIALS=your-token
+export TC_RABBITMQ_CREDENTIALS='your-username:your-password'
 ```
 
 ## Quick Start
@@ -44,7 +44,7 @@ export TC_RABBITMQ_CREDENTIALS=your-token
 ```python
 from toolsconnector.serve import ToolKit
 
-kit = ToolKit(["rabbitmq"], credentials={"rabbitmq": "your-token"})
+kit = ToolKit(["rabbitmq"], credentials={"rabbitmq": "your-username:your-password"})
 
 # List active channels in the broker
 result = kit.execute("rabbitmq_list_channels", {})
@@ -54,14 +54,14 @@ print(result)
 ### MCP Server
 
 ```python
-kit = ToolKit(["rabbitmq"], credentials={"rabbitmq": "your-token"})
+kit = ToolKit(["rabbitmq"], credentials={"rabbitmq": "your-username:your-password"})
 kit.serve_mcp()  # Claude Desktop / Cursor connects instantly
 ```
 
 ### OpenAI Function Calling
 
 ```python
-kit = ToolKit(["rabbitmq"], credentials={"rabbitmq": "your-token"})
+kit = ToolKit(["rabbitmq"], credentials={"rabbitmq": "your-username:your-password"})
 tools = kit.to_openai_tools()
 # Pass to: openai.chat.completions.create(tools=tools, ...)
 ```

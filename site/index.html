@@ -2043,12 +2043,12 @@ function pgReferenceHtml(activeFw) {
   var methods = [
     ['kit.to_openai_tools()',    'OpenAI',    'List of {type, function: {name, description, parameters}}'],
     ['kit.to_anthropic_tools()', 'Anthropic', 'List of {name, description, input_schema}'],
-    ['kit.to_gemini_tools()',    'Gemini',    'List of {function_declarations: [{name, description, parameters}]}'],
+    ['kit.to_gemini_tools()',    'Gemini',    'List of {name, description, parameters} function declarations'],
     ['kit.execute(name, args)',  'All',       'Run action — args can be JSON string or dict'],
     ['await kit.aexecute(name, args)', 'All', 'Async version of execute() for async frameworks'],
     ['kit.serve_mcp()',          'MCP',       'Start stdio MCP server — compatible with Claude Desktop, Cursor'],
     ['kit.create_rest_app()',    'REST',      'Returns ASGI app for deployment with uvicorn / FastAPI'],
-    ['kit.list_tools()',         'All',       'Returns list of all registered tool name strings'],
+    ['kit.list_tools()',         'All',       'List of {name, description, input_schema, access, dangerous, status, …}'],
   ];
 
   var html = '<div class="space-y-6">';

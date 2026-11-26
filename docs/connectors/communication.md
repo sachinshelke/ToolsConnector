@@ -6,11 +6,11 @@ Connectors for email, messaging, and SMS services. 9 connectors, 300 actions.
 
 ### Gmail
 
-**Category:** Communication | **Auth:** OAuth2 Bearer Token | **Actions:** 8
+**Category:** Communication | **Auth:** OAuth2 Bearer Token | **Actions:** 67
 
 Connect to Gmail to read, send, search, and manage emails and labels.
 
-**Actions:**
+**Common actions** (all: `tc gmail actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -27,7 +27,7 @@ Connect to Gmail to read, send, search, and manage emails and labels.
 
 ```python
 kit = ToolKit(["gmail"], credentials={"gmail": "ya29.your-access-token"})
-result = kit.execute("gmail_list_emails", {"query": "is:unread", "max_results": 10})
+result = kit.execute("gmail_list_emails", {"query": "is:unread", "limit": 10})
 ```
 
 **Extras required:** `pip install "toolsconnector[gmail]"`
@@ -36,11 +36,11 @@ result = kit.execute("gmail_list_emails", {"query": "is:unread", "max_results": 
 
 ### Slack
 
-**Category:** Communication | **Auth:** Bot Token (xoxb-) | **Actions:** 8
+**Category:** Communication | **Auth:** Bot Token (xoxb-) | **Actions:** 51
 
 Connect to Slack to send messages, list channels, upload files, and manage reactions.
 
-**Actions:**
+**Common actions** (all: `tc slack actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -64,11 +64,11 @@ kit.execute("slack_send_message", {"channel": "#general", "text": "Hello from To
 
 ### Discord
 
-**Category:** Communication | **Auth:** Bot Token | **Actions:** 8
+**Category:** Communication | **Auth:** Bot Token | **Actions:** 25
 
 Connect to Discord to send messages, manage channels, and interact with guild members.
 
-**Actions:**
+**Common actions** (all: `tc discord actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -92,11 +92,11 @@ kit.execute("discord_send_message", {"channel_id": "123456", "content": "Hello"}
 
 ### Outlook
 
-**Category:** Communication | **Auth:** OAuth2 Bearer Token (Microsoft Graph) | **Actions:** 8
+**Category:** Communication | **Auth:** OAuth2 Bearer Token (Microsoft Graph) | **Actions:** 23
 
 Connect to Outlook to read, send, and manage emails through the Microsoft Graph API.
 
-**Actions:**
+**Common actions** (all: `tc outlook actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -107,24 +107,24 @@ Connect to Outlook to read, send, and manage emails through the Microsoft Graph 
 | search_messages | Search messages with a query | No |
 | delete_message | Delete a message by ID | Yes |
 | create_draft | Create an email draft | No |
-| reply_to_message | Reply to a specific message | Yes |
+| reply_message | Reply to a specific message | Yes |
 
 **Quick start:**
 
 ```python
 kit = ToolKit(["outlook"], credentials={"outlook": "your-graph-access-token"})
-result = kit.execute("outlook_list_messages", {"top": 10})
+result = kit.execute("outlook_list_messages", {"limit": 10})
 ```
 
 ---
 
 ### Teams
 
-**Category:** Communication | **Auth:** OAuth2 Bearer Token (Microsoft Graph) | **Actions:** 8
+**Category:** Communication | **Auth:** OAuth2 Bearer Token (Microsoft Graph) | **Actions:** 17
 
 Connect to Microsoft Teams to send messages, manage channels, and list team members.
 
-**Actions:**
+**Common actions** (all: `tc teams actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -148,11 +148,11 @@ result = kit.execute("teams_list_teams", {})
 
 ### Twilio
 
-**Category:** Communication | **Auth:** Account SID + Auth Token | **Actions:** 8
+**Category:** Communication | **Auth:** Account SID + Auth Token | **Actions:** 20
 
 Connect to Twilio to send SMS messages, make calls, and manage phone numbers.
 
-**Actions:**
+**Common actions** (all: `tc twilio actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -168,7 +168,7 @@ Connect to Twilio to send SMS messages, make calls, and manage phone numbers.
 **Quick start:**
 
 ```python
-kit = ToolKit(["twilio"], credentials={"twilio": {"account_sid": "AC...", "auth_token": "..."}})
+kit = ToolKit(["twilio"], credentials={"twilio": "AC...:your-auth-token"})
 kit.execute("twilio_send_sms", {"to": "+1234567890", "from_": "+0987654321", "body": "Hello"})
 ```
 
@@ -176,11 +176,11 @@ kit.execute("twilio_send_sms", {"to": "+1234567890", "from_": "+0987654321", "bo
 
 ### Telegram
 
-**Category:** Communication | **Auth:** Bot Token | **Actions:** 8
+**Category:** Communication | **Auth:** Bot Token | **Actions:** 26
 
 Connect to Telegram to send messages, photos, and documents through the Bot API.
 
-**Actions:**
+**Common actions** (all: `tc telegram actions`):
 
 | Action | Description | Dangerous |
 |--------|-------------|-----------|
@@ -222,7 +222,7 @@ Meta's official WhatsApp Business Platform (Cloud API, Graph v25.0): free-form s
 Full list: [connector README](../../src/toolsconnector/connectors/whatsapp_business/README.md).
 
 ```python
-from toolsconnector import ToolKit
+from toolsconnector.serve import ToolKit
 
 kit = ToolKit(["whatsapp_business"])  # TC_WHATSAPP_BUSINESS_CREDENTIALS (JSON)
 kit.execute("whatsapp_business_send_template",
