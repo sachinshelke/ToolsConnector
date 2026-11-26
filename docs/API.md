@@ -324,8 +324,7 @@ from toolsconnector.spec.action import ActionSpec
 | `return_type` | `str` | Python return type as string |
 | `dangerous` | `bool` | Has destructive side effects |
 | `access` | `str \| null` | Read/write classification: `read` \| `write` \| `destructive`, or `null` if unclassified (read-only consumers fail closed on `null`) |
-| `idempotent` | `bool` | Safe to retry |
-| `idempotent` | `bool` | Safe to retry |
+| `idempotent` | `bool` | Safe to retry after a timeout or 5xx |
 | `deprecated` | `bool` | Whether deprecated |
 
 ---

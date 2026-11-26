@@ -86,8 +86,11 @@ Start an MCP (Model Context Protocol) server that exposes the specified connecto
 
 ```bash
 tc serve mcp gmail slack --transport stdio
-tc serve mcp github jira --transport sse --port 3000
+tc serve mcp github linear --transport sse --port 3000
 tc serve mcp gmail slack github --transport streamable-http --port 3000
+tc serve mcp gmail slack github --mode search
+tc serve mcp gmail slack --tools "gmail_list_*,slack_send_message"
+tc serve mcp gmail slack --read-only
 ```
 
 Options:
@@ -98,8 +101,13 @@ Options:
 | `--host` | `127.0.0.1` | Bind address for HTTP-based transports (loopback only by default) |
 | `--port` | `3000` | Port for HTTP-based transports |
 | `--name` | `toolsconnector` | Server name reported to MCP clients |
+| `--mode` | `direct` | `direct`: one MCP tool per action. `search`: `tc_find_tools` plus `tc_run_read`, `tc_run_write` and `tc_run_destructive`. `auto`: `search` above 30 tools |
+| `--tools` | all | Comma-separated tool names or globs, e.g. `gmail_list_*` |
+| `--read-only` | off | Serve only actions declared `access="read"`; undeclared actions are left out |
 
 Use `stdio` for Claude Desktop and Cursor integration. Use `sse` or `streamable-http` for network-accessible deployments.
+
+**Search mode** keeps the tool list the same size however many connectors you serve. Each runner accepts only actions of its own risk, so the client can still ask for approval by risk. An action with no declared access goes to `tc_run_destructive`. Clients that already search tools themselves, such as Claude Code, can stay on `direct`.
 
 ### `tc serve rest <connectors...>`
 
@@ -107,7 +115,7 @@ Start a REST API server that exposes the specified connectors over HTTP.
 
 ```bash
 tc serve rest gmail slack --port 8000
-tc serve rest github jira --port 9000 --prefix /api/v1
+tc serve rest github linear --port 9000 --prefix /api/v1
 ```
 
 Options:

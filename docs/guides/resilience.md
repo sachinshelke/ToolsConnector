@@ -35,7 +35,7 @@ kit = ToolKit(
 
 ## Auto-Retry with Exponential Backoff
 
-Transient failures (timeouts, 429s, 5xx) are retried automatically until the timeout budget runs out.
+Transient failures (timeouts, 429s, 5xx) are retried automatically until the timeout budget runs out, as long as repeating the call is safe.
 
 **How it works:**
 
@@ -43,16 +43,16 @@ Transient failures (timeouts, 429s, 5xx) are retried automatically until the tim
 2. If the error carries a `Retry-After` value, wait that long. Otherwise wait 2, 4, 8… seconds.
 3. Retry while there is budget left (`timeout_budget`, 25 seconds by default). There is no separate retry count.
 
-> **Writes are retried too.** The retry does not check whether an action is safe to repeat. If a write times out after the service already accepted it, the retry can perform it twice. For writes that must not repeat, use the service's own idempotency key where the action offers one.
+> **Writes are not resent after a timeout, connection failure or 5xx.** The service may already have acted, so a retry could send a payment or message twice. Only actions declared `access="read"` or `idempotent=True` are retried for those errors. Any action is retried after a 429 or an expired token, because the service refused the call. A write that fails this way raises with `retry_eligible=False` and a suggestion to check before sending it again. Releases before 0.5.0 retried writes too.
 
 **Which errors are retried:**
 
 | Error | Retried | Reason |
 |-------|---------|--------|
 | `RateLimitError` | Yes | Transient, wait and retry |
-| `TimeoutError` | Yes | Network or server slowness |
-| `ConnectionError` | Yes | Transient network issue |
-| `ServerError` (5xx) | Yes | Upstream instability |
+| `TimeoutError` | Reads and `idempotent` actions only | The service may have acted before timing out |
+| `ConnectionError` | Reads and `idempotent` actions only | The request may have reached the service |
+| `ServerError` (5xx) | Reads and `idempotent` actions only | The service may have acted before failing |
 | `NotFoundError` | No | Resource does not exist |
 | `ValidationError` | No | Bad input, retrying won't help |
 | `InvalidCredentialsError` | No | Credentials are wrong |
